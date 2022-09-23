@@ -1,16 +1,11 @@
-﻿using System;
-using System.Drawing;
-using System.Threading;
-using System.Threading.Tasks;
+﻿using DDBot.Commands;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Remora.Commands.Extensions;
 using Remora.Discord.API.Abstractions.Gateway.Commands;
-using Remora.Discord.API.Abstractions.Gateway.Events;
-using Remora.Discord.API.Abstractions.Rest;
-using Remora.Discord.API.Objects;
+using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Gateway;
 using Remora.Discord.Gateway.Extensions;
-using Remora.Discord.Gateway.Responders;
 using Remora.Discord.Gateway.Results;
 using Remora.Results;
 
@@ -21,12 +16,19 @@ Console.CancelKeyPress += (sender, eventArgs) =>
     cancellationSource.Cancel();
 };
 
-var botToken = "Bot_Token";
+var botToken = "MTAyMjkyMDM0MjEyNzI1NTY4Mg.GFg063.cSgBrbVRGCOVe6Lbgm89Qxqa03ZzSasdFx_1mk";
 
 var services = new ServiceCollection()
     .AddDiscordGateway(_ => botToken)
     .Configure<DiscordGatewayClientOptions>(g => g.Intents |= GatewayIntents.MessageContents)
-    .AddResponder<PingPongResponder>()
+    .AddDiscordCommands()
+    .AddCommandTree()
+    .WithCommandGroup<DiceRollCommand>()
+    .Finish()
+    .AddLogging(builder =>
+    {
+        builder.AddConsole().SetMinimumLevel(LogLevel.Trace);
+    })
     .BuildServiceProvider();
 
 var gatewayClient = services.GetRequiredService<DiscordGatewayClient>();
@@ -64,33 +66,3 @@ if (!runResult.IsSuccess)
 }
 
 Console.WriteLine("Bye bye");
-
-public class PingPongResponder : IResponder<IMessageCreate>
-{
-    private readonly IDiscordRestChannelAPI _channelAPI;
-
-    public PingPongResponder(IDiscordRestChannelAPI channelAPI)
-    {
-        _channelAPI = channelAPI;
-    }
-
-    public async Task<Result> RespondAsync
-    (
-        IMessageCreate gatewayEvent,
-        CancellationToken ct = default
-    )
-    {
-        if (gatewayEvent.Content != "!ping")
-        {
-            return Result.FromSuccess();
-        }
-
-        var embed = new Embed(Description: "Pong!", Colour: Color.LawnGreen);
-        return (Result)await _channelAPI.CreateMessageAsync
-        (
-            gatewayEvent.ChannelID,
-            embeds: new[] { embed },
-            ct: ct
-        );
-    }
-}
