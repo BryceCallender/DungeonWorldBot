@@ -16,7 +16,7 @@ Console.CancelKeyPress += (sender, eventArgs) =>
     cancellationSource.Cancel();
 };
 
-var botToken = "MTAyMjkyMDM0MjEyNzI1NTY4Mg.GFg063.cSgBrbVRGCOVe6Lbgm89Qxqa03ZzSasdFx_1mk";
+var botToken = "bot_token";
 
 var services = new ServiceCollection()
     .AddDiscordGateway(_ => botToken)
