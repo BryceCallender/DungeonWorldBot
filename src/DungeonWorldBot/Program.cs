@@ -18,9 +18,6 @@ Console.CancelKeyPress += (sender, eventArgs) =>
     cancellationSource.Cancel();
 };
 
-
-Console.WriteLine(Directory.GetCurrentDirectory());
-
 var config = new ConfigurationBuilder()
     .SetBasePath(Directory.GetCurrentDirectory())
     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
