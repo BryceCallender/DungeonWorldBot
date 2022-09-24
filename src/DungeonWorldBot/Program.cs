@@ -1,6 +1,8 @@
-﻿using DDBot.Commands;
+﻿using System.Reflection;
+using DDBot.Commands;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
 using Remora.Commands.Extensions;
 using Remora.Discord.API.Abstractions.Gateway.Commands;
 using Remora.Discord.Commands.Extensions;
@@ -16,10 +18,16 @@ Console.CancelKeyPress += (sender, eventArgs) =>
     cancellationSource.Cancel();
 };
 
-var botToken = "bot_token";
+
+Console.WriteLine(Directory.GetCurrentDirectory());
+
+var config = new ConfigurationBuilder()
+    .SetBasePath(Directory.GetCurrentDirectory())
+    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+    .Build();
 
 var services = new ServiceCollection()
-    .AddDiscordGateway(_ => botToken)
+    .AddDiscordGateway(_ => config["REMORA_BOT_TOKEN"])
     .Configure<DiscordGatewayClientOptions>(g => g.Intents |= GatewayIntents.MessageContents)
     .AddDiscordCommands()
     .AddCommandTree()
