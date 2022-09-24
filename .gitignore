@@ -476,7 +476,7 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
-/appsettings.json
+src/DungeonWorldBot/appsettings.json
 
 # User specific
 **/.idea/**/workspace.xml
