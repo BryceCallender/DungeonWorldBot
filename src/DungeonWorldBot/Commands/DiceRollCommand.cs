@@ -1,19 +1,24 @@
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
-using Remora.Discord.API.Abstractions.Objects;
+using Remora.Discord.API;
+using Remora.Discord.API.Abstractions.Gateway.Events;
 using Remora.Discord.API.Objects;
+using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Feedback.Services;
-using Remora.Rest.Core;
 using Remora.Results;
 
-namespace DDBot.Commands;
+namespace DungeonWorldBot.Commands;
 
 public class DiceRollCommand : CommandGroup
 {
+    private readonly Random _random;
+    private readonly ICommandContext _context;
     private readonly FeedbackService _feedbackService;
 
-    public DiceRollCommand(FeedbackService feedbackService)
+    public DiceRollCommand(Random random, ICommandContext commandContext, FeedbackService feedbackService)
     {
+        _random = random;
+        _context = commandContext;
         _feedbackService = feedbackService;
     }
     
@@ -25,7 +30,7 @@ public class DiceRollCommand : CommandGroup
         {
             return Result.FromSuccess();
         }
-
+        
         var result = int.TryParse(rollConfigs[^1], out var faces);
         if (!result)
         {
@@ -48,18 +53,17 @@ public class DiceRollCommand : CommandGroup
             
             rollValues = Roll(rollCount, faces);
         }
-
+        
         return await ReplyWithRoll(rollValues);
     }
 
-    private static List<int> Roll(int rollCount, int faces)
+    private List<int> Roll(int rollCount, int faces)
     {
-        var random = new Random();
         var results = new List<int>();
 
         for (var i = 0; i < rollCount; i++)
         {
-            results.Add(random.Next(1, faces));
+            results.Add(_random.Next(1, faces));
         }
 
         return results;
@@ -77,10 +81,29 @@ public class DiceRollCommand : CommandGroup
     private async Task<IResult> ReplyWithRoll(IReadOnlyCollection<int> rollValues)
     {
         var total = rollValues.Sum();
-        var rolls = string.Join('+', rollValues);
-        rolls += $"={total}";
+        var rollText = $"{total}";
         
-        var embed = new Embed(Title: "Rolls", Description: $"Total Roll: {total}\n\n{rolls}", Colour: _feedbackService.Theme.Success);
+        if (rollValues.Count > 1)
+        {
+            rollText = $"Total Roll: {total}\n\n";
+            rollText += string.Join('+', rollValues);
+            rollText += $"={total}";
+        }
+        
+        var avatar = CDN.GetUserAvatarUrl(_context.User, imageSize: 4096);
+
+        if (!avatar.IsSuccess)
+            avatar = CDN.GetDefaultUserAvatarUrl(_context.User, imageSize: 4096);
+        
+        if (!avatar.IsSuccess)
+            return Result.FromError(avatar.Error);
+        
+        var embed = new Embed(
+            Title: "🎲 Roll(s)", 
+            Description: rollText, 
+            Colour: _feedbackService.Theme.Success,
+            Thumbnail: new EmbedThumbnail(avatar.Entity.ToString())
+        );
 
         return await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);
     }

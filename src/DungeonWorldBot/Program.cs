@@ -1,73 +1,89 @@
-﻿using System.Reflection;
-using DDBot.Commands;
+﻿using DungeonWorldBot.Data;
+using DungeonWorldBot.Extensions;
+using DungeonWorldBot.Services;
+using DungeonWorldBot.Services.Implementation;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
-using Remora.Commands.Extensions;
+using Microsoft.Extensions.Hosting;
 using Remora.Discord.API.Abstractions.Gateway.Commands;
-using Remora.Discord.Commands.Extensions;
+using Remora.Discord.Commands.Services;
 using Remora.Discord.Gateway;
-using Remora.Discord.Gateway.Extensions;
-using Remora.Discord.Gateway.Results;
-using Remora.Results;
+using Remora.Discord.Hosting.Extensions;
 
-var cancellationSource = new CancellationTokenSource();
-Console.CancelKeyPress += (sender, eventArgs) =>
-{
-    eventArgs.Cancel = true;
-    cancellationSource.Cancel();
-};
+namespace DungeonWorldBot;
 
-var config = new ConfigurationBuilder()
-    .SetBasePath(Directory.GetCurrentDirectory())
-    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-    .Build();
-
-var services = new ServiceCollection()
-    .AddDiscordGateway(_ => config["REMORA_BOT_TOKEN"])
-    .Configure<DiscordGatewayClientOptions>(g => g.Intents |= GatewayIntents.MessageContents)
-    .AddDiscordCommands()
-    .AddCommandTree()
-    .WithCommandGroup<DiceRollCommand>()
-    .Finish()
-    .AddLogging(builder =>
+public class Program
+{ 
+    public static async Task Main(string[] args)
     {
-        builder.AddConsole().SetMinimumLevel(LogLevel.Trace);
-    })
-    .BuildServiceProvider();
+        var host = CreateHostBuilder(args)
+            .UseConsoleLifetime()
+            .Build();
 
-var gatewayClient = services.GetRequiredService<DiscordGatewayClient>();
-var log = services.GetRequiredService<ILogger<Program>>();
+        var services = host.Services;
+        var log = services.GetRequiredService<ILogger<Program>>();
+        
+        var slashService = services.GetRequiredService<SlashService>();
 
-var runResult = await gatewayClient.RunAsync(cancellationSource.Token);
-
-if (!runResult.IsSuccess)
-{
-    switch (runResult.Error)
-    {
-        case ExceptionError exe:
+        var checkSlashSupport = slashService.SupportsSlashCommands();
+        if (!checkSlashSupport.IsSuccess)
         {
-            log.LogError
+            log.LogWarning
             (
-                exe.Exception,
-                "Exception during gateway connection: {ExceptionMessage}",
-                exe.Message
+                "The registered commands of the bot don't support slash commands: {Reason}",
+                checkSlashSupport.Error?.Message
             );
+        }
+        else
+        {
+            var updateSlash = await slashService.UpdateSlashCommandsAsync();
+            if (!updateSlash.IsSuccess)
+            {
+                log.LogWarning("Failed to update slash commands: {Reason}", updateSlash.Error?.Message);
+            }
+        }
 
-            break;
-        }
-        case GatewayWebSocketError:
-        case GatewayDiscordError:
-        {
-            log.LogError("Gateway error: {Message}", runResult.Error.Message);
-            break;
-        }
-        default:
-        {
-            log.LogError("Unknown error: {Message}", runResult.Error.Message);
-            break;
-        }
+        await host.RunAsync();
     }
-}
+    
+    private static IHostBuilder CreateHostBuilder(string[] args) => Host.CreateDefaultBuilder(args)
+        .AddDiscordService
+        (
+            services =>
+            {
+                var configuration = services.GetRequiredService<IConfiguration>();
 
-Console.WriteLine("Bye bye");
+                return configuration.GetValue<string?>("REMORA_BOT_TOKEN") ??
+                       throw new InvalidOperationException
+                       (
+                           "No bot token has been provided. Set the REMORA_BOT_TOKEN environment variable to a " +
+                           "valid token."
+                       );
+            }
+        )
+        .ConfigureServices
+        (
+            (context, services) =>
+            {
+                
+                var config = new ConfigurationBuilder()
+                    .SetBasePath(Directory.GetCurrentDirectory())
+                    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
+                    .Build();
+                
+                services.Configure<DiscordGatewayClientOptions>(g => g.Intents |= GatewayIntents.MessageContents);
+                services
+                    .AddSqlite<DungeonWorldContext>(config.GetConnectionString("DungeonWorldConnectionString"))
+                    .AddScoped<ICharacterService, CharacterService>()
+                    .AddRemoraServices();
+            }
+        )
+        .ConfigureLogging
+        (
+            c => c
+                .AddConsole()
+                .AddFilter("System.Net.Http.HttpClient.*.LogicalHandler", LogLevel.Warning)
+                .AddFilter("System.Net.Http.HttpClient.*.ClientHandler", LogLevel.Warning)
+        );
+}

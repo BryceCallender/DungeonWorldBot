@@ -1,4 +1,4 @@
-namespace DDBot.API.Models;
+namespace DungeonWorldBot.Data.Entities;
 
 public enum Alignment
 {

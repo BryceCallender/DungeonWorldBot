@@ -1,6 +1,6 @@
 namespace DungeonWorldBot.Data.Entities;
 
-public enum Race
+public class Weapon
 {
     
 }
