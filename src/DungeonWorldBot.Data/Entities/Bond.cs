@@ -4,5 +4,5 @@ namespace DungeonWorldBot.Data.Entities;
 
 public class Bond
 {
-    public Snowflake Id { get; set; }
+    public Snowflake ID { get; set; }
 }

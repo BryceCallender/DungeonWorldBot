@@ -4,7 +4,7 @@ namespace DungeonWorldBot.Data.Entities;
 
 public class Stat
 {
-    public Snowflake ID { get; set; }
+    public int ID { get; set; }
     
     public StatType StatType { get; set; }
 
