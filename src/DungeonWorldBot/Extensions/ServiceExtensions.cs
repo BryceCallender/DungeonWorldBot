@@ -5,6 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Remora.Commands.Extensions;
 using Remora.Commands.Groups;
 using Remora.Discord.Commands.Extensions;
+using Remora.Discord.Interactivity;
 using Remora.Discord.Interactivity.Extensions;
 
 namespace DungeonWorldBot.Extensions;
@@ -20,9 +21,7 @@ public static class ServiceExtensions
             .AddCommands(asm)
             .AddPostExecutionEvent<PostCommandHandler>()
             .AddInteractivity()
-            .AddInteractionGroup<ModalInteractions>()
             .AddInteractionGroup<CharacterInteractions>();
-
 
         return services;
     }
@@ -31,7 +30,7 @@ public static class ServiceExtensions
     {
         var types = assembly
             .GetExportedTypes()
-            .Where(t => t.IsClass && !t.IsNested && !t.IsAbstract && t.IsAssignableTo(typeof(CommandGroup)));
+            .Where(t => t.IsClass && !t.IsNested && !t.IsAbstract && t.IsAssignableTo(typeof(CommandGroup)) && !t.IsAssignableTo(typeof(InteractionGroup)));
 
         var tree = collection.AddCommandTree();
         

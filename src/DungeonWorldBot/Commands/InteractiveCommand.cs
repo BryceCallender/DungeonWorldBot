@@ -22,7 +22,7 @@ namespace DungeonWorldBot.Commands;
 
 public class InteractiveCommands : CommandGroup
 {
-    private readonly ICommandContext _context;
+    private readonly InteractionContext _context;
     private readonly FeedbackService _feedback;
     private readonly IDiscordRestInteractionAPI _interactionAPI;
 
@@ -34,7 +34,7 @@ public class InteractiveCommands : CommandGroup
     /// <param name="interactionAPI">The interaction API.</param>
     public InteractiveCommands
     (
-        ICommandContext context,
+        InteractionContext context,
         FeedbackService feedback,
         IDiscordRestInteractionAPI interactionAPI
     )
@@ -44,7 +44,7 @@ public class InteractiveCommands : CommandGroup
         _interactionAPI = interactionAPI;
     }
 
-    [Command("test")]
+    [Command("characterName")]
     [SuppressInteractionResponse(true)]
     public async Task<IResult> CharacterNameAsync()
     {
@@ -53,7 +53,7 @@ public class InteractiveCommands : CommandGroup
             new ActionRowComponent(new[]
                 {
                     new TextInputComponent(
-                        "character-name", 
+                        "characterName", 
                         TextInputStyle.Short, 
                         "Character Name", 
                         1, 
@@ -65,10 +65,13 @@ public class InteractiveCommands : CommandGroup
                 })
         };
         
-        var data = new InteractionModalCallbackData(CustomIDHelpers.CreateModalID("character-name"), "Set your character name!", components);
-
-        return Result.FromSuccess();
-        //return await _interactionAPI.CreateInteractionResponseAsync(_context.ID, _context.Token, new InteractionResponse(InteractionCallbackType.Modal, new(data)));
+        var data = new InteractionModalCallbackData(
+            CustomIDHelpers.CreateModalID("characterName"), 
+            "Set your character name!", 
+            components
+        );
+        
+        return await _interactionAPI.CreateInteractionResponseAsync(_context.ID, _context.Token, new InteractionResponse(InteractionCallbackType.Modal, new(data)));
     }
     
     /// <summary>

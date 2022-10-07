@@ -1,7 +1,7 @@
+using System.ComponentModel;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.API;
-using Remora.Discord.API.Abstractions.Gateway.Events;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Feedback.Services;
@@ -23,6 +23,7 @@ public class DiceRollCommand : CommandGroup
     }
     
     [Command("roll")]
+    [Description("Roll a dice like d6 or 2d6")]
     public async Task<IResult> RollDiceAsync(string value)
     {
         var rollConfigs = value.ToLower().Split('d', StringSplitOptions.RemoveEmptyEntries);
@@ -54,7 +55,7 @@ public class DiceRollCommand : CommandGroup
             rollValues = Roll(rollCount, faces);
         }
         
-        return await ReplyWithRoll(rollValues);
+        return await ReplyWithRoll(value, rollValues);
     }
 
     private List<int> Roll(int rollCount, int faces)
@@ -78,14 +79,15 @@ public class DiceRollCommand : CommandGroup
         );
     }
 
-    private async Task<IResult> ReplyWithRoll(IReadOnlyCollection<int> rollValues)
+    private async Task<IResult> ReplyWithRoll(string roll, IReadOnlyCollection<int> rollValues)
     {
         var total = rollValues.Sum();
         var rollText = $"{total}";
         
         if (rollValues.Count > 1)
         {
-            rollText = $"Total Roll: {total}\n\n";
+            rollText = $"{roll}\n\n";
+            rollText += $"Total Roll: {total}\n\n";
             rollText += string.Join('+', rollValues);
             rollText += $"={total}";
         }
