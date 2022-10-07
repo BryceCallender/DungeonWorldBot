@@ -1,11 +1,3 @@
-//
-//  SPDX-FileName: InteractiveCommands.cs
-//  SPDX-FileCopyrightText: Copyright (c) Jarl Gullberg
-//  SPDX-License-Identifier: MIT
-//
-
-using System.Linq;
-using System.Threading.Tasks;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.API.Abstractions.Objects;

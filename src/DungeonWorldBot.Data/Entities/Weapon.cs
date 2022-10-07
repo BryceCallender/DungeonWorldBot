@@ -1,6 +1,6 @@
 namespace DungeonWorldBot.Data.Entities;
 
-public class Weapon
+public class Weapon : Item
 {
     
 }
