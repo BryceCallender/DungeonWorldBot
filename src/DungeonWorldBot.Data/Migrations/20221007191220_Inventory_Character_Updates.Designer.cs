@@ -3,6 +3,7 @@ using System;
 using DungeonWorldBot.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,22 +11,23 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DungeonWorldBot.Data.Migrations
 {
     [DbContext(typeof(DungeonWorldContext))]
-    partial class DungeonWorldContextModelSnapshot : ModelSnapshot
+    [Migration("20221007191220_Inventory_Character_Updates")]
+    partial class Inventory_Character_Updates
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "6.0.9");
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Bond", b =>
                 {
-                    b.Property<ulong>("ID")
+                    b.Property<ulong>("Id")
                         .HasColumnType("INTEGER");
 
                     b.Property<ulong?>("CharacterID")
                         .HasColumnType("INTEGER");
 
-                    b.HasKey("ID");
+                    b.HasKey("Id");
 
                     b.HasIndex("CharacterID");
 
@@ -46,13 +48,13 @@ namespace DungeonWorldBot.Data.Migrations
                     b.Property<ulong>("ClassID")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("InventoryID")
+                    b.Property<ulong?>("InventoryID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Level")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("LocationID")
+                    b.Property<ulong?>("LocationId")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
@@ -71,7 +73,7 @@ namespace DungeonWorldBot.Data.Migrations
 
                     b.HasIndex("InventoryID");
 
-                    b.HasIndex("LocationID");
+                    b.HasIndex("LocationId");
 
                     b.ToTable("Characters");
                 });
@@ -91,8 +93,7 @@ namespace DungeonWorldBot.Data.Migrations
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Debility", b =>
                 {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
+                    b.Property<ulong>("ID")
                         .HasColumnType("INTEGER");
 
                     b.Property<ulong?>("CharacterID")
@@ -136,8 +137,7 @@ namespace DungeonWorldBot.Data.Migrations
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Inventory", b =>
                 {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
+                    b.Property<ulong>("ID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("CurrentLoad")
@@ -153,14 +153,13 @@ namespace DungeonWorldBot.Data.Migrations
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Item", b =>
                 {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
+                    b.Property<ulong>("ID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Amount")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("InventoryID")
+                    b.Property<ulong?>("InventoryID")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
@@ -179,8 +178,7 @@ namespace DungeonWorldBot.Data.Migrations
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Location", b =>
                 {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
+                    b.Property<ulong>("Id")
                         .HasColumnType("INTEGER");
 
                     b.Property<double>("X")
@@ -189,15 +187,14 @@ namespace DungeonWorldBot.Data.Migrations
                     b.Property<double>("Y")
                         .HasColumnType("REAL");
 
-                    b.HasKey("ID");
+                    b.HasKey("Id");
 
                     b.ToTable("Location");
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Stat", b =>
                 {
-                    b.Property<int>("ID")
-                        .ValueGeneratedOnAdd()
+                    b.Property<ulong>("ID")
                         .HasColumnType("INTEGER");
 
                     b.Property<ulong?>("CharacterID")
@@ -237,7 +234,7 @@ namespace DungeonWorldBot.Data.Migrations
 
                     b.HasOne("DungeonWorldBot.Data.Entities.Location", "Location")
                         .WithMany()
-                        .HasForeignKey("LocationID");
+                        .HasForeignKey("LocationId");
 
                     b.Navigation("Class");
 
