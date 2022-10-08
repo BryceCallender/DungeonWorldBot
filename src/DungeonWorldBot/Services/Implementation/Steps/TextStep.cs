@@ -20,9 +20,9 @@ using DungeonWorldBot.Services.Interactivity;
 
 namespace DungeonWorldBot.Services.Implementation.Steps
 {
-    public class TextStep :DialogueStepBase
+    public class TextStep : DialogueStepBase
     {
-        private IDialogueStep _nextStep;
+        private readonly IDialogueStep _nextStep;
         private readonly int? _minLength;
         private readonly int? _maxLength;
 
@@ -40,51 +40,33 @@ namespace DungeonWorldBot.Services.Implementation.Steps
         public override async Task<bool> ProcessStep(InteractivityService interactivity, Snowflake channel, IUser user)
         {
             var feedbackMessage = new FeedbackMessage(_content, Color.Yellow);
+            
+            await _feedbackService.SendPrivateMessageAsync(user.ID, feedbackMessage);
+            
+            var messageResult = await interactivity.GetNextMessageAsync(channel, TimeSpan.FromMinutes(1));
 
-            /*
-            embedBuilder.AddField("To Stop the Dialogue", "use the ?cancel command.");
+            if (!messageResult.IsSuccess) 
+                return true;
+            
+            if (messageResult.Entity.Content.Equals("/cancel", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
 
             if (_minLength.HasValue)
             {
-                embedBuilder.AddField("Min Length:", $"{_minLength.Value} characters");
+                await TryAgain(channel, $"Your input is {_minLength.Value - messageResult.Entity.Content.Length} characters too short");
             }
+
             if (_maxLength.HasValue)
             {
-                embedBuilder.AddField("Mac Length:", $"{_maxLength.Value} characters");
-            }*/
-
-            //var embed = await _feedbackService.SendMessageAsync(channel, feedbackMessage);
-
-            var embed = await _feedbackService.SendPrivateMessageAsync(user.ID, feedbackMessage);
-
-
-            var messageResult = await interactivity.GetNextMessageAsync(channel, new TimeSpan(0, 5, 0));
-
-            if (messageResult.IsSuccess)
-            {
-
-                if (messageResult.Entity.Content.Equals("/cancel", StringComparison.OrdinalIgnoreCase))
-                {
-                    return true;
-                }
-
-                if (_minLength.HasValue)
-                {
-                    await TryAgain(channel, $"Your input is {_minLength.Value - messageResult.Entity.Content.Length} characters too short");
-                }
-
-                if (_maxLength.HasValue)
-                {
-                    await TryAgain(channel, $"Your input is {messageResult.Entity.Content.Length - _maxLength.Value} characters too long");
-                }
-
-                OnValidResult(messageResult.Entity.Content);
-
-                return false;
+                await TryAgain(channel, $"Your input is {messageResult.Entity.Content.Length - _maxLength.Value} characters too long");
             }
 
-            return true;
-            
+            OnValidResult(messageResult.Entity.Content);
+
+            return false;
+
         }
     }
 }
