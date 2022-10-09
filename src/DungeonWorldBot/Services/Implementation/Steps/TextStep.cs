@@ -41,9 +41,11 @@ namespace DungeonWorldBot.Services.Implementation.Steps
         {
             var feedbackMessage = new FeedbackMessage(_content, Color.Yellow);
             
-            await _feedbackService.SendPrivateMessageAsync(user.ID, feedbackMessage);
+            var message = await _feedbackService.SendPrivateMessageAsync(user.ID, feedbackMessage);
+            if (!message.IsSuccess)
+                return true;
             
-            var messageResult = await interactivity.GetNextMessageAsync(channel, TimeSpan.FromMinutes(1));
+            var messageResult = await interactivity.GetNextMessageAsync(channel, message.Entity[0].ID, TimeSpan.FromMinutes(1));
 
             if (!messageResult.IsSuccess) 
                 return true;

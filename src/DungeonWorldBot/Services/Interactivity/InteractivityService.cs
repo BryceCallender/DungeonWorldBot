@@ -139,13 +139,13 @@ public class InteractivityService
     public async Task<Result<IMessage?>> GetNextMessageAsync
     (
         Snowflake channelID,
+        Snowflake lastMessageID,
         TimeSpan timeout,
         CancellationToken ct = default
     )
     {
         var now = DateTimeOffset.UtcNow;
         var timeoutTime = now + timeout;
-        var after = Snowflake.CreateTimestampSnowflake(now);
 
         while (now <= timeoutTime)
         {
@@ -153,7 +153,7 @@ public class InteractivityService
             var getMessage = await _channelAPI.GetChannelMessagesAsync
             (
                 channelID,
-                after: after,
+                after: lastMessageID,
                 limit: 1,
                 ct: ct
             );
