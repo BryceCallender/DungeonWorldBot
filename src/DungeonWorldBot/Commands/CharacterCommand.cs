@@ -56,14 +56,16 @@ public class CharacterCommand : CommandGroup
     [Command("create")]
     public async Task<IResult> CreateCharacterAsync()
     {
-        /*
+        
         var available = await _characterService.GetCharacterFromUserAsync(_context.User);
         if (available is not null)
         {
-            return await ReplyWithFailureAsync();
-        }*/
+            return await ReplyWithCharacterFailureAsync();
+        }
 
         var userChannel = _context.User.ID;
+
+        await _feedbackService.SendPrivateMessageAsync(userChannel, new FeedbackMessage("No character exists, starting character creation.", Color.Green));
 
         var character = new Character
         {
@@ -374,7 +376,7 @@ public class CharacterCommand : CommandGroup
     {
         return (Result)await _feedbackService.SendContextualErrorAsync
         (
-            "No character exists. Try making one with /create",
+            "No character exists. Try making one with /character create",
             ct: CancellationToken
         );
     }
@@ -383,7 +385,7 @@ public class CharacterCommand : CommandGroup
     {
         return (Result)await _feedbackService.SendContextualErrorAsync
         (
-            "You already have a character. Check your character sheet using /profile",
+            "You already have a character. Check your character sheet using /character profile",
             ct: CancellationToken
         );
     }
