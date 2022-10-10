@@ -1,4 +1,7 @@
+using System.ComponentModel;
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Services;
+using DungeonWorldBot.Services.Implementation;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.API.Abstractions.Objects;
@@ -18,6 +21,7 @@ public class InteractiveCommands : CommandGroup
     private readonly InteractionContext _context;
     private readonly FeedbackService _feedback;
     private readonly IDiscordRestInteractionAPI _interactionAPI;
+    private readonly ICharacterService _characterService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="InteractiveCommands"/> class.
@@ -29,12 +33,14 @@ public class InteractiveCommands : CommandGroup
     (
         InteractionContext context,
         FeedbackService feedback,
-        IDiscordRestInteractionAPI interactionAPI
+        IDiscordRestInteractionAPI interactionAPI,
+        ICharacterService characterService
     )
     {
         _context = context;
         _feedback = feedback;
         _interactionAPI = interactionAPI;
+        _characterService = characterService;
     }
 
     // [Command("create")]

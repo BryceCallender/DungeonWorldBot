@@ -24,45 +24,26 @@ public class CharacterService : ICharacterService
             .FirstOrDefaultAsync(c => c.ID == user.ID);
     }
 
-    public async Task AddCharacterAsync(Snowflake userID, string name)
+    public async Task AddCharacterAsync(Character character)
     {
-        _dungeonWorldContext.Characters.Add(new Character
-        {
-            ID = userID,
-            Name = "Zephyr",
-            Alignment = Alignment.LawfulGood,
-            ArmorRating = 0,
-            Class = new Class
-            {
-                Type = ClassType.Ranger
-            },
-            Health = new Health
-            {
-                CurrentHP = 10,
-                MaxHP = 10
-            },
-            Level = 1,
-            Stats = new List<Stat>
-            {
-                new() { StatType = StatType.Dex, Value = 16 },
-                new() { StatType = StatType.Cha, Value = 15 },
-                new() { StatType = StatType.Con, Value = 13 },
-                new() { StatType = StatType.Str, Value = 12 },
-                new() { StatType = StatType.Wis, Value = 9  },
-                new() { StatType = StatType.Int, Value = 8  }
-            }
-        });
+        _dungeonWorldContext.Characters.Add(character);
+        await _dungeonWorldContext.SaveChangesAsync();
+    }
 
-        try
+    public async Task ChangeCharacterAlignment(Character character, Alignment alignment)
+    {
+        character.Alignment = alignment;
+        await _dungeonWorldContext.SaveChangesAsync();
+    }
+
+    public async Task LevelUp(List<Character> characters)
+    {
+        foreach (var character in characters)
         {
-            await _dungeonWorldContext.SaveChangesAsync();
-           
+            character.Level++;
         }
-        catch (Exception)
-        {
-            var a = 1;
-        }
-       
+
+        await _dungeonWorldContext.SaveChangesAsync();
     }
 
     public List<Character> GetCharacters()

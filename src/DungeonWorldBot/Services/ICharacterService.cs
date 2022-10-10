@@ -8,6 +8,11 @@ public interface ICharacterService
 {
     Task<Character?> GetCharacterFromUserAsync(IUser user);
 
-    Task AddCharacterAsync(Snowflake userID, string name);
+    Task AddCharacterAsync(Character character);
+    
     List<Character> GetCharacters();
+
+    Task ChangeCharacterAlignment(Character character, Alignment alignment);
+
+    Task LevelUp(List<Character> characters);
 }
