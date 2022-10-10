@@ -8,6 +8,7 @@ public class DungeonWorldContext : DbContext
 {
     public DungeonWorldContext(DbContextOptions<DungeonWorldContext> options) : base(options)
     {
+        Database.EnsureCreated();
     }
 
     public DbSet<Character> Characters => Set<Character>();
