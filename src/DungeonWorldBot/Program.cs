@@ -73,6 +73,7 @@ public class Program
                     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                     .Build();
                 
+                services.Configure<DiscordGatewayClientOptions>(g => g.Intents |= GatewayIntents.MessageContents | GatewayIntents.DirectMessages);
                 services.Configure<DiscordGatewayClientOptions>(g =>
                 {
                     g.Intents |= GatewayIntents.MessageContents;

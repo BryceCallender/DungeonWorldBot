@@ -8,6 +8,7 @@
     </PropertyGroup>
 
     <ItemGroup>
+      <PackageReference Include="Enums.NET" Version="4.0.0" />
       <PackageReference Include="DSharpPlus" Version="4.2.0" />
       <PackageReference Include="DSharpPlus.CommandsNext" Version="4.2.0" />
       <PackageReference Include="DSharpPlus.Interactivity" Version="4.2.0" />
@@ -46,9 +47,6 @@
     <ItemGroup>
       <Folder Include="API" />
       <Content Include="appsettings.json">
-        <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      </Content>
-      <Content Include="DungeonWorld.db">
         <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
       </Content>
       <Content Include="Assets/world.png">

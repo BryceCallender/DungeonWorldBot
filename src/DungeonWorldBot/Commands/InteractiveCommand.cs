@@ -1,3 +1,7 @@
+using System.ComponentModel;
+using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Services;
+using DungeonWorldBot.Services.Implementation;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.API.Abstractions.Objects;
@@ -17,6 +21,7 @@ public class InteractiveCommands : CommandGroup
     private readonly InteractionContext _context;
     private readonly FeedbackService _feedback;
     private readonly IDiscordRestInteractionAPI _interactionAPI;
+    private readonly ICharacterService _characterService;
 
     /// <summary>
     /// Initializes a new instance of the <see cref="InteractiveCommands"/> class.
@@ -28,44 +33,52 @@ public class InteractiveCommands : CommandGroup
     (
         InteractionContext context,
         FeedbackService feedback,
-        IDiscordRestInteractionAPI interactionAPI
+        IDiscordRestInteractionAPI interactionAPI,
+        ICharacterService characterService
     )
     {
         _context = context;
         _feedback = feedback;
         _interactionAPI = interactionAPI;
+        _characterService = characterService;
     }
 
-    [Command("characterName")]
-    [SuppressInteractionResponse(true)]
-    public async Task<IResult> CharacterNameAsync()
-    {
-        var components = new IMessageComponent[]
-        {
-            new ActionRowComponent(new[]
-                {
-                    new TextInputComponent(
-                        "characterName", 
-                        TextInputStyle.Short, 
-                        "Character Name", 
-                        1, 
-                        32, 
-                        true,
-                        string.Empty,
-                        "Short Text here"
-                    ) 
-                })
-        };
-        
-        var data = new InteractionModalCallbackData(
-            CustomIDHelpers.CreateModalID("characterName"), 
-            "Set your character name!", 
-            components
-        );
-        
-        return await _interactionAPI.CreateInteractionResponseAsync(_context.ID, _context.Token, new InteractionResponse(InteractionCallbackType.Modal, new(data)));
-    }
-    
+    // [Command("create")]
+    // [SuppressInteractionResponse(true)]
+    // public async Task<IResult> CharacterNameAsync()
+    // {
+    //     var embed = new Embed(Description: "Select a class below.");
+    //     var options = new FeedbackMessageOptions(MessageComponents: new IMessageComponent[]
+    //     {
+    //         new ActionRowComponent(new[]
+    //         {
+    //             new SelectMenuComponent
+    //             (
+    //                 CustomIDHelpers.CreateSelectMenuID("class-dropdown"),
+    //                 new ISelectOption[]
+    //                 {
+    //                     new SelectOption(ClassType.Ranger.ToString(), ClassType.Ranger.ToString()),
+    //                     new SelectOption(ClassType.Channeler.ToString(), ClassType.Channeler.ToString()),
+    //                     new SelectOption(ClassType.Paladin.ToString(), ClassType.Paladin.ToString()),
+    //                     new SelectOption(ClassType.Necromancer.ToString(), ClassType.Necromancer.ToString()),
+    //                     new SelectOption(ClassType.Slayer.ToString(), ClassType.Slayer.ToString()),
+    //                 },
+    //                 "Class...",
+    //                 1,
+    //                 1
+    //             )
+    //         })
+    //     });
+    //
+    //     return await _feedback.SendPrivateEmbedAsync(
+    //         _context.User.ID,
+    //         embed, 
+    //         options,
+    //         CancellationToken
+    //     );
+    // }
+    //
+
     /// <summary>
     /// Shows a modal.
     /// </summary>

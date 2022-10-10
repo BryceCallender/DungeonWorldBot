@@ -6,6 +6,9 @@ public class Stat
 {
     public int ID { get; set; }
     
+    public Snowflake CharacterID { get; set; }
+    public Character Character { get; set; }
+    
     public StatType StatType { get; set; }
 
     public int Value { get; set; }
