@@ -4,15 +4,18 @@ namespace DungeonWorldBot.Data.Entities;
 
 public class Class
 {
-    public Snowflake ID { get; set; }
+    public int ID { get; set; }
 
-    public ClassType ClassType { get; set; }
+    public Snowflake CharacterID { get; set; }
+    public Character Character { get; set; }
+
+    public ClassType Type { get; set; }
 
     public string Damage
     {
         get
         {
-            return ClassType switch
+            return Type switch
             {
                 ClassType.Ranger => "d8",
                 ClassType.Channeler => "d4",
@@ -28,7 +31,7 @@ public class Class
     {
         get
         {
-            return ClassType switch
+            return Type switch
             {
                 ClassType.Ranger => 8,
                 ClassType.Channeler => 10,

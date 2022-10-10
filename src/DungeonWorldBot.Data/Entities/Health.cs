@@ -13,4 +13,9 @@ public class Health
     public int CurrentHP { get; set; }
     
     public int MaxHP { get; set; }
+
+    public string ToDisplay()
+    {
+        return $"{CurrentHP} / {MaxHP} ({(CurrentHP / (double)MaxHP) * 100}%)";
+    }
 }

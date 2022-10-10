@@ -3,6 +3,7 @@ using System;
 using DungeonWorldBot.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DungeonWorldBot.Data.Migrations
 {
     [DbContext(typeof(DungeonWorldContext))]
-    partial class DungeonWorldContextModelSnapshot : ModelSnapshot
+    [Migration("20221008052258_Navigation_Prop")]
+    partial class Navigation_Prop
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "6.0.9");
@@ -202,7 +204,7 @@ namespace DungeonWorldBot.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong>("CharacterID")
+                    b.Property<ulong?>("CharacterID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("StatType")
@@ -278,13 +280,9 @@ namespace DungeonWorldBot.Data.Migrations
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Stat", b =>
                 {
-                    b.HasOne("DungeonWorldBot.Data.Entities.Character", "Character")
+                    b.HasOne("DungeonWorldBot.Data.Entities.Character", null)
                         .WithMany("Stats")
-                        .HasForeignKey("CharacterID")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("Character");
+                        .HasForeignKey("CharacterID");
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Character", b =>

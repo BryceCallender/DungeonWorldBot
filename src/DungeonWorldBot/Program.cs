@@ -72,10 +72,12 @@ public class Program
                     .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
                     .Build();
                 
-                services.Configure<DiscordGatewayClientOptions>(g => g.Intents |= GatewayIntents.MessageContents);
+                services.Configure<DiscordGatewayClientOptions>(g => g.Intents |= GatewayIntents.MessageContents | GatewayIntents.DirectMessages);
                 services
                     .AddSqlite<DungeonWorldContext>(config.GetConnectionString("DungeonWorldConnectionString"))
                     .AddScoped<ICharacterService, CharacterService>()
+                    .AddSingleton<InteractiveMessageTracker>()
+                    .AddScoped<InteractivityService>()
                     .AddRemoraServices();
             }
         )
