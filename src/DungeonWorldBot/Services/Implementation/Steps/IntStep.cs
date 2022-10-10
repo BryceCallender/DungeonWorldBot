@@ -17,42 +17,40 @@ using Remora.Rest.Core;
 using Remora.Discord.API.Abstractions.Objects;
 using System.Drawing;
 using DungeonWorldBot.Services.Interactivity;
-using DungeonWorldBot.Data.Entities;
 
 namespace DungeonWorldBot.Services.Implementation.Steps
 {
-    public class TextStep : DialogueStepBase
+    public class IntStep : DialogueStepBase
     {
         private IDialogueStep _nextStep;
-        private readonly int? _minLength;
-        private readonly int? _maxLength;
+        private readonly int? _minValue;
+        private readonly int? _maxValue;
 
-        public TextStep( string content, FeedbackService feedbackService, IDialogueStep nextStep, int? minlength = null, int? maxlength = null) : base (content, feedbackService)
+        public IntStep( string content, FeedbackService feedbackService, IDialogueStep nextStep, int? minValue = null, int? maxValue = null) : base (content, feedbackService)
         {
             _nextStep = nextStep;
-            _minLength = minlength;
-            _maxLength = maxlength;
+            _minValue = minValue;
+            _maxValue = maxValue;
         }
 
-        public Action<string> OnValidResult { get; set; } = delegate { };
+        public Action<int> OnValidResult { get; set; } = delegate { };
 
         public override IDialogueStep NextStep => _nextStep;
 
         public override async Task<bool> ProcessStep(InteractivityService interactivity, Snowflake channel, IUser user)
         {
-
             var embedFields = new List<IEmbedField>
             {
                 new EmbedField(Name: "To Cancel the Character Creation", Value: "Type the /cancel command")
             };
 
-            if (_minLength.HasValue)
+            if (_minValue.HasValue)
             {
-                embedFields.Add(new EmbedField("Min Length:", $"{_minLength.Value} characters"));
+                embedFields.Add(new EmbedField("Min Value:", $"{_minValue.Value} characters"));
             }
-            if (_maxLength.HasValue)
+            if (_maxValue.HasValue)
             {
-                embedFields.Add(new EmbedField("Max Length:", $"{_maxLength.Value} characters"));
+                embedFields.Add(new EmbedField("Max Value:", $"{_maxValue.Value} characters"));
             }
 
             var embed = new Embed
@@ -79,25 +77,31 @@ namespace DungeonWorldBot.Services.Implementation.Steps
                     return true;
                 }
 
-                if (_minLength.HasValue)
+                if(!int.TryParse(messageResult.Entity.Content, out int inputValue))
                 {
-                    if (messageResult.Entity.Content.Length < _minLength.Value)
+                    await TryAgain(channel, $"Your input is not a whole number.");
+                    continue;
+                }
+
+                if (_minValue.HasValue)
+                {
+                    if (inputValue < _minValue.Value)
                     {
-                        await TryAgain(channel, $"Your input is {_minLength.Value - messageResult.Entity.Content.Length} characters too short");
+                        await TryAgain(channel, $"Your input value: {inputValue} is smaller than: {_minValue.Value}");
                         continue;
                     }
                 }
 
-                if (_maxLength.HasValue)
+                if (_maxValue.HasValue)
                 {
-                    if (messageResult.Entity.Content.Length > _maxLength.Value)
+                    if (inputValue > _maxValue.Value)
                     {
-                        await TryAgain(channel, $"Your input is {messageResult.Entity.Content.Length - _maxLength.Value} characters too long");
+                        await TryAgain(channel, $"Your input value: {inputValue} is larger than: {_maxValue.Value}");
                         continue;
                     }
                 }
 
-                OnValidResult(messageResult.Entity.Content);
+                OnValidResult(inputValue);
 
                 return false;
             }
