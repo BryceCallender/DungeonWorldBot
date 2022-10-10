@@ -21,7 +21,8 @@ namespace DungeonWorldBot.Services.Implementation.Steps
         protected readonly string _content;
         protected readonly FeedbackService _feedbackService;
 
-        public DialogueStepBase(string content, FeedbackService feedbackService)        {
+        public DialogueStepBase(string content, FeedbackService feedbackService)
+        {
             _content = content;
             _feedbackService = feedbackService; 
         }

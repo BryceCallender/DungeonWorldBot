@@ -2,6 +2,7 @@ using System.Drawing;
 using DungeonWorldBot.Commands;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Services;
+using DungeonWorldBot.Services.Interactivity;
 using EnumsNET;
 using Microsoft.Extensions.Logging;
 using Remora.Commands.Attributes;

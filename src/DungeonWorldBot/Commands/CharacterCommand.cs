@@ -16,16 +16,11 @@ using Remora.Discord.Interactivity;
 using Remora.Results;
 using System.Drawing;
 using Remora.Discord.Gateway;
-using Remora.Discord.API.Objects;
 using Remora.Discord.Interactivity.Services;
-using Remora.Discord.Interactivity;
 using DungeonWorldBot.Services.Implementation.Steps;
 using DungeonWorldBot.Interactions;
 using CommandGroup = Remora.Commands.Groups.CommandGroup;
-using Remora.Discord.API.Abstractions.Rest;
 using DungeonWorldBot.Services.Interactivity;
-using DungeonWorldBot.Data.Entities;
-using Remora.Discord.API.Abstractions.Objects;
 
 namespace DungeonWorldBot.Commands;
 
@@ -61,9 +56,25 @@ public class CharacterCommand : CommandGroup
     [Command("create")]
     public async Task<IResult> CreateCharacterAsync()
     {
-        var character = new Character();
+        /*
+        var available = await _characterService.GetCharacterFromUserAsync(_context.User);
+        if (available is not null)
+        {
+            return await ReplyWithFailureAsync();
+        }*/
+
+        var userChannel = _context.User.ID;
+
+        var character = new Character
+        {
+            ID = userChannel,
+            Level = 1,
+            ArmorRating = 0,
+            Status = Status.Alive,
+        };
+
         var name = string.Empty;
-        var race = string.Empty;
+        var race = new Race();
         var chosenClass = new Class();
 
         var statValueList = new List<int>();
@@ -85,11 +96,12 @@ public class CharacterCommand : CommandGroup
         statValueList.Add(15);
         statValueList.Add(16);
 
-        //var endingStep = new EndingStep
-        var alignStep = new IntStep("What alignment is your character?\n" +
-            "Options inclue: \n1. Lawful Good \n2. Neutral Good \n 3. Chaotic Good \n 4. Lawful Neutral \n 5. True Neutral \n" +
-            "6. Chaotic Neutral \n7. Lawful Evil \n 8. Neutral Evil \n 9. Chaotic Evil \n" +
-            "Please select one of these by entering a number.", _feedbackService, null);
+        var editStep = new EndingStep("1. Edit the Name \n2. Edit the Race \n3. Edit the Class \n" +
+            "4. Edit the Stats \n5. Edit the Alignment \n6. No Editing \n Please select one of these by entering a number.", _feedbackService, null, character, 1, 6);
+        var alignStep = new IntStep("What is your characters Alignment?\n" +
+            "Options inclue: \n1. Lawful Good \n2. Neutral Good \n3. Chaotic Good \n4. Lawful Neutral \n5. True Neutral \n" +
+            "6. Chaotic Neutral \n7. Lawful Evil \n8. Neutral Evil \n9. Chaotic Evil \n10. Unaligned \n" +
+            "Please select one of these by entering a number.", _feedbackService, editStep, 1, 10);
         var chaStep = new StatStep("Which value would you like your Charisma stat to be?", _feedbackService, alignStep, statValueList);
         var wisStep = new StatStep("Which value would you like your Wisdom stat to be?", _feedbackService, chaStep, statValueList);
         var intStep = new StatStep("Which value would you like your Intelligence stat to be?", _feedbackService, wisStep, statValueList);
@@ -98,8 +110,10 @@ public class CharacterCommand : CommandGroup
         var strStep = new StatStep("Which value would you like your Strength stat to be?", _feedbackService, dexStep, statValueList);
         var classStep = new IntStep("What is your characters Class?\n" +
             "Current Options: \n1. Channeler \n2. Necromancer \n3. Paladin \n" +
-            "4. Ranger \n5. Slayer \nPlease select one of these by entering a number.", _feedbackService, strStep);
-        var raceStep = new TextStep("What is your characters Race?", _feedbackService, classStep, 2, 100);
+            "4. Ranger \n5. Slayer \nPlease select one of these by entering a number.", _feedbackService, strStep, 1, 5);
+        var raceStep = new IntStep("What is your characters Race?\n" +
+            "Current Options: \n1. Elf \n2. Dwarf \n3. Human \n" +
+            "4. Orc \nPlease select one of these by entering a number.", _feedbackService, classStep, 1, 4);
         var nameStep = new TextStep("What is your characters Name?", _feedbackService, raceStep, 2, 100);
 
         nameStep.OnValidResult += (result) =>
@@ -109,8 +123,8 @@ public class CharacterCommand : CommandGroup
         };
         raceStep.OnValidResult += (result) =>
         {
-            race = result;
-            //character.Race = race;
+            race = (Race)result-1;
+            character.Race = race;
         };
         classStep.OnValidResult += (result) =>
         {
@@ -120,21 +134,22 @@ public class CharacterCommand : CommandGroup
                     chosenClass.Type = ClassType.Channeler;
                     break;
                 case 2:
-                    chosenClass.ClassType = ClassType.Necromancer;
+                    chosenClass.Type = ClassType.Necromancer;
                     break;
                 case 3:
-                    chosenClass.ClassType = ClassType.Paladin;
+                    chosenClass.Type = ClassType.Paladin;
                     break;
                 case 4:
-                    chosenClass.ClassType = ClassType.Ranger;
+                    chosenClass.Type = ClassType.Ranger;
                     break;
                 case 5:
-                    chosenClass.ClassType = ClassType.Slayer;
+                    chosenClass.Type = ClassType.Slayer;
                     break;
 
             };
 
-
+            character.Class = chosenClass;
+            chosenClass.Character = character;
         };
 
         strStep.OnValidResult += (result) =>
@@ -172,10 +187,53 @@ public class CharacterCommand : CommandGroup
             chaStat.StatType = StatType.Cha;
             chaStat.Value = result;
             statList.Add(chaStat);
+            character.Stats = statList;
         };
-        alignStep.OnValidResult += (result) => alignment = (Alignment)result-1;
+        alignStep.OnValidResult += (result) => 
+        {
+            alignment = (Alignment)result;
+            character.Alignment = alignment;
+        };
 
-        var userChannel = _context.User.ID;
+        editStep.OnValidResult += (result) =>
+        {
+            switch (result)
+            {
+                case 1:
+                    editStep.setNextStep(nameStep);
+                    nameStep.setNextStep(editStep);
+                    break;
+                case 2:
+                    editStep.setNextStep(raceStep);
+                    raceStep.setNextStep(editStep);
+                    break;
+                case 3:
+                    editStep.setNextStep(classStep);
+                    classStep.setNextStep(editStep);
+                    break;
+                case 4:
+                    editStep.setNextStep(strStep);
+                    chaStep.setNextStep(editStep);
+                    statValueList.Add(8);
+                    statValueList.Add(9);
+                    statValueList.Add(12);
+                    statValueList.Add(13);
+                    statValueList.Add(15);
+                    statValueList.Add(16);
+                    statList.RemoveAll(s => s == s);
+                    break;
+                case 5:
+                    editStep.setNextStep(alignStep);
+                    alignStep.setNextStep(editStep);
+                    break;
+                case 6:
+                    editStep.setNextStep(null);
+                    break;
+
+            };
+        };
+
+        
 
         var inputDialogueHandler = new DialogueHandler(_interactivityService, _context.User, nameStep, _userAPI);
 
@@ -183,25 +241,43 @@ public class CharacterCommand : CommandGroup
 
         if (!succeeded) { return Result.FromSuccess(); }
 
+        character.Health = new Health
+        {
+            MaxHP = conStat.Value + chosenClass.HealthModifier,
+            CurrentHP = conStat.Value + chosenClass.HealthModifier,
+        };
+        
         var embedFields = new List<IEmbedField>();
 
-        embedFields.AddRange(statList.Select(s => new EmbedField(Name: s.StatType.ToString(), Value: s.Value.ToString(), true)).ToArray());
+        embedFields.Add(new EmbedField(Name: "Race", Value: character.Race.ToString(), IsInline: false));
+        embedFields.AddRange(character.Stats.Select(s => new EmbedField(Name: s.StatType.ToString(), Value: s.Value.ToString(), true)).ToArray());
 
-        //embedFields.Add(new EmbedField(Name: "Health", Value: character.Health.ToDisplay(), IsInline: false));
-        //embedFields.Add(new EmbedField(Name: "Status", Value: character.Status?.ToString() ?? "Unknown..."));
-        embedFields.Add(new EmbedField(Name: "Alignment", Value: alignment.ToString()));
-        //embedFields.Add(new EmbedField(Name: "Debilities", Value: "None"));
+        embedFields.Add(new EmbedField(Name: "Health", Value: character.Health.ToDisplay(), IsInline: false));
+        embedFields.Add(new EmbedField(Name: "Status", Value: character.Status?.ToString() ?? "Unknown..."));
+        embedFields.Add(new EmbedField(Name: "Alignment", Value: character.Alignment.ToString()));
+        embedFields.Add(new EmbedField(Name: "Debilities", Value: "None"));
 
         var embed = new Embed 
         {
-                Title = $"{name}",
+                Title = $"{character.Name}",
                 Type = EmbedType.Rich,
-                Description = $"{race} {chosenClass.ClassType.ToString()}: Level 1",
+                Description = $"{character.Class.Type}: Level 1",
                 Fields = embedFields,
                 Colour = _feedbackService.Theme.Primary
         };
 
         await _feedbackService.SendPrivateEmbedAsync(userChannel, embed);
+
+        await _characterService.AddCharacterAsync(character);
+
+        var embedEnd = new Embed
+        {
+            Title = "Character Creation",
+            Description = "Your Character has been successfully saved. Try typing /profile to see your character sheet.",
+            Colour = Color.Green
+        };
+
+        await _feedbackService.SendPrivateEmbedAsync(userChannel, embedEnd);
 
         return Result.FromSuccess();
     }
@@ -302,7 +378,16 @@ public class CharacterCommand : CommandGroup
             ct: CancellationToken
         );
     }
-    
+
+    private async Task<Result> ReplyWithCharacterFailureAsync()
+    {
+        return (Result)await _feedbackService.SendContextualErrorAsync
+        (
+            "You already have a character. Check your character sheet using /profile",
+            ct: CancellationToken
+        );
+    }
+
     private async Task<Result> ReplyWithError(string error)
     {
         return (Result)await _feedbackService.SendContextualErrorAsync

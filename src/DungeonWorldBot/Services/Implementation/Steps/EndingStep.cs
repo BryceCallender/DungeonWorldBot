@@ -17,25 +17,31 @@ using Remora.Rest.Core;
 using Remora.Discord.API.Abstractions.Objects;
 using System.Drawing;
 using DungeonWorldBot.Services.Interactivity;
+using DungeonWorldBot.Data.Entities;
+using System.Diagnostics;
+using System.Xml.Linq;
 
 namespace DungeonWorldBot.Services.Implementation.Steps
 {
-    public class IntStep : DialogueStepBase
+    public class EndingStep : DialogueStepBase
     {
         private IDialogueStep _nextStep;
         private readonly int? _minValue;
         private readonly int? _maxValue;
+        private Character _character;
 
-        public IntStep( string content, FeedbackService feedbackService, IDialogueStep nextStep, int? minValue = null, int? maxValue = null) : base (content, feedbackService)
+        public EndingStep( string content, FeedbackService feedbackService, IDialogueStep nextStep, Character character, int? minValue = null, int? maxValue = null) : base (content, feedbackService)
         {
             _nextStep = nextStep;
             _minValue = minValue;
             _maxValue = maxValue;
+            _character = character;
         }
 
         public Action<int> OnValidResult { get; set; } = delegate { };
 
         public override IDialogueStep NextStep => _nextStep;
+
         public void setNextStep(IDialogueStep nextStep)
         {
             _nextStep = nextStep;
@@ -43,10 +49,23 @@ namespace DungeonWorldBot.Services.Implementation.Steps
 
         public override async Task<bool> ProcessStep(InteractivityService interactivity, Snowflake channel, IUser user)
         {
-            var embedFields = new List<IEmbedField>
-            {
-                new EmbedField(Name: "To Cancel the Character Creation", Value: "Type the /cancel command")
-            };
+            var stats = string.Empty;
+            var embedFields = new List<IEmbedField>();
+
+
+            embedFields.Add(new EmbedField(Name: "Name", Value: _character.Name, IsInline: false));
+            embedFields.Add(new EmbedField(Name: "Race", Value: _character.Race.ToString(), IsInline: false));
+            embedFields.Add(new EmbedField(Name: "Class", Value: $"{_character.Class.Type} Level: 1", IsInline: false));
+            embedFields.AddRange(_character.Stats.Select(s => new EmbedField(Name: s.StatType.ToString(), Value: s.Value.ToString(), true)).ToArray());
+
+            //embedFields.Add(new EmbedField(Name: "Health", Value: character.Health.ToDisplay(), IsInline: false));
+            //embedFields.Add(new EmbedField(Name: "Status", Value: character.Status?.ToString() ?? "Unknown..."));
+            embedFields.Add(new EmbedField(Name: "Alignment", Value: _character.Alignment.ToString()));
+            embedFields.Add(new EmbedField(Name: "Would you like to edit any of this information?", Value: _content));
+            //embedFields.Add(new EmbedField(Name: "Debilities", Value: "None"));
+
+
+            embedFields.Add(new EmbedField(Name: "To Cancel the Character Creation", Value: "Type the /cancel command"));
 
             if (_minValue.HasValue)
             {
@@ -56,14 +75,14 @@ namespace DungeonWorldBot.Services.Implementation.Steps
             {
                 embedFields.Add(new EmbedField("Max Value:", $"{_maxValue.Value}"));
             }
-
             var embed = new Embed
             {
                 Title = "Character Creation",
-                Description = $"{_content}",
-                Colour = Color.Yellow,
+                Type = EmbedType.Rich,
                 Fields = embedFields,
+                Colour = _feedbackService.Theme.Primary
             };
+
 
             while (true)
             {

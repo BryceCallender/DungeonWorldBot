@@ -38,6 +38,10 @@ namespace DungeonWorldBot.Services.Implementation.Steps
         public Action<int> OnValidResult { get; set; } = delegate { };
 
         public override IDialogueStep NextStep => _nextStep;
+        public void setNextStep(IDialogueStep nextStep)
+        {
+            _nextStep = nextStep;
+        }
 
         public override async Task<bool> ProcessStep(InteractivityService interactivity, Snowflake channel, IUser user)
         {
@@ -49,11 +53,11 @@ namespace DungeonWorldBot.Services.Implementation.Steps
 
             if (_minValue.HasValue)
             {
-                embedFields.Add(new EmbedField("Min Value:", $"{_minValue.Value} characters"));
+                embedFields.Add(new EmbedField("Min Value:", $"{_minValue.Value}"));
             }
             if (_maxValue.HasValue)
             {
-                embedFields.Add(new EmbedField("Max Value:", $"{_maxValue.Value} characters"));
+                embedFields.Add(new EmbedField("Max Value:", $"{_maxValue.Value}"));
             }
 
             foreach(var statValue in _statValues)
