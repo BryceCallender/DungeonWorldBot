@@ -10,8 +10,8 @@ public class DungeonWorldContext : DbContext
     {
         Database.EnsureCreated();
     }
-    
-    public DbSet<Character> Characters { get; set; }
+
+    public DbSet<Character> Characters => Set<Character>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {

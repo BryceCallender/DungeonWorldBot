@@ -1,4 +1,4 @@
-//
+﻿//
 //  InteractiveMessageTracker.cs
 //
 //  Author:
@@ -22,11 +22,13 @@
 
 using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
-using DungeonWorldBot.Interactions.Models;
+using System.Threading;
+using System.Threading.Tasks;
+using DungeonWorldBot.Services.Interactivity.Messages;
 using Remora.Rest.Core;
 using Remora.Results;
 
-namespace DungeonWorldBot.Services;
+namespace DungeonWorldBot.Services.Interactivity;
 
 /// <summary>
 /// Singleton service for tracking interactive messages.

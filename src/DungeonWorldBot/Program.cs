@@ -2,6 +2,7 @@
 using DungeonWorldBot.Extensions;
 using DungeonWorldBot.Services;
 using DungeonWorldBot.Services.Implementation;
+using DungeonWorldBot.Services.Interactivity;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
@@ -73,6 +74,11 @@ public class Program
                     .Build();
                 
                 services.Configure<DiscordGatewayClientOptions>(g => g.Intents |= GatewayIntents.MessageContents | GatewayIntents.DirectMessages);
+                services.Configure<DiscordGatewayClientOptions>(g =>
+                {
+                    g.Intents |= GatewayIntents.MessageContents;
+                    g.Intents |= GatewayIntents.DirectMessages;
+                });
                 services
                     .AddSqlite<DungeonWorldContext>(config.GetConnectionString("DungeonWorldConnectionString"))
                     .AddScoped<ICharacterService, CharacterService>()
