@@ -23,6 +23,7 @@ public class CharacterService : ICharacterService
             .Include(c => c.Class)
             .Include(c => c.Health)
             .Include(c => c.Stats)
+            .Include(c => c.Bonds)
             .FirstOrDefaultAsync(c => c.ID == user.ID);
     }
 
@@ -47,14 +48,20 @@ public class CharacterService : ICharacterService
 
         await _dungeonWorldContext.SaveChangesAsync();
     }
-
-    /*
-    private async Task AddRaceToCharacter()
+    
+    public async Task BondWith(Character character, Character bonder)
     {
-        Race race;
+        if (character.Bonds?.Count > 0)
+        {
+            character.Bonds.Add(new Bond { TargetID = bonder.ID, TargetName = bonder.Name });
+        }
+        else
+        {
+            character.Bonds = new List<Bond> { new() { TargetID = bonder.ID, TargetName = bonder.Name } };
+        }
 
-        await _feedback.
-    }*/
+        await _dungeonWorldContext.SaveChangesAsync();
+    }
 
     public List<Character> GetCharacters()
     {
@@ -62,6 +69,7 @@ public class CharacterService : ICharacterService
             .Include(c => c.Class)
             .Include(c => c.Health)
             .Include(c => c.Stats)
+            .Include(c => c.Bonds)
             .ToList();
     }
 }

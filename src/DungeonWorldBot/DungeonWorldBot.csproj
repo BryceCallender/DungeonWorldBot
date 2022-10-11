@@ -9,9 +9,6 @@
 
     <ItemGroup>
       <PackageReference Include="Enums.NET" Version="4.0.0" />
-      <PackageReference Include="DSharpPlus" Version="4.2.0" />
-      <PackageReference Include="DSharpPlus.CommandsNext" Version="4.2.0" />
-      <PackageReference Include="DSharpPlus.Interactivity" Version="4.2.0" />
       <PackageReference Include="Microsoft.AspNetCore.Hosting" Version="2.2.7" />
       <PackageReference Include="Microsoft.EntityFrameworkCore" Version="6.0.9" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="6.0.9">

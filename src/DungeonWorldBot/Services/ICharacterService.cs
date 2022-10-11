@@ -15,4 +15,6 @@ public interface ICharacterService
     Task ChangeCharacterAlignment(Character character, Alignment alignment);
 
     Task LevelUp(List<Character> characters);
+
+    Task BondWith(Character user, Character bonder);
 }
