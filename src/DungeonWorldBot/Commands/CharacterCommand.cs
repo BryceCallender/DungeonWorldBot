@@ -99,6 +99,24 @@ public class CharacterCommand : CommandGroup
             ct: CancellationToken
         );
     }
+
+    [Command("bond")]
+    public async Task<IResult> AddCharacterBondAsync(
+        [Description("The user to bond with")]
+        IUser user)
+    {
+        var character = await _characterService.GetCharacterFromUserAsync(_context.User);
+        var bondTo = await _characterService.GetCharacterFromUserAsync(user);
+
+        if (character is null || bondTo is null)
+        {
+            return await ReplyWithError("Either you do not have a character or the requested user does not have a character.");
+        }
+
+        await _characterService.BondWith(character, bondTo);
+        
+        return Result.FromSuccess();
+    }
     
     [Command("alignment")]
     [SuppressInteractionResponse(true)]

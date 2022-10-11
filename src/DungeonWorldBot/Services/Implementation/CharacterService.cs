@@ -46,6 +46,19 @@ public class CharacterService : ICharacterService
         await _dungeonWorldContext.SaveChangesAsync();
     }
 
+    public async Task BondWith(Character character, Character bonder)
+    {
+        if (character.Bonds?.Count > 0)
+        {
+            character.Bonds.Add(new Bond { ID = bonder.ID });
+        }
+        else
+        {
+            character.Bonds = new List<Bond> { new() { ID = bonder.ID } };
+        }
+
+        await _dungeonWorldContext.SaveChangesAsync();
+    }
     public List<Character> GetCharacters()
     {
         return _dungeonWorldContext.Characters

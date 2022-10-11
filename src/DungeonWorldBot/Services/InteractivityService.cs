@@ -21,7 +21,6 @@
 //
 
 using System.Drawing;
-using DungeonWorldBot.Interactions.Models;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Abstractions.Rest;
 using Remora.Discord.API.Objects;
@@ -40,79 +39,7 @@ public class InteractivityService
     /// Holds the Discord channel API.
     /// </summary>
     private readonly IDiscordRestChannelAPI _channelAPI;
-
-    /// <summary>
-    /// Holds the available services.
-    /// </summary>
-    private readonly IServiceProvider _services;
-
-    /// <summary>
-    /// Holds the feedback service.
-    /// </summary>
-    private readonly FeedbackService _feedback;
-
-    /// <summary>
-    /// Gets the message tracker.
-    /// </summary>
-    public InteractiveMessageTracker Tracker { get; }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="InteractivityService"/> class.
-    /// </summary>
-    /// <param name="services">The available services.</param>
-    /// <param name="tracker">The message tracker.</param>
-    /// <param name="channelAPI">The channel API.</param>
-    /// <param name="feedback">The feedback service.</param>
-    public InteractivityService
-    (
-        IServiceProvider services,
-        InteractiveMessageTracker tracker,
-        IDiscordRestChannelAPI channelAPI,
-        FeedbackService feedback
-    )
-    {
-        _channelAPI = channelAPI;
-        _feedback = feedback;
-        _services = services;
-
-        this.Tracker = tracker;
-    }
-
-    /// <summary>
-    /// Sends an interactive message to the current context.
-    /// </summary>
-    /// <param name="messageFactory">A factory function that wraps a sent message.</param>
-    /// <param name="ct">The cancellation token for this operation.</param>
-    /// <returns>A result which may or may not have succeeded.</returns>
-    public async Task<Result> SendContextualInteractiveMessageAsync
-    (
-        Func<Snowflake, Snowflake, IInteractiveMessage> messageFactory,
-        CancellationToken ct = default
-    )
-    {
-        var initialEmbed = new Embed
-        {
-            Colour = Color.Gray,
-            Description = "Loading..."
-        };
-
-        var sendMessage = await _feedback.SendContextualEmbedAsync(initialEmbed, ct: ct);
-        if (!sendMessage.IsSuccess)
-        {
-            return Result.FromError(sendMessage);
-        }
-
-        var message = sendMessage.Entity;
-        var interactiveMessage = messageFactory(message.ChannelID, message.ID);
-        var trackMessage = this.Tracker.TrackMessage(interactiveMessage);
-        if (!trackMessage.IsSuccess)
-        {
-            return trackMessage;
-        }
-
-        return Result.FromSuccess();
-    }
-
+    
     /// <summary>
     /// Gets the next message sent in the given channel.
     /// </summary>
