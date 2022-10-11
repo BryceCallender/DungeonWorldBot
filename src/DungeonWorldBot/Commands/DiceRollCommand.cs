@@ -1,4 +1,7 @@
+using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics.SymbolStore;
+using System.Security.Permissions;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.API;
@@ -26,36 +29,59 @@ public class DiceRollCommand : CommandGroup
     [Description("Roll a dice like d6 or 2d6")]
     public async Task<IResult> RollDiceAsync(string value)
     {
-        var rollConfigs = value.ToLower().Split('d', StringSplitOptions.RemoveEmptyEntries);
-        if (rollConfigs.Length == 0)
+        var dice = value.ToLower().Split('+', StringSplitOptions.RemoveEmptyEntries);
+        List<int> rolls = new List<int>();
+        string seperatedRolls = string.Empty;
+
+        if(dice.Length == 0)
         {
             return Result.FromSuccess();
         }
-        
-        var result = int.TryParse(rollConfigs[^1], out var faces);
-        if (!result)
-        {
-            return await ReplyWithFailureAsync();
-        }
-        
-        List<int> rollValues;
-        
-        if (rollConfigs.Length == 1)
-        {
-            rollValues = Roll(1, faces);
-        }
         else
         {
-            result = int.TryParse(rollConfigs[0], out var rollCount);
-            if (!result)
+            foreach(var die in dice)
             {
-                return await ReplyWithFailureAsync();
-            }
-            
-            rollValues = Roll(rollCount, faces);
+                var rollConfigs = die.ToLower().Split('d', StringSplitOptions.RemoveEmptyEntries);
+
+                var result = int.TryParse(rollConfigs[^1], out var faces);
+                if (!result)
+                {
+                    return await ReplyWithFailureAsync();
+                }
+
+                List<int> rollValues;
+
+                if (rollConfigs.Length == 1)
+                {
+                    rollValues = Roll(1, faces);
+                }
+                else
+                {
+                    result = int.TryParse(rollConfigs[0], out var rollCount);
+                    if (!result)
+                    {
+                        return await ReplyWithFailureAsync();
+                    }
+
+                    rollValues = Roll(rollCount, faces);
+                }
+
+
+                seperatedRolls += $"({string.Join('+', rollValues)})";
+
+
+                rolls.AddRange(rollValues);
+
+                if(die != dice.Last())
+                {
+                    seperatedRolls += " + ";
+                };
+            };
         }
-        
-        return await ReplyWithRoll(value, rollValues);
+
+        return await ReplyWithRoll(value, rolls, seperatedRolls);
+
+
     }
 
     private List<int> Roll(int rollCount, int faces)
@@ -79,18 +105,19 @@ public class DiceRollCommand : CommandGroup
         );
     }
 
-    private async Task<IResult> ReplyWithRoll(string roll, IReadOnlyCollection<int> rollValues)
+    private async Task<IResult> ReplyWithRoll(string roll, IReadOnlyCollection<int> rollValues, string seperatedRolls)
     {
         var total = rollValues.Sum();
         var rollText = $"{total}";
-        
+
         if (rollValues.Count > 1)
         {
             rollText = $"{roll}\n\n";
             rollText += $"Total Roll: {total}\n\n";
-            rollText += string.Join('+', rollValues);
+            rollText += seperatedRolls;
             rollText += $"={total}";
         }
+        
         
         var avatar = CDN.GetUserAvatarUrl(_context.User, imageSize: 4096);
 

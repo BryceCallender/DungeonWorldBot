@@ -54,6 +54,7 @@ public class CharacterCommand : CommandGroup
     }
 
     [Command("create")]
+    [Description("Create your character for the campaign")]
     public async Task<IResult> CreateCharacterAsync()
     {
         
