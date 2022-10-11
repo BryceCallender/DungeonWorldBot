@@ -1,11 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using DSharpPlus;
-using DSharpPlus.Entities;
+﻿using System.Drawing;
 using DungeonWorldBot.Services;
 using DungeonWorldBot.Services.Interactivity;
 using Remora.Discord.API.Abstractions.Objects;
@@ -24,7 +17,7 @@ namespace DungeonWorldBot.Interactions
         private IDialogueStep _currentStep;
         private readonly IDiscordRestUserAPI _userAPI;
 
-        private readonly List<DiscordMessage> _messages = new List<DiscordMessage>();
+        private readonly List<Message> _messages = new List<Message>();
 
         public Snowflake ChannelID { get; set; }
         
@@ -74,12 +67,12 @@ namespace DungeonWorldBot.Interactions
 
         public async Task DeleteMessages()
         {
-            if (ChannelID == _user.ID) { return; }
-
-            foreach (var message in _messages)
-            {
-                await message.DeleteAsync();
-            }
+            // if (ChannelID == _user.ID) { return; }
+            //
+            // foreach (var message in _messages)
+            // {
+            //     await message.De();
+            // }
         }
     }
 }

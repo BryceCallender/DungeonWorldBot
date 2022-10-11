@@ -2,9 +2,7 @@ using System.ComponentModel;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Services;
 using EnumsNET;
-using DSharpPlus.CommandsNext;
 using Remora.Commands.Attributes;
-using Remora.Commands.Groups;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Abstractions.Rest;
 using Remora.Discord.API.Objects;
@@ -15,12 +13,10 @@ using Remora.Discord.Commands.Feedback.Services;
 using Remora.Discord.Interactivity;
 using Remora.Results;
 using System.Drawing;
-using Remora.Discord.Gateway;
-using Remora.Discord.Interactivity.Services;
 using DungeonWorldBot.Services.Implementation.Steps;
 using DungeonWorldBot.Interactions;
-using CommandGroup = Remora.Commands.Groups.CommandGroup;
 using DungeonWorldBot.Services.Interactivity;
+using Remora.Commands.Groups;
 
 namespace DungeonWorldBot.Commands;
 
@@ -30,7 +26,6 @@ public class CharacterCommand : CommandGroup
     private readonly ICommandContext _context;
     private readonly FeedbackService _feedbackService;
     private readonly ICharacterService _characterService;
-    private readonly IDiscordRestChannelAPI _channelAPI;
     private readonly InteractivityService _interactivityService;
     private readonly IDiscordRestUserAPI _userAPI;
     private readonly IDiscordRestGuildAPI _guildAPI;
@@ -39,7 +34,6 @@ public class CharacterCommand : CommandGroup
         ICommandContext context,
         FeedbackService feedbackService,
         ICharacterService characterService,
-        IDiscordRestChannelAPI channelAPI,
         InteractivityService interactivityService, 
         IDiscordRestUserAPI userAPI,
         IDiscordRestGuildAPI guildAPI)
@@ -48,7 +42,6 @@ public class CharacterCommand : CommandGroup
         _feedbackService = feedbackService;
         _characterService = characterService;
         _guildAPI = guildAPI;
-        _channelAPI = channelAPI;
         _interactivityService = interactivityService;
         _userAPI = userAPI;
     }
@@ -57,7 +50,6 @@ public class CharacterCommand : CommandGroup
     [Description("Create your character for the campaign")]
     public async Task<IResult> CreateCharacterAsync()
     {
-        
         var available = await _characterService.GetCharacterFromUserAsync(_context.User);
         if (available is not null)
         {
@@ -126,7 +118,7 @@ public class CharacterCommand : CommandGroup
         };
         raceStep.OnValidResult += (result) =>
         {
-            race = (Race)result-1;
+            race = (Race)result;
             character.Race = race;
         };
         classStep.OnValidResult += (result) =>
@@ -235,9 +227,7 @@ public class CharacterCommand : CommandGroup
 
             };
         };
-
         
-
         var inputDialogueHandler = new DialogueHandler(_interactivityService, _context.User, nameStep, _userAPI);
 
         var succeeded = await inputDialogueHandler.ProcessDialogue(_feedbackService).ConfigureAwait(false);
@@ -271,6 +261,7 @@ public class CharacterCommand : CommandGroup
 
         await _feedbackService.SendPrivateEmbedAsync(userChannel, embed);
 
+        character.Status = Status.Alive;
         await _characterService.AddCharacterAsync(character);
 
         var embedEnd = new Embed
@@ -303,7 +294,8 @@ public class CharacterCommand : CommandGroup
         embedFields.Add(new EmbedField(Name: "Status", Value: character.Status?.ToString() ?? "Unknown..."));
         embedFields.Add(new EmbedField(Name: "Alignment", Value: character.Alignment.ToString()));
         embedFields.Add(new EmbedField(Name: "Debilities", Value: "None"));
-        embedFields.Add(new EmbedField(Name: "Bonds", Value: "None"));
+        embedFields.Add(new EmbedField(Name: "Bonds", Value: 
+            character.Bonds?.Count > 0 ? string.Join(',', character.Bonds.Select(b => b.TargetName)) : "None"));
 
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
@@ -314,6 +306,27 @@ public class CharacterCommand : CommandGroup
                 Colour: _feedbackService.Theme.Primary
             ),
             ct: CancellationToken
+        );
+    }
+
+    [Command("bond")]
+    public async Task<IResult> AddCharacterBondAsync(
+        [Description("The user to bond with")]
+        IUser user)
+    {
+        var character = await _characterService.GetCharacterFromUserAsync(_context.User);
+        var bondTo = await _characterService.GetCharacterFromUserAsync(user);
+
+        if (character is null || bondTo is null)
+        {
+            return await ReplyWithError("Either you do not have a character or the requested user does not have a character.");
+        }
+
+        await _characterService.BondWith(character, bondTo);
+        
+        return await _feedbackService.SendNeutralAsync(
+            _context.ChannelID,
+            $"You are now bonded with {bondTo.Name}"
         );
     }
     
