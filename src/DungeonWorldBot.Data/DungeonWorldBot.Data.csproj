@@ -17,7 +17,6 @@
       <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="6.0.9" />
       <PackageReference Include="Remora.Discord.API" Version="67.0.0" />
       <PackageReference Include="Remora.Rest.Core" Version="2.0.4" />
-      <PackageReference Include="SQLite" Version="3.13.0" />
     </ItemGroup>
 
 </Project>

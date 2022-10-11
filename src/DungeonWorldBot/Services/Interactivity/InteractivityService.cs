@@ -1,4 +1,4 @@
-//
+﻿//
 //  InteractivityService.cs
 //
 //  Author:
@@ -20,15 +20,12 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-using System.Drawing;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Abstractions.Rest;
-using Remora.Discord.API.Objects;
-using Remora.Discord.Commands.Feedback.Services;
 using Remora.Rest.Core;
 using Remora.Results;
 
-namespace DungeonWorldBot.Services;
+namespace DungeonWorldBot.Services.Interactivity;
 
 /// <summary>
 /// Acts as a Discord plugin for interactive messages.
@@ -39,7 +36,13 @@ public class InteractivityService
     /// Holds the Discord channel API.
     /// </summary>
     private readonly IDiscordRestChannelAPI _channelAPI;
-    
+
+    public InteractivityService(
+        IDiscordRestChannelAPI channelAPI)
+    {
+        _channelAPI = channelAPI;
+    }
+
     /// <summary>
     /// Gets the next message sent in the given channel.
     /// </summary>
@@ -50,13 +53,13 @@ public class InteractivityService
     public async Task<Result<IMessage?>> GetNextMessageAsync
     (
         Snowflake channelID,
+        Snowflake lastMessageID,
         TimeSpan timeout,
         CancellationToken ct = default
     )
     {
         var now = DateTimeOffset.UtcNow;
         var timeoutTime = now + timeout;
-        var after = Snowflake.CreateTimestampSnowflake(now);
 
         while (now <= timeoutTime)
         {
@@ -64,7 +67,7 @@ public class InteractivityService
             var getMessage = await _channelAPI.GetChannelMessagesAsync
             (
                 channelID,
-                after: after,
+                after: lastMessageID,
                 limit: 1,
                 ct: ct
             );

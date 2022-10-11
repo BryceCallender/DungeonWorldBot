@@ -3,6 +3,7 @@ using System;
 using DungeonWorldBot.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,10 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace DungeonWorldBot.Data.Migrations
 {
     [DbContext(typeof(DungeonWorldContext))]
-    partial class DungeonWorldContextModelSnapshot : ModelSnapshot
+    [Migration("20221011040415_Bond_Updates")]
+    partial class Bond_Updates
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "6.0.9");
@@ -28,10 +30,6 @@ namespace DungeonWorldBot.Data.Migrations
 
                     b.Property<ulong>("TargetID")
                         .HasColumnType("INTEGER");
-
-                    b.Property<string>("TargetName")
-                        .IsRequired()
-                        .HasColumnType("TEXT");
 
                     b.HasKey("ID");
 
