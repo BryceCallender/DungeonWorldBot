@@ -82,6 +82,7 @@ public class Program
                 services
                     .AddSqlite<DungeonWorldContext>(config.GetConnectionString("DungeonWorldConnectionString"))
                     .AddScoped<ICharacterService, CharacterService>()
+                    .AddScoped<IRollService, RollService>()
                     .AddScoped<InteractivityService>()
                     .AddRemoraServices();
             }

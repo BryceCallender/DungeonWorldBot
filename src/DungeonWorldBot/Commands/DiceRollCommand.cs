@@ -1,7 +1,8 @@
-using System.Collections.Specialized;
 using System.ComponentModel;
-using System.Diagnostics.SymbolStore;
-using System.Security.Permissions;
+using System.Text;
+using DungeonWorldBot.API.Models;
+using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Services;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.API;
@@ -17,85 +18,46 @@ public class DiceRollCommand : CommandGroup
     private readonly Random _random;
     private readonly ICommandContext _context;
     private readonly FeedbackService _feedbackService;
+    private readonly IRollService _rollService;
+    private readonly ICharacterService _characterService;
 
-    public DiceRollCommand(Random random, ICommandContext commandContext, FeedbackService feedbackService)
+    public DiceRollCommand(
+        Random random, 
+        ICommandContext commandContext, 
+        FeedbackService feedbackService,
+        IRollService rollService,
+        ICharacterService characterService)
     {
         _random = random;
         _context = commandContext;
         _feedbackService = feedbackService;
+        _rollService = rollService;
+        _characterService = characterService;
     }
     
     [Command("roll")]
     [Description("Roll a dice like d6 or 2d6")]
     public async Task<IResult> RollDiceAsync(string value)
     {
-        var dice = value.ToLower().Split('+', StringSplitOptions.RemoveEmptyEntries);
-        List<int> rolls = new List<int>();
-        string seperatedRolls = string.Empty;
+        var roll = _rollService.Roll(value);
 
-        if(dice.Length == 0)
-        {
-            return Result.FromSuccess();
-        }
-        else
-        {
-            foreach(var die in dice)
-            {
-                var rollConfigs = die.ToLower().Split('d', StringSplitOptions.RemoveEmptyEntries);
-
-                var result = int.TryParse(rollConfigs[^1], out var faces);
-                if (!result)
-                {
-                    return await ReplyWithFailureAsync();
-                }
-
-                List<int> rollValues;
-
-                if (rollConfigs.Length == 1)
-                {
-                    rollValues = Roll(1, faces);
-                }
-                else
-                {
-                    result = int.TryParse(rollConfigs[0], out var rollCount);
-                    if (!result)
-                    {
-                        return await ReplyWithFailureAsync();
-                    }
-
-                    rollValues = Roll(rollCount, faces);
-                }
-
-
-                seperatedRolls += $"({string.Join('+', rollValues)})";
-
-
-                rolls.AddRange(rollValues);
-
-                if(die != dice.Last())
-                {
-                    seperatedRolls += " + ";
-                };
-            };
-        }
-
-        return await ReplyWithRoll(value, rolls, seperatedRolls);
-
-
+        return await ReplyWithRoll(roll, null);
     }
 
-    private List<int> Roll(int rollCount, int faces)
+    [Command("rollstat")]
+    [Description("Roll a dice and add stat modifier")]
+    public async Task<IResult> RollDiceWithStatAsync(string value, StatType statType)
     {
-        var results = new List<int>();
+        var character = await _characterService.GetCharacterFromUserAsync(_context.User);
 
-        for (var i = 0; i < rollCount; i++)
-        {
-            results.Add(_random.Next(1, faces));
-        }
+        if (character is null)
+            return await ReplyWithErrorAsync("You must have a character to roll on stats. Try using /character create");
 
-        return results;
+        var roll = _rollService.RollWithStat(value, character.Stats.Find(s => s.StatType == statType)!);
+
+        return await ReplyWithRoll(roll, statType);
     }
-    
+
     private async Task<Result> ReplyWithFailureAsync()
     {
         return (Result)await _feedbackService.SendContextualErrorAsync
@@ -104,21 +66,30 @@ public class DiceRollCommand : CommandGroup
             ct: CancellationToken
         );
     }
-
-    private async Task<IResult> ReplyWithRoll(string roll, IReadOnlyCollection<int> rollValues, string seperatedRolls)
+    
+    private async Task<Result> ReplyWithErrorAsync(string error)
     {
-        var total = rollValues.Sum();
-        var rollText = $"{total}";
+        return (Result)await _feedbackService.SendContextualErrorAsync
+        (
+            error,
+            ct: CancellationToken
+        );
+    }
 
-        if (rollValues.Count > 1)
+    private async Task<IResult> ReplyWithRoll(Roll roll, StatType? statType)
+    {
+        var total = roll.Total;
+        var rollText = new StringBuilder($"{roll.Representation}\n\n");
+        rollText.Append($"Total = {total}");
+
+        if (roll.Rolls.Count > 1)
         {
-            rollText = $"{roll}\n\n";
-            rollText += $"Total Roll: {total}\n\n";
-            rollText += seperatedRolls;
-            rollText += $"={total}";
+            rollText.Clear();
+            rollText.AppendLine($"{roll.Representation}\n");
+            rollText.AppendLine($"Total Roll: {total}\n");
+            rollText.Append($"{roll.ToString()}={total}");
         }
-        
-        
+
         var avatar = CDN.GetUserAvatarUrl(_context.User, imageSize: 4096);
 
         if (!avatar.IsSuccess)
@@ -129,7 +100,7 @@ public class DiceRollCommand : CommandGroup
         
         var embed = new Embed(
             Title: "🎲 Roll(s)", 
-            Description: rollText, 
+            Description: rollText.ToString(),
             Colour: _feedbackService.Theme.Success,
             Thumbnail: new EmbedThumbnail(avatar.Entity.ToString())
         );
