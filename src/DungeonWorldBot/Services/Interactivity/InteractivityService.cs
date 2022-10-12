@@ -20,18 +20,8 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 //
 
-using System;
-using System.Drawing;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using DungeonWorldBot.Services.Interactivity.Messages;
-using DungeonWorldBot.Services.Interactivity.Responders;
-using Microsoft.Extensions.DependencyInjection;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Abstractions.Rest;
-using Remora.Discord.API.Objects;
-using Remora.Discord.Commands.Feedback.Services;
 using Remora.Rest.Core;
 using Remora.Results;
 
@@ -47,86 +37,10 @@ public class InteractivityService
     /// </summary>
     private readonly IDiscordRestChannelAPI _channelAPI;
 
-    /// <summary>
-    /// Holds the available services.
-    /// </summary>
-    private readonly IServiceProvider _services;
-
-    /// <summary>
-    /// Holds the feedback service.
-    /// </summary>
-    private readonly FeedbackService _feedback;
-
-    /// <summary>
-    /// Gets the message tracker.
-    /// </summary>
-    public InteractiveMessageTracker Tracker { get; }
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="InteractivityService"/> class.
-    /// </summary>
-    /// <param name="services">The available services.</param>
-    /// <param name="tracker">The message tracker.</param>
-    /// <param name="channelAPI">The channel API.</param>
-    /// <param name="feedback">The feedback service.</param>
-    public InteractivityService
-    (
-        IServiceProvider services,
-        InteractiveMessageTracker tracker,
-        IDiscordRestChannelAPI channelAPI,
-        FeedbackService feedback
-    )
+    public InteractivityService(
+        IDiscordRestChannelAPI channelAPI)
     {
         _channelAPI = channelAPI;
-        _feedback = feedback;
-        _services = services;
-
-        this.Tracker = tracker;
-    }
-
-    /// <summary>
-    /// Sends an interactive message to the current context.
-    /// </summary>
-    /// <param name="messageFactory">A factory function that wraps a sent message.</param>
-    /// <param name="ct">The cancellation token for this operation.</param>
-    /// <returns>A result which may or may not have succeeded.</returns>
-    public async Task<Result> SendContextualInteractiveMessageAsync
-    (
-        Func<Snowflake, Snowflake, IInteractiveMessage> messageFactory,
-        CancellationToken ct = default
-    )
-    {
-        var initialEmbed = new Embed
-        {
-            Colour = Color.Gray,
-            Description = "Loading..."
-        };
-
-        var sendMessage = await _feedback.SendContextualEmbedAsync(initialEmbed, ct: ct);
-        if (!sendMessage.IsSuccess)
-        {
-            return Result.FromError(sendMessage);
-        }
-
-        var message = sendMessage.Entity;
-        var interactiveMessage = messageFactory(message.ChannelID, message.ID);
-        var trackMessage = this.Tracker.TrackMessage(interactiveMessage);
-        if (!trackMessage.IsSuccess)
-        {
-            return trackMessage;
-        }
-
-        var interestedResponders = _services.GetServices<InteractivityResponder>();
-        foreach (var responder in interestedResponders)
-        {
-            var updateMessage = await responder.OnCreateAsync(interactiveMessage.Nonce, ct);
-            if (!updateMessage.IsSuccess)
-            {
-                return updateMessage;
-            }
-        }
-
-        return Result.FromSuccess();
     }
 
     /// <summary>

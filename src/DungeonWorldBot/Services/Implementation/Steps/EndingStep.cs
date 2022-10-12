@@ -1,25 +1,10 @@
-﻿using DSharpPlus;
-using Remora.Discord.API.Objects;
-using Remora.Discord.Commands.Feedback.Messages;
+﻿using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Feedback.Services;
-using Remora.Discord.Gateway;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Threading.Tasks;
-using DSharpPlus.Entities;
-using DSharpPlus.Interactivity;
-using System.Security.Cryptography.X509Certificates;
-using DSharpPlus.Interactivity.Extensions;
 using Remora.Rest.Core;
 using Remora.Discord.API.Abstractions.Objects;
 using System.Drawing;
-using DungeonWorldBot.Services.Interactivity;
 using DungeonWorldBot.Data.Entities;
-using System.Diagnostics;
-using System.Xml.Linq;
+using DungeonWorldBot.Services.Interactivity;
 
 namespace DungeonWorldBot.Services.Implementation.Steps
 {

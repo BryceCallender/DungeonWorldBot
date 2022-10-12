@@ -1,18 +1,10 @@
-﻿using Remora.Discord.API.Objects;
-using Remora.Discord.Gateway;
-using Remora.Discord.Commands.Feedback.Messages;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Remora.Discord.Commands.Feedback.Messages;
 using System.Drawing;
 using Remora.Discord.Commands.Feedback.Services;
-using DSharpPlus.Entities;
-using DSharpPlus;
 using Remora.Rest.Core;
 using Remora.Discord.API.Abstractions.Objects;
 using DungeonWorldBot.Services.Interactivity;
+using Remora.Discord.API.Objects;
 
 namespace DungeonWorldBot.Services.Implementation.Steps
 {
@@ -27,7 +19,7 @@ namespace DungeonWorldBot.Services.Implementation.Steps
             _feedbackService = feedbackService; 
         }
 
-        public Action<DiscordMessage> OnMessageAdded { get; set; } = delegate { };
+        public Action<Message> OnMessageAdded { get; set; } = delegate { };
 
         public abstract IDialogueStep NextStep { get; }
 
