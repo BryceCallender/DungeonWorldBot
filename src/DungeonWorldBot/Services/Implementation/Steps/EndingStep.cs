@@ -27,9 +27,10 @@ namespace DungeonWorldBot.Services.Implementation.Steps
 
         public override IDialogueStep NextStep => _nextStep;
 
-        public void setNextStep(IDialogueStep nextStep)
+        public void setNextStep(IDialogueStep nextStep, bool edited = false)
         {
             _nextStep = nextStep;
+            _edited = edited;
         }
 
         public override async Task<bool> ProcessStep(InteractivityService interactivity, Snowflake channel, IUser user)
@@ -46,8 +47,13 @@ namespace DungeonWorldBot.Services.Implementation.Steps
             //embedFields.Add(new EmbedField(Name: "Health", Value: character.Health.ToDisplay(), IsInline: false));
             //embedFields.Add(new EmbedField(Name: "Status", Value: character.Status?.ToString() ?? "Unknown..."));
             embedFields.Add(new EmbedField(Name: "Alignment", Value: _character.Alignment.ToString()));
-            embedFields.Add(new EmbedField(Name: "Would you like to edit any of this information?", Value: _content));
             //embedFields.Add(new EmbedField(Name: "Debilities", Value: "None"));
+            embedFields.Add(new EmbedField(Name: "Total Armor", Value: _character.ArmorRating.ToString()));
+
+            embedFields.Add(new EmbedField(Name: "Inventory", Value: "--------------"));
+            embedFields.AddRange(_character.Inventory.Items.Select(s => new EmbedField(Name: s.Name, Value: s.Amount.ToString(), true)).ToArray());
+
+            embedFields.Add(new EmbedField(Name: "Would you like to edit any of this information?", Value: _content));
 
 
             embedFields.Add(new EmbedField(Name: "To Cancel the Character Creation", Value: "Type the /cancel command"));
