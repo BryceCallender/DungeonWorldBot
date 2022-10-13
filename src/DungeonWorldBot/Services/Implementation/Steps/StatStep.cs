@@ -25,9 +25,10 @@ namespace DungeonWorldBot.Services.Implementation.Steps
         public Action<int> OnValidResult { get; set; } = delegate { };
 
         public override IDialogueStep NextStep => _nextStep;
-        public void setNextStep(IDialogueStep nextStep)
+        public void setNextStep(IDialogueStep nextStep, bool edited = false)
         {
             _nextStep = nextStep;
+            _edited = edited;
         }
 
         public override async Task<bool> ProcessStep(InteractivityService interactivity, Snowflake channel, IUser user)

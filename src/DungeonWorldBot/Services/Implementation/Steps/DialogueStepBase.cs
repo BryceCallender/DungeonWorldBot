@@ -12,11 +12,13 @@ namespace DungeonWorldBot.Services.Implementation.Steps
     {
         protected readonly string _content;
         protected readonly FeedbackService _feedbackService;
+        public bool _edited { get; set;}
 
         public DialogueStepBase(string content, FeedbackService feedbackService)
         {
             _content = content;
-            _feedbackService = feedbackService; 
+            _feedbackService = feedbackService;
+            _edited = false;
         }
 
         public Action<Message> OnMessageAdded { get; set; } = delegate { };
