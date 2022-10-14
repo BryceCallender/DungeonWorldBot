@@ -700,9 +700,14 @@ public class CharacterCommand : CommandGroup
         embedFields.Add(new EmbedField(Name: "Total Armor", Value: character.ArmorRating.ToString()));
         embedFields.Add(new EmbedField(Name: "Bonds", Value: 
             character.Bonds?.Count > 0 ? string.Join(',', character.Bonds.Select(b => b.TargetName)) : "None"));
-        embedFields.Add(new EmbedField(Name: "Inventory", Value: "--------------"));
-        embedFields.AddRange(character.Inventory.Items.Select(s => new EmbedField(Name: s.Name, Value: s.Amount.ToString(), true)).ToArray());
+        embedFields.Add(new EmbedField(Name: "Inventory", Value: character.Inventory?.Items?.Count > 0 ? "--------------" : "Empty"));
+        
+        if (character.Inventory?.Items?.Count > 0)
+        {
+            embedFields.AddRange(character.Inventory.Items.Select(s => new EmbedField(Name: s.Name, Value: s.Amount.ToString(), true)).ToArray());
 
+        }
+        
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: $"{character.Name}", 
