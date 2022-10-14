@@ -705,14 +705,9 @@ public class CharacterCommand : CommandGroup
 
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
-                Title: $"{character.Name}",
-<<<<<<< Updated upstream
-                Type: EmbedType.Rich,
-                Description: $"{character.Class.Type}: Level {character.Level}",
-=======
+                Title: $"{character.Name}", 
                 Thumbnail: new EmbedThumbnail(ImageHelper.ClassToImgurLink(character.Class.Type)),
                 Description: $"{character.Class.Type.ToString()}: Level {character.Level}",
->>>>>>> Stashed changes
                 Fields: embedFields,
                 Colour: _feedbackService.Theme.Primary
             ),
