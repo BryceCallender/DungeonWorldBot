@@ -41,7 +41,7 @@ public class DiceRollCommand : CommandGroup
     {
         var roll = _rollService.Roll(value);
 
-        return await ReplyWithRoll(roll, null);
+        return await ReplyWithRoll(roll);
     }
 
     [Command("rollstat")]
@@ -76,18 +76,24 @@ public class DiceRollCommand : CommandGroup
         );
     }
 
+    private async Task<IResult> ReplyWithRoll(Roll roll)
+    {
+        return await ReplyWithRoll(roll, null);
+    }
+
     private async Task<IResult> ReplyWithRoll(Roll roll, StatType? statType)
     {
         var total = roll.Total;
         var rollText = new StringBuilder($"{roll.Representation}\n\n");
-        rollText.Append($"Total = {total}");
 
         if (roll.Rolls.Count > 1)
         {
-            rollText.Clear();
-            rollText.AppendLine($"{roll.Representation}\n");
             rollText.AppendLine($"Total Roll: {total}\n");
             rollText.Append($"{roll.ToString()}={total}");
+        }
+        else
+        {
+            rollText.Append($"Total = {total}");
         }
 
         var avatar = CDN.GetUserAvatarUrl(_context.User, imageSize: 4096);
@@ -99,7 +105,7 @@ public class DiceRollCommand : CommandGroup
             return Result.FromError(avatar.Error);
         
         var embed = new Embed(
-            Title: "🎲 Roll(s)", 
+            Title: $"🎲 {(statType.HasValue ? statType.ToString() : "")} Roll(s)", 
             Description: rollText.ToString(),
             Colour: _feedbackService.Theme.Success,
             Thumbnail: new EmbedThumbnail(avatar.Entity.ToString())

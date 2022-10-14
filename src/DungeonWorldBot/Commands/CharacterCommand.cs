@@ -13,6 +13,7 @@ using Remora.Discord.Commands.Feedback.Services;
 using Remora.Discord.Interactivity;
 using Remora.Results;
 using System.Drawing;
+using DungeonWorldBot.Helpers;
 using DungeonWorldBot.Services.Implementation.Steps;
 using DungeonWorldBot.Interactions;
 using DungeonWorldBot.Services.Interactivity;
@@ -655,7 +656,7 @@ public class CharacterCommand : CommandGroup
         var embed = new Embed 
         {
                 Title = $"{character.Name}",
-                Type = EmbedType.Rich,
+                Thumbnail = new EmbedThumbnail(ImageHelper.ClassToImgurLink(character.Class.Type)),
                 Description = $"{character.Class.Type}: Level 1",
                 Fields = embedFields,
                 Colour = _feedbackService.Theme.Primary
@@ -705,8 +706,13 @@ public class CharacterCommand : CommandGroup
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: $"{character.Name}",
+<<<<<<< Updated upstream
                 Type: EmbedType.Rich,
                 Description: $"{character.Class.Type}: Level {character.Level}",
+=======
+                Thumbnail: new EmbedThumbnail(ImageHelper.ClassToImgurLink(character.Class.Type)),
+                Description: $"{character.Class.Type.ToString()}: Level {character.Level}",
+>>>>>>> Stashed changes
                 Fields: embedFields,
                 Colour: _feedbackService.Theme.Primary
             ),
