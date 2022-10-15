@@ -13,6 +13,7 @@ using Remora.Discord.Commands.Feedback.Services;
 using Remora.Discord.Interactivity;
 using Remora.Results;
 using System.Drawing;
+using DungeonWorldBot.Helpers;
 using DungeonWorldBot.Services.Implementation.Steps;
 using DungeonWorldBot.Interactions;
 using DungeonWorldBot.Services.Interactivity;
@@ -655,7 +656,7 @@ public class CharacterCommand : CommandGroup
         var embed = new Embed 
         {
                 Title = $"{character.Name}",
-                Type = EmbedType.Rich,
+                Thumbnail = new EmbedThumbnail(ImageHelper.ClassToImgurLink(character.Class.Type)),
                 Description = $"{character.Class.Type}: Level 1",
                 Fields = embedFields,
                 Colour = _feedbackService.Theme.Primary
@@ -699,14 +700,19 @@ public class CharacterCommand : CommandGroup
         embedFields.Add(new EmbedField(Name: "Total Armor", Value: character.ArmorRating.ToString()));
         embedFields.Add(new EmbedField(Name: "Bonds", Value: 
             character.Bonds?.Count > 0 ? string.Join(',', character.Bonds.Select(b => b.TargetName)) : "None"));
-        embedFields.Add(new EmbedField(Name: "Inventory", Value: "--------------"));
-        embedFields.AddRange(character.Inventory.Items.Select(s => new EmbedField(Name: s.Name, Value: s.Amount.ToString(), true)).ToArray());
+        embedFields.Add(new EmbedField(Name: "Inventory", Value: character.Inventory?.Items?.Count > 0 ? "--------------" : "Empty"));
+        
+        if (character.Inventory?.Items?.Count > 0)
+        {
+            embedFields.AddRange(character.Inventory.Items.Select(s => new EmbedField(Name: s.Name, Value: s.Amount.ToString(), true)).ToArray());
 
+        }
+        
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
-                Title: $"{character.Name}",
-                Type: EmbedType.Rich,
-                Description: $"{character.Class.Type}: Level {character.Level}",
+                Title: $"{character.Name}", 
+                Thumbnail: new EmbedThumbnail(ImageHelper.ClassToImgurLink(character.Class.Type)),
+                Description: $"{character.Class.Type.ToString()}: Level {character.Level}",
                 Fields: embedFields,
                 Colour: _feedbackService.Theme.Primary
             ),

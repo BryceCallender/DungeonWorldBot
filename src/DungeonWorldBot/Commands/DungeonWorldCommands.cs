@@ -42,7 +42,7 @@ public class DungeonWorldCommands : CommandGroup
 
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
-                Title: "Characters", 
+                Title: "Campaign Characters", 
                 Fields: characters.Select(c => new EmbedField(c.Class.Type.ToString(), c.Name)).ToList(),
                 Colour: _feedbackService.Theme.Primary
             ),
