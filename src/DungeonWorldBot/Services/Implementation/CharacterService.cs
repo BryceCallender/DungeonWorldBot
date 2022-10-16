@@ -24,6 +24,7 @@ public class CharacterService : ICharacterService
             .Include(c => c.Health)
             .Include(c => c.Stats)
             .Include(c => c.Bonds)
+            .Include(c => c.Inventory)
             .FirstOrDefaultAsync(c => c.ID == user.ID);
     }
 
@@ -70,6 +71,7 @@ public class CharacterService : ICharacterService
             .Include(c => c.Health)
             .Include(c => c.Stats)
             .Include(c => c.Bonds)
+            .Include(c => c.Inventory)
             .ToList();
     }
 }
