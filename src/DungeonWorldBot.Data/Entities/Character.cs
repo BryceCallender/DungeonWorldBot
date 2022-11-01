@@ -9,9 +9,12 @@ public class Character
     public string Name { get; set; } = null!;
     public Class Class { get; set; } = null!;
     public Health Health { get; set; } = null!;
-    public Inventory? Inventory { get; set; }
+    public Inventory Inventory { get; set; } = null!;
     
-    public int ArmorRating { get; set; } = 0;
+    public int ArmorRating { get; set; }
+    
+    public int DamageRating { get; set; }
+    
     public int Level { get; set; } = 1;
 
     public List<Stat> Stats { get; set; } = null!;

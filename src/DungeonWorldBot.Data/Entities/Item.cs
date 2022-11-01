@@ -1,5 +1,3 @@
-using Remora.Rest.Core;
-
 namespace DungeonWorldBot.Data.Entities;
 
 public class Item

@@ -691,7 +691,7 @@ public class CharacterCommand : CommandGroup
 
         var embedFields = new List<IEmbedField>();
         
-        embedFields.AddRange(character.Stats.Select(s => new EmbedField(Name: s.StatType.ToString(), Value: s.Value.ToString(), true)).ToArray());
+        embedFields.AddRange(character.Stats.Select(s => new EmbedField(Name: s.StatType.ToString(), Value: $"{s.Value} ({(s.Modifier >= 0 ? "+" : string.Empty)}{s.Modifier})", true)).ToArray());
 
         embedFields.Add(new EmbedField(Name: "Health", Value: character.Health.ToDisplay(), IsInline: false));
         embedFields.Add(new EmbedField(Name: "Status", Value: character.Status?.ToString() ?? "Unknown..."));
