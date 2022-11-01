@@ -32,7 +32,7 @@ public class CharacterCommand : CommandGroup
     private readonly InteractivityService _interactivityService;
     private readonly IDiscordRestUserAPI _userAPI;
     private readonly IDiscordRestGuildAPI _guildAPI;
-    private readonly RollService _rollService;
+    private readonly IRollService _rollService;
 
     public CharacterCommand(
         ICommandContext context,
@@ -41,7 +41,7 @@ public class CharacterCommand : CommandGroup
         InteractivityService interactivityService, 
         IDiscordRestUserAPI userAPI,
         IDiscordRestGuildAPI guildAPI,
-        RollService rollService)
+        IRollService rollService)
     {
         _context = context;
         _feedbackService = feedbackService;
@@ -354,7 +354,7 @@ public class CharacterCommand : CommandGroup
                     items.Add(item7);
                     break;
                 case 2:
-                    ItemService.setItem(ref item6, "Pouch of coins", _rollService.Roll("1d10").Total, 0);
+                    ItemService.setItem(ref item6, "Coins", _rollService.Roll("1d10").Total, 0);
                     items.Add(item6);
                     break;
             };
@@ -665,7 +665,7 @@ public class CharacterCommand : CommandGroup
         await _feedbackService.SendPrivateEmbedAsync(userChannel, embed);
 
 
-        //await _characterService.AddCharacterAsync(character);
+        await _characterService.AddCharacterAsync(character);
 
         var embedEnd = new Embed
         {

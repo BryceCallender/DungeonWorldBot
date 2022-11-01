@@ -1,5 +1,6 @@
 ﻿using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
+using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Abstractions.VoiceGateway;
 using System;
 using System.Collections.Generic;
@@ -9,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace DungeonWorldBot.Services.Implementation
 {
-    public class InventoryService
+    public class InventoryService : IInventoryService
     {
 
         private readonly DungeonWorldContext _dungeonWorldContext;
@@ -18,9 +19,8 @@ namespace DungeonWorldBot.Services.Implementation
         {
             _dungeonWorldContext = dungeonWorldContext;
         }
-        public async Task UpdateInventroyAsync(Inventory inventory)
+        public async Task SaveInventoryAsync()
         {
-            //_dungeonWorldContext.
             await _dungeonWorldContext.SaveChangesAsync();
         }
     }
