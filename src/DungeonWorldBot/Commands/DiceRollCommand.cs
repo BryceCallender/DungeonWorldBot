@@ -13,6 +13,7 @@ using Remora.Results;
 
 namespace DungeonWorldBot.Commands;
 
+[Group("roll")]
 public class DiceRollCommand : CommandGroup
 {
     private readonly Random _random;
@@ -20,7 +21,7 @@ public class DiceRollCommand : CommandGroup
     private readonly FeedbackService _feedbackService;
     private readonly IRollService _rollService;
     private readonly ICharacterService _characterService;
-
+    
     public DiceRollCommand(
         Random random, 
         ICommandContext commandContext, 
@@ -35,18 +36,18 @@ public class DiceRollCommand : CommandGroup
         _characterService = characterService;
     }
     
-    [Command("roll")]
-    [Description("Roll a dice like d6 or 2d6")]
-    public async Task<IResult> RollDiceAsync(string value)
+    [Command("die")]
+    [Description("Roll a dice like d6 or 2d6. Defaults to a 2d6")]
+    public async Task<IResult> RollDiceAsync(string value = "2d6")
     {
         var roll = _rollService.Roll(value);
 
         return await ReplyWithRoll(roll);
     }
 
-    [Command("rollstat")]
-    [Description("Roll a dice and add stat modifier")]
-    public async Task<IResult> RollDiceWithStatAsync(string value, StatType statType)
+    [Command("stat")]
+    [Description("Rolls a default 2d6 dice and adds your stat modifier")]
+    public async Task<IResult> RollDiceWithStatAsync(StatType statType, string value = "2d6")
     {
         var character = await _characterService.GetCharacterFromUserAsync(_context.User);
 
@@ -56,6 +57,20 @@ public class DiceRollCommand : CommandGroup
         var roll = _rollService.RollWithStat(value, character.Stats.Find(s => s.StatType == statType)!);
 
         return await ReplyWithRoll(roll, statType);
+    }
+
+    [Command("damage")]
+    [Description("Rolls your respective classes damage dice")]
+    public async Task<IResult> RollDamageDiceAsync(string value = "")
+    {
+        var character = await _characterService.GetCharacterFromUserAsync(_context.User);
+        
+        if (character is null)
+            return await ReplyWithErrorAsync("You must have a character to roll for damage. Try using /character create");
+
+        var roll = _rollService.Roll($"{character.Class.Damage}+{value}");
+
+        return await ReplyWithRoll(roll, null);
     }
 
     private async Task<Result> ReplyWithFailureAsync()
@@ -86,10 +101,10 @@ public class DiceRollCommand : CommandGroup
         var total = roll.Total;
         var rollText = new StringBuilder($"{roll.Representation}\n\n");
 
-        if (roll.Rolls.Count > 1)
+        if (roll.Rolls.Count > 0 && !roll.Rolls.First().Representation.StartsWith("d"))
         {
             rollText.AppendLine($"Total Roll: {total}\n");
-            rollText.Append($"{roll.ToString()}={total}");
+            rollText.Append($"{roll}={total}");
         }
         else
         {

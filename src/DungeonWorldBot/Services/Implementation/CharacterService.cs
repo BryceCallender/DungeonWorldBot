@@ -25,6 +25,7 @@ public class CharacterService : ICharacterService
             .Include(c => c.Stats)
             .Include(c => c.Bonds)
             .Include(c => c.Inventory)
+            .ThenInclude(i => i.Items)
             .FirstOrDefaultAsync(c => c.ID == user.ID);
     }
 
