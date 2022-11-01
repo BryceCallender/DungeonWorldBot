@@ -60,15 +60,20 @@ public class DiceRollCommand : CommandGroup
     }
 
     [Command("damage")]
-    [Description("Rolls your respective classes damage dice")]
-    public async Task<IResult> RollDamageDiceAsync(string value = "")
+    [Description("Rolls your respective classes damage dice. Can also add on modifiers as needed.")]
+    public async Task<IResult> RollDamageDiceAsync(string modifiers = "")
     {
         var character = await _characterService.GetCharacterFromUserAsync(_context.User);
         
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to roll for damage. Try using /character create");
 
-        var roll = _rollService.Roll($"{character.Class.Damage}+{value}");
+        var rollString = $"{character.Class.Damage}";
+        if (modifiers.Length > 0)
+        {
+            rollString += $"+{modifiers}";
+        } 
+        var roll = _rollService.Roll(rollString);
 
         return await ReplyWithRoll(roll, null);
     }
