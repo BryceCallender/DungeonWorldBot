@@ -19,7 +19,6 @@ using DungeonWorldBot.Interactions;
 using DungeonWorldBot.Services.Interactivity;
 using Remora.Commands.Groups;
 using DungeonWorldBot.Services.Implementation;
-using System;
 
 namespace DungeonWorldBot.Commands;
 
@@ -795,6 +794,64 @@ public class CharacterCommand : CommandGroup
         });
 
         return await _feedbackService.SendContextualEmbedAsync(embed, options, this.CancellationToken);
+    }
+
+    [Command("damage")]
+    public async Task<IResult> DamagePlayer(
+        [Description("The user to apply damage to.")]
+        IUser user,
+        [Description("Amount to damage. Can be a dice roll or just flat damage")]
+        string damage)
+    {
+        var character = await _characterService.GetCharacterFromUserAsync(user);
+        if (character is null)
+        {
+            return Result.FromError<string>("User does not exist or have a current character");
+        }
+
+        var roll = _rollService.Roll(damage);
+        await _characterService.Damage(character, roll.Total);
+
+        return await _feedbackService.SendContextualEmbedAsync(
+            new Embed(
+                Title: $"Damaged!",
+                Description: $"{character.Name} took {roll.Total} damage!",
+                Colour: _feedbackService.Theme.Primary
+            ),
+            ct: CancellationToken
+        );
+    }
+    
+    [Command("heal")]
+    public async Task<IResult> HealPlayer(
+        [Description("The user to apply healing to.")]
+        IUser user,
+        [Description("Amount to heal. Can be a dice roll or left blank to full heal")]
+        string? heal = "")
+    {
+        var character = await _characterService.GetCharacterFromUserAsync(user);
+        if (character is null)
+        {
+            return Result.FromError<string>("User does not exist or have a current character");
+        }
+
+        var amount = 999;
+        if (!string.IsNullOrEmpty(heal))
+        {
+            var roll = _rollService.Roll(heal);
+            amount = roll.Total;
+        }
+        
+        await _characterService.Heal(character, amount);
+
+        return await _feedbackService.SendContextualEmbedAsync(
+            new Embed(
+                Title: $"Healed!",
+                Description: $"{character.Name} was {(amount >= 999 ? "fully healed" : $"healed for {amount} HP")}",
+                Colour: _feedbackService.Theme.Primary
+            ),
+            ct: CancellationToken
+        );
     }
 
     private async Task<Result> ReplyWithFailureAsync()
