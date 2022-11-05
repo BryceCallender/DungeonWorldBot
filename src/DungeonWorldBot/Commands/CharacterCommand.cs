@@ -19,7 +19,6 @@ using DungeonWorldBot.Interactions;
 using DungeonWorldBot.Services.Interactivity;
 using Remora.Commands.Groups;
 using DungeonWorldBot.Services.Implementation;
-using System;
 
 namespace DungeonWorldBot.Commands;
 
@@ -33,7 +32,6 @@ public class CharacterCommand : CommandGroup
     private readonly IDiscordRestUserAPI _userAPI;
     private readonly IDiscordRestGuildAPI _guildAPI;
     private readonly IRollService _rollService;
-    private readonly Random _random;
 
     public CharacterCommand(
         ICommandContext context,
@@ -42,8 +40,7 @@ public class CharacterCommand : CommandGroup
         InteractivityService interactivityService, 
         IDiscordRestUserAPI userAPI,
         IDiscordRestGuildAPI guildAPI,
-        IRollService rollService,
-        Random random)
+        IRollService rollService)
     {
         _context = context;
         _feedbackService = feedbackService;
@@ -52,7 +49,6 @@ public class CharacterCommand : CommandGroup
         _interactivityService = interactivityService;
         _userAPI = userAPI;
         _rollService = rollService;
-        _random = random;
     }
 
     [Command("create")]
@@ -357,7 +353,7 @@ public class CharacterCommand : CommandGroup
                     items.Add(item7);
                     break;
                 case 2:
-                    ItemService.setItem(ref item6, "Pouch of coins", Roll(1, 10).Sum(), 0);
+                    ItemService.setItem(ref item6, "Coins", _rollService.Roll("1d10").Total, 0);
                     items.Add(item6);
                     break;
             };
@@ -535,7 +531,7 @@ public class CharacterCommand : CommandGroup
                     items.Add(item5);
                     break;
                 case 3:
-                    ItemService.setItem(ref item5, $"A Tropy from a recent kill worth {Roll(4, 8).Sum()} coins", 1, 1);
+                    ItemService.setItem(ref item5, $"A Tropy from a recent kill worth {_rollService.Roll("4d8").Total} coins", 1, 1);
                     items.Add(item5);
                     break;
             };
@@ -668,7 +664,7 @@ public class CharacterCommand : CommandGroup
         await _feedbackService.SendPrivateEmbedAsync(userChannel, embed);
 
 
-        //await _characterService.AddCharacterAsync(character);
+        await _characterService.AddCharacterAsync(character);
 
         var embedEnd = new Embed
         {
@@ -883,17 +879,5 @@ public class CharacterCommand : CommandGroup
             error,
             ct: CancellationToken
         );
-    }
-
-    private List<int> Roll(int rollCount, int faces)
-    {
-        var results = new List<int>();
-
-        for (var i = 0; i < rollCount; i++)
-        {
-            results.Add(_random.Next(1, faces));
-        }
-
-        return results;
     }
 }
