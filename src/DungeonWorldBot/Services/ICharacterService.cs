@@ -16,5 +16,9 @@ public interface ICharacterService
 
     Task LevelUp(List<Character> characters);
 
+    Task Heal(Character user, int amount);
+
+    Task Damage(Character user, int amount);
+
     Task BondWith(Character user, Character bonder);
 }

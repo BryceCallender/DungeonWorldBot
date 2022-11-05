@@ -64,6 +64,32 @@ public class CharacterService : ICharacterService
 
         await _dungeonWorldContext.SaveChangesAsync();
     }
+    
+    public async Task Damage(Character user, int amount)
+    {
+        user.Health.CurrentHP -= amount;
+        if (user.Health.CurrentHP < 0)
+        {
+            user.Health.CurrentHP = 0;
+        }
+        
+        await _dungeonWorldContext.SaveChangesAsync();
+    }
+
+    public async Task Heal(Character user, int amount)
+    {
+        var health = user.Health;
+        if (health.CurrentHP + amount > health.MaxHP)
+        {
+            health.CurrentHP = health.MaxHP;
+        }
+        else
+        {
+            user.Health.CurrentHP += amount;
+        }
+        
+        await _dungeonWorldContext.SaveChangesAsync();
+    }
 
     public List<Character> GetCharacters()
     {
