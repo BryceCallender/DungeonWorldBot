@@ -10,6 +10,8 @@ public class Roll
 
     public List<SubRoll> Rolls { get; set; } = new();
 
+    public bool HasMultiple { get; set; } = false;
+
     public override string ToString()
     {
         var result = new StringBuilder();
