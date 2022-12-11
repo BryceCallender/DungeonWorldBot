@@ -680,9 +680,20 @@ public class CharacterCommand : CommandGroup
 
 
     [Command("profile")]
-    public async Task<IResult> ShowCharacterSheetAsync()
+    public async Task<IResult> ShowCharacterSheetAsync(
+        [Description("The user to get profile of. Don't specify a user to see your own.")]
+        IUser? user)
     {
-        var character = await _characterService.GetCharacterFromUserAsync(_context.User);
+        Character? character;
+        if (user != null)
+        {
+            character = await _characterService.GetCharacterFromUserAsync(user);
+        }
+        else
+        {
+            character = await _characterService.GetCharacterFromUserAsync(_context.User);
+        }
+        
         if (character is null)
         {
             return await ReplyWithFailureAsync();
