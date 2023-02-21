@@ -682,7 +682,7 @@ public class CharacterCommand : CommandGroup
     [Command("profile")]
     public async Task<IResult> ShowCharacterSheetAsync(
         [Description("The user to get profile of. Don't specify a user to see your own.")]
-        IUser? user)
+        IUser? user = null)
     {
         Character? character;
         if (user != null)

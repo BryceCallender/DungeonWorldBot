@@ -25,7 +25,7 @@ public class RollService : IRollService
     
     private Roll ParseRoll(string roll)
     {
-        var die = roll.ToLower().Split("+", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+        var die = roll.Replace("1d", "d").ToLower().Split("+", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
         var rollResult = new Roll { Representation = roll };
 
         foreach (var dice in die)
@@ -37,6 +37,7 @@ public class RollService : IRollService
                 var sum = results.Sum();
                 rollResult.Total += sum;
                 rollResult.Rolls.Add(new SubRoll(dice, sum, results));
+                rollResult.HasMultiple |= parsedDie.count > 1;
             }
             else
             {
@@ -47,6 +48,7 @@ public class RollService : IRollService
                 
                 rollResult.Total += modifier;
                 rollResult.Rolls.Add(new SubRoll(modifier.ToString(), modifier, new List<int> { modifier }));
+                rollResult.HasMultiple |= rollResult.Rolls.Count > 1;
             }
         }
 

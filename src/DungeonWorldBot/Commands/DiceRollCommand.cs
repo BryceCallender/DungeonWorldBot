@@ -106,7 +106,7 @@ public class DiceRollCommand : CommandGroup
         var total = roll.Total;
         var rollText = new StringBuilder($"{roll.Representation}\n\n");
 
-        if (roll.Rolls.Count > 0 && !roll.Rolls.First().Representation.StartsWith("d"))
+        if (roll.HasMultiple)
         {
             rollText.AppendLine($"Total Roll: {total}\n");
             rollText.Append($"{roll}={total}");
