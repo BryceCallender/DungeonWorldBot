@@ -638,19 +638,14 @@ public class CharacterCommand : CommandGroup
         embedFields.Add(new EmbedField(Name: "Alignment", Value: character.Alignment.ToString()));
 
         embedFields.Add(new EmbedField(Name: "Total Armor", Value: character.ArmorRating.ToString()));
-
         embedFields.Add(new EmbedField(Name: "Inventory", Value: "--------------"));
         embedFields.AddRange(character.Inventory.Items.Select(s => new EmbedField(Name: s.Name, Value: s.Amount.ToString(), true)).ToArray());
-
-        /*
-        if(character.Class.Type == ClassType.Necromancer)
-        {
-            embedFields.Add(new EmbedField(Name: "Hexed Canopic Jars", Value: "--------------"));
-            embedFields.AddRange(character.Inventory.Items.Select(s => new EmbedField(Name: s.Name, Value: s.Amount.ToString(), true)).ToArray());
-
-
-        }*/
         
+        // if(character.Class.Type == ClassType.Necromancer)
+        // {
+        //     embedFields.Add(new EmbedField(Name: "Hexed Canopic Jars", Value: "--------------"));
+        //     embedFields.AddRange(character.Inventory.Items.Select(s => new EmbedField(Name: s.Name, Value: s.Amount.ToString(), true)).ToArray());
+        // }
 
         var embed = new Embed 
         {
@@ -682,7 +677,7 @@ public class CharacterCommand : CommandGroup
     [Command("profile")]
     public async Task<IResult> ShowCharacterSheetAsync(
         [Description("The user to get profile of. Don't specify a user to see your own.")]
-        IUser? user)
+        IUser? user = null)
     {
         Character? character;
         if (user != null)
@@ -710,13 +705,8 @@ public class CharacterCommand : CommandGroup
         embedFields.Add(new EmbedField(Name: "Total Armor", Value: character.ArmorRating.ToString()));
         embedFields.Add(new EmbedField(Name: "Bonds", Value: 
             character.Bonds?.Count > 0 ? string.Join(',', character.Bonds.Select(b => b.TargetName)) : "None"));
-        embedFields.Add(new EmbedField(Name: "Inventory", Value: character.Inventory?.Items?.Count > 0 ? "--------------" : "Empty"));
-        
-        if (character.Inventory?.Items?.Count > 0)
-        {
-            embedFields.AddRange(character.Inventory.Items.Select(s => new EmbedField(Name: s.Name, Value: s.Amount.ToString(), true)).ToArray());
 
-        }
+        //Add advanced moves
         
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
