@@ -15,6 +15,8 @@ using Remora.Results;
 using Remora.Discord.Commands.Feedback.Messages;
 using System.Drawing;
 using DungeonWorldBot.Services.Implementation;
+using Remora.Discord.API.Abstractions.Objects;
+using Remora.Discord.Pagination.Extensions;
 
 namespace DungeonWorldBot.Commands;
 
@@ -26,6 +28,8 @@ public class InventoryCommand : CommandGroup
     private readonly ICharacterService _characterService;
     private readonly IInventoryService _inventoryService;
 
+    private const int PAGE_SIZE = 20;
+
     public InventoryCommand( 
         ICommandContext commandContext, 
         FeedbackService feedbackService,
@@ -36,6 +40,39 @@ public class InventoryCommand : CommandGroup
         _feedbackService = feedbackService;
         _characterService = characterService;
         _inventoryService = inventoryService;
+    }
+
+    [Command("show")]
+    [Description("Shows a paginated list of all your inventory items")]
+    public async Task<IResult> DisplayInventory()
+    {
+        var character = await _characterService.GetCharacterFromUserAsync(_context.User);
+
+        if (character is null)
+            return new Result();
+
+        var inventoryEmbeds = new List<Embed>();
+
+        var coinIndex = character.Inventory.Items!.FindIndex(i => i.Name.Equals("Coins"));
+        var coinAmount = character.Inventory.Items[coinIndex].Amount;
+        character.Inventory.Items.RemoveAt(coinIndex);
+        var groupedInventory = character.Inventory.Items!.Chunk(PAGE_SIZE);
+
+        foreach (var inventoryGroup in groupedInventory)
+        {
+            var embedFields = inventoryGroup.Select(item => new EmbedField(Name: item.Name.ToLower(), Value: item.Amount.ToString(), IsInline: true)).Cast<IEmbedField>().ToList();
+
+            inventoryEmbeds.Add(new Embed(
+                Title: "Inventory",
+                Description: $"Coins (🪙): {coinAmount}",
+                Colour: _feedbackService.Theme.Primary,
+                Fields: embedFields));
+        }
+
+        return await _feedbackService.SendContextualPaginatedMessageAsync(
+            _context.User.ID,
+            inventoryEmbeds
+        );
     }
     
     [Command("store")]
@@ -53,15 +90,15 @@ public class InventoryCommand : CommandGroup
             return await ReplyWithErrorAsync($"You cannot add a negative amount of an item to your inventory");
 
 
-        if (character.Inventory.Items.Exists(item => item.Name == itemName))
-            character.Inventory.Items.Find(item => item.Name == itemName).Amount += amount;
+        if (character.Inventory.Items.Exists(item => item.Name.Equals(itemName, StringComparison.CurrentCultureIgnoreCase)))
+            character.Inventory.Items.Single(item => item.Name.Equals(itemName, StringComparison.CurrentCultureIgnoreCase)).Amount += amount;
         else
-            character.Inventory.Items.Add(new Item { Name = itemName, Amount = amount });
+            character.Inventory.Items.Add(new Item { Name = itemName.ToLower(), Amount = amount });
 
         await _inventoryService.SaveInventoryAsync();
 
 
-        return await _feedbackService.SendContextualMessageAsync(new FeedbackMessage($"You have successfully added {amount} {itemName} to your inventory", Color.Green));
+        return await _feedbackService.SendContextualMessageAsync(new FeedbackMessage($"You have successfully added {amount} {itemName.ToLower()} to your inventory", Color.Green));
     }
 
     [Command("remove")]
@@ -78,29 +115,33 @@ public class InventoryCommand : CommandGroup
             return await ReplyWithErrorAsync("You don't have any items to remove");
 
 
-        if (character.Inventory.Items.Exists(item => item.Name == itemName))
+        if (character.Inventory.Items.Exists(item => item.Name.Equals(itemName, StringComparison.CurrentCultureIgnoreCase)))
         {
-            var foundItem = character.Inventory.Items.Find(item => item.Name == itemName);
+            var foundItem = character.Inventory.Items.Single(item => item.Name.Equals(itemName, StringComparison.CurrentCultureIgnoreCase));
 
             if (amount < 0)
+            {
                 character.Inventory.Items.Remove(foundItem);
+            }
             else
             {
                 foundItem.Amount -= amount;
-                if(foundItem.Amount < 0)
-                    character.Inventory.Items.RemoveAll(item => item.Name == foundItem.Name);
+                if (foundItem.Amount < 0)
+                    character.Inventory.Items.RemoveAll(item => item.Name.Equals(itemName, StringComparison.CurrentCultureIgnoreCase));
             }      
 
         }
         else
+        {
             return await ReplyWithErrorAsync($"You do not have {itemName} in your inventory");
+        }
 
         await _inventoryService.SaveInventoryAsync();
 
         if (amount < 0)
-            return await _feedbackService.SendContextualMessageAsync(new FeedbackMessage($"You have successfully removed {itemName} from your inventory", Color.Green));
+            return await _feedbackService.SendContextualMessageAsync(new FeedbackMessage($"You have successfully removed {itemName.ToLower()} from your inventory", Color.Green));
         else
-            return await _feedbackService.SendContextualMessageAsync(new FeedbackMessage($"You have successfully removed {amount} {itemName} from your inventory", Color.Green));
+            return await _feedbackService.SendContextualMessageAsync(new FeedbackMessage($"You have successfully removed {amount} {itemName.ToLower()} from your inventory", Color.Green));
     }
 
     [Command("receiveCoins")]
@@ -117,8 +158,8 @@ public class InventoryCommand : CommandGroup
         if(amount < 0)
             return await ReplyWithErrorAsync($"You cannot add a negative amount of coins to your inventory");
 
-        if (character.Inventory.Items.Exists(item => item.Name == "Coins"))
-            character.Inventory.Items.Find(item => item.Name == "Coins").Amount += amount;
+        if (character.Inventory.Items.Exists(item => item.Name.Equals("Coins", StringComparison.CurrentCultureIgnoreCase)))
+            character.Inventory.Items.Single(item => item.Name.Equals("Coins", StringComparison.CurrentCultureIgnoreCase)).Amount += amount;
         else
             character.Inventory.Items.Add(new Item { Name = "Coins", Amount = amount });
 
@@ -140,9 +181,9 @@ public class InventoryCommand : CommandGroup
             return await ReplyWithErrorAsync("Your Inventory Doesn't Exist");
 
 
-        if (character.Inventory.Items.Exists(item => item.Name == "Coins"))
+        if (character.Inventory.Items.Exists(item => item.Name.Equals("Coins", StringComparison.CurrentCultureIgnoreCase)))
         {
-            var foundItem = character.Inventory.Items.Find(item => item.Name == "Coins");
+            var foundItem = character.Inventory.Items.Single(item => item.Name.Equals("Coins", StringComparison.CurrentCultureIgnoreCase));
 
             if (amount < 0)
                 return await ReplyWithErrorAsync($"You cannot remove a negative amount of coins from your inventory");

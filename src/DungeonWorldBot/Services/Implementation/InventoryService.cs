@@ -19,6 +19,7 @@ namespace DungeonWorldBot.Services.Implementation
         {
             _dungeonWorldContext = dungeonWorldContext;
         }
+        
         public async Task SaveInventoryAsync()
         {
             await _dungeonWorldContext.SaveChangesAsync();
