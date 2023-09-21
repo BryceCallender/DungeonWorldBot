@@ -54,8 +54,12 @@ public class InventoryCommand : CommandGroup
         var inventoryEmbeds = new List<Embed>();
 
         var coinIndex = character.Inventory.Items!.FindIndex(i => i.Name.Equals("Coins"));
-        var coinAmount = character.Inventory.Items[coinIndex].Amount;
-        character.Inventory.Items.RemoveAt(coinIndex);
+        var coinAmount = coinIndex < 0 ? 0 : character.Inventory.Items[coinIndex].Amount;
+        if (coinIndex >= 0)
+        {
+            character.Inventory.Items.RemoveAt(coinIndex);
+        }
+        
         var groupedInventory = character.Inventory.Items!.Chunk(PAGE_SIZE);
 
         foreach (var inventoryGroup in groupedInventory)
