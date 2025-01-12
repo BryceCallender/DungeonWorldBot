@@ -6,5 +6,6 @@ public enum ClassType
     Paladin,
     Necromancer,
     Channeler,
-    Slayer
+    Slayer,
+    Druid
 }

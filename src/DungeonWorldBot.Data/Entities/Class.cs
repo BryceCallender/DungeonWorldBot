@@ -22,6 +22,7 @@ public class Class
                 ClassType.Necromancer => "d4",
                 ClassType.Paladin => "d10",
                 ClassType.Slayer => "d10",
+                ClassType.Druid => "d6",
                 _ => "d6"
             };
         }
@@ -38,6 +39,7 @@ public class Class
                 ClassType.Necromancer => 4,
                 ClassType.Paladin => 10,
                 ClassType.Slayer => 8,
+                ClassType.Druid => 6,
                 _ => 4
             };
         }
