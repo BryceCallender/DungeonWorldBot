@@ -7,6 +7,8 @@ namespace DungeonWorldBot.Services;
 public interface ICharacterService
 {
     Task<Character?> GetCharacterFromUserAsync(IUser user);
+    
+    Task<Character?> GetCharacterFromUserAsync(Snowflake userId);
 
     Task AddCharacterAsync(Character character);
     

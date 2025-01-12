@@ -9,6 +9,6 @@ namespace DungeonWorldBot.Services
     {
         Action<Message> OnMessageAdded { get; set; }
         IDialogueStep NextStep { get; }
-        Task<bool> ProcessStep(InteractivityService interactivity, Snowflake channel, IUser user);
+        Task<bool> ProcessStep(InteractivityService interactivity, Snowflake channel, Snowflake userId);
     }
 }

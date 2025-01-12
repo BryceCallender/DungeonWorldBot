@@ -29,7 +29,7 @@ namespace DungeonWorldBot.Services.Implementation.Steps
             _edited = edited;
         }
 
-        public override async Task<bool> ProcessStep(InteractivityService interactivity, Snowflake channel, IUser user)
+        public override async Task<bool> ProcessStep(InteractivityService interactivity, Snowflake channel, Snowflake userId)
         {
 
             var embedFields = new List<IEmbedField>
@@ -56,7 +56,7 @@ namespace DungeonWorldBot.Services.Implementation.Steps
 
             while (true)
             {
-                var message = await _feedbackService.SendPrivateEmbedAsync(user.ID, embed);
+                var message = await _feedbackService.SendPrivateEmbedAsync(userId, embed);
                 if (!message.IsSuccess)
                     return true;
 

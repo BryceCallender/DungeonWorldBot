@@ -19,6 +19,7 @@ using DungeonWorldBot.Interactions;
 using DungeonWorldBot.Services.Interactivity;
 using Remora.Commands.Groups;
 using DungeonWorldBot.Services.Implementation;
+using Remora.Discord.Commands.Extensions;
 
 namespace DungeonWorldBot.Commands;
 
@@ -54,14 +55,13 @@ public class CharacterCommand : CommandGroup
     [Command("create")]
     [Description("Create your character for the campaign")]
     public async Task<IResult> CreateCharacterAsync()
-    {
-        /*var available = await _characterService.GetCharacterFromUserAsync(_context.User);
-        if (available is not null)
+    { 
+        if (!_context.TryGetUserID(out var userId))
         {
-            return await ReplyWithCharacterFailureAsync();
-        }*/
+           throw new NotSupportedException();
+        }
 
-        var userChannel = _context.User.ID;
+        var userChannel = userId;
 
         await _feedbackService.SendPrivateMessageAsync(userChannel, new FeedbackMessage("No character exists, starting character creation.", Color.Green));
 
@@ -614,9 +614,12 @@ public class CharacterCommand : CommandGroup
             };
         };
 
-
+        if (!_context.TryGetUserID(out var userID))
+        {
+            throw new NotSupportedException();
+        }
         
-        var inputDialogueHandler = new DialogueHandler(_interactivityService, _context.User, nameStep, _userAPI);
+        var inputDialogueHandler = new DialogueHandler(_interactivityService, userID, nameStep, _userAPI);
 
         var succeeded = await inputDialogueHandler.ProcessDialogue(_feedbackService).ConfigureAwait(false);
 
@@ -686,7 +689,12 @@ public class CharacterCommand : CommandGroup
         }
         else
         {
-            character = await _characterService.GetCharacterFromUserAsync(_context.User);
+            if (!_context.TryGetUserID(out var userID))
+            {
+                throw new NotSupportedException();
+            }
+            
+            character = await _characterService.GetCharacterFromUserAsync(userID);
         }
         
         if (character is null)
@@ -725,7 +733,12 @@ public class CharacterCommand : CommandGroup
         [Description("The user to bond with")]
         IUser user)
     {
-        var character = await _characterService.GetCharacterFromUserAsync(_context.User);
+        if (!_context.TryGetUserID(out var userID))
+        {
+            throw new NotSupportedException();
+        }
+        
+        var character = await _characterService.GetCharacterFromUserAsync(userID);
         var bondTo = await _characterService.GetCharacterFromUserAsync(user);
 
         if (character is null || bondTo is null)
@@ -735,67 +748,72 @@ public class CharacterCommand : CommandGroup
 
         await _characterService.BondWith(character, bondTo);
         
+        if (!_context.TryGetChannelID(out var channelId))
+        {
+            throw new NotSupportedException();
+        }
+        
         return await _feedbackService.SendNeutralAsync(
-            _context.ChannelID,
+            channelId,
             $"You are now bonded with {bondTo.Name}"
         );
     }
     
-    [Command("alignment")]
-    [SuppressInteractionResponse(true)]
-    public async Task<IResult> ChangeAlignment(
-        [Description("The user to change the alignment of. Leave empty if changing you're own")]
-        IUser? user = null)
-    {
-        if (user is not null)
-        {
-            var rolesResult = await _guildAPI.GetGuildRolesAsync(_context.GuildID.Value);
-            
-            if (!rolesResult.IsDefined(out var guildRoles))
-                return Result<(IRole, IRole[])>.FromError(rolesResult.Error!);
-            
-            var memberResult = await _guildAPI.GetGuildMemberAsync(_context.GuildID.Value, _context.User.ID);
-
-            if (!memberResult.IsDefined(out var member))
-                return Result<(IRole, IRole[])>.FromError(memberResult.Error!);
-
-            var dmRole = guildRoles.SingleOrDefault(r => r.Name.Equals("DM"));
-
-            if (dmRole == null || !member.Roles.Contains(dmRole.ID))
-            {
-                return Result.FromError<string>("Only a DM can change another players alignment");
-            }
-        }
-        
-        user ??= _context.User;
-
-        var character = await _characterService.GetCharacterFromUserAsync(user);
-        if (character is null)
-        {
-            return Result.FromError<string>("User does not exist or have a current character");
-        }
-        
-        var embed = new Embed(Description: "Select a alignment below.");
-        var options = new FeedbackMessageOptions(MessageComponents: new IMessageComponent[]
-        {
-            new ActionRowComponent(new[]
-            {
-                new SelectMenuComponent
-                (
-                    CustomIDHelpers.CreateSelectMenuID("alignment-dropdown"),
-                    Enums.GetValues<Alignment>()
-                        .Where(x => x != Alignment.Unknown)
-                        .Select(x => new SelectOption(Label: x.ToString(), Value: x.ToString()))
-                        .ToArray(),
-                    "Alignment...",
-                    1,
-                    1
-                )
-            })
-        });
-
-        return await _feedbackService.SendContextualEmbedAsync(embed, options, this.CancellationToken);
-    }
+    // [Command("alignment")]
+    // [SuppressInteractionResponse(true)]
+    // public async Task<IResult> ChangeAlignment(
+    //     [Description("The user to change the alignment of. Leave empty if changing you're own")]
+    //     IUser? user = null)
+    // {
+    //     if (user is not null)
+    //     {
+    //         var rolesResult = await _guildAPI.GetGuildRolesAsync(_context.GuildID.Value);
+    //         
+    //         if (!rolesResult.IsDefined(out var guildRoles))
+    //             return Result<(IRole, IRole[])>.FromError(rolesResult.Error!);
+    //         
+    //         var memberResult = await _guildAPI.GetGuildMemberAsync(_context.GuildID.Value, _context.User.ID);
+    //
+    //         if (!memberResult.IsDefined(out var member))
+    //             return Result<(IRole, IRole[])>.FromError(memberResult.Error!);
+    //
+    //         var dmRole = guildRoles.SingleOrDefault(r => r.Name.Equals("DM"));
+    //
+    //         if (dmRole == null || !member.Roles.Contains(dmRole.ID))
+    //         {
+    //             return Result.FromError<string>("Only a DM can change another players alignment");
+    //         }
+    //     }
+    //     
+    //     user ??= _context.User;
+    //
+    //     var character = await _characterService.GetCharacterFromUserAsync(user);
+    //     if (character is null)
+    //     {
+    //         return Result.FromError<string>("User does not exist or have a current character");
+    //     }
+    //     
+    //     var embed = new Embed(Description: "Select a alignment below.");
+    //     var options = new FeedbackMessageOptions(MessageComponents: new IMessageComponent[]
+    //     {
+    //         new ActionRowComponent(new[]
+    //         {
+    //             new SelectMenuComponent
+    //             (
+    //                 CustomIDHelpers.CreateSelectMenuID("alignment-dropdown"),
+    //                 Enums.GetValues<Alignment>()
+    //                     .Where(x => x != Alignment.Unknown)
+    //                     .Select(x => new SelectOption(Label: x.ToString(), Value: x.ToString()))
+    //                     .ToArray(),
+    //                 "Alignment...",
+    //                 1,
+    //                 1
+    //             )
+    //         })
+    //     });
+    //
+    //     return await _feedbackService.SendContextualEmbedAsync(embed, options, this.CancellationToken);
+    // }
 
     [Command("damage")]
     public async Task<IResult> DamagePlayer(

@@ -25,7 +25,7 @@ namespace DungeonWorldBot.Services.Implementation.Steps
 
         public abstract IDialogueStep NextStep { get; }
 
-        public abstract Task<bool> ProcessStep(InteractivityService interactivity, Snowflake channel, IUser user);
+        public abstract Task<bool> ProcessStep(InteractivityService interactivity, Snowflake channel, Snowflake userId);
 
         protected async Task TryAgain(Snowflake channel, string problem)
         {

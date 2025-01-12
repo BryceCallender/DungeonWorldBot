@@ -1,4 +1,5 @@
-﻿using DungeonWorldBot.Data;
+﻿using DiceNotation;
+using DungeonWorldBot.Data;
 using DungeonWorldBot.Extensions;
 using DungeonWorldBot.Services;
 using DungeonWorldBot.Services.Implementation;
@@ -27,7 +28,7 @@ public class Program
         
         var slashService = services.GetRequiredService<SlashService>();
 
-        var checkSlashSupport = slashService.SupportsSlashCommands();
+        var checkSlashSupport = await slashService.UpdateSlashCommandsAsync();
         if (!checkSlashSupport.IsSuccess)
         {
             log.LogWarning
@@ -84,6 +85,7 @@ public class Program
                     .AddScoped<ICharacterService, CharacterService>()
                     .AddScoped<IRollService, RollService>()
                     .AddScoped<IInventoryService, InventoryService>()
+                    .AddScoped<IDiceParser, DiceParser>()
                     .AddScoped<InteractivityService>()
                     .AddRemoraServices();
             }

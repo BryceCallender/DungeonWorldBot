@@ -20,9 +20,8 @@ public static class ServiceExtensions
             .AddDiscordCommands(enableSlash: true)
             .AddCommands()
             .AddCommands(asm)
-            .AddPagination()
-            .AddPostExecutionEvent<PostCommandHandler>()
-            .AddInteractionGroup<CharacterInteractions>();
+            .AddPagination();
+            //.AddInteractionGroup<CharacterInteractions>();
 
         return services;
     }

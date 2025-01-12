@@ -6,9 +6,13 @@ using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Abstractions.Rest;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Contexts;
+using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats;
+using SixLabors.ImageSharp.Formats.Jpeg;
+using SixLabors.ImageSharp.Formats.Png;
 
 namespace DungeonWorldBot.Commands;
 
@@ -54,14 +58,19 @@ public class DungeonWorldCommands : CommandGroup
     public async Task<IResult> ShowMapAsync()
     {
         using var imageStream = new MemoryStream();
-        using var image = Image.Load("Assets/world.png", out var format);
+        using var image = await Image.LoadAsync("Assets/world.jpg");
 
-        await image.SaveAsync(imageStream, format);
+        await image.SaveAsync(imageStream, JpegFormat.Instance);
         
         imageStream.Seek(0, SeekOrigin.Begin);
 
+        if (!_context.TryGetChannelID(out var channelId))
+        {
+            return Result.Success;
+        }
+
         return await _channels.CreateMessageAsync(
-            _context.ChannelID,
+            channelId,
             attachments: new OneOf<FileData, IPartialAttachment>[]
             {
                 new FileData("world.png", imageStream)

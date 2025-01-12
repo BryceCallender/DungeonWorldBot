@@ -13,7 +13,7 @@ namespace DungeonWorldBot.Interactions
     public class DialogueHandler
     {
         private readonly InteractivityService _interactivity;
-        private readonly IUser _user;
+        private readonly Snowflake _userId;
         private IDialogueStep _currentStep;
         private readonly IDiscordRestUserAPI _userAPI;
 
@@ -23,12 +23,12 @@ namespace DungeonWorldBot.Interactions
         
         public DialogueHandler(
             InteractivityService interactivity,
-            IUser user, 
+            Snowflake userId, 
             IDialogueStep startingStep,
             IDiscordRestUserAPI userAPI)
         {
             _interactivity = interactivity;
-            _user = user;   
+            _userId = userId;   
             _currentStep = startingStep;
             _userAPI = userAPI;
         }
@@ -39,7 +39,7 @@ namespace DungeonWorldBot.Interactions
             {
                 _currentStep.OnMessageAdded += (message) => _messages.Add(message);
                 
-                var getUserDM = await _userAPI.CreateDMAsync(_user.ID, CancellationToken.None);
+                var getUserDM = await _userAPI.CreateDMAsync(_userId, CancellationToken.None);
                 if (!getUserDM.IsSuccess)
                 {
                     return true;
@@ -48,7 +48,7 @@ namespace DungeonWorldBot.Interactions
                 var dm = getUserDM.Entity;
                 ChannelID = dm.ID;
                 
-                var canceled = await _currentStep.ProcessStep(_interactivity, ChannelID, _user).ConfigureAwait(false);
+                var canceled = await _currentStep.ProcessStep(_interactivity, ChannelID, _userId).ConfigureAwait(false);
 
                 if (canceled)
                 {

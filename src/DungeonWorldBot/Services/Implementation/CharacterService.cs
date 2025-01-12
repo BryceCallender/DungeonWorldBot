@@ -28,6 +28,18 @@ public class CharacterService : ICharacterService
             .ThenInclude(i => i.Items)
             .FirstOrDefaultAsync(c => c.ID == user.ID);
     }
+    
+    public async Task<Character?> GetCharacterFromUserAsync(Snowflake userId)
+    {
+        return await _dungeonWorldContext.Characters
+            .Include(c => c.Class)
+            .Include(c => c.Health)
+            .Include(c => c.Stats)
+            .Include(c => c.Bonds)
+            .Include(c => c.Inventory)
+            .ThenInclude(i => i.Items)
+            .FirstOrDefaultAsync(c => c.ID == userId);
+    }
 
     public async Task AddCharacterAsync(Character character)
     {

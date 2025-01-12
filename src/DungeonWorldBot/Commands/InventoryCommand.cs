@@ -16,6 +16,7 @@ using Remora.Discord.Commands.Feedback.Messages;
 using System.Drawing;
 using DungeonWorldBot.Services.Implementation;
 using Remora.Discord.API.Abstractions.Objects;
+using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Pagination.Extensions;
 
 namespace DungeonWorldBot.Commands;
@@ -46,7 +47,12 @@ public class InventoryCommand : CommandGroup
     [Description("Shows a paginated list of all your inventory items")]
     public async Task<IResult> DisplayInventory()
     {
-        var character = await _characterService.GetCharacterFromUserAsync(_context.User);
+        if (!_context.TryGetUserID(out var userId))
+        {
+            throw new NotSupportedException();
+        }
+        
+        var character = await _characterService.GetCharacterFromUserAsync(userId);
 
         if (character is null)
             return new Result();
@@ -74,7 +80,7 @@ public class InventoryCommand : CommandGroup
         }
 
         return await _feedbackService.SendContextualPaginatedMessageAsync(
-            _context.User.ID,
+            userId,
             inventoryEmbeds
         );
     }
@@ -83,7 +89,12 @@ public class InventoryCommand : CommandGroup
     [Description("Adds an item to your inventory (Careful of the spelling)")]
     public async Task<IResult> StoreInInventoryAsync(string itemName, int amount)
     {
-        var character = await _characterService.GetCharacterFromUserAsync(_context.User);
+        if (!_context.TryGetUserID(out var userId))
+        {
+            throw new NotSupportedException();
+        }
+        
+        var character = await _characterService.GetCharacterFromUserAsync(userId);
 
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to add to its inventory. Try using /character create");
@@ -109,7 +120,12 @@ public class InventoryCommand : CommandGroup
     [Description("Removes an item or specified amount from your inventory (Careful of the spelling)")]
     public async Task<IResult> RemoveInInventoryAsync(string itemName, int amount = -1)
     {
-        var character = await _characterService.GetCharacterFromUserAsync(_context.User);
+        if (!_context.TryGetUserID(out var userId))
+        {
+            throw new NotSupportedException();
+        }
+        
+        var character = await _characterService.GetCharacterFromUserAsync(userId);
 
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to remove from its inventory. Try using /character create");
@@ -152,7 +168,12 @@ public class InventoryCommand : CommandGroup
     [Description("Adds more coins to your inventory")]
     public async Task<IResult> ReceiveInventoryAsync(int amount)
     {
-        var character = await _characterService.GetCharacterFromUserAsync(_context.User);
+        if (!_context.TryGetUserID(out var userId))
+        {
+            throw new NotSupportedException();
+        }
+        
+        var character = await _characterService.GetCharacterFromUserAsync(userId);
 
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to add to its inventory. Try using /character create");
@@ -177,7 +198,12 @@ public class InventoryCommand : CommandGroup
     [Description("Uses the specified amount of coins and takes them out of your inventory")]
     public async Task<IResult> PayFromInventoryAsync(int amount)
     {
-        var character = await _characterService.GetCharacterFromUserAsync(_context.User);
+        if (!_context.TryGetUserID(out var userId))
+        {
+            throw new NotSupportedException();
+        }
+        
+        var character = await _characterService.GetCharacterFromUserAsync(userId);
 
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to add to its inventory. Try using /character create");
