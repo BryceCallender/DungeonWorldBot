@@ -13,6 +13,8 @@ public static class ImageHelper
             ClassType.Channeler => "https://imgur.com/4yUbQDo.png",
             ClassType.Necromancer => "https://imgur.com/bhYjiUH.png",
             ClassType.Slayer => "https://imgur.com/xmsUnY8.png",
+            ClassType.Battlemaster => "https://imgur.com/0VLMlA7.png",
+            ClassType.Druid => "https://imgur.com/nsGQTuy.png",
             _ => ""
         };
     }
