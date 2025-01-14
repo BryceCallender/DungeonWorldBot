@@ -23,6 +23,7 @@ public class Class
                 ClassType.Paladin => "d10",
                 ClassType.Slayer => "d10",
                 ClassType.Druid => "d6",
+                ClassType.Battlemaster => "d8",
                 _ => "d6"
             };
         }
@@ -40,6 +41,7 @@ public class Class
                 ClassType.Paladin => 10,
                 ClassType.Slayer => 8,
                 ClassType.Druid => 6,
+                ClassType.Battlemaster => 10,
                 _ => 4
             };
         }
