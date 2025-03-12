@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Text;
 using DiceNotation;
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Helpers;
 using DungeonWorldBot.Services;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
@@ -119,52 +120,12 @@ public class DiceRollCommand : CommandGroup
 
     private async Task<IResult> ReplyWithRoll(DiceResult roll, StatType? statType)
     {
-        var total = roll.Value;
-        var rollText = new StringBuilder();
-        var rollRepresentation = new StringBuilder();
-        var rollValues = new StringBuilder();
-        
-        foreach (var (index, rollResult) in roll.Results.Index())
-        {
-            rollRepresentation.Append(rollResult.Type);
-            rollValues.Append(rollResult.Value);
-
-            if (index >= roll.Results.Count - 1) 
-                continue;
-            
-            rollRepresentation.Append(" + ");
-            rollValues.Append(" + ");
-        }
-
-        rollText.AppendLine(rollRepresentation.ToString());
-        rollText.AppendLine();
-        if (roll.Results.Count == 1)
-        {
-            rollText.AppendLine($"{total}");
-        }
-        else
-        {
-            rollText.AppendLine($"{rollValues} = {total}");
-        }
-        
-        if (!_context.TryGetUserID(out var userID))
-        {
-            throw new NotSupportedException();
-        }
-        
-        // var avatar = CDN.GetUserAvatarUrl(, imageSize: 4096);
-        //
-        // if (!avatar.IsSuccess)
-        //     avatar = CDN.GetDefaultUserAvatarUrl(userID, imageSize: 4096);
-        //
-        // if (!avatar.IsSuccess)
-        //     return Result.FromError(avatar.Error);
+        var rollText = DiceHelper.BuildDiceResult(roll);
         
         var embed = new Embed(
             Title: $"🎲 {(statType.HasValue ? statType.ToString() : "")} Roll(s)", 
-            Description: rollText.ToString(),
+            Description: rollText,
             Colour: _feedbackService.Theme.Success
-            //Thumbnail: new EmbedThumbnail(avatar.Entity.ToString())
         );
     
         return await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);

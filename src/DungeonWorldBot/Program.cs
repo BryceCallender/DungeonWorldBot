@@ -1,6 +1,7 @@
 ﻿using DiceNotation;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Extensions;
+using DungeonWorldBot.Responder;
 using DungeonWorldBot.Services;
 using DungeonWorldBot.Services.Implementation;
 using DungeonWorldBot.Services.Interactivity;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.Hosting;
 using Remora.Discord.API.Abstractions.Gateway.Commands;
 using Remora.Discord.Commands.Services;
 using Remora.Discord.Gateway;
+using Remora.Discord.Gateway.Extensions;
 using Remora.Discord.Hosting.Extensions;
 
 namespace DungeonWorldBot;
@@ -87,6 +89,7 @@ public class Program
                     .AddScoped<IInventoryService, InventoryService>()
                     .AddScoped<IDiceParser, DiceParser>()
                     .AddScoped<InteractivityService>()
+                    .AddResponder<DiceRollResponder>()
                     .AddRemoraServices();
             }
         )
