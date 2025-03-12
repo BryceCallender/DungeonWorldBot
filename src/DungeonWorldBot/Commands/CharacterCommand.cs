@@ -98,6 +98,7 @@ public class CharacterCommand : CommandGroup
         var item5 = new Item();
         var item6 = new Item();
         var item7 = new Item();
+        var item8 = new Item();
 
 
         statValueList.Add(8);
@@ -109,7 +110,27 @@ public class CharacterCommand : CommandGroup
 
         var editStep = new EndingStep("1. Edit the Name \n2. Edit the Race \n3. Edit the Class \n" +
             "4. Edit the Stats \n5. Edit the Alignment \n6. Edit the Starting Items \n7. No Editing \nPlease select one of these by entering a number.", _feedbackService, null, character, 1, 7);
-        
+
+
+        var druidThirdItemStep = new IntStep("Which set of extra items would you like to have? \n" +
+            "1. Adventuring Gear (5 uses) \n2. Poultices and Herbs (2 uses, slow) \n3. Halfling Pipeleaf (6 uses) \n" +
+            "Please select one of these by entering a number.", _feedbackService, editStep, 1, 3);
+        var druidSecondItemStep = new IntStep("Which of these weapons would you like to have? \n" +
+            "1. Shillelagh (close, One-Hand) \n2. Staff (close, Two-Handed) \n3. Spear (close, thrown) \n" +
+            "Please select one of these by entering a number.", _feedbackService, druidThirdItemStep, 1, 3);
+        var druidFirstItemStep = new IntStep("Which set of defensive items would you like to have? \n" +
+            "1. Hide Armor (+1 armor, worn) \n2. Wooden Shield (+1 Armor, held)\n" +
+            "Please select one of these by entering a number.", _feedbackService, druidSecondItemStep, 1, 2);
+
+        var battlemasterThirdItemStep = new IntStep("Which set of extra items would you like to have? \n" +
+           "1. Bag of Books (5 uses) \n2. Bandages (3 uses, slow) \n" +
+           "Please select one of these by entering a number.", _feedbackService, editStep, 1, 2);
+        var battlemasterSecondItemStep = new IntStep("Which of these weapons would you like to have? \n" +
+            "1. Warhammer (close, One-Hand) and Shield (+1 armor) \n2. Halberd (reach, +1 damage, Two-Handed) \n" +
+            "Please select one of these by entering a number.", _feedbackService, battlemasterThirdItemStep, 1, 2);
+        var battlemasterFirstItemStep = new IntStep("Which set of defensive items would you like to have? \n" +
+            "1. Scale Armor (+2 armor, clumsy) \n2. Chainmail (+1 Armor) and Adventuring Gear (5 uses)\n" +
+            "Please select one of these by entering a number.", _feedbackService, battlemasterSecondItemStep, 1, 2);
 
         var channelerThirdItemStep = new IntStep("Which set of items would you like to have? \n" +
             "1. Smelling Salts and 1 Antitoxin \n2. Pouch with 1d10 coins\n" +
@@ -170,7 +191,7 @@ public class CharacterCommand : CommandGroup
         var strStep = new StatStep("Which value would you like your Strength stat to be?", _feedbackService, dexStep, statValueList);
         var classStep = new IntStep("What is your characters Class?\n" +
     "Current Options: \n1. Channeler \n2. Necromancer \n3. Paladin \n" +
-    "4. Ranger \n5. Slayer \nPlease select one of these by entering a number.", _feedbackService, strStep, 1, 5);
+    "4. Ranger \n5. Slayer \n6. Druid \n7. Battle Master \nPlease select one of these by entering a number.", _feedbackService, strStep, 1, 7);
         var raceStep = new IntStep("What is your characters Race?\n" +
             "Current Options: \n1. Elf \n2. Dwarf \n3. Human \n" +
             "4. Orc \nPlease select one of these by entering a number.", _feedbackService, classStep, 1, 4);
@@ -260,6 +281,30 @@ public class CharacterCommand : CommandGroup
                         classStep.setNextStep(channelerFirstItemStep);
                     }
                     alignStep.setNextStep(slayerFirstItemStep);
+                    break;
+                case 6:
+                    chosenClass.Type = ClassType.Druid;
+                    ItemService.setItem(ref item1, "Token of Your Land", 1, 1);
+                    items.Add(item1);
+                    if (classStep._edited)
+                    {
+                        classStep.setNextStep(druidFirstItemStep);
+                    }
+                    alignStep.setNextStep(druidFirstItemStep);
+                    break;
+                case 7:
+                    chosenClass.Type = ClassType.Battlemaster;
+                    ItemService.setItem(ref item1, "Dungeon Rations", 5, 1);
+                    items.Add(item1);
+                    ItemService.setItem(ref item2, "Spyglass", 1, 1);
+                    items.Add(item2);
+                    ItemService.setItem(ref item3, "Dagger", 1, 1);
+                    items.Add(item3);
+                    if (classStep._edited)
+                    {
+                        classStep.setNextStep(battlemasterFirstItemStep);
+                    }
+                    alignStep.setNextStep(battlemasterFirstItemStep);
                     break;
 
             };
@@ -540,6 +585,115 @@ public class CharacterCommand : CommandGroup
             character.Inventory = inventory;
         };
 
+        druidFirstItemStep.OnValidResult += (result) =>
+        {
+            switch (result)
+            {
+                case 1:
+                    ItemService.setItem(ref item2, "Hide Armor", 1, 1);
+                    items.Add(item2);
+                    character.ArmorRating = 1;
+                    break;
+                case 2:
+                    ItemService.setItem(ref item2, "Wooden Shield", 1, 1);
+                    items.Add(item2);
+                    character.ArmorRating = 1;
+                    break;
+            };
+        };
+        druidSecondItemStep.OnValidResult += (result) =>
+        {
+            switch (result)
+            {
+                case 1:
+                    ItemService.setItem(ref item3, "Shillelagh", 1, 2);
+                    items.Add(item3);
+                    break;
+                case 2:
+                    ItemService.setItem(ref item3, "Staff", 1, 1);
+                    items.Add(item3);
+                    break;
+                case 3:
+                    ItemService.setItem(ref item3, "Spear", 1, 1);
+                    items.Add(item3);
+                    break;
+            };
+        };
+        druidThirdItemStep.OnValidResult += (result) =>
+        {
+            switch (result)
+            {
+                case 1:
+                    ItemService.setItem(ref item4, "Adventuring Gear", 5, 1);
+                    items.Add(item4);
+                    break;
+                case 2:
+                    ItemService.setItem(ref item4, "Poultices & Herbs", 2, 1);
+                    items.Add(item4);
+                    break;
+                case 3:
+                    ItemService.setItem(ref item4, "Halfling Pipeleaf", 6, 0);
+                    items.Add(item4);
+                    break;
+            };
+
+            inventory.Items = items;
+            character.Inventory = inventory;
+        };
+        battlemasterFirstItemStep.OnValidResult += (result) =>
+        {
+            switch (result)
+            {
+                case 1:
+                    ItemService.setItem(ref item4, "Scale Armor", 1, 3);
+                    character.ArmorRating = 2;
+                    items.Add(item4);
+                    break;
+                case 2:
+                    ItemService.setItem(ref item4, "Chainmail", 1, 1);
+                    character.ArmorRating = 1;
+                    items.Add(item4);
+                    ItemService.setItem(ref item5, "Adevnturing Gear", 5, 1);
+                    items.Add(item5);
+                    break;
+            };
+        };
+        battlemasterSecondItemStep.OnValidResult += (result) =>
+        {
+            switch (result)
+            {
+                case 1:
+                    ItemService.setItem(ref item6, "Warhammer", 1, 1);
+                    items.Add(item6);
+                    ItemService.setItem(ref item7, "Shield", 1, 2);
+                    character.ArmorRating += 1;
+                    items.Add(item7);
+                    break;
+                case 2:
+                    ItemService.setItem(ref item6, "Halberd", 1, 2);
+                    character.DamageRating = 1;
+                    items.Add(item6);
+                    break;
+            };
+        };
+        battlemasterThirdItemStep.OnValidResult += (result) =>
+        {
+            switch (result)
+            {
+                case 1:
+                    ItemService.setItem(ref item8, "Bag of Books", 5, 2);
+                    items.Add(item8);
+                    break;
+                case 2:
+                    ItemService.setItem(ref item8, "Bandages", 3, 0);
+                    items.Add(item8);
+                    break;
+            };
+
+            inventory.Items = items;
+            character.Inventory = inventory;
+        };
+
         editStep.OnValidResult += (result) =>
         {
             switch (result)
@@ -603,6 +757,11 @@ public class CharacterCommand : CommandGroup
                         case ClassType.Slayer:
                             editStep.setNextStep(slayerFirstItemStep);
                             slayerSecondItemStep.setNextStep(editStep);
+                            items.RemoveRange(3, items.Count - 3);
+                            break;
+                        case ClassType.Druid:
+                            editStep.setNextStep(druidFirstItemStep);
+                            druidThirdItemStep.setNextStep(editStep);
                             items.RemoveRange(3, items.Count - 3);
                             break;
                     };
