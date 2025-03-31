@@ -113,4 +113,15 @@ public class CharacterService : ICharacterService
             .Include(c => c.Inventory).ThenInclude(i => i.Items)
             .ToList();
     }
+
+    public async Task UpdateCharacterStat(Character user, StatType statType, int value)
+    {
+        var stat = user.Stats?.Where(s => s.StatType == statType)?.FirstOrDefault();
+        if (stat != null)
+        {
+            stat.Value = value;
+        }
+        
+        await _dungeonWorldContext.SaveChangesAsync();
+    }
 }

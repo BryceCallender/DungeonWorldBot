@@ -23,4 +23,6 @@ public interface ICharacterService
     Task Damage(Character user, int amount);
 
     Task BondWith(Character user, Character bonder);
+
+    Task UpdateCharacterStat(Character user, StatType statType, int value);
 }

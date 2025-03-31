@@ -1046,6 +1046,8 @@ public class CharacterCommand : CommandGroup
         {
             return Result.FromError<string>("User does not exist or have a current character");
         }
+        
+        await _characterService.UpdateCharacterStat(character, type, value);
 
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
