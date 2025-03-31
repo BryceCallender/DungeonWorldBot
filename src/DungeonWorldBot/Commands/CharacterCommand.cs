@@ -1032,6 +1032,31 @@ public class CharacterCommand : CommandGroup
         );
     }
 
+    [Command("stat-change")]
+    public async Task<IResult> RequestStatChange(StatType type, int value)
+    {
+        if (!_context.TryGetUserID(out var userId))
+        {
+            throw new NotSupportedException();
+        }
+        
+        var character = await _characterService.GetCharacterFromUserAsync(userId);
+        
+        if (character is null)
+        {
+            return Result.FromError<string>("User does not exist or have a current character");
+        }
+
+        return await _feedbackService.SendContextualEmbedAsync(
+            new Embed(
+                Title: $"Stat Changed!",
+                Description: $"{character.Name}'s {type} was changed to {value}",
+                Colour: _feedbackService.Theme.Primary
+            ),
+            ct: CancellationToken
+        );
+    }
+
     private async Task<Result> ReplyWithFailureAsync()
     {
         return (Result)await _feedbackService.SendContextualErrorAsync

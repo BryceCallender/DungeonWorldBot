@@ -54,7 +54,7 @@
       <None Update="SanaSolem.db">
         <CopyToOutputDirectory>Never</CopyToOutputDirectory>
       </None>
-      <None Update="Assets\world.jpg">
+      <None Update="Assets\world.png">
         <CopyToOutputDirectory>Always</CopyToOutputDirectory>
       </None>
     </ItemGroup>

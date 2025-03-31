@@ -58,9 +58,9 @@ public class DungeonWorldCommands : CommandGroup
     public async Task<IResult> ShowMapAsync()
     {
         using var imageStream = new MemoryStream();
-        using var image = await Image.LoadAsync("Assets/world.jpg");
+        using var image = await Image.LoadAsync("Assets/world.png");
 
-        await image.SaveAsync(imageStream, JpegFormat.Instance);
+        await image.SaveAsync(imageStream, PngFormat.Instance);
         
         imageStream.Seek(0, SeekOrigin.Begin);
 
