@@ -121,6 +121,12 @@ public class CharacterService : ICharacterService
         {
             stat.Value = value;
         }
+
+        // need to update max hp of the user now
+        if (statType == StatType.Con)
+        {
+            user.Health.MaxHP = user.Class.HealthModifier + value;
+        }
         
         await _dungeonWorldContext.SaveChangesAsync();
     }
