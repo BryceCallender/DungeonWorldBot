@@ -67,7 +67,7 @@ public class DiceRollCommand : CommandGroup
         var diceExpression = _diceParser.Parse($"{value}+{stat}");
         var result = diceExpression.Roll();
 
-        return await ReplyWithRoll(result, statType);
+        return await ReplyWithRoll(result, statType.ToString());
     }
     
     [Command("damage")]
@@ -95,6 +95,26 @@ public class DiceRollCommand : CommandGroup
         return await ReplyWithRoll(result, null);
     }
 
+    [Command("discern-realities")]
+    [Description("Does a discern reality roll for you")]
+    public async Task<IResult> RollDiscernRealitiesAsync()
+    {
+        if (!_context.TryGetUserID(out var userID))
+        {
+            throw new NotSupportedException();
+        }
+        
+        var character = await _characterService.GetCharacterFromUserAsync(userID);
+
+        var wisdom = character?.Stats.FirstOrDefault(s => s.StatType == StatType.Wis);
+        if (wisdom is null)
+            return await ReplyWithErrorAsync("You must have wisdom value to roll this");
+        
+        var diceExpression = _diceParser.Parse($"2d6+{wisdom.Modifier}");
+        var result = diceExpression.Roll();
+        return await ReplyWithRoll(result, "Discern Realities");
+    }
+
     private async Task<Result> ReplyWithFailureAsync()
     {
         return (Result)await _feedbackService.SendContextualErrorAsync
@@ -118,12 +138,12 @@ public class DiceRollCommand : CommandGroup
         return await ReplyWithRoll(roll, null);
     }
 
-    private async Task<IResult> ReplyWithRoll(DiceResult roll, StatType? statType)
+    private async Task<IResult> ReplyWithRoll(DiceResult roll, string? rollDescription)
     {
         var rollText = DiceHelper.BuildDiceResult(roll);
         
         var embed = new Embed(
-            Title: $"🎲 {(statType.HasValue ? statType.ToString() : "")} Roll(s)", 
+            Title: $"🎲 {rollDescription} Roll(s)", 
             Description: rollText,
             Colour: _feedbackService.Theme.Success
         );
