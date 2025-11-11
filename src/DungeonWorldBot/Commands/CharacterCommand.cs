@@ -993,7 +993,7 @@ public class CharacterCommand : CommandGroup
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: $"Damaged!",
-                Description: $"{character.Name} took {roll.Total} damage!",
+                Description: $"{character.Name} took {roll.Total} damage!\n{character.Name} has {character.Health.CurrentHP}/{character.Health.MaxHP} HP",
                 Colour: _feedbackService.Theme.Primary
             ),
             ct: CancellationToken
