@@ -63,8 +63,8 @@ public class DiceRollCommand : CommandGroup
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to roll on stats. Try using /character create");
 
-        var stat = character.Stats.First(s => s.StatType == statType);
-        var diceExpression = _diceParser.Parse($"{value}+{stat}");
+        var statModifier = character.Stats.First(s => s.StatType == statType).Modifier;
+        var diceExpression = _diceParser.Parse($"{value}+{statModifier}");
         var result = diceExpression.Roll();
 
         return await ReplyWithRoll(result, statType.ToString());
