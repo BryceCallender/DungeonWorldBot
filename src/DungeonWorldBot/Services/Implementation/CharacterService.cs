@@ -130,4 +130,10 @@ public class CharacterService : ICharacterService
         
         await _dungeonWorldContext.SaveChangesAsync();
     }
+
+    public async Task UpdateCharacterDamageModifier(Character user, string modifier)
+    {
+        user.DamageModifier = modifier;
+        await _dungeonWorldContext.SaveChangesAsync();
+    }
 }

@@ -25,4 +25,6 @@ public interface ICharacterService
     Task BondWith(Character user, Character bonder);
 
     Task UpdateCharacterStat(Character user, StatType statType, int value);
+    
+    Task UpdateCharacterDamageModifier(Character user, string modifier);
 }

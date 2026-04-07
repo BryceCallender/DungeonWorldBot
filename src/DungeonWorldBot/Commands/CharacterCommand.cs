@@ -13,6 +13,7 @@ using Remora.Discord.Commands.Feedback.Services;
 using Remora.Discord.Interactivity;
 using Remora.Results;
 using System.Drawing;
+using DiceNotation;
 using DungeonWorldBot.Helpers;
 using DungeonWorldBot.Services.Implementation.Steps;
 using DungeonWorldBot.Interactions;
@@ -33,6 +34,8 @@ public class CharacterCommand : CommandGroup
     private readonly IDiscordRestUserAPI _userAPI;
     private readonly IDiscordRestGuildAPI _guildAPI;
     private readonly IRollService _rollService;
+    private readonly IDiceParser _diceParser;
+
 
     public CharacterCommand(
         ICommandContext context,
@@ -41,7 +44,8 @@ public class CharacterCommand : CommandGroup
         InteractivityService interactivityService, 
         IDiscordRestUserAPI userAPI,
         IDiscordRestGuildAPI guildAPI,
-        IRollService rollService)
+        IRollService rollService,
+        IDiceParser diceParser)
     {
         _context = context;
         _feedbackService = feedbackService;
@@ -50,6 +54,7 @@ public class CharacterCommand : CommandGroup
         _interactivityService = interactivityService;
         _userAPI = userAPI;
         _rollService = rollService;
+        _diceParser = diceParser;
     }
 
     [Command("create")]
@@ -1053,6 +1058,42 @@ public class CharacterCommand : CommandGroup
             new Embed(
                 Title: $"Stat Changed!",
                 Description: $"{character.Name}'s {type} was changed to {value}",
+                Colour: _feedbackService.Theme.Primary
+            ),
+            ct: CancellationToken
+        );
+    }
+    
+    [Command("damage-modifier-change")]
+    public async Task<IResult> RequestStatChange(string newModifier)
+    {
+        if (!_context.TryGetUserID(out var userId))
+        {
+            throw new NotSupportedException();
+        }
+        
+        var character = await _characterService.GetCharacterFromUserAsync(userId);
+        
+        if (character is null)
+        {
+            return Result.FromError<string>("User does not exist or have a current character");
+        }
+
+        try
+        {
+            var result = _diceParser.Parse(newModifier);
+        }
+        catch (Exception ex)
+        {
+            return Result.FromError<string>(ex.Message);
+        }
+        
+        await _characterService.UpdateCharacterDamageModifier(character, newModifier);
+
+        return await _feedbackService.SendContextualEmbedAsync(
+            new Embed(
+                Title: $"Damage Modifier Changed!",
+                Description: $"{character.Name}'s Damage modifier was changed to {newModifier}",
                 Colour: _feedbackService.Theme.Primary
             ),
             ct: CancellationToken

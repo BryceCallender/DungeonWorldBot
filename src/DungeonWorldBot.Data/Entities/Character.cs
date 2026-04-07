@@ -25,5 +25,6 @@ public class Character
     public Alignment Alignment { get; set; }
     public Race Race { get; set; }
     public Location? Location { get; set; }
-    
+
+    public string? DamageModifier { get; set; }
 }
