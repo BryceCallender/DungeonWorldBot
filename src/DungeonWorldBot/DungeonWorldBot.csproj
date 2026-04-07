@@ -12,21 +12,21 @@
       <PackageReference Include="EdCanHack.DiceNotation" Version="0.2.0" />
       <PackageReference Include="EdCanHack.DiceNotation.MathNet" Version="0.2.0" />
       <PackageReference Include="Enums.NET" Version="5.0.0" />
-      <PackageReference Include="Microsoft.AspNetCore.Hosting" Version="2.3.0" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore" Version="9.0.3" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="9.0.3">
+      <PackageReference Include="Microsoft.AspNetCore.Hosting" Version="2.3.9" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="9.0.3" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="9.0.3" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="9.0.3">
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.5" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="10.0.5" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.5">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="9.0.3" />
-      <PackageReference Include="Microsoft.Extensions.Hosting" Version="9.0.3" />
-      <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="9.0.3" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.5" />
+      <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.5" />
+      <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.5" />
       <PackageReference Include="Remora.Commands" Version="11.0.1" />
       <PackageReference Include="Remora.Discord.API" Version="79.0.0" />
       <PackageReference Include="Remora.Discord.API.Abstractions" Version="83.0.0" />
