@@ -84,7 +84,7 @@ public class DiceRollCommand : CommandGroup
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to roll for damage. Try using /character create");
     
-        var rollString = $"{character.Class.Damage}";
+        var rollString = $"{character.DamageModifier ?? character.Class.Damage}";
         if (modifiers.Length > 0)
         {
             rollString += $"+{modifiers}";
