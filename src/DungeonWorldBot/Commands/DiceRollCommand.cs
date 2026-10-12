@@ -93,27 +93,6 @@ public class DiceRollCommand : CommandGroup
         return await ReplyWithRoll(result, null);
     }
 
-    [Command("discern-realities")]
-    [Description("Does a discern reality roll for you")]
-    public async Task<IResult> RollDiscernRealitiesAsync()
-    {
-        if (!_context.TryGetUserID(out var userID))
-        {
-            throw new NotSupportedException();
-        }
-        
-        var character = await _characterService.GetCharacterFromUserAsync(userID);
-
-        var wisdom = character?.Stats.FirstOrDefault(s => s.StatType == StatType.Wis);
-        if (wisdom is null)
-            return await ReplyWithErrorAsync("You must have wisdom value to roll this");
-        
-        if (!DiceHelper.TryRoll(_diceParser, DiceHelper.AddModifier("2d6", wisdom.Modifier), out var result))
-            return await ReplyWithErrorAsync("Dice rolling failed.");
-
-        return await ReplyWithRoll(result, "Discern Realities");
-    }
-
     private async Task<Result> ReplyWithErrorAsync(string error)
     {
         return (Result)await _feedbackService.SendContextualErrorAsync

@@ -1,7 +1,10 @@
 using System.Drawing;
 using DiceNotation;
 using DungeonWorldBot.Helpers;
+using DungeonWorldBot.Moves;
+using DungeonWorldBot.Services;
 using Remora.Discord.API.Abstractions.Gateway.Events;
+using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Abstractions.Rest;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Gateway.Responders;
@@ -9,38 +12,101 @@ using Remora.Results;
 
 namespace DungeonWorldBot.Responder;
 
-public class DiceRollResponder: IResponder<IMessageCreate>
+/// <summary>
+/// Rolls dice for chat messages like ".2d6+1 sneak attack" or ".dex+1 dodge the trap".
+/// </summary>
+public class DiceRollResponder : IResponder<IMessageCreate>
 {
+    private static readonly Color RollColour = Color.Fuchsia;
+
     private readonly IDiscordRestChannelAPI _channelAPI;
     private readonly IDiceParser _diceParser;
-    
-    public DiceRollResponder(IDiscordRestChannelAPI channelAPI, IDiceParser diceParser)
+    private readonly ICharacterService _characterService;
+
+    public DiceRollResponder(IDiscordRestChannelAPI channelAPI, IDiceParser diceParser, ICharacterService characterService)
     {
         _channelAPI = channelAPI;
         _diceParser = diceParser;
+        _characterService = characterService;
     }
-    
+
     public async Task<Result> RespondAsync(IMessageCreate gatewayEvent, CancellationToken ct = default)
     {
-        if (gatewayEvent.Author.IsBot.OrDefault(false) || !gatewayEvent.Content.StartsWith('.'))
+        if (gatewayEvent.Author.IsBot.OrDefault(false))
             return Result.FromSuccess();
 
-        // Anything that isn't valid dice notation (e.g. "..." or ".hi") is just a normal message
-        if (!DiceHelper.TryRoll(_diceParser, gatewayEvent.Content[1..], out var roll))
+        // Anything that isn't a roll (e.g. "..." or ".hi") is just a normal message
+        var request = DiceMessage.TryParse(gatewayEvent.Content);
+        if (request is null)
             return Result.FromSuccess();
 
-        var rollText = DiceHelper.BuildDiceResult(roll);
-        
-        var embed = new Embed(
-            Title: "🎲 Roll(s)", 
-            Description: rollText,
-            Colour: Color.Fuchsia
-        );
+        var embed = request.Stat is not null
+            ? await BuildStatRollAsync(gatewayEvent, request)
+            : BuildDiceRoll(gatewayEvent, request);
 
-        var replyResult = await _channelAPI.CreateMessageAsync(gatewayEvent.ChannelID, embeds: new[] { embed }, ct: ct);
+        if (embed is null)
+            return Result.FromSuccess();
 
-        return !replyResult.IsSuccess
-            ? Result.FromError(replyResult)
-            : Result.FromSuccess();
+        var reply = await _channelAPI.CreateMessageAsync(
+            gatewayEvent.ChannelID,
+            embeds: new[] { embed },
+            messageReference: new MessageReference(MessageID: gatewayEvent.ID, FailIfNotExists: false),
+            allowedMentions: new AllowedMentions(MentionRepliedUser: false),
+            ct: ct);
+
+        return reply.IsSuccess ? Result.FromSuccess() : Result.FromError(reply);
     }
+
+    private Embed? BuildDiceRoll(IMessageCreate message, DiceMessage request)
+    {
+        if (!DiceHelper.TryRoll(_diceParser, request.Expression!, out var roll))
+            return null;
+
+        return new Embed(
+            Title: Title(message.Author, request.Label),
+            Description: DiceHelper.BuildDiceResult(roll),
+            Colour: RollColour);
+    }
+
+    private async Task<Embed> BuildStatRollAsync(IMessageCreate message, DiceMessage request)
+    {
+        var statType = request.Stat!.Value;
+        var character = await _characterService.GetCharacterFromUserAsync(message.Author.ID);
+        var stat = character?.Stats.FirstOrDefault(s => s.StatType == statType);
+
+        if (character is null || stat is null)
+        {
+            return new Embed(
+                Title: Title(message.Author, request.Label),
+                Description: $"You need a character to roll +{statType.ToString().ToUpper()}. Try using /character create",
+                Colour: Color.Red);
+        }
+
+        var roll = MoveRoller.Roll(_diceParser, stat.Modifier + request.Bonus);
+        var rolledWith = $"{statType.ToString().ToUpper()} {Signed(stat.Modifier)}"
+                         + (request.Bonus != 0 ? $", Bonus {Signed(request.Bonus)}" : string.Empty);
+
+        return new Embed(
+            Title: Title(message.Author, request.Label, character.Name),
+            Description: DiceHelper.BuildDiceResult(roll.Dice),
+            Fields: new List<IEmbedField>
+            {
+                new EmbedField("Rolled with", rolledWith, IsInline: true),
+                new EmbedField("Result", MoveRoller.Describe(roll.Outcome), IsInline: true),
+            },
+            Colour: roll.Outcome switch
+            {
+                MoveOutcome.StrongHit => Color.Green,
+                MoveOutcome.WeakHit => Color.Orange,
+                _ => Color.Red,
+            });
+    }
+
+    private static string Title(IUser author, string? label, string? characterName = null)
+    {
+        var who = characterName ?? author.GlobalName.OrDefault(null) ?? author.Username;
+        return label is null ? $"🎲 {who} rolled" : $"🎲 {who}: {label}";
+    }
+
+    private static string Signed(int value) => value >= 0 ? $"+{value}" : value.ToString();
 }
