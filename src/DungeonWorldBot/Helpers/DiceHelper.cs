@@ -16,13 +16,13 @@ public static class DiceHelper
     };
 
     /// <summary>
-    /// Formats a roll the way you'd add it up at the table, e.g. for "2d6+1":
+    /// Formats a roll the way you'd add it up at the table, with each die's result lined up under it:
     /// <code>
     /// d6 + d6 + 1
-    ///
-    /// 4 + 1 + 1 = **6**
+    ///  4 +  2 + 1 = 7
     /// </code>
-    /// Dropped dice (e.g. from "4d6k3") are struck through.
+    /// It's a code block so the columns line up. Dropped dice (e.g. from "4d6k3") are left out of the sum and
+    /// listed on a "dropped:" line underneath.
     /// </summary>
     public static string BuildDiceResult(DiceResult roll)
     {
@@ -33,40 +33,60 @@ public static class DiceHelper
         // With x, / or brackets the total isn't a simple sum of the dice, so show the expression and the dice instead
         if (roll.DiceExpression.IndexOfAny(['x', 'X', '/', '(']) >= 0)
         {
-            var values = string.Join(", ", dice.Select(d => Strike($"{d.Value}", d)));
-            return $"{roll.DiceExpression}\n\n{values} → **{roll.Value}**";
+            var values = string.Join(", ", dice.Select(d => d.AppliesToResultCalculation ? $"{d.Value}" : $"~~{d.Value}~~"));
+            return $"`{roll.DiceExpression}`\n{values} → **{roll.Value}**";
+        }
+
+        // Only dice that count go in the sum so the math adds up; dropped ones (e.g. from k3) are listed underneath
+        var kept = dice.Where(d => d.AppliesToResultCalculation).ToList();
+        var dropped = dice.Where(d => !d.AppliesToResultCalculation).ToList();
+
+        var columns = new List<(string Operator, string Die, string Value)>
+        {
+            ("", DieName(kept[0]), $"{kept[0].Value}"),
+        };
+
+        foreach (var die in kept.Skip(1))
+        {
+            var value = $"{Math.Abs(die.Value)}";
+            columns.Add((die.Value < 0 ? "-" : "+", DieName(die), value));
         }
 
         // Whatever the kept dice don't account for is the flat modifier, e.g. the +1 in "2d6+1"
-        var modifier = roll.Value - dice.Where(d => d.AppliesToResultCalculation).Sum(d => d.Value);
-
-        if (dice.Count == 1 && modifier == 0)
-            return $"{DieName(dice[0])}\n\n**{roll.Value}**";
-
-        var names = new StringBuilder(Strike(DieName(dice[0]), dice[0]));
-        var sums = new StringBuilder(Strike($"{dice[0].Value}", dice[0]));
-
-        foreach (var die in dice.Skip(1))
-        {
-            names.Append($" + {Strike(DieName(die), die)}");
-            sums.Append(die.Value < 0
-                ? $" - {Strike($"{-die.Value}", die)}"
-                : $" + {Strike($"{die.Value}", die)}");
-        }
-
+        var modifier = roll.Value - kept.Sum(d => d.Value);
         if (modifier != 0)
         {
-            var signed = modifier > 0 ? $" + {modifier}" : $" - {-modifier}";
-            names.Append(signed);
-            sums.Append(signed);
+            var amount = $"{Math.Abs(modifier)}";
+            columns.Add((modifier > 0 ? "+" : "-", amount, amount));
         }
 
-        return $"{names}\n\n{sums} = **{roll.Value}**";
+        var dieLine = new StringBuilder();
+        var valueLine = new StringBuilder();
+
+        foreach (var (op, die, value) in columns)
+        {
+            if (op.Length > 0)
+            {
+                dieLine.Append($" {op} ");
+                valueLine.Append($" {op} ");
+            }
+
+            var width = Math.Max(die.Length, value.Length);
+            dieLine.Append(die.PadLeft(width));
+            valueLine.Append(value.PadLeft(width));
+        }
+
+        // A single die on its own doesn't need "= total" repeating the same number
+        if (columns.Count > 1)
+            valueLine.Append($" = {roll.Value}");
+
+        var droppedLine = dropped.Count > 0
+            ? $"\n\ndropped: {string.Join(", ", dropped.Select(d => d.Value))}"
+            : string.Empty;
+
+        return $"```\n{dieLine.ToString().TrimEnd()}\n{valueLine}{droppedLine}\n```";
     }
 
     // "DiceTerm.d6" => "d6", "FudgeDiceTerm.dF" => "dF"
     private static string DieName(TermResult die) => die.Type[(die.Type.LastIndexOf('.') + 1)..];
-
-    // Dice that were dropped (e.g. by k3) are struck through so it's clear why they don't count
-    private static string Strike(string text, TermResult die) => die.AppliesToResultCalculation ? text : $"~~{text}~~";
 }

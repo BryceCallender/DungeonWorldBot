@@ -8,6 +8,7 @@ using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Abstractions.Rest;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Gateway.Responders;
+using Remora.Rest.Core;
 using Remora.Results;
 
 namespace DungeonWorldBot.Responder;
@@ -62,10 +63,15 @@ public class DiceRollResponder : IResponder<IMessageCreate>
         if (!_diceRoller.TryRoll(request.Expression!, out var roll))
             return null;
 
+        var outcome = MoveRoller.OutcomeOf(roll);
+
         return new Embed(
             Title: Title(message.Author, request.Label),
             Description: DiceHelper.BuildDiceResult(roll),
-            Colour: RollColour);
+            Fields: outcome is { } band
+                ? new List<IEmbedField> { new EmbedField(MoveRoller.Describe(band), MoveRoller.GeneralMeaning(band)) }
+                : new Optional<IReadOnlyList<IEmbedField>>(),
+            Colour: outcome is { } o ? MoveRoller.ColourFor(o) : RollColour);
     }
 
     private async Task<Embed> BuildStatRollAsync(IMessageCreate message, DiceMessage request)
@@ -92,14 +98,9 @@ public class DiceRollResponder : IResponder<IMessageCreate>
             Fields: new List<IEmbedField>
             {
                 new EmbedField("Rolled with", rolledWith, IsInline: true),
-                new EmbedField("Result", MoveRoller.Describe(roll.Outcome), IsInline: true),
+                new EmbedField(MoveRoller.Describe(roll.Outcome), MoveRoller.GeneralMeaning(roll.Outcome)),
             },
-            Colour: roll.Outcome switch
-            {
-                MoveOutcome.StrongHit => Color.Green,
-                MoveOutcome.WeakHit => Color.Orange,
-                _ => Color.Red,
-            });
+            Colour: MoveRoller.ColourFor(roll.Outcome));
     }
 
     private static string Title(IUser author, string? label, string? characterName = null)

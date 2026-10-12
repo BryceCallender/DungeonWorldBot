@@ -1,3 +1,5 @@
+using System.Drawing;
+using System.Text.RegularExpressions;
 using d20Tek.DiceNotation.Results;
 using DungeonWorldBot.Rolling;
 using DungeonWorldBot.Data.Entities;
@@ -40,8 +42,35 @@ public sealed record MoveDefinition(
 
 public sealed record MoveRoll(DiceResult Dice, MoveOutcome Outcome);
 
-public static class MoveRoller
+public static partial class MoveRoller
 {
+    // 2d6 plus or minus flat modifiers, e.g. "2d6", "2d6+1", "2d6 - 1 + 2"
+    [GeneratedRegex(@"^\s*2\s*d\s*6\s*([+-]\s*\d+\s*)*$", RegexOptions.IgnoreCase)]
+    private static partial Regex MoveRollExpression();
+
+    /// <summary>
+    /// The 10+ / 7-9 / 6- band for a roll, if it's a 2d6 roll where bands mean something.
+    /// </summary>
+    public static MoveOutcome? OutcomeOf(DiceResult roll) =>
+        MoveRollExpression().IsMatch(roll.DiceExpression) ? OutcomeFor(roll.Value) : null;
+
+    /// <summary>
+    /// What each band means for any roll that isn't a specific move.
+    /// </summary>
+    public static string GeneralMeaning(MoveOutcome outcome) => outcome switch
+    {
+        MoveOutcome.StrongHit => "You do it.",
+        MoveOutcome.WeakHit => "You do it, but there's a cost, complication, or hard choice.",
+        _ => "Mark XP. The GM makes a move.",
+    };
+
+    public static Color ColourFor(MoveOutcome outcome) => outcome switch
+    {
+        MoveOutcome.StrongHit => Color.Green,
+        MoveOutcome.WeakHit => Color.Orange,
+        _ => Color.Red,
+    };
+
     public static MoveOutcome OutcomeFor(int total) => total switch
     {
         >= 10 => MoveOutcome.StrongHit,

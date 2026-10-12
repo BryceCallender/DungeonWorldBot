@@ -3,13 +3,16 @@ using System.ComponentModel;
 using DungeonWorldBot.Rolling;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Helpers;
+using DungeonWorldBot.Moves;
 using DungeonWorldBot.Services;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
+using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Feedback.Services;
+using Remora.Rest.Core;
 using Remora.Results;
 
 namespace DungeonWorldBot.Commands;
@@ -110,12 +113,15 @@ public class DiceRollCommand : CommandGroup
 
     private async Task<IResult> ReplyWithRoll(DiceResult roll, string? rollDescription)
     {
-        var rollText = DiceHelper.BuildDiceResult(roll);
-        
+        var outcome = MoveRoller.OutcomeOf(roll);
+
         var embed = new Embed(
-            Title: $"🎲 {rollDescription} Roll(s)", 
-            Description: rollText,
-            Colour: _feedbackService.Theme.Success
+            Title: $"🎲 {rollDescription} Roll(s)",
+            Description: DiceHelper.BuildDiceResult(roll),
+            Fields: outcome is { } band
+                ? new List<IEmbedField> { new EmbedField(MoveRoller.Describe(band), MoveRoller.GeneralMeaning(band)) }
+                : new Optional<IReadOnlyList<IEmbedField>>(),
+            Colour: outcome is { } o ? MoveRoller.ColourFor(o) : _feedbackService.Theme.Success
         );
     
         return await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);
