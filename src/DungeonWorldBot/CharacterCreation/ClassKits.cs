@@ -1,4 +1,4 @@
-using DiceNotation;
+using DungeonWorldBot.Rolling;
 using DungeonWorldBot.Data.Entities;
 
 namespace DungeonWorldBot.CharacterCreation;
@@ -6,7 +6,7 @@ namespace DungeonWorldBot.CharacterCreation;
 /// <summary>
 /// Creates a fresh inventory item. Most items are fixed, but some (coins, trophies) roll dice when granted.
 /// </summary>
-public sealed record ItemGrant(Func<IDiceParser, Item> Create)
+public sealed record ItemGrant(Func<IDiceRoller, Item> Create)
 {
     public static ItemGrant Of(string name, int amount, int weight) =>
         new(_ => new Item { Name = name, Amount = amount, Weight = weight });
@@ -185,5 +185,5 @@ public static class ClassKits
             Contents = [corpse, "Empty", "Empty"],
         });
 
-    private static int Roll(IDiceParser dice, string expression) => dice.Parse(expression).Roll().Value;
+    private static int Roll(IDiceRoller dice, string expression) => dice.Roll(expression).Value;
 }

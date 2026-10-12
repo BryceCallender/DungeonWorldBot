@@ -9,8 +9,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="EdCanHack.DiceNotation" Version="0.2.0" />
-      <PackageReference Include="EdCanHack.DiceNotation.MathNet" Version="0.2.0" />
+      <PackageReference Include="d20tek-dicenotation" Version="5.1.7" />
       <PackageReference Include="Enums.NET" Version="5.0.0" />
       <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
       <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
