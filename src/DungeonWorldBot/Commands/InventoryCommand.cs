@@ -1,13 +1,8 @@
 using System.ComponentModel;
-using System.Diagnostics.Eventing.Reader;
-using System.Text;
-using DungeonWorldBot.API.Models;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Services;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
-using Remora.Discord.API;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Feedback.Services;
@@ -55,28 +50,33 @@ public class InventoryCommand : CommandGroup
         var character = await _characterService.GetCharacterFromUserAsync(userId);
 
         if (character is null)
-            return new Result();
+            return await ReplyWithErrorAsync("You must have a character to view its inventory. Try using /character create");
 
-        var inventoryEmbeds = new List<Embed>();
+        var items = character.Inventory?.Items ?? new List<Item>();
+        var coinAmount = items
+            .Where(i => i.Name.Equals("Coins", StringComparison.OrdinalIgnoreCase))
+            .Sum(i => i.Amount);
+        var otherItems = items
+            .Where(i => !i.Name.Equals("Coins", StringComparison.OrdinalIgnoreCase))
+            .ToList();
 
-        var coinIndex = character.Inventory.Items!.FindIndex(i => i.Name.Equals("Coins"));
-        var coinAmount = coinIndex < 0 ? 0 : character.Inventory.Items[coinIndex].Amount;
-        if (coinIndex >= 0)
-        {
-            character.Inventory.Items.RemoveAt(coinIndex);
-        }
-        
-        var groupedInventory = character.Inventory.Items!.Chunk(PAGE_SIZE);
-
-        foreach (var inventoryGroup in groupedInventory)
-        {
-            var embedFields = inventoryGroup.Select(item => new EmbedField(Name: item.Name.ToLower(), Value: item.Amount.ToString(), IsInline: true)).Cast<IEmbedField>().ToList();
-
-            inventoryEmbeds.Add(new Embed(
+        var inventoryEmbeds = otherItems
+            .Chunk(PAGE_SIZE)
+            .Select(page => new Embed(
                 Title: "Inventory",
                 Description: $"Coins (🪙): {coinAmount}",
                 Colour: _feedbackService.Theme.Primary,
-                Fields: embedFields));
+                Fields: page.Select(item => (IEmbedField)new EmbedField(Name: item.Name.ToLower(), Value: item.Amount.ToString(), IsInline: true)).ToList()))
+            .ToList();
+
+        if (inventoryEmbeds.Count == 0)
+        {
+            return await _feedbackService.SendContextualEmbedAsync(
+                new Embed(
+                    Title: "Inventory",
+                    Description: $"Coins (🪙): {coinAmount}\n\nYour inventory is empty.",
+                    Colour: _feedbackService.Theme.Primary),
+                ct: CancellationToken);
         }
 
         return await _feedbackService.SendContextualPaginatedMessageAsync(
@@ -146,8 +146,8 @@ public class InventoryCommand : CommandGroup
             else
             {
                 foundItem.Amount -= amount;
-                if (foundItem.Amount < 0)
-                    character.Inventory.Items.RemoveAll(item => item.Name.Equals(itemName, StringComparison.CurrentCultureIgnoreCase));
+                if (foundItem.Amount <= 0)
+                    character.Inventory.Items.Remove(foundItem);
             }      
 
         }
@@ -164,7 +164,7 @@ public class InventoryCommand : CommandGroup
             return await _feedbackService.SendContextualMessageAsync(new FeedbackMessage($"You have successfully removed {amount} {itemName.ToLower()} from your inventory", Color.Green));
     }
 
-    [Command("receiveCoins")]
+    [Command("receive-coins")]
     [Description("Adds more coins to your inventory")]
     public async Task<IResult> ReceiveInventoryAsync(int amount)
     {
@@ -194,7 +194,7 @@ public class InventoryCommand : CommandGroup
         return await _feedbackService.SendContextualMessageAsync(new FeedbackMessage($"You have successfully added {amount} coins to your inventory", Color.Green));
     }
 
-    [Command("payCoins")]
+    [Command("pay-coins")]
     [Description("Uses the specified amount of coins and takes them out of your inventory")]
     public async Task<IResult> PayFromInventoryAsync(int amount)
     {
@@ -217,12 +217,12 @@ public class InventoryCommand : CommandGroup
 
             if (amount < 0)
                 return await ReplyWithErrorAsync($"You cannot remove a negative amount of coins from your inventory");
-            else
-            {
-                foundItem.Amount -= amount;
-                if (foundItem.Amount < 0)
-                    character.Inventory.Items.RemoveAll(item => item.Name == foundItem.Name);
-            }
+            if (amount > foundItem.Amount)
+                return await ReplyWithErrorAsync($"You only have {foundItem.Amount} coins");
+
+            foundItem.Amount -= amount;
+            if (foundItem.Amount == 0)
+                character.Inventory.Items.Remove(foundItem);
 
         }
         else
@@ -231,7 +231,7 @@ public class InventoryCommand : CommandGroup
         await _inventoryService.SaveInventoryAsync();
 
 
-        return await _feedbackService.SendContextualMessageAsync(new FeedbackMessage($"You have successfully removed {amount} coins to your inventory", Color.Green));
+        return await _feedbackService.SendContextualMessageAsync(new FeedbackMessage($"You have successfully paid {amount} coins from your inventory", Color.Green));
     }
 
 

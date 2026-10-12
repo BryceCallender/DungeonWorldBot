@@ -1,6 +1,5 @@
 using System.Reflection;
 using DungeonWorldBot.Commands;
-using DungeonWorldBot.Interactions;
 using Microsoft.Extensions.DependencyInjection;
 using Remora.Commands.Extensions;
 using Remora.Commands.Groups;
@@ -21,7 +20,6 @@ public static class ServiceExtensions
             .AddCommands()
             .AddCommands(asm)
             .AddPagination();
-            //.AddInteractionGroup<CharacterInteractions>();
 
         return services;
     }

@@ -11,5 +11,8 @@ public enum Alignment
     ChaoticNeutral,
     LawfulEvil,
     ChaoticEvil,
-    Unaligned
+    Unaligned,
+
+    // Appended rather than placed after LawfulEvil so the int values already stored in the database don't shift
+    NeutralEvil
 }

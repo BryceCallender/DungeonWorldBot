@@ -1,12 +1,10 @@
 using System.ComponentModel;
-using System.Text;
 using DiceNotation;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Helpers;
 using DungeonWorldBot.Services;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
-using Remora.Discord.API;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Extensions;
@@ -18,20 +16,17 @@ namespace DungeonWorldBot.Commands;
 [Group("roll")]
 public class DiceRollCommand : CommandGroup
 {
-    private readonly Random _random;
     private readonly ICommandContext _context;
     private readonly FeedbackService _feedbackService;
     private readonly ICharacterService _characterService;
     private readonly IDiceParser _diceParser;
     
     public DiceRollCommand(
-        Random random, 
         ICommandContext commandContext, 
         FeedbackService feedbackService,
         ICharacterService characterService,
         IDiceParser diceParser)
     {
-        _random = random;
         _context = commandContext;
         _feedbackService = feedbackService;
         _characterService = characterService;
@@ -42,10 +37,9 @@ public class DiceRollCommand : CommandGroup
     [Description("Roll a dice like d6 or 2d6. Defaults to a 2d6")]
     public async Task<IResult> RollDiceAsync(string value = "2d6")
     {
-        var diceExpression = _diceParser.Parse(value);
+        if (!DiceHelper.TryRoll(_diceParser, value, out var result))
+            return await ReplyWithErrorAsync($"`{value}` is not a valid dice roll.");
 
-        var result = diceExpression.Roll();
-        
         return await ReplyWithRoll(result);
     }
 
@@ -63,9 +57,12 @@ public class DiceRollCommand : CommandGroup
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to roll on stats. Try using /character create");
 
-        var statModifier = character.Stats.First(s => s.StatType == statType).Modifier;
-        var diceExpression = _diceParser.Parse($"{value}+{statModifier}");
-        var result = diceExpression.Roll();
+        var stat = character.Stats.FirstOrDefault(s => s.StatType == statType);
+        if (stat is null)
+            return await ReplyWithErrorAsync($"Your character has no {statType} stat.");
+
+        if (!DiceHelper.TryRoll(_diceParser, DiceHelper.AddModifier(value, stat.Modifier), out var result))
+            return await ReplyWithErrorAsync($"`{value}` is not a valid dice roll.");
 
         return await ReplyWithRoll(result, statType.ToString());
     }
@@ -90,8 +87,9 @@ public class DiceRollCommand : CommandGroup
             rollString += $"+{modifiers}";
         } 
         
-        var diceExpression = _diceParser.Parse(rollString);
-        var result = diceExpression.Roll();
+        if (!DiceHelper.TryRoll(_diceParser, rollString, out var result))
+            return await ReplyWithErrorAsync($"`{rollString}` is not a valid dice roll.");
+
         return await ReplyWithRoll(result, null);
     }
 
@@ -110,20 +108,12 @@ public class DiceRollCommand : CommandGroup
         if (wisdom is null)
             return await ReplyWithErrorAsync("You must have wisdom value to roll this");
         
-        var diceExpression = _diceParser.Parse($"2d6+{wisdom.Modifier}");
-        var result = diceExpression.Roll();
+        if (!DiceHelper.TryRoll(_diceParser, DiceHelper.AddModifier("2d6", wisdom.Modifier), out var result))
+            return await ReplyWithErrorAsync("Dice rolling failed.");
+
         return await ReplyWithRoll(result, "Discern Realities");
     }
 
-    private async Task<Result> ReplyWithFailureAsync()
-    {
-        return (Result)await _feedbackService.SendContextualErrorAsync
-        (
-            "Dice rolling failed.",
-            ct: CancellationToken
-        );
-    }
-    
     private async Task<Result> ReplyWithErrorAsync(string error)
     {
         return (Result)await _feedbackService.SendContextualErrorAsync

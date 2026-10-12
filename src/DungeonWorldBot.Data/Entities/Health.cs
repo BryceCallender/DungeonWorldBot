@@ -7,7 +7,7 @@ public class Health
     public int ID { get; set; }
 
     public Snowflake CharacterID { get; set; }
-    public Character Character { get; set; }
+    public Character Character { get; set; } = null!;
     
     public int CurrentHP { get; set; }
     

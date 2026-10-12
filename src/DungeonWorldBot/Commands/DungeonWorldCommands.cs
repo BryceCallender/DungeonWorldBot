@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using DungeonWorldBot.Services;
 using OneOf;
 using Remora.Commands.Attributes;
@@ -5,40 +6,32 @@ using Remora.Commands.Groups;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Abstractions.Rest;
 using Remora.Discord.API.Objects;
-using Remora.Discord.Commands.Contexts;
-using Remora.Discord.Commands.Extensions;
+using Remora.Discord.Commands.Feedback.Messages;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
 using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats;
-using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Formats.Png;
 
 namespace DungeonWorldBot.Commands;
 
 public class DungeonWorldCommands : CommandGroup
 {
-    private readonly ICommandContext _context;
-    private readonly IDiscordRestChannelAPI _channels;
     private readonly FeedbackService _feedbackService;
     private readonly ICharacterService _characterService;
     
     public DungeonWorldCommands(
-        ICommandContext context,
-        IDiscordRestChannelAPI channels,
         FeedbackService feedbackService,
         ICharacterService characterService)
     {
-        _context = context;
-        _channels = channels;
         _feedbackService = feedbackService;
         _characterService = characterService;
     }
     
     [Command("players")]
+    [Description("List the characters in the campaign")]
     public async Task<IResult> ShowPlayersAsync()
     {
-        var characters = _characterService.GetCharacters();
+        var characters = await _characterService.GetCharactersAsync();
         if (characters.Count == 0)
         {
             return await ReplyWithError("No characters are in the campaign");
@@ -55,26 +48,26 @@ public class DungeonWorldCommands : CommandGroup
     }
 
     [Command("world", "map")]
+    [Description("Show the world map")]
     public async Task<IResult> ShowMapAsync()
     {
         using var imageStream = new MemoryStream();
-        using var image = await Image.LoadAsync("Assets/world.png");
+        using var image = await Image.LoadAsync(Path.Combine(AppContext.BaseDirectory, "Assets", "world.png"), CancellationToken);
 
-        await image.SaveAsync(imageStream, PngFormat.Instance);
-        
+        await image.SaveAsync(imageStream, PngFormat.Instance, CancellationToken);
         imageStream.Seek(0, SeekOrigin.Begin);
 
-        if (!_context.TryGetChannelID(out var channelId))
-        {
-            return Result.Success;
-        }
-
-        return await _channels.CreateMessageAsync(
-            channelId,
-            attachments: new OneOf<FileData, IPartialAttachment>[]
+        return await _feedbackService.SendContextualEmbedAsync(
+            new Embed(
+                Title: "World Map",
+                Image: new EmbedImage("attachment://world.png"),
+                Colour: _feedbackService.Theme.Primary
+            ),
+            new FeedbackMessageOptions(Attachments: new OneOf<FileData, IPartialAttachment>[]
             {
                 new FileData("world.png", imageStream)
-            }
+            }),
+            CancellationToken
         );
     }
     

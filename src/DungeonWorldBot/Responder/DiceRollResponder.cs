@@ -11,7 +11,7 @@ namespace DungeonWorldBot.Responder;
 
 public class DiceRollResponder: IResponder<IMessageCreate>
 {
-    private IDiscordRestChannelAPI _channelAPI;
+    private readonly IDiscordRestChannelAPI _channelAPI;
     private readonly IDiceParser _diceParser;
     
     public DiceRollResponder(IDiscordRestChannelAPI channelAPI, IDiceParser diceParser)
@@ -22,12 +22,14 @@ public class DiceRollResponder: IResponder<IMessageCreate>
     
     public async Task<Result> RespondAsync(IMessageCreate gatewayEvent, CancellationToken ct = default)
     {
-        if (!gatewayEvent.Content.StartsWith('.'))
+        if (gatewayEvent.Author.IsBot.OrDefault(false) || !gatewayEvent.Content.StartsWith('.'))
             return Result.FromSuccess();
 
-        var diceExpression = _diceParser.Parse(gatewayEvent.Content.Substring(1));
-        
-        var rollText = DiceHelper.BuildDiceResult(diceExpression.Roll());
+        // Anything that isn't valid dice notation (e.g. "..." or ".hi") is just a normal message
+        if (!DiceHelper.TryRoll(_diceParser, gatewayEvent.Content[1..], out var roll))
+            return Result.FromSuccess();
+
+        var rollText = DiceHelper.BuildDiceResult(roll);
         
         var embed = new Embed(
             Title: "🎲 Roll(s)", 

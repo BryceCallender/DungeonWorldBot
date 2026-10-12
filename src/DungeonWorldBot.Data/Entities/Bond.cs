@@ -6,5 +6,5 @@ public class Bond
 {
     public int ID { get; set; }
     public Snowflake TargetID { get; set; }
-    public string TargetName { get; set; }
+    public string TargetName { get; set; } = null!;
 }

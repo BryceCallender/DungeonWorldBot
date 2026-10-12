@@ -1,4 +1,5 @@
-﻿using DiceNotation;
+using DiceNotation;
+using DungeonWorldBot.CharacterCreation;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Extensions;
 using DungeonWorldBot.Responder;
@@ -30,22 +31,10 @@ public class Program
         
         var slashService = services.GetRequiredService<SlashService>();
 
-        var checkSlashSupport = await slashService.UpdateSlashCommandsAsync();
-        if (!checkSlashSupport.IsSuccess)
+        var updateSlash = await slashService.UpdateSlashCommandsAsync();
+        if (!updateSlash.IsSuccess)
         {
-            log.LogWarning
-            (
-                "The registered commands of the bot don't support slash commands: {Reason}",
-                checkSlashSupport.Error?.Message
-            );
-        }
-        else
-        {
-            var updateSlash = await slashService.UpdateSlashCommandsAsync();
-            if (!updateSlash.IsSuccess)
-            {
-                log.LogWarning("Failed to update slash commands: {Reason}", updateSlash.Error?.Message);
-            }
+            log.LogWarning("Failed to update slash commands: {Reason}", updateSlash.Error?.Message);
         }
 
         await host.RunAsync();
@@ -70,25 +59,18 @@ public class Program
         (
             (context, services) =>
             {
-                
-                var config = new ConfigurationBuilder()
-                    .SetBasePath(Directory.GetCurrentDirectory())
-                    .AddJsonFile("appsettings.json", optional: false, reloadOnChange: true)
-                    .Build();
-                
-                services.Configure<DiscordGatewayClientOptions>(g => g.Intents |= GatewayIntents.MessageContents | GatewayIntents.DirectMessages);
                 services.Configure<DiscordGatewayClientOptions>(g =>
                 {
-                    g.Intents |= GatewayIntents.MessageContents;
+                    g.Intents |= GatewayIntents.MessageContent;
                     g.Intents |= GatewayIntents.DirectMessages;
                 });
                 services
-                    .AddSqlite<DungeonWorldContext>(config.GetConnectionString("DungeonWorldConnectionString"))
+                    .AddSqlite<DungeonWorldContext>(context.Configuration.GetConnectionString("DungeonWorldConnectionString"))
                     .AddScoped<ICharacterService, CharacterService>()
-                    .AddScoped<IRollService, RollService>()
                     .AddScoped<IInventoryService, InventoryService>()
                     .AddScoped<IDiceParser, DiceParser>()
                     .AddScoped<InteractivityService>()
+                    .AddScoped<CharacterCreationDialogue>()
                     .AddResponder<DiceRollResponder>()
                     .AddRemoraServices();
             }
