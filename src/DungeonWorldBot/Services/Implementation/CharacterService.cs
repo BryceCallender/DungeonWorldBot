@@ -20,6 +20,8 @@ public class CharacterService : ICharacterService
             .Include(c => c.Health)
             .Include(c => c.Stats)
             .Include(c => c.Bonds)
+            .Include(c => c.Abilities)
+            .Include(c => c.Resources)
             .Include(c => c.Inventory)
             .ThenInclude(i => i.Items);
 
@@ -86,6 +88,12 @@ public class CharacterService : ICharacterService
     public async Task UpdateCharacterDamageModifierAsync(Character character, string modifier)
     {
         character.DamageModifier = modifier;
+        await _dungeonWorldContext.SaveChangesAsync();
+    }
+
+    public async Task AdjustArmorAsync(Character character, int amount)
+    {
+        character.ArmorRating += amount;
         await _dungeonWorldContext.SaveChangesAsync();
     }
 

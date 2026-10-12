@@ -1,5 +1,6 @@
 using DungeonWorldBot.Rolling;
 using DungeonWorldBot.CharacterCreation;
+using DungeonWorldBot.ClassSheets;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Extensions;
 using DungeonWorldBot.Responder;
@@ -11,6 +12,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Remora.Discord.API.Abstractions.Gateway.Commands;
+using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Services;
 using Remora.Discord.Gateway;
 using Remora.Discord.Gateway.Extensions;
@@ -68,6 +70,12 @@ public class Program
                     .AddSqlite<DungeonWorldContext>(context.Configuration.GetConnectionString("DungeonWorldConnectionString"))
                     .AddScoped<ICharacterService, CharacterService>()
                     .AddScoped<IInventoryService, InventoryService>()
+                    .AddScoped<IAbilityService, AbilityService>()
+                    .AddScoped<IResourceService, ResourceService>()
+                    .AddAutocompleteProvider<ClassMoveAutocomplete>()
+                    .AddAutocompleteProvider<AnyClassMoveAutocomplete>()
+                    .AddAutocompleteProvider<RolledClassMoveAutocomplete>()
+                    .AddAutocompleteProvider<ClassResourceAutocomplete>()
                     .AddSingleton<IDiceRoller, DiceRoller>()
                     .AddScoped<InteractivityService>()
                     .AddScoped<CharacterCreationDialogue>()

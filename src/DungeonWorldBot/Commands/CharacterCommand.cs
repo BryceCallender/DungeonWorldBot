@@ -2,6 +2,7 @@ using System.ComponentModel;
 using System.Drawing;
 using DungeonWorldBot.Rolling;
 using DungeonWorldBot.CharacterCreation;
+using DungeonWorldBot.ClassSheets;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Helpers;
 using DungeonWorldBot.Services;
@@ -28,19 +29,22 @@ public class CharacterCommand : CommandGroup
     private readonly ICharacterService _characterService;
     private readonly CharacterCreationDialogue _creationDialogue;
     private readonly IDiceRoller _diceRoller;
+    private readonly IResourceService _resourceService;
 
     public CharacterCommand(
         ICommandContext context,
         FeedbackService feedbackService,
         ICharacterService characterService,
         CharacterCreationDialogue creationDialogue,
-        IDiceRoller diceRoller)
+        IDiceRoller diceRoller,
+        IResourceService resourceService)
     {
         _context = context;
         _feedbackService = feedbackService;
         _characterService = characterService;
         _creationDialogue = creationDialogue;
         _diceRoller = diceRoller;
+        _resourceService = resourceService;
     }
 
     [Command("create")]
@@ -72,7 +76,7 @@ public class CharacterCommand : CommandGroup
         await _feedbackService.SendPrivateEmbedAsync(userId, new Embed
         {
             Title = character.Name,
-            Thumbnail = new EmbedThumbnail(ImageHelper.ClassToImgurLink(character.Class.Type)),
+            Thumbnail = ImageHelper.ClassThumbnail(character.Class.Type),
             Description = $"{character.Class.Type}: Level 1",
             Fields = CharacterSheet.NewCharacterFields(character),
             Colour = _feedbackService.Theme.Primary
@@ -116,11 +120,22 @@ public class CharacterCommand : CommandGroup
         embedFields.Add(new EmbedField(Name: "Total Armor", Value: character.ArmorRating.ToString()));
         embedFields.Add(new EmbedField(Name: "Bonds", Value:
             character.Bonds?.Count > 0 ? string.Join(", ", character.Bonds.Select(b => b.TargetName)) : "None"));
+        var abilities = character.Abilities?.Count > 0 ? string.Join(", ", character.Abilities.Select(a => a.ToDisplay())) : "None";
+        // Embed field values are capped at 1024 characters
+        embedFields.Add(new EmbedField(Name: "Abilities", Value:
+            abilities.Length <= 1024 ? abilities : $"{character.Abilities!.Count} abilities. See /ability list"));
+
+        var resources = ClassSheetLibrary.For(character.Class.Type)?.ResourcesFor(ClassSheetLibrary.KnownMoves(character)).ToList() ?? [];
+        if (resources.Count > 0)
+        {
+            embedFields.Add(new EmbedField(Name: "Resources", Value: string.Join(", ", resources.Select(r =>
+                $"{r.Name} {_resourceService.Format(character, r)}"))));
+        }
 
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: character.Name,
-                Thumbnail: new EmbedThumbnail(ImageHelper.ClassToImgurLink(character.Class.Type)),
+                Thumbnail: ImageHelper.ClassThumbnail(character.Class.Type),
                 Description: $"{character.Class.Type}: Level {character.Level}",
                 Fields: embedFields,
                 Colour: _feedbackService.Theme.Primary
@@ -329,7 +344,9 @@ public class CharacterCommand : CommandGroup
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: "Level Changed!",
-                Description: $"{character.Name} is now level {character.Level}",
+                Description: ClassSheetLibrary.For(character.Class.Type) is not null && character.Level >= 2
+                    ? $"{character.Name} is now level {character.Level}. Pick a new advanced move with /class moves and /class learn"
+                    : $"{character.Name} is now level {character.Level}",
                 Colour: _feedbackService.Theme.Primary
             ),
             ct: CancellationToken

@@ -13,7 +13,7 @@ namespace DungeonWorldBot.CharacterCreation;
 /// </summary>
 public class CharacterCreationDialogue
 {
-    private enum Section { Name, Race, Class, Stats, Alignment, Gear, Done }
+    private enum Section { Name, Race, Class, Stats, Alignment, Gear, ClassChoices, Done }
 
     private static readonly IReadOnlyList<(string Label, Section Section)> EditOptions =
     [
@@ -23,6 +23,7 @@ public class CharacterCreationDialogue
         ("Edit the Stats", Section.Stats),
         ("Edit the Alignment", Section.Alignment),
         ("Edit the Starting Items", Section.Gear),
+        ("Edit the Class Choices", Section.ClassChoices),
         ("No Editing", Section.Done),
     ];
 
@@ -88,11 +89,12 @@ public class CharacterCreationDialogue
         {
             Section.Name => await AskNameAsync(draft),
             Section.Race => await AskRaceAsync(draft),
-            // Changing class changes the available gear, so gear is always re-picked with it
-            Section.Class => await AskClassAsync(draft) && await AskGearAsync(draft),
+            // Changing class changes the available gear and class choices, so they're always re-picked with it
+            Section.Class => await AskClassAsync(draft) && await AskGearAsync(draft) && await AskClassChoicesAsync(draft),
             Section.Stats => await AskStatsAsync(draft),
             Section.Alignment => await AskAlignmentAsync(draft),
             Section.Gear => await AskGearAsync(draft),
+            Section.ClassChoices => await AskClassChoicesAsync(draft),
             _ => true,
         };
 
@@ -171,14 +173,57 @@ public class CharacterCreationDialogue
 
             foreach (var question in draft.Kit.Questions)
             {
-                var result = await RunAsync(new MenuStep(Feedback, question.Prompt, question.Choices.Select(c => c.Label).ToList()));
-                if (result.IsCancelled)
+                var picks = await AskPicksAsync(question.Prompt, question.Choices, c => c.Label, question.Picks);
+                if (picks is null)
                     return false;
 
-                draft.ApplyChoice(question.Choices[result.Value!.Value], dialogue._dice);
+                foreach (var choice in picks)
+                {
+                    draft.ApplyChoice(choice, dialogue._dice);
+                }
             }
 
             return true;
+        }
+
+        private async Task<bool> AskClassChoicesAsync(CharacterDraft draft)
+        {
+            foreach (var feature in draft.Sheet?.Features ?? [])
+            {
+                // Options that need another move first (like ship upgrades from Hell and Thunder) aren't offered yet
+                // Earlier picks can allow more here, like a Survivor's God cataclysm granting an extra Eternal Mark
+                var chosen = draft.StartingMoves().Select(m => m.Name).ToList();
+                var picks = await AskPicksAsync(feature.Prompt, feature.Options.Where(o => o.Requires is null).ToList(), o => o.Name, feature.AllowedPicks(chosen));
+                if (picks is null)
+                    return false;
+
+                draft.FeatureChoices[feature.Name] = picks;
+            }
+
+            return true;
+        }
+
+        /// <summary>
+        /// Asks for <paramref name="count"/> different options, one menu at a time.
+        /// </summary>
+        /// <returns>The picks, or null if the player cancelled.</returns>
+        private async Task<List<T>?> AskPicksAsync<T>(string prompt, IReadOnlyList<T> options, Func<T, string> label, int count)
+        {
+            var remaining = options.ToList();
+            var picks = new List<T>();
+
+            for (var i = 0; i < count && remaining.Count > 0; i++)
+            {
+                var step = count > 1 ? $"{prompt} (pick {i + 1} of {count})" : prompt;
+                var result = await RunAsync(new MenuStep(Feedback, step, remaining.Select(label).ToList()));
+                if (result.IsCancelled)
+                    return null;
+
+                picks.Add(remaining[result.Value!.Value]);
+                remaining.RemoveAt(result.Value!.Value);
+            }
+
+            return picks;
         }
 
         private static string StatName(StatType type) => type switch

@@ -20,6 +20,8 @@ public class Character
     public List<Stat> Stats { get; set; } = null!;
     public List<Bond>? Bonds { get; set; }
     public List<Debility>? Debilities { get; set; }
+    public List<Ability>? Abilities { get; set; }
+    public List<CharacterResource>? Resources { get; set; }
 
     public Status? Status { get; set; }
     public Alignment Alignment { get; set; }
