@@ -55,7 +55,7 @@ public static class Slayer
             new("Useful Symptoms", "Choose another Manifestation."),
             new("Marksman", "When you Volley with a bow or crossbow, you can use Slayer's Strike."),
             new("Welcome Thirst", "When you wake in the morning, you can choose to gain 1d4 Thirst (with Withdrawal)."),
-            new("Wildling", "Take a move from the Ranger list. If there's a Ranger in the party, they help you tame the beast or learn the move."),
+            new("Wildling", "Take a move from the Ranger list. If there's a Ranger in the party, they help you tame the beast or learn the move.") { Multiclass = MulticlassGrant.FromClasses(ClassType.Ranger) },
             new("Insomnia", "When you Take Watch, you can roll +Thirst instead. On a 10+, you also deal +1d4 damage to the approaching enemy."),
             new("Euphoric Sleep", "When you Make Camp and sleep with 0 Thirst, recover all your HP instead of half."),
             Rolled("Ensnare", StatType.Dex,

@@ -55,7 +55,7 @@ public static class Collector
             new("Just What I Needed", "When you loot for supplies, you always find 1 use of whatever basic equipment you need, if it's remotely plausible."),
             new("Life of the Party", "On a 12+ Carouse, choose as many options as you like. You become a local celebrity whose name carries weight here."),
             new("Lucky Charm", "When you Make Camp, set your Luck to 3. On a 6-, spend 1 Luck to reroll; if it succeeds, explain how it was pure luck. At 0 Luck, take -1 ongoing until you get more."),
-            new("Obsessive Dabbler", "Take a non-multiclass move from any class, treating your level as one lower unless it relates to your Predilections."),
+            new("Obsessive Dabbler", "Take a non-multiclass move from any class, treating your level as one lower unless it relates to your Predilections.") { Multiclass = MulticlassGrant.AnyClass(levelOneLower: true) },
             new("Treasure Hunter",
                 "While pursuing a treasure, gain 1 Payoff each time you suffer a major setback or someone beats you to it. When you get it, spend all your Payoff, gaining one per point:\n" +
                 "• A treasure map\n• As much mundane gear as you want\n• A really cool unique item\n• A moment of sweet revenge or irony"),
@@ -67,7 +67,7 @@ public static class Collector
             new("Connoisseur", "When you decide something you just found is especially valuable, say why. Add or remove one of its tags, or give it a unique function."),
             new("Healthy Friendship", "You and your rival make peace. Gain 1 Rivalry now and whenever you help them. When you're in trouble, spend 1 Rivalry and they show up just in time to save the day (and steal the show) or tip the odds your way.") { Requires = "Healthy Competition" },
             new("Mental Fortitude", "On a 12+ Defy Danger with Lore, you succeed beyond expectations: the GM offers a better outcome, a stroke of genius, or a golden opportunity."),
-            new("Obsessive Initiate", "Take another non-multiclass move from any class, treating your level as one lower unless it relates to your Predilections.") { Requires = "Obsessive Dabbler" },
+            new("Obsessive Initiate", "Take another non-multiclass move from any class, treating your level as one lower unless it relates to your Predilections.") { Multiclass = MulticlassGrant.AnyClass(levelOneLower: true), Requires = "Obsessive Dabbler" },
             new("Quality Goods", "After the GM gives the catches on something from Keeper of Curios, you can veto one."),
             Rolled("Speaker of Curios", null,
                 "When you command something that fits your collection's theme to take a specific action",

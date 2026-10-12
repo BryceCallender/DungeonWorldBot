@@ -74,7 +74,7 @@ public static class Captain
         ],
         level2To5:
         [
-            new("Discerning Dabbler", "Take a non-multiclass move from any class, treating your level as one lower unless the move rolls +WIS or improves your senses."),
+            new("Discerning Dabbler", "Take a non-multiclass move from any class, treating your level as one lower unless the move rolls +WIS or improves your senses.") { Multiclass = MulticlassGrant.AnyClass(levelOneLower: true) },
             new("Going Merry", "When you Make Camp with Stress marked, your crew poorly repairs it, turning one full Stress into a half-mark (they can't clear half-marks). With any half-marks, a single hit of 6+ damage marks Stress. Fill half-marks before marking new ones."),
             new(HellAndThunder, "Unlock the Black Iron Cannonballs, Buster Salvo and Dragonfire Cannons enhancements and gain one of them."),
             new("Life of the Party", "On a 12+ Carouse, choose as many options as you like. People will talk about it for years, and you're a local celebrity."),
@@ -116,7 +116,7 @@ public static class Captain
                     "They offer you something they think you want instead",
                     "They stop what they're doing and turn their attention to you",
                 ]) with { Requires = "Take Charge" },
-            new("Discerning Initiate", "Take another non-multiclass move from any class, treating your level as one lower unless the move rolls +WIS or improves your senses.") { Requires = "Discerning Dabbler" },
+            new("Discerning Initiate", "Take another non-multiclass move from any class, treating your level as one lower unless the move rolls +WIS or improves your senses.") { Multiclass = MulticlassGrant.AnyClass(levelOneLower: true), Requires = "Discerning Dabbler" },
             new("Klabautermann", "A guardian spirit lives in your ship: an NPC with Priest +2, Protector +2, Loyalty +2 and Cost: Protect the Ship. It only obeys you, never leaves the ship, can pilot it alone, and returns at dawn if killed while the ship survives."),
             new(LegendaryShip, "Unlock the Ghost Ship, Opulent Ship and Storm Ship enhancements and gain one of them.") { Requires = $"Renovations OR {HellAndThunder}" },
             new("The Master of The Ship", "At the helm of your own ship, it has +1 Control, and you and the ship take 2 less damage from every attack (Piercing and Ignores Armor don't bypass this)."),

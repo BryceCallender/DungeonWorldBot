@@ -69,7 +69,7 @@ public static class Survivor
             new("Protector", "When someone you cherish would suffer the consequences of their own move or decision, you can take all of them instead."),
             new("Survival Instinct", "When you scavenge, you always find 1 use of rations, ammo, gear, bandages or antitoxin, if you need it right now."),
             new("Tenacity", "When you Parley by relentlessly pressing your case despite those who'd silence, ignore or harm you, roll +CON instead of CHA."),
-            new("Worldly", "Take a move from a playbook no other player is using."),
+            new("Worldly", "Take a move from a playbook no other player is using.") { Multiclass = MulticlassGrant.AnyClass() },
             new("You're Already Dead", "When you'd deal damage, you can skip rolling and gain 1 Fate instead. Spend all your Fate at any time to deal your damage that many times to one enemy you gained it from, as a single hit. You can discard Fate to spare them."),
         ],
         level6To10:
@@ -77,7 +77,7 @@ public static class Survivor
             new("Defy Fate", "On a 12+ Defy Danger, you don't just avoid the danger, you negate it. If it was an enemy's move, they stop using it, knowing it's useless against you.") { Replaces = "Defy Opposition" },
             new("Got A Grave with My Name On It", "When you take your Last Breath, roll +CON.") { Requires = "Dead Man Walking" },
             new("More Scars Than Skin", "The next time you'd take a debility or suffer great personal harm, don't; gain an Eternal Mark instead.") { Requires = "Further Marked" },
-            new("Otherworldly", "Take another move from a playbook no other player is using.") { Requires = "Worldly" },
+            new("Otherworldly", "Take another move from a playbook no other player is using.") { Multiclass = MulticlassGrant.AnyClass(), Requires = "Worldly" },
             new("Something To Remember Me By", "Whatever you roll on Alone Against the World, leave a permanent mark on the threat: a crippling wound, a devastating loss, or a shattered ideal.") { Requires = "Alone Against the World" },
             new("The Moment We Met, Your Fate Was Sealed", "When you deal damage with You're Already Dead, deal the total to every enemy you gained Fate from.") { Requires = "You're Already Dead" },
             Rolled("Unstoppable", StatType.Con,

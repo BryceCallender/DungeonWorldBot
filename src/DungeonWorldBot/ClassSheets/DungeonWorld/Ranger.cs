@@ -77,7 +77,7 @@ public static class Ranger
             new("Strider", "When you Undertake a Perilous Journey, you can take two roles. Roll twice and use the better result for both.") { Replaces = "Follow Me" },
             new("A Safer Place", "When you set the watch for the night, everyone takes +1 to Take Watch, and +1 forward after the night in camp.") { Replaces = "A Safe Place" },
             new("Observant", "On a hit with Hunt and Track, also ask one Discern Realities question about the creature for free."),
-            new("Special Trick", "Choose a move from another class. You can use it while working with your animal companion."),
+            new("Special Trick", "Choose a move from another class. You can use it while working with your animal companion.") { Multiclass = MulticlassGrant.AnyClass() },
             new("Unnatural Ally", "Your animal companion is a monster. Describe it. It gets +2 ferocity, +1 instinct and a new training."),
         ]);
 }

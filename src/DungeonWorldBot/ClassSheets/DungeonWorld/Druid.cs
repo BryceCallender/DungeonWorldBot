@@ -48,7 +48,7 @@ public static class Druid
         ],
         level2To5:
         [
-            new("Hunter's Brother", "Choose one move from the Ranger class list."),
+            new("Hunter's Brother", "Choose one move from the Ranger class list.") { Multiclass = MulticlassGrant.FromClasses(ClassType.Ranger) },
             new("Red of Tooth and Claw", "In a dangerous animal form, your damage is d8."),
             Rolled("Communion of Whispers", StatType.Wis,
                 "When you spend time in a place, noting its spirits and calling on the spirits of the land",
@@ -80,7 +80,7 @@ public static class Druid
             new("Blood and Thunder", "In a dangerous animal form, your damage is d10.") { Replaces = "Red of Tooth and Claw" },
             new("The Druid Sleep", "The next time you have safety and time somewhere fitting, attune yourself to a second land (the GM sets the time and cost). You're born of the soil of both."),
             new("World-Talker", "Spirit Tongue, Shapeshifter and Studied Essence also work on the pure elements: fire, water, air and earth.") { Requires = "Thing-Talker" },
-            new("Stalker's Sister", "Choose one move from the Ranger class list."),
+            new("Stalker's Sister", "Choose one move from the Ranger class list.") { Multiclass = MulticlassGrant.FromClasses(ClassType.Ranger) },
             new("Formshaper", "In an animal form, gain +1 armor or +1d4 damage, chosen when you shapeshift.") { Requires = "Formcrafter" },
             new("Chimera", "When you shapeshift, you can merge up to three shapes, each feature granting its own move."),
             new("Weather Weaver", "When the sun rises and you're under open skies, the GM asks what the weather will be today. Whatever you say comes to pass."),

@@ -124,25 +124,38 @@ public class MoveCommand : CommandGroup
             return await ReplyWithErrorAsync($"The {character.Class.Type} doesn't have a class sheet in the bot yet.");
 
         var classMove = sheet.FindMove(move);
+        var rollsFrom = sheet;
+        if (classMove is null
+            && Multiclassing.KnownForeignMoves(character, sheet).FirstOrDefault(f => f.Move.Name.Equals(move.Trim(), StringComparison.OrdinalIgnoreCase)) is { } foreign)
+        {
+            // A move learned from another class's sheet
+            classMove = foreign.Move;
+            rollsFrom = foreign.Sheet;
+        }
+
         if (classMove?.Roll is not { } definition)
-            return await ReplyWithErrorAsync($"The {character.Class.Type} doesn't have a rolled move called {move}.");
+            return await ReplyWithErrorAsync($"{character.Name} doesn't have a rolled class move called {move}.");
 
         if (!ClassSheetLibrary.KnownMoves(character).Contains(classMove.Name, StringComparer.OrdinalIgnoreCase))
             return await ReplyWithErrorAsync($"{character.Name} doesn't know {classMove.Name}. Learn it with /class learn");
 
         if (stat is null && classMove.RollsWith is { } rollsWith)
         {
-            if (sheet.FindResource(rollsWith) is { } resource)
+            if (rollsFrom.FindResource(rollsWith) is { } resource)
             {
                 var value = _resourceService.GetValue(character, resource);
                 return await ReplyWithMoveAsync(character, definition, resource.Name, value, bonus);
             }
 
-            if (sheet.ClassStat?.Name.Equals(rollsWith, StringComparison.OrdinalIgnoreCase) == true)
+            if (rollsFrom.ClassStat?.Name.Equals(rollsWith, StringComparison.OrdinalIgnoreCase) == true)
             {
-                stat = ClassSheetLibrary.ResolveClassStat(character, sheet);
+                stat = rollsFrom == sheet ? ClassSheetLibrary.ResolveClassStat(character, sheet) : null;
                 if (stat is null)
-                    return await ReplyWithErrorAsync($"Choose your {sheet.ClassStat.Feature} with /class learn first, it decides your {rollsWith} stat.");
+                {
+                    return await ReplyWithErrorAsync(rollsFrom == sheet
+                        ? $"Choose your {sheet.ClassStat.Feature} with /class learn first, it decides your {rollsWith} stat."
+                        : $"{classMove.Name} rolls the {rollsFrom.Type}'s {rollsWith} stat. Pick which stat to use with the stat option.");
+                }
             }
         }
 

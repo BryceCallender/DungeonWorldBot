@@ -94,7 +94,7 @@ public static class Golem
                 rollsWith: Force),
             new("Emotions I Don't Understand", "When you Defend someone you have a bond with, you can roll +Force instead of CON."),
             new("Flexible Composition", "Choose a second Composition and gain its move (but not its Force stat)."),
-            new("Iron Dabbler", "Take any move from the Survivor or Mechanic list. If it's Mechanical Suit, instead pick one Primary Weapon, Movement Method and Advanced System that apply to your body."),
+            new("Iron Dabbler", "Take any move from the Survivor or Mechanic list. If it's Mechanical Suit, instead pick one Primary Weapon, Movement Method and Advanced System that apply to your body.") { Multiclass = MulticlassGrant.FromClasses(ClassType.Survivor, ClassType.Mechanic) },
             new("Material Girl", "When you or an ally needs ammo, weaponry or adventuring gear, take 1d4 damage (ignores armor) to rip 1 use of it out of your body."),
             new("Pinned Down",
                 "When you'd deal melee damage, you can grab the target instead. You never lose your grip unless you choose to. End the grab at any time to:\n" +
@@ -112,7 +112,7 @@ public static class Golem
                 rollsWith: Force),
             new("Explosive Entrance", "On a 10+ Elemental Transference, you can burst out violently: take the 7-9 result instead, but deal your damage to any enemies within reach of where you exit.") { Requires = "Elemental Transference" },
             new("Exterminate", "When you're ordered to kill something, take +1d8 damage forward against it.") { Replaces = "Search and Destroy" },
-            new("Magical Dabbler", "Take a non-multiclass move from any class, treating your level as one lower unless it's magic-based."),
+            new("Magical Dabbler", "Take a non-multiclass move from any class, treating your level as one lower unless it's magic-based.") { Multiclass = MulticlassGrant.AnyClass(levelOneLower: true) },
             new("Material World",
                 "Take a safe moment to reshape the terrain around you and say what you want. It's always possible, but the GM tells you one to three catches:\n" +
                 "• It's loud, drawing attention as you finish\n• You need ___'s help\n• It uses up gear or equipment\n• It's temporary at best\n• The area is permanently scarred"),

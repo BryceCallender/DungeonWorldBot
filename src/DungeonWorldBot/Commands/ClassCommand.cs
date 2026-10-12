@@ -88,6 +88,16 @@ public class ClassCommand : CommandGroup
             fields.Add(new EmbedField("Choices", string.Join('\n', choices)));
         }
 
+        var grants = Multiclassing.Grants(sheet, known);
+        if (grants.Count > 0)
+        {
+            var foreign = Multiclassing.KnownForeignMoves(character, sheet);
+            var free = grants.Count - foreign.Count;
+            fields.Add(new EmbedField($"Other Classes' Moves ({foreign.Count}/{grants.Count})",
+                (foreign.Count > 0 ? string.Join(", ", foreign.Select(Multiclassing.Qualify)) : "None yet") +
+                (free > 0 ? $"\n{free} to pick with /class learn (from {string.Join(", ", grants.Select(g => g.Name))})" : string.Empty)));
+        }
+
         var advanced = sheet.AdvancedMoves.Where(m => known.Contains(m.Name, StringComparer.OrdinalIgnoreCase)).ToList();
         var advancesTaken = sheet.AdvancesTaken(known);
         var picksLeft = Math.Max(0, character.Level - 1 - advancesTaken);
@@ -199,7 +209,7 @@ public class ClassCommand : CommandGroup
 
         var classMove = sheet.FindMove(move);
         if (classMove is null)
-            return await ReplyWithErrorAsync($"The {character.Class.Type} sheet doesn't have a move called {move}.");
+            return await LearnForeignMoveAsync(character, sheet, move);
 
         if (sheet.WhyCannotLearn(classMove, character.Level, ClassSheetLibrary.KnownMoves(character)) is { } problem)
             return await ReplyWithErrorAsync(problem);
@@ -207,6 +217,8 @@ public class ClassCommand : CommandGroup
         await _abilityService.AddAbilityAsync(character, classMove.Name, classMove.Summary, classMove.Uses);
 
         var description = $"{character.Name} learned **{classMove.Name}**\n\n{classMove.Summary}";
+        if (classMove.Multiclass is not null)
+            description += "\n\nPick the other class's move with /class learn";
         if (classMove.Replaces is not null && _abilityService.FindAbility(character, classMove.Replaces) is { } replaced)
         {
             await _abilityService.RemoveAbilityAsync(character, replaced);
@@ -242,12 +254,45 @@ public class ClassCommand : CommandGroup
             .Select(s => (Sheet: s, Move: s.FindMove(move)))
             .FirstOrDefault(m => m.Move is not null);
 
+        // Autocomplete sends "Name (Class)" when a name is on more than one sheet
+        if (found.Move is null && ClassSheetLibrary.All.SelectMany(s => s.AllMoves.Select(m => (Sheet: s, Move: (ClassMove?)m)))
+                .FirstOrDefault(m => $"{m.Move!.Name} ({m.Sheet.Type})".Equals(move.Trim(), StringComparison.OrdinalIgnoreCase)) is { Move: not null } qualified)
+        {
+            found = qualified;
+        }
+
         if (found.Move is null)
             return await ReplyWithErrorAsync($"No class sheet has a move called {move}.");
 
         return await ReplyAsync(
             $"{found.Move.Name} ({found.Sheet.Type}{TierLabel(found.Move)})",
             Truncate(found.Move.Summary, 4096));
+    }
+
+    private async Task<IResult> LearnForeignMoveAsync(Character character, ClassSheet sheet, string move)
+    {
+        var matches = Multiclassing.Find(move, sheet);
+        if (matches.Count == 0)
+            return await ReplyWithErrorAsync($"No class sheet has a move called {move} that another class can take.");
+
+        if (matches.Count > 1)
+        {
+            return await ReplyWithErrorAsync(
+                $"More than one class has {matches[0].Move.Name}. Say which one, e.g. {string.Join(" or ", matches.Select(Multiclassing.Qualify))}");
+        }
+
+        var foreign = matches[0];
+        if (Multiclassing.WhyCannotLearn(character, sheet, foreign) is { } problem)
+            return await ReplyWithErrorAsync(problem);
+
+        var summary = $"{foreign.Move.Summary}\n{Multiclassing.SourceNote(foreign.Sheet)}";
+        await _abilityService.AddAbilityAsync(character, foreign.Move.Name, summary, foreign.Move.Uses);
+
+        var description = $"{character.Name} learned **{foreign.Move.Name}** from the {foreign.Sheet.Type} sheet\n\n{foreign.Move.Summary}";
+        if (foreign.Move.Roll is not null)
+            description += "\n\nRoll it with /move class";
+
+        return await ReplyAsync("Move Learned!", Truncate(description, 4096));
     }
 
     private string FormatResource(Character character, ClassResource resource) => _resourceService.Format(character, resource);

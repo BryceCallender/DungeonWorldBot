@@ -49,7 +49,7 @@ public static class Templar
             new("Keen to Inquire", "You can roll +Wrath instead of CHA for Confession and Inquisitor."),
             new("Stench of Guilt", "You can smell guilt. Most people have at least a faint stink; those with none at all are either truly pious or truly evil, and the pious are rare."),
             new("Warming Up", "When an ally Aids you, you can gain 1 Wrath instead of taking +1."),
-            new("White Knight", "Take a move from the Paladin list. If there's a Paladin in the party, you need similar beliefs or at least mutual respect."),
+            new("White Knight", "Take a move from the Paladin list. If there's a Paladin in the party, you need similar beliefs or at least mutual respect.") { Multiclass = MulticlassGrant.FromClasses(ClassType.Paladin) },
             new("Cleansing Censer", "Gain a blessed censer of holy flame (melee, reach, +1 damage). When you purify your campsite with it as you Make Camp, anyone who sleeps a few hours heals to full."),
             new("Judgment", "Spend 1 Wrath to declare someone deserves punishment. The next time they deal damage, they take 1d6 damage (ignores armor). Describe how."),
             new("Holy Vengeance", "When you kill an enemy that harmed you, gain 1 Wrath."),
@@ -71,7 +71,7 @@ public static class Templar
                     "They won't give up, even facing certain death",
                     "They spread the word and rally other believers",
                 ]),
-            new("Holy Crusade", "Take another move from the Paladin list. A Paladin in the party can take one of your moves when they level up.") { Requires = "White Knight" },
+            new("Holy Crusade", "Take another move from the Paladin list. A Paladin in the party can take one of your moves when they level up.") { Multiclass = MulticlassGrant.FromClasses(ClassType.Paladin), Requires = "White Knight" },
             new("Miracle of Healing", "When you Make Camp with your Cleansing Censer, anyone who sleeps a few hours can heal to full or remove 1 debility.") { Requires = "Cleansing Censer" },
             new("Bless Ally",
                 "When you Aid an ally, you can spend 1 Wrath to choose one:\n" +

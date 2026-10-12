@@ -68,7 +68,7 @@ public static class Battlemaster
             new("Misdirection", "While you hold an enemy's attention, spend 2 Gambits to let an ally make a free attack against it, as if they rolled a 10+."),
             new("Phase 2", "When you kill an enemy, you can Change Tactics for free."),
             new("Playing the Long Game", "When your Gambits would reset to 0, keep 1."),
-            new("Multiclass Learner", "Take one move from another class (not Called Shot or Backstab), treating your level as one lower. Tell everyone how you learned it."),
+            new("Multiclass Learner", "Take one move from another class (not Called Shot or Backstab), treating your level as one lower. Tell everyone how you learned it.") { Multiclass = MulticlassGrant.AnyClass(levelOneLower: true) with { ExcludedMoves = ["Called Shot", "Backstab"] } },
         ],
         level6To10:
         [
@@ -79,7 +79,7 @@ public static class Battlemaster
             new("Self Defense Training", "Spend an hour or two drilling your allies against an enemy you know. The GM picks the Defy Danger stat and you explain why it works; against that enemy, Defying Danger that way takes +1. Practice daily to keep it up."),
             new("Battlefield Desperation", "Battlefield Motivation turns the chosen debility into a +1 to that modifier instead (max +3), until it gets worse or the battle ends.") { Requires = "Battlefield Motivation" },
             new("Command Ally", "Spend 2 Gambits to let an ally make a free attack against an enemy, as if they rolled a 10+. Spend 1 more to maximize its damage.") { Replaces = "Misdirection" },
-            new("Surprise Attack", "Gain Called Shot (Ranger) or Backstab (Thief). When you coordinate with a Ranger or Thief to use it together, they add your INT modifier to their first attack's damage."),
+            new("Surprise Attack", "Gain Called Shot (Ranger) or Backstab (Thief). When you coordinate with a Ranger or Thief to use it together, they add your INT modifier to their first attack's damage.") { Multiclass = MulticlassGrant.FromClasses(ClassType.Ranger) with { OnlyMoves = ["Called Shot"] } },
             new("Tactical Teacher", "Gain the bond \"I will teach ___ to have a tactical mind.\" That ally can choose to gain the effects of your current Tactic."),
         ],
         deathMove: new("Death: Grand Plan",

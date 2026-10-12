@@ -58,6 +58,11 @@ public sealed record ClassMove(string Name, string Summary)
     public string? DamageDie { get; init; }
 
     /// <summary>
+    /// For moves like the Ranger's Special Trick, which other classes' moves this one lets the character take.
+    /// </summary>
+    public MulticlassGrant? Multiclass { get; init; }
+
+    /// <summary>
     /// Uses or charges the move starts with, if it's limited.
     /// </summary>
     public int? Uses { get; init; }
@@ -136,6 +141,33 @@ public sealed record ClassFeature(string Name, string Prompt, IReadOnlyList<Clas
 
     public int TakenPicks(IReadOnlyCollection<string> ownedMoves) =>
         Options.Count(o => ownedMoves.Contains(o.Name, StringComparer.OrdinalIgnoreCase));
+}
+
+/// <summary>
+/// Permission to take one move from another class's sheet.
+/// </summary>
+public sealed record MulticlassGrant
+{
+    /// <summary>
+    /// The classes the move can come from, or null for any class but the character's own.
+    /// </summary>
+    public IReadOnlyList<ClassType>? From { get; init; }
+
+    /// <summary>
+    /// Whether the character counts as one level lower when choosing (most "Dabbler" moves).
+    /// </summary>
+    public bool LevelOneLower { get; init; }
+
+    /// <summary>
+    /// If set, only these moves can be taken.
+    /// </summary>
+    public IReadOnlyList<string> OnlyMoves { get; init; } = [];
+
+    public IReadOnlyList<string> ExcludedMoves { get; init; } = [];
+
+    public static MulticlassGrant AnyClass(bool levelOneLower = false) => new() { LevelOneLower = levelOneLower };
+
+    public static MulticlassGrant FromClasses(params ClassType[] classes) => new() { From = classes };
 }
 
 /// <summary>
