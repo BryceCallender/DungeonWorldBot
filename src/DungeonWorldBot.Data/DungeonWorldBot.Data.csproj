@@ -9,15 +9,17 @@
 
     <ItemGroup>
       <PackageReference Include="EntityFrameworkCore.Sqlite.Migrations" Version="1.0.0" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.5" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.5">
+      <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.12" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         <PrivateAssets>all</PrivateAssets>
       </PackageReference>
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.5" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="10.0.5" />
-      <PackageReference Include="Remora.Discord.API" Version="79.0.0" />
-      <PackageReference Include="Remora.Rest.Core" Version="3.0.0" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite.Core" Version="10.0.12" />
+      <!-- Pin the native SQLite bundle past GHSA-2m69-gcr7-jv3q until EF Core references a fixed version -->
+      <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.13" />
+      <PackageReference Include="Remora.Discord.API" Version="81.0.0" />
+      <PackageReference Include="Remora.Rest.Core" Version="4.0.0" />
     </ItemGroup>
 
 </Project>

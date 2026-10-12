@@ -1,4 +1,3 @@
-using DungeonWorldBot.API.Models;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using Remora.Discord.API.Abstractions.Objects;

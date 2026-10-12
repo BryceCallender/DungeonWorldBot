@@ -7,7 +7,7 @@ public class Class
     public int ID { get; set; }
 
     public Snowflake CharacterID { get; set; }
-    public Character Character { get; set; }
+    public Character Character { get; set; } = null!;
 
     public ClassType Type { get; set; }
 

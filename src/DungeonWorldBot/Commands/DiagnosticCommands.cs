@@ -12,7 +12,7 @@ namespace DungeonWorldBot.Commands;
 [Group("diag")]
 public class DiagnosticCommands : CommandGroup
 {
-    private FeedbackService _feedbackService;
+    private readonly FeedbackService _feedbackService;
 
     public DiagnosticCommands(
         FeedbackService feedbackService)

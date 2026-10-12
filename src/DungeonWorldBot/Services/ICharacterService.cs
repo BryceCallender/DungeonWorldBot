@@ -1,32 +1,27 @@
 using DungeonWorldBot.Data.Entities;
-using Remora.Discord.API.Abstractions.Objects;
 using Remora.Rest.Core;
 
 namespace DungeonWorldBot.Services;
 
 public interface ICharacterService
 {
-    Task<Character?> GetCharacterFromUserAsync(IUser user);
-    
     Task<Character?> GetCharacterFromUserAsync(Snowflake userId);
 
+    Task<List<Character>> GetCharactersAsync();
+
     Task AddCharacterAsync(Character character);
-    
-    List<Character> GetCharacters();
 
-    Task ChangeCharacterAlignment(Character character, Alignment alignment);
+    Task HealAsync(Character character, int amount);
 
-    Task LevelUp(List<Character> characters);
+    Task FullHealAsync(Character character);
 
-    Task Heal(Character user, int amount);
+    Task DamageAsync(Character character, int amount);
 
-    Task Damage(Character user, int amount);
+    Task BondWithAsync(Character character, Character bonder);
 
-    Task BondWith(Character user, Character bonder);
+    Task UpdateCharacterStatAsync(Character character, StatType statType, int value);
 
-    Task UpdateCharacterStat(Character user, StatType statType, int value);
+    Task SetLevelAsync(Character character, int level);
 
-    Task LevelUp(Character user, int level);
-    
-    Task UpdateCharacterDamageModifier(Character user, string modifier);
+    Task UpdateCharacterDamageModifierAsync(Character character, string modifier);
 }
