@@ -103,13 +103,15 @@ public class DiceRollerTests
     }
 
     [Theory]
-    [InlineData("2d6", 4, "d6 + d6\n\n4 + 4 = **8**")]
-    [InlineData("2d6+1", 4, "d6 + d6 + 1\n\n4 + 4 + 1 = **9**")]
-    [InlineData("2d6-2", 4, "d6 + d6 - 2\n\n4 + 4 - 2 = **6**")]
-    [InlineData("d20", 17, "d20\n\n**17**")]
-    [InlineData("d20+3", 17, "d20 + 3\n\n17 + 3 = **20**")]
-    [InlineData("4d6k3", 3, "d6 + d6 + d6 + ~~d6~~\n\n3 + 3 + 3 + ~~3~~ = **9**")]
-    [InlineData("2d6x2", 3, "2d6x2\n\n3, 3 → **12**")]
+    [InlineData("2d6", 4, "```\nd6 + d6\n 4 +  4 = 8\n```")]
+    [InlineData("2d6+1", 4, "```\nd6 + d6 + 1\n 4 +  4 + 1 = 9\n```")]
+    [InlineData("2d6-2", 4, "```\nd6 + d6 - 2\n 4 +  4 - 2 = 6\n```")]
+    [InlineData("d20", 17, "```\nd20\n 17\n```")]
+    [InlineData("d20+3", 17, "```\nd20 + 3\n 17 + 3 = 20\n```")]
+    [InlineData("2d6+10", 4, "```\nd6 + d6 + 10\n 4 +  4 + 10 = 18\n```")]
+    [InlineData("4d6k3", 3, "```\nd6 + d6 + d6\n 3 +  3 +  3 = 9\n\ndropped: 3\n```")]
+    [InlineData("4d6l1", 2, "```\nd6\n 2\n\ndropped: 2, 2, 2\n```")]
+    [InlineData("2d6x2", 3, "`2d6x2`\n3, 3 → **12**")]
     [InlineData("5", 1, "**5**")]
     public void BuildDiceResult_ShowsTheMath(string expression, int everyDie, string expected)
     {

@@ -144,12 +144,7 @@ public class MoveCommand : CommandGroup
             fields.Add(RollDamage(character));
         }
 
-        var colour = roll.Outcome switch
-        {
-            MoveOutcome.StrongHit => _feedbackService.Theme.Success,
-            MoveOutcome.WeakHit => _feedbackService.Theme.Warning,
-            _ => _feedbackService.Theme.FaultOrDanger,
-        };
+        var colour = MoveRoller.ColourFor(roll.Outcome);
 
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(

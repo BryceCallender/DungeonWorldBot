@@ -1,5 +1,6 @@
 using System.Reflection;
 using DungeonWorldBot.Rolling;
+using d20Tek.DiceNotation.DieRoller;
 using DungeonWorldBot.Moves;
 
 namespace DungeonWorldBot.Tests;
@@ -36,6 +37,33 @@ public class MoveTests
             Assert.InRange(roll.Dice.Value, min, max);
             Assert.Equal(MoveRoller.OutcomeFor(roll.Dice.Value), roll.Outcome);
         }
+    }
+
+    [Theory]
+    [InlineData("2d6", 5, MoveOutcome.StrongHit)]      // 10
+    [InlineData("2d6+1", 3, MoveOutcome.WeakHit)]      // 7
+    [InlineData("2d6 - 1", 3, MoveOutcome.Miss)]       // 5
+    [InlineData("2D6+2-1", 4, MoveOutcome.WeakHit)]    // 9
+    public void OutcomeOf_TwoD6Rolls_HaveABand(string expression, int everyDie, MoveOutcome expected)
+    {
+        var roll = new DiceRoller(new ConstantDieRoller(everyDie)).Roll(expression);
+
+        Assert.Equal(expected, MoveRoller.OutcomeOf(roll));
+    }
+
+    [Theory]
+    [InlineData("d20")]
+    [InlineData("1d6")]
+    [InlineData("3d6")]
+    [InlineData("4d6k3")]
+    [InlineData("2d8")]
+    [InlineData("2d6+1d4")]
+    [InlineData("2d6x2")]
+    public void OutcomeOf_OtherRolls_HaveNoBand(string expression)
+    {
+        var roll = new DiceRoller(new ConstantDieRoller(1)).Roll(expression);
+
+        Assert.Null(MoveRoller.OutcomeOf(roll));
     }
 
     [Theory]
