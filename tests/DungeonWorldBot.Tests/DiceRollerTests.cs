@@ -102,16 +102,20 @@ public class DiceRollerTests
         Assert.Throws<ArgumentException>(() => _roller.Roll("nope"));
     }
 
-    [Fact]
-    public void BuildDiceResult_StrikesThroughDroppedDice()
+    [Theory]
+    [InlineData("2d6", 4, "d6 + d6\n\n4 + 4 = **8**")]
+    [InlineData("2d6+1", 4, "d6 + d6 + 1\n\n4 + 4 + 1 = **9**")]
+    [InlineData("2d6-2", 4, "d6 + d6 - 2\n\n4 + 4 - 2 = **6**")]
+    [InlineData("d20", 17, "d20\n\n**17**")]
+    [InlineData("d20+3", 17, "d20 + 3\n\n17 + 3 = **20**")]
+    [InlineData("4d6k3", 3, "d6 + d6 + d6 + ~~d6~~\n\n3 + 3 + 3 + ~~3~~ = **9**")]
+    [InlineData("2d6x2", 3, "2d6x2\n\n3, 3 → **12**")]
+    [InlineData("5", 1, "**5**")]
+    public void BuildDiceResult_ShowsTheMath(string expression, int everyDie, string expected)
     {
-        var result = new DiceRoller(new ConstantDieRoller(3)).Roll("4d6k3");
+        var result = new DiceRoller(new ConstantDieRoller(everyDie)).Roll(expression);
 
-        var text = DiceHelper.BuildDiceResult(result);
-
-        Assert.Contains("`4d6k3`", text);
-        Assert.Contains("Rolls: 3, 3, 3, ~~3~~", text);
-        Assert.Contains("Total: **9**", text);
+        Assert.Equal(expected, DiceHelper.BuildDiceResult(result));
     }
 
     [Theory]
