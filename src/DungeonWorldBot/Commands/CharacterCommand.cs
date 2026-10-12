@@ -1100,6 +1100,60 @@ public class CharacterCommand : CommandGroup
         );
     }
 
+    [Command("set-level")]
+    public async Task<IResult> LevelUp(int level)
+    {
+        if (!_context.TryGetUserID(out var userId))
+        {
+            throw new NotSupportedException();
+        }
+        
+        var character = await _characterService.GetCharacterFromUserAsync(userId);
+        
+        if (character is null)
+        {
+            return Result.FromError<string>("User does not exist or have a current character");
+        }
+        
+        await _characterService.LevelUp(character, level);
+        
+        return await _feedbackService.SendContextualEmbedAsync(
+            new Embed(
+                Title: $"Stat Changed!",
+                Description: $"{character.Name}'s level was changed to {level}",
+                Colour: _feedbackService.Theme.Primary
+            ),
+            ct: CancellationToken
+        );
+    }
+
+    [Command("level-up")]
+    public async Task<IResult> LevelUp()
+    {
+        if (!_context.TryGetUserID(out var userId))
+        {
+            throw new NotSupportedException();
+        }
+        
+        var character = await _characterService.GetCharacterFromUserAsync(userId);
+        
+        if (character is null)
+        {
+            return Result.FromError<string>("User does not exist or have a current character");
+        }
+        
+        await _characterService.LevelUp(character, character.Level + 1);
+
+        return await _feedbackService.SendContextualEmbedAsync(
+            new Embed(
+                Title: $"Stat Changed!",
+                Description: $"{character.Name}'s level was changed to {character.Level + 1}",
+                Colour: _feedbackService.Theme.Primary
+            ),
+            ct: CancellationToken
+        );
+    }
+
     private async Task<Result> ReplyWithFailureAsync()
     {
         return (Result)await _feedbackService.SendContextualErrorAsync

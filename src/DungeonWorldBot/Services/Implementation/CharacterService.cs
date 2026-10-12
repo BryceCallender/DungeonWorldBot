@@ -136,4 +136,10 @@ public class CharacterService : ICharacterService
         user.DamageModifier = modifier;
         await _dungeonWorldContext.SaveChangesAsync();
     }
+
+    public async Task LevelUp(Character user, int level)
+    {
+        user.Level = level;
+        await _dungeonWorldContext.SaveChangesAsync();
+    }
 }
