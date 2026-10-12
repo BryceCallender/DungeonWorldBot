@@ -1,6 +1,6 @@
 using System.ComponentModel;
 using System.Drawing;
-using DiceNotation;
+using DungeonWorldBot.Rolling;
 using DungeonWorldBot.CharacterCreation;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Helpers;
@@ -27,20 +27,20 @@ public class CharacterCommand : CommandGroup
     private readonly FeedbackService _feedbackService;
     private readonly ICharacterService _characterService;
     private readonly CharacterCreationDialogue _creationDialogue;
-    private readonly IDiceParser _diceParser;
+    private readonly IDiceRoller _diceRoller;
 
     public CharacterCommand(
         ICommandContext context,
         FeedbackService feedbackService,
         ICharacterService characterService,
         CharacterCreationDialogue creationDialogue,
-        IDiceParser diceParser)
+        IDiceRoller diceRoller)
     {
         _context = context;
         _feedbackService = feedbackService;
         _characterService = characterService;
         _creationDialogue = creationDialogue;
-        _diceParser = diceParser;
+        _diceRoller = diceRoller;
     }
 
     [Command("create")]
@@ -165,17 +165,19 @@ public class CharacterCommand : CommandGroup
             return await ReplyWithErrorAsync($"{user.Username} does not have a character.");
         }
 
-        if (!DiceHelper.TryRoll(_diceParser, damage, out var roll))
+        if (!_diceRoller.TryRoll(damage, out var roll))
         {
             return await ReplyWithErrorAsync($"`{damage}` is not a valid amount or dice roll.");
         }
 
-        await _characterService.DamageAsync(character, roll.Value);
+        // Modifiers can push a roll below zero ("1d4-3"), which shouldn't heal anyone
+        var amount = Math.Max(0, roll.Value);
+        await _characterService.DamageAsync(character, amount);
 
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: "Damaged!",
-                Description: $"{character.Name} took {roll.Value} damage! ({character.Health.CurrentHP}/{character.Health.MaxHP} HP)",
+                Description: $"{character.Name} took {amount} damage! ({character.Health.CurrentHP}/{character.Health.MaxHP} HP)",
                 Colour: _feedbackService.Theme.Primary
             ),
             ct: CancellationToken
@@ -204,13 +206,14 @@ public class CharacterCommand : CommandGroup
         }
         else
         {
-            if (!DiceHelper.TryRoll(_diceParser, heal, out var roll))
+            if (!_diceRoller.TryRoll(heal, out var roll))
             {
                 return await ReplyWithErrorAsync($"`{heal}` is not a valid amount or dice roll.");
             }
 
-            await _characterService.HealAsync(character, roll.Value);
-            description = $"{character.Name} was healed for {roll.Value} HP";
+            var amount = Math.Max(0, roll.Value);
+            await _characterService.HealAsync(character, amount);
+            description = $"{character.Name} was healed for {amount} HP";
         }
 
         return await _feedbackService.SendContextualEmbedAsync(
@@ -261,7 +264,7 @@ public class CharacterCommand : CommandGroup
             return await ReplyWithErrorAsync(NoCharacterMessage);
         }
 
-        if (!DiceHelper.TryRoll(_diceParser, newModifier, out _))
+        if (!_diceRoller.TryRoll(newModifier, out _))
         {
             return await ReplyWithErrorAsync($"`{newModifier}` is not a valid dice roll.");
         }

@@ -1,4 +1,4 @@
-using DiceNotation;
+using DungeonWorldBot.Rolling;
 using DungeonWorldBot.Data.Entities;
 using Remora.Rest.Core;
 
@@ -49,7 +49,7 @@ public sealed class CharacterDraft
     /// <summary>
     /// Switches class, resetting gear to that class's base items.
     /// </summary>
-    public void SetClass(ClassKit kit, IDiceParser dice)
+    public void SetClass(ClassKit kit, IDiceRoller dice)
     {
         Kit = kit;
         ResetGear(dice);
@@ -58,7 +58,7 @@ public sealed class CharacterDraft
     /// <summary>
     /// Clears any chosen gear, leaving only the class's base items and armor.
     /// </summary>
-    public void ResetGear(IDiceParser dice)
+    public void ResetGear(IDiceRoller dice)
     {
         Items.Clear();
         ArmorRating = Kit.BaseArmor;
@@ -70,7 +70,7 @@ public sealed class CharacterDraft
         }
     }
 
-    public void ApplyChoice(KitChoice choice, IDiceParser dice)
+    public void ApplyChoice(KitChoice choice, IDiceRoller dice)
     {
         ArmorRating += choice.Armor;
         DamageRating += choice.Damage;

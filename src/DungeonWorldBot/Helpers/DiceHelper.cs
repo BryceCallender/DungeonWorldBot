@@ -1,6 +1,5 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Text;
-using DiceNotation;
+using d20Tek.DiceNotation.Results;
 
 namespace DungeonWorldBot.Helpers;
 
@@ -17,55 +16,21 @@ public static class DiceHelper
     };
 
     /// <summary>
-    /// Parses and rolls user supplied dice notation without throwing on bad input.
+    /// Formats a roll for an embed, e.g. "`4d6k3`\nRolls: 6, 5, 3, ~~2~~\nTotal: **14**".
     /// </summary>
-    public static bool TryRoll(IDiceParser parser, string expression, [NotNullWhen(true)] out DiceResult? result)
-    {
-        result = null;
-        if (string.IsNullOrWhiteSpace(expression))
-            return false;
-
-        try
-        {
-            result = parser.Parse(expression.Trim()).Roll();
-            return true;
-        }
-        catch (Exception)
-        {
-            return false;
-        }
-    }
-
     public static string BuildDiceResult(DiceResult roll)
     {
-        var total = roll.Value;
-        var rollText = new StringBuilder();
-        var rollRepresentation = new StringBuilder();
-        var rollValues = new StringBuilder();
-        
-        foreach (var (index, rollResult) in roll.Results.Index())
-        {
-            rollRepresentation.Append(rollResult.Type);
-            rollValues.Append(rollResult.Value);
+        var text = new StringBuilder();
+        text.AppendLine($"`{roll.DiceExpression}`");
 
-            if (index >= roll.Results.Count - 1) 
-                continue;
-            
-            rollRepresentation.Append(" + ");
-            rollValues.Append(" + ");
+        if (roll.Results.Count > 0)
+        {
+            // Dice that were dropped (e.g. by k3) are struck through so it's clear why they don't count
+            var rolls = roll.Results.Select(r => r.AppliesToResultCalculation ? $"{r.Value}" : $"~~{r.Value}~~");
+            text.AppendLine($"Rolls: {string.Join(", ", rolls)}");
         }
 
-        rollText.AppendLine(rollRepresentation.ToString());
-        rollText.AppendLine();
-        if (roll.Results.Count == 1)
-        {
-            rollText.AppendLine($"{total}");
-        }
-        else
-        {
-            rollText.AppendLine($"{rollValues} = {total}");
-        }
-
-        return rollText.ToString();
+        text.Append($"Total: **{roll.Value}**");
+        return text.ToString();
     }
 }

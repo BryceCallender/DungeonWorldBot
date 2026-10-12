@@ -1,5 +1,5 @@
 using System.Reflection;
-using DiceNotation;
+using DungeonWorldBot.Rolling;
 using DungeonWorldBot.Moves;
 
 namespace DungeonWorldBot.Tests;
@@ -29,7 +29,7 @@ public class MoveTests
     [InlineData(-2, 0, 10)]
     public void Roll_Adds_Modifier(int modifier, int min, int max)
     {
-        var parser = new DiceParser();
+        var parser = new DiceRoller();
         for (var i = 0; i < 200; i++)
         {
             var roll = MoveRoller.Roll(parser, modifier);

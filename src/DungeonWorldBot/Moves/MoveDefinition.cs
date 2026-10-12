@@ -1,4 +1,5 @@
-using DiceNotation;
+using d20Tek.DiceNotation.Results;
+using DungeonWorldBot.Rolling;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Helpers;
 
@@ -48,9 +49,9 @@ public static class MoveRoller
         _ => MoveOutcome.Miss,
     };
 
-    public static MoveRoll Roll(IDiceParser dice, int modifier)
+    public static MoveRoll Roll(IDiceRoller dice, int modifier)
     {
-        var result = dice.Parse(DiceHelper.AddModifier("2d6", modifier)).Roll();
+        var result = dice.Roll(DiceHelper.AddModifier("2d6", modifier));
         return new MoveRoll(result, OutcomeFor(result.Value));
     }
 

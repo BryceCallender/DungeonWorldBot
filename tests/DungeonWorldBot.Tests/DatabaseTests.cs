@@ -1,4 +1,4 @@
-using DiceNotation;
+using DungeonWorldBot.Rolling;
 using DungeonWorldBot.CharacterCreation;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
@@ -24,10 +24,10 @@ public sealed class DatabaseTests : IDisposable
     public async Task CreatedCharacter_RoundTripsThroughSqlite()
     {
         var draft = new CharacterDraft { Name = "Morrow", Race = Race.Human, Alignment = Alignment.NeutralEvil };
-        draft.SetClass(ClassKits.All.Single(k => k.Type == ClassType.Necromancer), new DiceParser());
+        draft.SetClass(ClassKits.All.Single(k => k.Type == ClassType.Necromancer), new DiceRoller());
         foreach (var question in draft.Kit.Questions)
         {
-            draft.ApplyChoice(question.Choices[^1], new DiceParser());
+            draft.ApplyChoice(question.Choices[^1], new DiceRoller());
         }
         foreach (var (type, value) in CharacterDraft.StatOrder.Zip(CharacterDraft.StatArray))
         {

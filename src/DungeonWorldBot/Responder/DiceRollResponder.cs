@@ -1,5 +1,5 @@
 using System.Drawing;
-using DiceNotation;
+using DungeonWorldBot.Rolling;
 using DungeonWorldBot.Helpers;
 using DungeonWorldBot.Moves;
 using DungeonWorldBot.Services;
@@ -20,13 +20,13 @@ public class DiceRollResponder : IResponder<IMessageCreate>
     private static readonly Color RollColour = Color.Fuchsia;
 
     private readonly IDiscordRestChannelAPI _channelAPI;
-    private readonly IDiceParser _diceParser;
+    private readonly IDiceRoller _diceRoller;
     private readonly ICharacterService _characterService;
 
-    public DiceRollResponder(IDiscordRestChannelAPI channelAPI, IDiceParser diceParser, ICharacterService characterService)
+    public DiceRollResponder(IDiscordRestChannelAPI channelAPI, IDiceRoller diceRoller, ICharacterService characterService)
     {
         _channelAPI = channelAPI;
-        _diceParser = diceParser;
+        _diceRoller = diceRoller;
         _characterService = characterService;
     }
 
@@ -59,7 +59,7 @@ public class DiceRollResponder : IResponder<IMessageCreate>
 
     private Embed? BuildDiceRoll(IMessageCreate message, DiceMessage request)
     {
-        if (!DiceHelper.TryRoll(_diceParser, request.Expression!, out var roll))
+        if (!_diceRoller.TryRoll(request.Expression!, out var roll))
             return null;
 
         return new Embed(
@@ -82,7 +82,7 @@ public class DiceRollResponder : IResponder<IMessageCreate>
                 Colour: Color.Red);
         }
 
-        var roll = MoveRoller.Roll(_diceParser, stat.Modifier + request.Bonus);
+        var roll = MoveRoller.Roll(_diceRoller, stat.Modifier + request.Bonus);
         var rolledWith = $"{statType.ToString().ToUpper()} {Signed(stat.Modifier)}"
                          + (request.Bonus != 0 ? $", Bonus {Signed(request.Bonus)}" : string.Empty);
 

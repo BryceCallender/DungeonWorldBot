@@ -1,4 +1,4 @@
-using DiceNotation;
+using DungeonWorldBot.Rolling;
 using DungeonWorldBot.CharacterCreation;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Extensions;
@@ -68,7 +68,7 @@ public class Program
                     .AddSqlite<DungeonWorldContext>(context.Configuration.GetConnectionString("DungeonWorldConnectionString"))
                     .AddScoped<ICharacterService, CharacterService>()
                     .AddScoped<IInventoryService, InventoryService>()
-                    .AddScoped<IDiceParser, DiceParser>()
+                    .AddSingleton<IDiceRoller, DiceRoller>()
                     .AddScoped<InteractivityService>()
                     .AddScoped<CharacterCreationDialogue>()
                     .AddResponder<DiceRollResponder>()

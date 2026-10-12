@@ -1,4 +1,4 @@
-using DiceNotation;
+using DungeonWorldBot.Rolling;
 using DungeonWorldBot.CharacterCreation;
 using DungeonWorldBot.Data.Entities;
 using Remora.Rest.Core;
@@ -7,7 +7,7 @@ namespace DungeonWorldBot.Tests;
 
 public class CharacterCreationTests
 {
-    private readonly IDiceParser _dice = new DiceParser();
+    private readonly IDiceRoller _dice = new DiceRoller();
 
     private static ClassKit Kit(ClassType type) => ClassKits.All.Single(k => k.Type == type);
 

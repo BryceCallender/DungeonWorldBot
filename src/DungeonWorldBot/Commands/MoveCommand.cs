@@ -1,5 +1,5 @@
 using System.ComponentModel;
-using DiceNotation;
+using DungeonWorldBot.Rolling;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Helpers;
 using DungeonWorldBot.Moves;
@@ -23,18 +23,18 @@ public class MoveCommand : CommandGroup
     private readonly ICommandContext _context;
     private readonly FeedbackService _feedbackService;
     private readonly ICharacterService _characterService;
-    private readonly IDiceParser _diceParser;
+    private readonly IDiceRoller _diceRoller;
 
     public MoveCommand(
         ICommandContext context,
         FeedbackService feedbackService,
         ICharacterService characterService,
-        IDiceParser diceParser)
+        IDiceRoller diceRoller)
     {
         _context = context;
         _feedbackService = feedbackService;
         _characterService = characterService;
-        _diceParser = diceParser;
+        _diceRoller = diceRoller;
     }
 
     [Command("hack-and-slash")]
@@ -116,7 +116,7 @@ public class MoveCommand : CommandGroup
 
     private async Task<IResult> ReplyWithMoveAsync(Character character, MoveDefinition move, string? modifierLabel, int modifier, int bonus)
     {
-        var roll = MoveRoller.Roll(_diceParser, modifier + bonus);
+        var roll = MoveRoller.Roll(_diceRoller, modifier + bonus);
 
         var fields = new List<IEmbedField>();
 
@@ -166,7 +166,7 @@ public class MoveCommand : CommandGroup
     {
         var expression = DiceHelper.AddModifier(character.DamageModifier ?? character.Class.Damage, character.DamageRating);
 
-        return DiceHelper.TryRoll(_diceParser, expression, out var damage)
+        return _diceRoller.TryRoll(expression, out var damage)
             ? new EmbedField("Damage", $"{expression} → **{damage.Value}**")
             : new EmbedField("Damage", $"Couldn't roll `{expression}`. Fix it with /character damage-modifier-change");
     }

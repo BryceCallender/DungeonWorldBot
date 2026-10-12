@@ -1,5 +1,6 @@
+using d20Tek.DiceNotation.Results;
 using System.ComponentModel;
-using DiceNotation;
+using DungeonWorldBot.Rolling;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Helpers;
 using DungeonWorldBot.Services;
@@ -19,25 +20,25 @@ public class DiceRollCommand : CommandGroup
     private readonly ICommandContext _context;
     private readonly FeedbackService _feedbackService;
     private readonly ICharacterService _characterService;
-    private readonly IDiceParser _diceParser;
+    private readonly IDiceRoller _diceRoller;
     
     public DiceRollCommand(
         ICommandContext commandContext, 
         FeedbackService feedbackService,
         ICharacterService characterService,
-        IDiceParser diceParser)
+        IDiceRoller diceRoller)
     {
         _context = commandContext;
         _feedbackService = feedbackService;
         _characterService = characterService;
-        _diceParser = diceParser;
+        _diceRoller = diceRoller;
     }
     
     [Command("die")]
     [Description("Roll a dice like d6 or 2d6. Defaults to a 2d6")]
     public async Task<IResult> RollDiceAsync(string value = "2d6")
     {
-        if (!DiceHelper.TryRoll(_diceParser, value, out var result))
+        if (!_diceRoller.TryRoll(value, out var result))
             return await ReplyWithErrorAsync($"`{value}` is not a valid dice roll.");
 
         return await ReplyWithRoll(result);
@@ -61,7 +62,7 @@ public class DiceRollCommand : CommandGroup
         if (stat is null)
             return await ReplyWithErrorAsync($"Your character has no {statType} stat.");
 
-        if (!DiceHelper.TryRoll(_diceParser, DiceHelper.AddModifier(value, stat.Modifier), out var result))
+        if (!_diceRoller.TryRoll(DiceHelper.AddModifier(value, stat.Modifier), out var result))
             return await ReplyWithErrorAsync($"`{value}` is not a valid dice roll.");
 
         return await ReplyWithRoll(result, statType.ToString());
@@ -87,7 +88,7 @@ public class DiceRollCommand : CommandGroup
             rollString += $"+{modifiers}";
         } 
         
-        if (!DiceHelper.TryRoll(_diceParser, rollString, out var result))
+        if (!_diceRoller.TryRoll(rollString, out var result))
             return await ReplyWithErrorAsync($"`{rollString}` is not a valid dice roll.");
 
         return await ReplyWithRoll(result, null);

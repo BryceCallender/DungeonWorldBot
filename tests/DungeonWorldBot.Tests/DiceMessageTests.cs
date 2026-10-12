@@ -12,6 +12,10 @@ public class DiceMessageTests
     [InlineData(".2d6+1 sneak attack", "2d6+1", "sneak attack")]
     [InlineData(".1d8 damage to the goblin", "1d8", "damage to the goblin")]
     [InlineData(".4d6k3 strength", "4d6k3", "strength")]
+    [InlineData(".3d6! fireball", "3d6!", "fireball")]
+    [InlineData(".(2d6+1)x2 crit", "(2d6+1)x2", "crit")]
+    [InlineData(".4f", "4f", null)]
+    [InlineData(".d% loot table", "d%", "loot table")]
     public void DiceRolls_SplitExpressionAndLabel(string content, string expression, string? label)
     {
         var parsed = DiceMessage.TryParse(content);
@@ -50,7 +54,7 @@ public class DiceMessageTests
     [InlineData("hello .2d6")]
     [InlineData(".1000d6")]
     [InlineData(".60d6+60d6")]
-    [InlineData(".d1")]
+    [InlineData(".d0")]
     [InlineData(".d100000")]
     [InlineData(".99999999999d6")]
     public void NonRolls_AreIgnored(string content)

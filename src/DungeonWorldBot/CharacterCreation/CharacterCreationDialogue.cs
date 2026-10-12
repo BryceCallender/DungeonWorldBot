@@ -1,4 +1,4 @@
-using DiceNotation;
+using DungeonWorldBot.Rolling;
 using DungeonWorldBot.CharacterCreation.Steps;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Services.Interactivity;
@@ -29,13 +29,13 @@ public class CharacterCreationDialogue
     private readonly FeedbackService _feedbackService;
     private readonly InteractivityService _interactivity;
     private readonly IDiscordRestUserAPI _userAPI;
-    private readonly IDiceParser _dice;
+    private readonly IDiceRoller _dice;
 
     public CharacterCreationDialogue(
         FeedbackService feedbackService,
         InteractivityService interactivity,
         IDiscordRestUserAPI userAPI,
-        IDiceParser dice)
+        IDiceRoller dice)
     {
         _feedbackService = feedbackService;
         _interactivity = interactivity;

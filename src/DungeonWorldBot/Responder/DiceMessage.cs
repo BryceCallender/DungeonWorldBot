@@ -1,5 +1,6 @@
 using System.Text.RegularExpressions;
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Rolling;
 
 namespace DungeonWorldBot.Responder;
 
@@ -14,19 +15,13 @@ public sealed partial record DiceMessage(string? Expression, StatType? Stat, int
 {
     public const char Prefix = '.';
 
-    // Keeps a single message from asking for millions of dice or absurd dice sizes
-    public const int MaxDice = 100;
-    public const int MaxFaces = 1000;
-
     [GeneratedRegex(@"^(str|dex|con|int|wis|cha)([+-]\d{1,2})?$", RegexOptions.IgnoreCase)]
     private static partial Regex StatRoll();
 
-    // Characters DiceNotation understands (k = keep highest, e.g. 4d6k3); any other token starts the label
-    [GeneratedRegex(@"^[0-9dDkK+\-]+$")]
+    // Characters dice notation can use (k/p/l keep or drop, ! explode, x and / math, f fudge, % percentile);
+    // the first token with anything else starts the label
+    [GeneratedRegex(@"^[0-9dDkKpPlLfF!%+\-xX/()]+$")]
     private static partial Regex DiceToken();
-
-    [GeneratedRegex(@"(\d*)[dD](\d+)")]
-    private static partial Regex DiceTerm();
 
     /// <returns>The requested roll, or null if the message isn't a roll (e.g. "..." or ".hello").</returns>
     public static DiceMessage? TryParse(string content)
@@ -57,30 +52,9 @@ public sealed partial record DiceMessage(string? Expression, StatType? Stat, int
         return new DiceMessage(expression, null, 0, LabelFrom(tokens, expressionLength));
     }
 
-    private static bool IsReasonableRoll(string expression)
-    {
-        var terms = DiceTerm().Matches(expression);
-
-        // Something like ".5" or ".+1" has no dice in it
-        if (terms.Count == 0)
-            return false;
-
-        var totalDice = 0;
-        foreach (Match term in terms)
-        {
-            var count = term.Groups[1].Value.Length == 0 ? 1 : int.TryParse(term.Groups[1].Value, out var c) ? c : int.MaxValue;
-            var faces = int.TryParse(term.Groups[2].Value, out var f) ? f : int.MaxValue;
-
-            if (faces is < 2 or > MaxFaces)
-                return false;
-
-            totalDice += Math.Min(count, MaxDice + 1);
-            if (totalDice > MaxDice)
-                return false;
-        }
-
-        return true;
-    }
+    // Something like ".5" or ".+1" has no dice in it, so it's just a chat message
+    private static bool IsReasonableRoll(string expression) =>
+        DiceRoller.IsReasonable(expression) && DiceRoller.CountDice(expression) > 0;
 
     private static string? LabelFrom(string[] tokens, int start) =>
         start < tokens.Length ? string.Join(' ', tokens[start..]) : null;
