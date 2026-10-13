@@ -75,9 +75,9 @@ public static class TacticalGuardian
                 note: "You must see your target, even briefly, or have a direct line of light to them. Not in total darkness without another light source.")),
             new(3, Rolled(GuardiansStand, StatType.Con,
                 "When you defend an ally or group of allies and declare that you're standing in the breach",
-                "Hold the line as long as needed. Choose one: allies within near take +1 forward; raise cover (a shield wall, barrier, or obstruction) giving you and allies there +2 armor until the end of next round; make a light doppelganger to draw enemy aggression.",
-                "You hold, at a cost. Choose one: your position is compromised (the next enemy attack on you or an ally deals +1 damage or adds a debuff); you're exhausted (take -1 forward); an ally you protect falters (they take -1 forward).",
-                "Your defense falters. The GM chooses one: you're overwhelmed (the next attack on your side deals +1 damage, and you're knocked down: -1 forward); your stance weakens (bonus armor drops to 0, ending this round); an opening is created (an enemy takes +1 forward against your side).",
+                "Hold the line as long as needed. Choose one: allies within near take +1 forward; raise cover (a shield wall or barrier) giving you and allies there +2 armor until the end of next round; make a light doppelganger to draw enemy aggression.",
+                "You hold, at a cost. Choose one: your position is compromised (the next enemy attack on your side deals +1 damage or adds a debuff); you're exhausted (take -1 forward); an ally you protect falters (they take -1 forward).",
+                "Your defense falters. The GM chooses one: you're overwhelmed (the next attack on your side deals +1 damage, and you're knocked down: -1 forward); your stance weakens (bonus armor drops to 0, ending this round); you leave an opening (an enemy takes +1 forward against your side).",
                 note: "For the fight: +1 magical armor (stacks), and you can take a protected ally's damage instead, halved (rounded down). Use /guardian take-hit")),
             new(6, new(ShieldedPursuit,
                 "(Passive) You're not just a wall, but a shield and a spear. When you take damage while defending, you may store half of it " +

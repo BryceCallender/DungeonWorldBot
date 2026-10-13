@@ -5,6 +5,7 @@ using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Helpers;
 using DungeonWorldBot.Moves;
 using DungeonWorldBot.Services;
+using DungeonWorldBot.Subclasses;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.API.Abstractions.Objects;
@@ -25,19 +26,22 @@ public class DiceRollCommand : CommandGroup
     private readonly ICharacterService _characterService;
     private readonly IDiceRoller _diceRoller;
     private readonly IRollStatsService _rollStatsService;
+    private readonly IDamageService _damageService;
     
     public DiceRollCommand(
         ICommandContext commandContext, 
         FeedbackService feedbackService,
         ICharacterService characterService,
         IDiceRoller diceRoller,
-        IRollStatsService rollStatsService)
+        IRollStatsService rollStatsService,
+        IDamageService damageService)
     {
         _context = commandContext;
         _feedbackService = feedbackService;
         _characterService = characterService;
         _diceRoller = diceRoller;
         _rollStatsService = rollStatsService;
+        _damageService = damageService;
     }
     
     [Command("die")]
@@ -68,10 +72,17 @@ public class DiceRollCommand : CommandGroup
         if (stat is null)
             return await ReplyWithErrorAsync($"Your character has no {statType} stat.");
 
-        if (!_diceRoller.TryRoll(DiceHelper.AddModifier(value, stat.Modifier), out var result))
+        // Subclass bonuses, like a Boon of Aptitude or its Echo from a party member.
+        var bonuses = await _damageService.BonusesAsync(character, RollKind.Stat, statType);
+
+        if (!_diceRoller.TryRoll(DiceHelper.AddModifier(value, stat.Modifier + bonuses.Sum(b => b.Amount)), out var result))
             return await ReplyWithErrorAsync($"`{value}` is not a valid dice roll.");
 
-        return await ReplyWithRoll(result, statType.ToString());
+        var includes = bonuses.Count > 0
+            ? $"\nIncludes {string.Join(", ", bonuses.Select(b => $"{b.Source} {(b.Amount >= 0 ? "+" : "")}{b.Amount}"))}"
+            : null;
+
+        return await ReplyWithRoll(result, statType.ToString(), includes);
     }
     
     [Command("damage")]
@@ -114,13 +125,14 @@ public class DiceRollCommand : CommandGroup
         return await ReplyWithRoll(roll, null);
     }
 
-    private async Task<IResult> ReplyWithRoll(DiceResult roll, string? rollDescription)
+    /// <param name="details">Extra lines under the dice, like the bonuses included.</param>
+    private async Task<IResult> ReplyWithRoll(DiceResult roll, string? rollDescription, string? details = null)
     {
         var outcome = MoveRoller.OutcomeOf(roll);
 
         var embed = new Embed(
             Title: $"🎲 {rollDescription} Roll(s)",
-            Description: DiceHelper.BuildDiceResult(roll),
+            Description: DiceHelper.BuildDiceResult(roll) + details,
             Fields: outcome is { } band
                 ? new List<IEmbedField> { new EmbedField(MoveRoller.Describe(band), MoveRoller.GeneralMeaning(band)) }
                 : new Optional<IReadOnlyList<IEmbedField>>(),
