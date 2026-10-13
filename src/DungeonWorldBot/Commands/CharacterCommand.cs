@@ -446,7 +446,7 @@ public class CharacterCommand : CommandGroup
     }
 
     [Command("set-level")]
-    [Description("DM only: set a character's level, or everyone's")]
+    [Description("Set a character's level, or everyone's")]
     public async Task<IResult> SetLevelAsync(
         [Description("The new level")]
         [MinValue(1)]
@@ -456,9 +456,6 @@ public class CharacterCommand : CommandGroup
         [Description("Set every character to this level")]
         bool everyone = false)
     {
-        if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
-            return await ReplyNotGameMasterAsync("Players can use /character level-up when they level.");
-
         if (everyone)
         {
             var characters = await _characterService.GetCharactersAsync();
@@ -490,14 +487,11 @@ public class CharacterCommand : CommandGroup
     }
 
     [Command("level-up")]
-    [Description("Increase your character's level by one (the DM can level up someone else)")]
+    [Description("Increase a character's level by one")]
     public async Task<IResult> LevelUpAsync(
-        [Description("DM only: the player whose character to level up. Leave blank for your own.")]
+        [Description("The player whose character to level up. Leave blank for your own.")]
         IUser? user = null)
     {
-        if (user is not null && _context.TryGetUserID(out var self) && user.ID != self && !await _gameMaster.IsGameMasterAsync(CancellationToken))
-            return await ReplyNotGameMasterAsync("You can only level up your own character.");
-
         var character = await GetCharacterAsync(user);
         if (character is null)
         {
