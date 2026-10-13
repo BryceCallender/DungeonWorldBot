@@ -29,7 +29,8 @@ public static class BasicMoves
             "You have to take what you can get: -1d6 damage",
             "You have to take several shots, reducing your ammo by one",
         ],
-        RollsDamage: true);
+        RollsDamage: true,
+        OptionsOn: OptionBands.WeakHit);
 
     public static readonly MoveDefinition DefyDanger = new(
         "Defy Danger",

@@ -106,7 +106,8 @@ public sealed record ClassMove(string Name, string Summary)
         IReadOnlyList<string>? options = null,
         string? note = null,
         string? rollsWith = null,
-        bool rollsDamage = false)
+        bool rollsDamage = false,
+        OptionBands optionsOn = OptionBands.Hits)
     {
         var rollsWithLabel = rollsWith ?? stat?.ToString().ToUpper() ?? "nothing";
 
@@ -120,7 +121,7 @@ public sealed record ClassMove(string Name, string Summary)
 
         return new ClassMove(name, summary)
         {
-            Roll = new MoveDefinition(name, stat, trigger, strongHit, weakHit, miss, options, rollsDamage),
+            Roll = new MoveDefinition(name, stat, trigger, strongHit, weakHit, miss, options, rollsDamage, optionsOn),
             RollsWith = rollsWith,
         };
     }

@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Moves;
 using static DungeonWorldBot.ClassSheets.ClassMove;
 
 namespace DungeonWorldBot.ClassSheets.InverseWorld;
@@ -112,7 +113,8 @@ public static class Mechanic
                 [
                     "It works, but not for long, so hurry",
                     "It works, but with a weird quirk or complication",
-                ]),
+                ],
+                optionsOn: OptionBands.WeakHit),
             new("Mechanical Dabbler", "Take a non-multiclass move from any class, treating your level as one lower unless it relates to science, technology or knowledge.") { Multiclass = MulticlassGrant.AnyClass(levelOneLower: true) },
             new("Mid-Flight Repairs", "Ignore the slow tag on repair kits. When attacked while repairing something, you and your vehicle get +1 armor against it."),
             new("Mobile Suit", "Unlock the Giant Drill, Amphibious and Zero G Movement Methods and add one to your suit."),

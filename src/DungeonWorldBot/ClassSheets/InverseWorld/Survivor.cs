@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Moves;
 using static DungeonWorldBot.ClassSheets.ClassMove;
 
 namespace DungeonWorldBot.ClassSheets.InverseWorld;
@@ -98,7 +99,8 @@ public static class Survivor
                     "Take half damage from the attack, rounded down",
                     "Lesser enemies run from you in fear",
                     "Take +1 forward against them",
-                ]),
+                ],
+                optionsOn: OptionBands.All),
         ],
         resources:
         [

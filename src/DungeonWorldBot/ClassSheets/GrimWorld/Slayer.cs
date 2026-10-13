@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Moves;
 using static DungeonWorldBot.ClassSheets.ClassMove;
 
 namespace DungeonWorldBot.ClassSheets.GrimWorld;
@@ -24,7 +25,8 @@ public static class Slayer
                     "You have it, but it has serious drawbacks",
                     "You had it, but it was lost or stolen",
                     "You don't have it, but you find a hint about where it is or how to get it",
-                ]),
+                ],
+                optionsOn: OptionBands.WeakHit),
             new("Old Friend", "An associate helps you on particularly hard hunts and is usually nearby when you really need them. Name them and decide how you met."),
         ],
         features:

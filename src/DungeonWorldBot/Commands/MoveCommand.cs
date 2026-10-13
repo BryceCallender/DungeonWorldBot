@@ -210,9 +210,9 @@ public class MoveCommand : CommandGroup
         fields.Add(new EmbedField(MoveRoller.Describe(roll.Outcome), move.Describe(roll.Outcome)));
 
         var isHit = roll.Outcome != MoveOutcome.Miss;
-        if (isHit && move.Options is { Count: > 0 })
+        if (move.ShowsOptions(roll.Outcome))
         {
-            fields.Add(new EmbedField("Options", string.Join('\n', move.Options.Select(o => $"• {o}"))));
+            fields.Add(new EmbedField("Options", string.Join('\n', move.Options!.Select(o => $"• {o}"))));
         }
 
         if (isHit && move.RollsDamage)
