@@ -44,11 +44,14 @@ public class StatsCommand : CommandGroup
     }
 
     [Command("show")]
-    [Description("Show how everyone's 2d6 rolls have gone: hits, misses, nat 12s and nat 2s")]
+    [Description("Show how everyone's 2d6 rolls in the game chat have gone: hits, misses, nat 12s and nat 2s")]
     public async Task<IResult> ShowStatsAsync(
         [Description("Only show this player's stats")]
         IUser? user = null)
     {
+        if (_rollStatsService.GameChatChannelID is null)
+            return await ReplyWithNoGameChatAsync();
+
         var stats = await _rollStatsService.GetStatsAsync();
         if (user is not null)
             stats = stats.Where(s => s.UserID == user.ID).ToList();
@@ -56,8 +59,8 @@ public class StatsCommand : CommandGroup
         if (stats.Count == 0)
         {
             return await ReplyAsync("🎲 Roll Stats", user is null
-                ? "No 2d6 rolls recorded yet. Use /stats scan to count the rolls already in this channel."
-                : $"No 2d6 rolls recorded for <@{user.ID}> yet.");
+                ? $"No 2d6 rolls recorded in <#{_rollStatsService.GameChatChannelID}> yet. Use /stats scan to count the rolls already there."
+                : $"No 2d6 rolls recorded for <@{user.ID}> in <#{_rollStatsService.GameChatChannelID}> yet.");
         }
 
         var characters = (await _characterService.GetCharactersAsync()).ToDictionary(c => c.ID);
@@ -72,7 +75,7 @@ public class StatsCommand : CommandGroup
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: "🎲 Roll Stats",
-                Description: "Every 2d6 roll made through the bot, counted by total with modifiers.",
+                Description: $"Every 2d6 roll made through the bot in <#{_rollStatsService.GameChatChannelID}>, counted by total with modifiers.",
                 Fields: fields,
                 Colour: _feedbackService.Theme.Primary
             ),
@@ -81,15 +84,18 @@ public class StatsCommand : CommandGroup
     }
 
     [Command("scan")]
-    [Description("Count the rolls already in a channel's history toward roll stats. Safe to run again")]
+    [Description("Count the rolls already in the game chat's history toward roll stats. Safe to run again")]
     public async Task<IResult> ScanChannelAsync(
-        [Description("The channel to scan. Defaults to this one")]
+        [Description("The channel to scan. Defaults to the game chat; only game chat rolls count toward stats")]
         IChannel? channel = null)
     {
         if (!_context.TryGetChannelID(out var currentChannelID))
             throw new NotSupportedException();
 
-        var channelID = channel?.ID ?? currentChannelID;
+        if (_rollStatsService.GameChatChannelID is not { } gameChat)
+            return await ReplyWithNoGameChatAsync();
+
+        var channelID = channel?.ID ?? gameChat;
 
         var started = await ReplyAsync("🎲 Scanning...", $"Reading <#{channelID}> for old rolls. I'll post here when it's done.");
         if (!started.IsSuccess)
@@ -121,8 +127,12 @@ public class StatsCommand : CommandGroup
                 break;
         }
 
+        var counted = channelID == gameChat
+            ? "See them with /stats show"
+            : $"They're saved, but only rolls in <#{gameChat}> count toward /stats show";
+
         return await PostResultAsync(currentChannelID, "🎲 Scan Complete",
-            $"Found {found} 2d6 rolls in <#{channelID}>, {added} of them new. See them with /stats show");
+            $"Found {found} 2d6 rolls in <#{channelID}>, {added} of them new. {counted}");
     }
 
     private static string Describe(PlayerRollStats stats) =>
@@ -143,6 +153,13 @@ public class StatsCommand : CommandGroup
             ct: CancellationToken);
 
         return posted.IsSuccess ? Result.FromSuccess() : Result.FromError(posted);
+    }
+
+    private async Task<Result> ReplyWithNoGameChatAsync()
+    {
+        return (Result)await _feedbackService.SendContextualErrorAsync(
+            "Roll stats only count rolls in the game chat, and no game chat channel is set. Add a GameChatChannelId setting with the channel's ID.",
+            ct: CancellationToken);
     }
 
     private async Task<IResult> ReplyAsync(string title, string description)

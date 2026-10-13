@@ -4,18 +4,30 @@ using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Moves;
 using DungeonWorldBot.Stats;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Remora.Rest.Core;
 
 namespace DungeonWorldBot.Services.Implementation;
 
 public class RollStatsService : IRollStatsService
 {
+    /// <summary>
+    /// The campaign's game chat, used unless the GameChatChannelId setting says otherwise.
+    /// </summary>
+    public const ulong DefaultGameChatChannelID = 1325143775139467325;
+
     private readonly DungeonWorldContext _dungeonWorldContext;
 
-    public RollStatsService(DungeonWorldContext dungeonWorldContext)
+    public RollStatsService(DungeonWorldContext dungeonWorldContext, IConfiguration? configuration = null)
     {
         _dungeonWorldContext = dungeonWorldContext;
+
+        // Without configuration (as in tests) there's no game chat, so nothing counts
+        if (configuration is not null)
+            GameChatChannelID = new Snowflake(configuration.GetValue<ulong?>("GameChatChannelId") ?? DefaultGameChatChannelID);
     }
+
+    public Snowflake? GameChatChannelID { get; }
 
     public async Task RecordAsync(Snowflake messageID, Snowflake channelID, Snowflake userID, DiceResult roll)
     {
@@ -56,7 +68,11 @@ public class RollStatsService : IRollStatsService
 
     public async Task<List<PlayerRollStats>> GetStatsAsync()
     {
-        var rolls = await _dungeonWorldContext.Rolls.AsNoTracking().ToListAsync();
+        // Every roll is recorded with its channel, but only game chat rolls count
+        if (GameChatChannelID is not { } gameChat)
+            return [];
+
+        var rolls = await _dungeonWorldContext.Rolls.AsNoTracking().Where(r => r.ChannelID == gameChat).ToListAsync();
 
         return rolls
             .GroupBy(r => r.UserID)

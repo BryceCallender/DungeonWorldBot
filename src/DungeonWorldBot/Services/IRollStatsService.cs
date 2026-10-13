@@ -12,6 +12,11 @@ public sealed record PlayerRollStats(Snowflake UserID, int Rolls, int StrongHits
 public interface IRollStatsService
 {
     /// <summary>
+    /// The game chat channel, set with the GameChatChannelId setting. Only rolls made there count toward stats.
+    /// </summary>
+    Snowflake? GameChatChannelID { get; }
+
+    /// <summary>
     /// Records a roll the bot just posted, if it's a 2d6 roll.
     /// </summary>
     Task RecordAsync(Snowflake messageID, Snowflake channelID, Snowflake userID, DiceResult roll);
@@ -22,6 +27,6 @@ public interface IRollStatsService
     /// <returns>How many were new.</returns>
     Task<int> AddMissingAsync(IReadOnlyList<RollRecord> rolls);
 
-    /// <returns>Everyone's stats, most rolls first.</returns>
+    /// <returns>Everyone's stats from rolls in the game chat, most rolls first.</returns>
     Task<List<PlayerRollStats>> GetStatsAsync();
 }

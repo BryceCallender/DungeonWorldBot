@@ -9,6 +9,7 @@ using DungeonWorldBot.Services.Implementation;
 using DungeonWorldBot.Stats;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Remora.Rest.Core;
 
 namespace DungeonWorldBot.Tests;
@@ -81,10 +82,11 @@ public class RollStatsTests
         await using var context = new DungeonWorldContext(
             new DbContextOptionsBuilder<DungeonWorldContext>().UseSqlite(connection).Options);
         await context.Database.MigrateAsync();
-        var service = new RollStatsService(context);
+        var service = new RollStatsService(context, GameChat(222));
 
         var player = new Snowflake(111);
         var channel = new Snowflake(222);
+        var otherChannel = new Snowflake(333);
 
         // Recorded live...
         await service.RecordAsync(new Snowflake(1), channel, player, new DiceRoller(new ConstantDieRoller(6)).Roll("2d6"));
@@ -100,7 +102,38 @@ public class RollStatsTests
 
         Assert.Equal(1, added);
 
+        // Rolls outside the game chat are kept but don't count
+        await service.RecordAsync(new Snowflake(5), otherChannel, player, new DiceRoller(new ConstantDieRoller(6)).Roll("2d6"));
+
         var stats = Assert.Single(await service.GetStatsAsync());
         Assert.Equal(new PlayerRollStats(player, Rolls: 3, StrongHits: 1, WeakHits: 1, Misses: 1, Natural12s: 1, Natural2s: 1), stats);
     }
+
+    [Fact]
+    public async Task Stats_AreEmptyWithoutAGameChat()
+    {
+        using var connection = new SqliteConnection("Data Source=:memory:");
+        connection.Open();
+        await using var context = new DungeonWorldContext(
+            new DbContextOptionsBuilder<DungeonWorldContext>().UseSqlite(connection).Options);
+        await context.Database.EnsureCreatedAsync();
+        var service = new RollStatsService(context);
+
+        await service.RecordAsync(new Snowflake(1), new Snowflake(222), new Snowflake(111), new DiceRoller(new ConstantDieRoller(6)).Roll("2d6"));
+
+        Assert.Null(service.GameChatChannelID);
+        Assert.Empty(await service.GetStatsAsync());
+    }
+
+    [Fact]
+    public void GameChat_DefaultsToTheCampaignChannel()
+    {
+        var empty = new ConfigurationBuilder().Build();
+
+        Assert.Equal(new Snowflake(RollStatsService.DefaultGameChatChannelID), new RollStatsService(null!, empty).GameChatChannelID);
+        Assert.Equal(new Snowflake(222), new RollStatsService(null!, GameChat(222)).GameChatChannelID);
+    }
+
+    private static IConfiguration GameChat(ulong channelID) =>
+        new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["GameChatChannelId"] = channelID.ToString() }).Build();
 }
