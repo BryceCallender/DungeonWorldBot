@@ -8,10 +8,22 @@ public class DungeonWorldContext : DbContext
 {
     public DungeonWorldContext(DbContextOptions<DungeonWorldContext> options) : base(options)
     {
-        Database.EnsureCreated();
     }
 
     public DbSet<Character> Characters => Set<Character>();
+
+    public DbSet<RollRecord> Rolls => Set<RollRecord>();
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<RollRecord>(roll =>
+        {
+            roll.HasKey(r => r.MessageID);
+            roll.HasIndex(r => r.UserID);
+        });
+    }
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
     {

@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Spells;
 using static DungeonWorldBot.ClassSheets.ClassMove;
 
 namespace DungeonWorldBot.ClassSheets.DungeonWorld;
@@ -8,6 +9,8 @@ namespace DungeonWorldBot.ClassSheets.DungeonWorld;
 /// </summary>
 public static class Paladin
 {
+    private const string ClericLevel = "Cleric Level";
+
     public static readonly ClassSheet Sheet = new(
         ClassType.Paladin,
         "Dungeon World",
@@ -40,7 +43,7 @@ public static class Paladin
         features: [],
         level2To5:
         [
-            new("Divine Favor", "Dedicate yourself to a deity. Gain the cleric's Commune and Cast a Spell moves as a level 1 cleric, gaining an effective cleric level each time you level up."),
+            new("Divine Favor", "Dedicate yourself to a deity. Gain the cleric's Commune and Cast a Spell moves as a level 1 cleric, gaining an effective cleric level each time you level up.") { GrantsSpells = new(SpellList.Cleric, ClericLevel) },
             new("Bloody Aegis", "When you take damage, you can grit your teeth and take a debility of your choice instead. You can't if you have all six."),
             new("Smite", "While on a quest, deal +1d4 damage."),
             new("Exterminatus", "When you vow aloud to defeat an enemy, deal +2d4 damage against them and -4 against everyone else until they're defeated. If you fail or give up, the effect lasts until you redeem yourself."),
@@ -63,5 +66,13 @@ public static class Paladin
             new("Perfect Hospitaller", "When you heal an ally, heal +2d8 damage.") { Replaces = "Hospitaller" },
             new("Indomitable", "When you suffer a debility (even through Bloody Aegis), take +1 forward against whatever caused it."),
             new("Perfect Knight", "When you Quest, choose three boons instead of two."),
+        ],
+        resources:
+        [
+            new ClassResource(ClericLevel, "Your effective cleric level for spells: 1 when you take Divine Favor, +1 each level after. Learn spells with /spell learn.", Start: 1, GrantedBy: "Divine Favor")
+            {
+                ResetWithAll = false,
+                GrowsWithLevel = true,
+            },
         ]);
 }

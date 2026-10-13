@@ -30,6 +30,8 @@ public class CharacterCommand : CommandGroup
     private readonly CharacterCreationDialogue _creationDialogue;
     private readonly IDiceRoller _diceRoller;
     private readonly IResourceService _resourceService;
+    private readonly IGameMasterService _gameMaster;
+    private readonly ILevelingService _leveling;
 
     public CharacterCommand(
         ICommandContext context,
@@ -37,7 +39,9 @@ public class CharacterCommand : CommandGroup
         ICharacterService characterService,
         CharacterCreationDialogue creationDialogue,
         IDiceRoller diceRoller,
-        IResourceService resourceService)
+        IResourceService resourceService,
+        IGameMasterService gameMaster,
+        ILevelingService leveling)
     {
         _context = context;
         _feedbackService = feedbackService;
@@ -45,6 +49,8 @@ public class CharacterCommand : CommandGroup
         _creationDialogue = creationDialogue;
         _diceRoller = diceRoller;
         _resourceService = resourceService;
+        _gameMaster = gameMaster;
+        _leveling = leveling;
     }
 
     [Command("create")]
@@ -124,6 +130,11 @@ public class CharacterCommand : CommandGroup
         // Embed field values are capped at 1024 characters
         embedFields.Add(new EmbedField(Name: "Abilities", Value:
             abilities.Length <= 1024 ? abilities : $"{character.Abilities!.Count} abilities. See /ability list"));
+
+        if (_leveling.GetStatPoints(character) is > 0 and var statPoints)
+        {
+            embedFields.Add(new EmbedField(Name: "Unspent Stat Points", Value: $"{statPoints}. Spend them with /character allocate-stat"));
+        }
 
         var resources = ClassSheetLibrary.For(character.Class.Type)?.ResourcesFor(ClassSheetLibrary.KnownMoves(character)).ToList() ?? [];
         if (resources.Count > 0)
@@ -242,17 +253,22 @@ public class CharacterCommand : CommandGroup
     }
 
     [Command("stat-change")]
-    [Description("Change one of your character's stats")]
+    [Description("DM only: set any character's stat to a value")]
     public async Task<IResult> ChangeStatAsync(
         [Description("The stat to change")]
         StatType type,
         [Description("The new value of the stat")]
-        int value)
+        int value,
+        [Description("The player whose character to change. Leave blank for your own.")]
+        IUser? user = null)
     {
-        var character = await GetOwnCharacterAsync();
+        if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            return await ReplyNotGameMasterAsync("Players raise stats with /character allocate-stat when they level up.");
+
+        var character = await GetCharacterAsync(user);
         if (character is null)
         {
-            return await ReplyWithErrorAsync(NoCharacterMessage);
+            return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
         }
 
         await _characterService.UpdateCharacterStatAsync(character, type, value);
@@ -261,6 +277,70 @@ public class CharacterCommand : CommandGroup
             new Embed(
                 Title: "Stat Changed!",
                 Description: $"{character.Name}'s {type} was changed to {value}",
+                Colour: _feedbackService.Theme.Primary
+            ),
+            ct: CancellationToken
+        );
+    }
+
+    [Command("allocate-stat")]
+    [Description("Spend a stat point from levelling up to raise a stat by 1 (max 18)")]
+    public async Task<IResult> AllocateStatAsync(
+        [Description("The stat to raise")]
+        StatType stat)
+    {
+        var character = await GetOwnCharacterAsync();
+        if (character is null)
+        {
+            return await ReplyWithErrorAsync(NoCharacterMessage);
+        }
+
+        if (await _leveling.AllocateStatAsync(character, stat) is { } problem)
+        {
+            return await ReplyWithErrorAsync(problem);
+        }
+
+        var raised = character.Stats.First(s => s.StatType == stat);
+        var description = $"{character.Name}'s {stat} is now {raised.Value} ({FormatModifier(raised.Modifier)})";
+        if (stat == StatType.Con)
+            description += $"\nMax HP is now {character.Health.MaxHP}.";
+        if (_leveling.GetStatPoints(character) is > 0 and var left)
+            description += $"\n{left} stat point{(left == 1 ? "" : "s")} left.";
+
+        return await _feedbackService.SendContextualEmbedAsync(
+            new Embed(
+                Title: "Stat Raised!",
+                Description: description,
+                Colour: _feedbackService.Theme.Primary
+            ),
+            ct: CancellationToken
+        );
+    }
+
+    [Command("grant-stat-points")]
+    [Description("DM only: give a character stat points to spend")]
+    public async Task<IResult> GrantStatPointsAsync(
+        [Description("The player whose character gets the points")]
+        IUser user,
+        [Description("How many points")]
+        [MinValue(1)]
+        int amount = 1)
+    {
+        if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            return await ReplyNotGameMasterAsync();
+
+        var character = await _characterService.GetCharacterFromUserAsync(user.ID);
+        if (character is null)
+        {
+            return await ReplyWithErrorAsync($"{user.Username} does not have a character.");
+        }
+
+        await _leveling.GrantStatPointsAsync(character, amount);
+
+        return await _feedbackService.SendContextualEmbedAsync(
+            new Embed(
+                Title: "Stat Points Granted!",
+                Description: $"{character.Name} now has {_leveling.GetStatPoints(character)} stat point(s) to spend with /character allocate-stat",
                 Colour: _feedbackService.Theme.Primary
             ),
             ct: CancellationToken
@@ -297,36 +377,78 @@ public class CharacterCommand : CommandGroup
     }
 
     [Command("set-level")]
-    [Description("Set your character's level")]
+    [Description("DM only: set a character's level, or everyone's")]
     public async Task<IResult> SetLevelAsync(
         [Description("The new level")]
         [MinValue(1)]
-        int level)
+        int level,
+        [Description("The player whose character to change. Leave blank for your own.")]
+        IUser? user = null,
+        [Description("Set every character to this level")]
+        bool everyone = false)
     {
-        var character = await GetOwnCharacterAsync();
-        if (character is null)
+        if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            return await ReplyNotGameMasterAsync("Players can use /character level-up when they level.");
+
+        if (everyone)
         {
-            return await ReplyWithErrorAsync(NoCharacterMessage);
+            var characters = await _characterService.GetCharactersAsync();
+            foreach (var each in characters)
+            {
+                await _leveling.ChangeLevelAsync(each, level);
+            }
+
+            return await _feedbackService.SendContextualEmbedAsync(
+                new Embed(
+                    Title: "Party Level Changed!",
+                    Description: $"Every character is now level {level}: {string.Join(", ", characters.Select(c => c.Name))}\n" +
+                                 "Anyone who went up a level has stat points to spend with /character allocate-stat",
+                    Colour: _feedbackService.Theme.Primary
+                ),
+                ct: CancellationToken
+            );
         }
 
-        await _characterService.SetLevelAsync(character, level);
+        var character = await GetCharacterAsync(user);
+        if (character is null)
+        {
+            return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
+        }
+
+        await _leveling.ChangeLevelAsync(character, level);
 
         return await ReplyWithLevelChangedAsync(character);
     }
 
     [Command("level-up")]
-    [Description("Increase your character's level by one")]
-    public async Task<IResult> LevelUpAsync()
+    [Description("Increase your character's level by one (the DM can level up someone else)")]
+    public async Task<IResult> LevelUpAsync(
+        [Description("DM only: the player whose character to level up. Leave blank for your own.")]
+        IUser? user = null)
     {
-        var character = await GetOwnCharacterAsync();
+        if (user is not null && _context.TryGetUserID(out var self) && user.ID != self && !await _gameMaster.IsGameMasterAsync(CancellationToken))
+            return await ReplyNotGameMasterAsync("You can only level up your own character.");
+
+        var character = await GetCharacterAsync(user);
         if (character is null)
         {
-            return await ReplyWithErrorAsync(NoCharacterMessage);
+            return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
         }
 
-        await _characterService.SetLevelAsync(character, character.Level + 1);
+        await _leveling.ChangeLevelAsync(character, character.Level + 1);
 
         return await ReplyWithLevelChangedAsync(character);
+    }
+
+    private async Task<Character?> GetCharacterAsync(IUser? user) =>
+        user is null ? await GetOwnCharacterAsync() : await _characterService.GetCharacterFromUserAsync(user.ID);
+
+    private static string FormatModifier(int modifier) => modifier >= 0 ? $"+{modifier}" : modifier.ToString();
+
+    private async Task<Result> ReplyNotGameMasterAsync(string? hint = null)
+    {
+        var message = $"Only someone with the {_gameMaster.RoleName} role can do that.";
+        return await ReplyWithErrorAsync(hint is null ? message : $"{message} {hint}");
     }
 
     private async Task<Character?> GetOwnCharacterAsync()
@@ -344,9 +466,13 @@ public class CharacterCommand : CommandGroup
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: "Level Changed!",
-                Description: ClassSheetLibrary.For(character.Class.Type) is not null && character.Level >= 2
-                    ? $"{character.Name} is now level {character.Level}. Pick a new advanced move with /class moves and /class learn"
-                    : $"{character.Name} is now level {character.Level}",
+                Description: $"{character.Name} is now level {character.Level}."
+                             + (ClassSheetLibrary.For(character.Class.Type) is not null && character.Level >= 2
+                                 ? "\nPick a new advanced move with /class moves and /class learn"
+                                 : string.Empty)
+                             + (_leveling.GetStatPoints(character) is > 0 and var points
+                                 ? $"\nRaise a stat with /character allocate-stat ({points} point{(points == 1 ? "" : "s")} to spend)"
+                                 : string.Empty),
                 Colour: _feedbackService.Theme.Primary
             ),
             ct: CancellationToken

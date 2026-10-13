@@ -290,7 +290,12 @@ public sealed class ResourceServiceTests : IDisposable
 {
     private readonly SqliteConnection _connection = new("Data Source=:memory:");
 
-    public ResourceServiceTests() => _connection.Open();
+    public ResourceServiceTests()
+    {
+        _connection.Open();
+        using var context = CreateContext();
+        context.Database.Migrate();
+    }
 
     public void Dispose() => _connection.Dispose();
 
