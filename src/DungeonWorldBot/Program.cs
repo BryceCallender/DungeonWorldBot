@@ -76,6 +76,7 @@ public class Program
                     .AddScoped<IResourceService, ResourceService>()
                     .AddScoped<IGameMasterService, GameMasterService>()
                     .AddScoped<ILevelingService, LevelingService>()
+                    .AddSingleton<IGameSettingsService, GameSettingsService>()
                     .AddScoped<IRollStatsService, RollStatsService>()
                     .AddAutocompleteProvider<ClassMoveAutocomplete>()
                     .AddAutocompleteProvider<AnyClassMoveAutocomplete>()
