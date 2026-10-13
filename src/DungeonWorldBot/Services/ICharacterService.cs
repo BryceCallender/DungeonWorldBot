@@ -24,4 +24,6 @@ public interface ICharacterService
     Task SetLevelAsync(Character character, int level);
 
     Task UpdateCharacterDamageModifierAsync(Character character, string modifier);
+
+    Task AdjustArmorAsync(Character character, int amount);
 }

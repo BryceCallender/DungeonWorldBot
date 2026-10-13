@@ -498,3 +498,6 @@ src/DungeonWorldBot/appsettings.json
 **/.idea/**/*.iml
 **/.idea/**/contentModel.xml
 **/.idea/**/modules.xml
+
+# JetBrains Rider project settings
+.idea/

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using DungeonWorldBot.ClassSheets;
 using DungeonWorldBot.Rolling;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Helpers;
@@ -8,6 +9,7 @@ using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Objects;
+using Remora.Discord.Commands.Attributes;
 using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Feedback.Services;
@@ -24,17 +26,20 @@ public class MoveCommand : CommandGroup
     private readonly FeedbackService _feedbackService;
     private readonly ICharacterService _characterService;
     private readonly IDiceRoller _diceRoller;
+    private readonly IResourceService _resourceService;
 
     public MoveCommand(
         ICommandContext context,
         FeedbackService feedbackService,
         ICharacterService characterService,
-        IDiceRoller diceRoller)
+        IDiceRoller diceRoller,
+        IResourceService resourceService)
     {
         _context = context;
         _feedbackService = feedbackService;
         _characterService = characterService;
         _diceRoller = diceRoller;
+        _resourceService = resourceService;
     }
 
     [Command("hack-and-slash")]
@@ -99,6 +104,69 @@ public class MoveCommand : CommandGroup
             return await ReplyWithErrorAsync("You must have a character to make moves. Try using /character create");
 
         return await ReplyWithMoveAsync(character, BasicMoves.LastBreath, modifierLabel: null, modifier: 0, bonus: 0);
+    }
+
+    [Command("class")]
+    [Description("Roll one of your class moves, like Channel or Raise the Dead")]
+    public async Task<IResult> ClassMoveAsync(
+        [Description("The class move to roll")]
+        [AutocompleteProvider(RolledClassMoveAutocomplete.ID)]
+        string move,
+        [Description(BonusDescription)] int bonus = 0,
+        [Description("Roll with a different stat than usual, if a move lets you")]
+        StatType? stat = null)
+    {
+        var character = await GetOwnCharacterAsync();
+        if (character is null)
+            return await ReplyWithErrorAsync("You must have a character to make moves. Try using /character create");
+
+        if (ClassSheetLibrary.For(character.Class.Type) is not { } sheet)
+            return await ReplyWithErrorAsync($"The {character.Class.Type} doesn't have a class sheet in the bot yet.");
+
+        var classMove = sheet.FindMove(move);
+        var rollsFrom = sheet;
+        if (classMove is null
+            && Multiclassing.KnownForeignMoves(character, sheet).FirstOrDefault(f => f.Move.Name.Equals(move.Trim(), StringComparison.OrdinalIgnoreCase)) is { } foreign)
+        {
+            // A move learned from another class's sheet
+            classMove = foreign.Move;
+            rollsFrom = foreign.Sheet;
+        }
+
+        if (classMove?.Roll is not { } definition)
+            return await ReplyWithErrorAsync($"{character.Name} doesn't have a rolled class move called {move}.");
+
+        if (!ClassSheetLibrary.KnownMoves(character).Contains(classMove.Name, StringComparer.OrdinalIgnoreCase))
+            return await ReplyWithErrorAsync($"{character.Name} doesn't know {classMove.Name}. Learn it with /class learn");
+
+        if (stat is null && classMove.RollsWith is { } rollsWith)
+        {
+            if (rollsFrom.FindResource(rollsWith) is { } resource)
+            {
+                var value = _resourceService.GetValue(character, resource);
+                return await ReplyWithMoveAsync(character, definition, resource.Name, value, bonus);
+            }
+
+            if (rollsFrom.ClassStat?.Name.Equals(rollsWith, StringComparison.OrdinalIgnoreCase) == true)
+            {
+                stat = rollsFrom == sheet ? ClassSheetLibrary.ResolveClassStat(character, sheet) : null;
+                if (stat is null)
+                {
+                    return await ReplyWithErrorAsync(rollsFrom == sheet
+                        ? $"Choose your {sheet.ClassStat.Feature} with /class learn first, it decides your {rollsWith} stat."
+                        : $"{classMove.Name} rolls the {rollsFrom.Type}'s {rollsWith} stat. Pick which stat to use with the stat option.");
+                }
+            }
+        }
+
+        if ((stat ?? definition.Stat) is not { } statType)
+            return await ReplyWithMoveAsync(character, definition, modifierLabel: null, modifier: 0, bonus);
+
+        var characterStat = character.Stats.FirstOrDefault(s => s.StatType == statType);
+        if (characterStat is null)
+            return await ReplyWithErrorAsync($"Your character has no {statType} stat.");
+
+        return await ReplyWithMoveAsync(character, definition, statType.ToString().ToUpper(), characterStat.Modifier, bonus);
     }
 
     private async Task<IResult> MakeStatMoveAsync(MoveDefinition move, StatType statType, int bonus)

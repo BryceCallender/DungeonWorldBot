@@ -8,6 +8,15 @@ public enum ClassType
     Channeler,
     Slayer,
     Druid,
-    Battlemaster
-
+    Battlemaster,
+    Templar,
+    Shaman,
+    Captain,
+    Collector,
+    Lantern,
+    Mechanic,
+    SkyDancer,
+    Survivor,
+    Walker,
+    Golem
 }

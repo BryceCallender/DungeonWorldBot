@@ -30,7 +30,7 @@ public sealed record MoveDefinition(
     IReadOnlyList<string>? Options = null,
     bool RollsDamage = false)
 {
-    public const string DefaultMiss = "Mark XP. The GM makes a move as hard as they like.";
+    public const string DefaultMiss = "You fail.";
 
     public string Describe(MoveOutcome outcome) => outcome switch
     {
@@ -61,7 +61,7 @@ public static partial class MoveRoller
     {
         MoveOutcome.StrongHit => "You do it.",
         MoveOutcome.WeakHit => "You do it, but there's a cost, complication, or hard choice.",
-        _ => "Mark XP. The GM makes a move.",
+        _ => "You fail.",
     };
 
     public static Color ColourFor(MoveOutcome outcome) => outcome switch

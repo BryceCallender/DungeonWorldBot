@@ -1,0 +1,217 @@
+using System.ComponentModel;
+using DungeonWorldBot.ClassSheets;
+using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Services;
+using Remora.Commands.Attributes;
+using Remora.Commands.Groups;
+using Remora.Discord.API.Abstractions.Objects;
+using Remora.Discord.API.Objects;
+using Remora.Discord.Commands.Attributes;
+using Remora.Discord.Commands.Contexts;
+using Remora.Discord.Commands.Extensions;
+using Remora.Discord.Commands.Feedback.Services;
+using Remora.Results;
+
+namespace DungeonWorldBot.Commands;
+
+[Group("resource")]
+public class ResourceCommand : CommandGroup
+{
+    private const string NoCharacterMessage = "No character exists. Try making one with /character create";
+    private const string NameDescription = "The resource, e.g. Gambit, Control, Power, Thirst or Wrath";
+
+    private readonly ICommandContext _context;
+    private readonly FeedbackService _feedbackService;
+    private readonly ICharacterService _characterService;
+    private readonly IResourceService _resourceService;
+
+    public ResourceCommand(
+        ICommandContext context,
+        FeedbackService feedbackService,
+        ICharacterService characterService,
+        IResourceService resourceService)
+    {
+        _context = context;
+        _feedbackService = feedbackService;
+        _characterService = characterService;
+        _resourceService = resourceService;
+    }
+
+    [Command("show")]
+    [Description("Show a character's class resources")]
+    public async Task<IResult> ShowAsync(
+        [Description("The user to see the resources of. Don't specify a user to see your own.")]
+        IUser? user = null)
+    {
+        var character = user is not null
+            ? await _characterService.GetCharacterFromUserAsync(user.ID)
+            : await GetOwnCharacterAsync();
+
+        if (character is null)
+        {
+            return await ReplyWithErrorAsync(user is null
+                ? NoCharacterMessage
+                : $"{user.Username} does not have a character.");
+        }
+
+        var resources = ClassSheetLibrary.For(character.Class.Type)?.ResourcesFor(ClassSheetLibrary.KnownMoves(character)).ToList() ?? [];
+        if (resources.Count == 0)
+            return await ReplyWithErrorAsync($"{character.Name} doesn't have any class resources to track.");
+
+        return await _feedbackService.SendContextualEmbedAsync(
+            new Embed(
+                Title: $"{character.Name}'s Resources",
+                Fields: resources.Select(r => (IEmbedField)new EmbedField($"{r.Name}: {Format(character, r)}", r.Summary)).ToList(),
+                Colour: _feedbackService.Theme.Primary
+            ),
+            ct: CancellationToken
+        );
+    }
+
+    [Command("gain")]
+    [Description("Gain points of a class resource")]
+    public async Task<IResult> GainAsync(
+        [Description(NameDescription)]
+        [AutocompleteProvider(ClassResourceAutocomplete.ID)]
+        string name,
+        [Description("How many to gain")]
+        [MinValue(1)]
+        int amount = 1)
+    {
+        var (character, resource, error) = await FindAsync(name);
+        if (error is not null)
+            return error;
+
+        var before = _resourceService.GetValue(character!, resource!);
+        var after = await _resourceService.SetValueAsync(character!, resource!, before + amount);
+
+        var description = $"{character!.Name} gained {after - before} {resource!.Name} ({Format(character, resource)})";
+        if (after - before < amount)
+            description += $"\n{resource.Name} can't go above {_resourceService.GetMax(character, resource)}.";
+
+        return await ReplyAsync($"+{after - before} {resource.Name}", description);
+    }
+
+    [Command("spend")]
+    [Description("Spend points of a class resource")]
+    public async Task<IResult> SpendAsync(
+        [Description(NameDescription)]
+        [AutocompleteProvider(ClassResourceAutocomplete.ID)]
+        string name,
+        [Description("How many to spend")]
+        [MinValue(1)]
+        int amount = 1)
+    {
+        var (character, resource, error) = await FindAsync(name);
+        if (error is not null)
+            return error;
+
+        var current = _resourceService.GetValue(character!, resource!);
+        if (current < amount)
+            return await ReplyWithErrorAsync($"{character!.Name} only has {current} {resource!.Name}.");
+
+        await _resourceService.SetValueAsync(character!, resource!, current - amount);
+
+        return await ReplyAsync($"-{amount} {resource!.Name}", $"{character!.Name} spent {amount} {resource.Name} ({Format(character, resource)})");
+    }
+
+    [Command("set")]
+    [Description("Set a class resource to an exact value")]
+    public async Task<IResult> SetAsync(
+        [Description(NameDescription)]
+        [AutocompleteProvider(ClassResourceAutocomplete.ID)]
+        string name,
+        [Description("The new value")]
+        [MinValue(0)]
+        int value)
+    {
+        var (character, resource, error) = await FindAsync(name);
+        if (error is not null)
+            return error;
+
+        await _resourceService.SetValueAsync(character!, resource!, value);
+
+        return await ReplyAsync($"{resource!.Name} Set", $"{character!.Name}'s {resource.Name} is now {Format(character, resource)}");
+    }
+
+    [Command("reset")]
+    [Description("Reset class resources, e.g. Gambits after a battle. Leave blank to reset all of them")]
+    public async Task<IResult> ResetAsync(
+        [Description("The resource to reset. Leave blank to reset all of them")]
+        [AutocompleteProvider(ClassResourceAutocomplete.ID)]
+        string? name = null)
+    {
+        var character = await GetOwnCharacterAsync();
+        if (character is null)
+            return await ReplyWithErrorAsync(NoCharacterMessage);
+
+        List<ClassResource> toReset;
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            toReset = ClassSheetLibrary.For(character.Class.Type)?.ResourcesFor(ClassSheetLibrary.KnownMoves(character)).Where(r => r.ResetWithAll).ToList() ?? [];
+            if (toReset.Count == 0)
+                return await ReplyWithErrorAsync($"{character.Name} doesn't have any class resources to reset.");
+        }
+        else
+        {
+            var (_, resource, error) = await FindAsync(name, character);
+            if (error is not null)
+                return error;
+            toReset = [resource!];
+        }
+
+        foreach (var resource in toReset)
+        {
+            await _resourceService.SetValueAsync(character, resource, _resourceService.GetResetValue(character, resource));
+        }
+
+        return await ReplyAsync("Resources Reset", string.Join('\n', toReset.Select(r => $"**{r.Name}:** {Format(character, r)}")));
+    }
+
+    private string Format(Character character, ClassResource resource) => _resourceService.Format(character, resource);
+
+    /// <returns>The character and resource, or an error that has already been sent to the player.</returns>
+    private async Task<(Character? Character, ClassResource? Resource, IResult? Error)> FindAsync(string name, Character? character = null)
+    {
+        character ??= await GetOwnCharacterAsync();
+        if (character is null)
+            return (null, null, await ReplyWithErrorAsync(NoCharacterMessage));
+
+        var sheet = ClassSheetLibrary.For(character.Class.Type);
+        var resource = sheet?.FindResource(name);
+        if (resource is null)
+            return (character, null, await ReplyWithErrorAsync($"The {character.Class.Type} doesn't have a resource called {name}."));
+
+        if (!sheet!.ResourcesFor(ClassSheetLibrary.KnownMoves(character)).Contains(resource))
+            return (character, null, await ReplyWithErrorAsync($"You need {resource.GrantedBy} before you have {resource.Name}."));
+
+        return (character, resource, null);
+    }
+
+    private async Task<Character?> GetOwnCharacterAsync()
+    {
+        if (!_context.TryGetUserID(out var userId))
+        {
+            throw new NotSupportedException();
+        }
+
+        return await _characterService.GetCharacterFromUserAsync(userId);
+    }
+
+    private async Task<IResult> ReplyAsync(string title, string description)
+    {
+        return await _feedbackService.SendContextualEmbedAsync(
+            new Embed(
+                Title: title,
+                Description: description,
+                Colour: _feedbackService.Theme.Primary
+            ),
+            ct: CancellationToken
+        );
+    }
+
+    private async Task<Result> ReplyWithErrorAsync(string error)
+    {
+        return (Result)await _feedbackService.SendContextualErrorAsync(error, ct: CancellationToken);
+    }
+}

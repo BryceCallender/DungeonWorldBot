@@ -1,3 +1,4 @@
+using DungeonWorldBot.ClassSheets;
 using DungeonWorldBot.Rolling;
 using DungeonWorldBot.Data.Entities;
 using Remora.Rest.Core;
@@ -42,6 +43,13 @@ public sealed class CharacterDraft
     public ClassKit Kit { get; private set; } = ClassKits.All[0];
     public Dictionary<StatType, int> Stats { get; } = new();
 
+    /// <summary>
+    /// The options picked for each of the class sheet's choices, keyed by the choice's name.
+    /// </summary>
+    public Dictionary<string, List<ClassMove>> FeatureChoices { get; } = new();
+
+    public ClassSheet? Sheet => ClassSheetLibrary.For(Kit.Type);
+
     public List<Item> Items { get; } = new();
     public int ArmorRating { get; private set; }
     public int DamageRating { get; private set; }
@@ -52,6 +60,7 @@ public sealed class CharacterDraft
     public void SetClass(ClassKit kit, IDiceRoller dice)
     {
         Kit = kit;
+        FeatureChoices.Clear();
         ResetGear(dice);
     }
 
@@ -100,9 +109,16 @@ public sealed class CharacterDraft
         }
     }
 
+    /// <summary>
+    /// The class sheet's starting moves plus whatever the player chose for each class choice.
+    /// </summary>
+    public IEnumerable<ClassMove> StartingMoves() =>
+        Sheet is null ? [] : Sheet.GrantedMoves.Concat(FeatureChoices.Values.SelectMany(c => c));
+
     public Character Build(Snowflake userId)
     {
         var characterClass = new Class { Type = Kit.Type };
+        var startingMoves = StartingMoves().ToList();
         var maxHp = Stats.GetValueOrDefault(StatType.Con) + characterClass.HealthModifier;
 
         return new Character
@@ -114,7 +130,8 @@ public sealed class CharacterDraft
             Race = Race,
             Alignment = Alignment,
             Class = characterClass,
-            ArmorRating = ArmorRating,
+            ArmorRating = ArmorRating + startingMoves.Sum(m => m.Armor),
+            DamageModifier = startingMoves.Select(m => m.DamageDie).LastOrDefault(d => d is not null),
             DamageRating = DamageRating,
             Stats = StatOrder
                 .Where(Stats.ContainsKey)
@@ -122,6 +139,13 @@ public sealed class CharacterDraft
                 .ToList(),
             Health = new Health { MaxHP = maxHp, CurrentHP = maxHp },
             Inventory = new Inventory { Items = Items.ToList() },
+            Abilities = startingMoves.Select(m => new Ability
+            {
+                Name = m.Name,
+                Description = m.Summary,
+                MaxUses = m.Uses,
+                Uses = m.Uses ?? 0,
+            }).ToList(),
         };
     }
 }
