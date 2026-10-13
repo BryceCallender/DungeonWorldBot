@@ -5,8 +5,10 @@ using DungeonWorldBot.CharacterCreation;
 using DungeonWorldBot.ClassSheets;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Debilities;
+using DungeonWorldBot.Gear;
 using DungeonWorldBot.Helpers;
 using DungeonWorldBot.Services;
+using DungeonWorldBot.Subclasses;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.API.Abstractions.Objects;
@@ -149,11 +151,25 @@ public class CharacterCommand : CommandGroup
                 $"{r.Name} {_resourceService.Format(character, r)}"))));
         }
 
+        var gear = GearRules.Owned(character);
+        if (gear.Count > 0)
+        {
+            embedFields.Add(new EmbedField(Name: "Gear", Value: string.Join('\n', gear.Select(g =>
+                $"{g.Gear.Name}: {g.Mode?.Name ?? $"no {g.Gear.ModeKind.ToLower()}"}" +
+                (g.Mode?.Counter is { } counter ? $" ({counter.Name} {_resourceService.Format(character, counter.Resource)})" : string.Empty)))));
+        }
+
+        var subclass = SubclassLibrary.Of(character);
+        if (subclass?.Status?.Invoke(character) is { } subclassStatus)
+        {
+            embedFields.Add(new EmbedField(Name: subclass.Name, Value: subclassStatus));
+        }
+
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: character.Name,
                 Thumbnail: ImageHelper.ClassThumbnail(character.Class.Type),
-                Description: $"{character.Class.Type}: Level {character.Level}",
+                Description: $"{character.Class.Type}{(subclass is not null ? $" · {subclass.Name}" : string.Empty)}: Level {character.Level}",
                 Fields: embedFields,
                 Colour: _feedbackService.Theme.Primary
             ),
@@ -523,6 +539,7 @@ public class CharacterCommand : CommandGroup
                              + (ClassSheetLibrary.For(character.Class.Type) is not null && character.Level >= 2
                                  ? "\nPick a new advanced move with /class moves and /class learn"
                                  : string.Empty)
+                             + SubclassUnlocks(character)
                              + (_leveling.GetStatPoints(character) is > 0 and var points
                                  ? $"\nRaise a stat with /character allocate-stat ({points} point{(points == 1 ? "" : "s")} to spend)"
                                  : string.Empty),
@@ -530,6 +547,23 @@ public class CharacterCommand : CommandGroup
             ),
             ct: CancellationToken
         );
+    }
+
+    /// <summary>
+    /// The subclass moves that unlock at the character's new level, if any.
+    /// </summary>
+    private static string SubclassUnlocks(Character character)
+    {
+        if (SubclassLibrary.Of(character) is not { } subclass)
+            return string.Empty;
+
+        var unlocked = subclass.Moves.Where(m => m.Level == character.Level).ToList();
+        if (unlocked.Count == 0)
+            return string.Empty;
+
+        return "\n" + string.Join("\n", unlocked.Select(m => m.Hidden
+            ? $"{subclass.Name}: something stirs... ▓▒░ ??? ░▒▓ Ask your DM."
+            : $"{subclass.Name}: learned **{m.Move.Name}**. See /subclass info"));
     }
 
     private async Task<Result> ReplyWithErrorAsync(string error)

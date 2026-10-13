@@ -1,5 +1,6 @@
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Services;
+using DungeonWorldBot.Subclasses;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Autocomplete;
@@ -150,7 +151,7 @@ public sealed class AnyClassMoveAutocomplete(ContextInjectionService? contextInj
 }
 
 /// <summary>
-/// Rolled moves the player can make: their own class's, plus any rolled moves they learned from other classes.
+/// Rolled moves the player can make: their own class's, their subclass's, plus any rolled moves they learned from other classes.
 /// </summary>
 public sealed class RolledClassMoveAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
     : ClassSheetAutocomplete(contextInjection, characterService)
@@ -161,6 +162,9 @@ public sealed class RolledClassMoveAutocomplete(ContextInjectionService? context
 
     protected override IEnumerable<Suggestion> OwnClassCandidates(Character character, ClassSheet sheet) =>
         sheet.AllMoves.Where(m => m.Roll is not null).Select(m => new Suggestion(m.Name, m.Name))
+            .Concat((SubclassLibrary.Of(character)?.MovesAt(character.Level) ?? [])
+                .Where(m => m.Roll is not null)
+                .Select(m => new Suggestion(m.Name, m.Name)))
             .Concat(Multiclassing.KnownForeignMoves(character, sheet)
                 .Where(f => f.Move.Roll is not null)
                 .Select(f => new Suggestion(f.Move.Name, Multiclassing.Qualify(f))));

@@ -17,12 +17,18 @@ public class LevelingService : ILevelingService
     private readonly ICharacterService _characterService;
     private readonly IResourceService _resourceService;
     private readonly IGameSettingsService? _settings;
+    private readonly ISubclassService? _subclasses;
 
-    public LevelingService(ICharacterService characterService, IResourceService resourceService, IGameSettingsService? settings = null)
+    public LevelingService(
+        ICharacterService characterService,
+        IResourceService resourceService,
+        IGameSettingsService? settings = null,
+        ISubclassService? subclasses = null)
     {
         _characterService = characterService;
         _resourceService = resourceService;
         _settings = settings;
+        _subclasses = subclasses;
     }
 
     public async Task ChangeLevelAsync(Character character, int level)
@@ -41,6 +47,10 @@ public class LevelingService : ILevelingService
             var value = _resourceService.GetValue(character, resource);
             await _resourceService.SetValueAsync(character, resource, Math.Max(1, value + change));
         }
+
+        // Subclass moves unlock by level. Levelling down keeps them, like advanced moves.
+        if (_subclasses is not null)
+            await _subclasses.GrantUnlockedMovesAsync(character);
     }
 
     public int GetStatPoints(Character character) => _resourceService.GetValue(character, StatPoints);

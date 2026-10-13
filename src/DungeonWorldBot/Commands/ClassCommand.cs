@@ -3,6 +3,7 @@ using DungeonWorldBot.ClassSheets;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Helpers;
 using DungeonWorldBot.Services;
+using DungeonWorldBot.Subclasses;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.API.Abstractions.Objects;
@@ -86,6 +87,13 @@ public class ClassCommand : CommandGroup
         if (sheet.Features.Count > 0)
         {
             fields.Add(new EmbedField("Choices", string.Join('\n', choices)));
+        }
+
+        if (SubclassLibrary.Of(character) is { } subclass)
+        {
+            var subclassMoves = subclass.MovesAt(character.Level).Select(m => m.Name).ToList();
+            fields.Add(new EmbedField($"Subclass: {subclass.Name}",
+                (subclassMoves.Count > 0 ? string.Join(", ", subclassMoves) : "No moves yet") + "\nSee /subclass info"));
         }
 
         var grants = Multiclassing.Grants(sheet, known);

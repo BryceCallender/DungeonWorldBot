@@ -6,6 +6,7 @@ using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Helpers;
 using DungeonWorldBot.Moves;
 using DungeonWorldBot.Services;
+using DungeonWorldBot.Subclasses;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
 using Remora.Discord.API.Abstractions.Objects;
@@ -29,6 +30,7 @@ public class MoveCommand : CommandGroup
     private readonly IDiceRoller _diceRoller;
     private readonly IResourceService _resourceService;
     private readonly IRollStatsService _rollStatsService;
+    private readonly IDamageService _damageService;
 
     public MoveCommand(
         ICommandContext context,
@@ -36,7 +38,8 @@ public class MoveCommand : CommandGroup
         ICharacterService characterService,
         IDiceRoller diceRoller,
         IResourceService resourceService,
-        IRollStatsService rollStatsService)
+        IRollStatsService rollStatsService,
+        IDamageService damageService)
     {
         _context = context;
         _feedbackService = feedbackService;
@@ -44,6 +47,7 @@ public class MoveCommand : CommandGroup
         _diceRoller = diceRoller;
         _resourceService = resourceService;
         _rollStatsService = rollStatsService;
+        _damageService = damageService;
     }
 
     [Command("hack-and-slash")]
@@ -107,11 +111,11 @@ public class MoveCommand : CommandGroup
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to make moves. Try using /character create");
 
-        return await ReplyWithMoveAsync(character, BasicMoves.LastBreath, modifierLabel: null, modifier: 0, bonus: 0);
+        return await ReplyWithMoveAsync(character, BasicMoves.LastBreath, modifierLabel: null, modifier: 0, bonus: 0, kind: RollKind.LastBreath);
     }
 
     [Command("class")]
-    [Description("Roll one of your class moves, like Channel or Raise the Dead")]
+    [Description("Roll one of your class or subclass moves, like Channel or Raise the Dead")]
     public async Task<IResult> ClassMoveAsync(
         [Description("The class move to roll")]
         [AutocompleteProvider(RolledClassMoveAutocomplete.ID)]
@@ -136,6 +140,8 @@ public class MoveCommand : CommandGroup
             classMove = foreign.Move;
             rollsFrom = foreign.Sheet;
         }
+
+        classMove ??= SubclassLibrary.Of(character)?.FindMove(move);
 
         if (classMove?.Roll is not { } definition)
             return await ReplyWithErrorAsync($"{character.Name} doesn't have a rolled class move called {move}.");
@@ -187,20 +193,31 @@ public class MoveCommand : CommandGroup
     }
 
     /// <param name="stat">The stat being rolled, so its debility (if any) applies.</param>
-    private async Task<IResult> ReplyWithMoveAsync(Character character, MoveDefinition move, string? modifierLabel, int modifier, int bonus, StatType? stat = null)
+    /// <param name="kind">What the roll is for, when subclass bonuses (like a Boon of Luna) could apply to it.</param>
+    private async Task<IResult> ReplyWithMoveAsync(
+        Character character,
+        MoveDefinition move,
+        string? modifierLabel,
+        int modifier,
+        int bonus,
+        StatType? stat = null,
+        RollKind? kind = null)
     {
         var debility = stat is { } rolled ? DebilityRules.RollPenalty(character, rolled) : null;
-        var roll = MoveRoller.Roll(_diceRoller, modifier + bonus + (debility?.Penalty ?? 0));
+        kind ??= stat is not null ? RollKind.Stat : null;
+        var subclassBonuses = kind is { } rollKind ? await _damageService.BonusesAsync(character, rollKind, stat) : [];
+        var roll = MoveRoller.Roll(_diceRoller, modifier + bonus + (debility?.Penalty ?? 0) + subclassBonuses.Sum(b => b.Amount));
 
         var fields = new List<IEmbedField>();
 
-        if (modifierLabel is not null || bonus != 0 || debility is not null)
+        if (modifierLabel is not null || bonus != 0 || debility is not null || subclassBonuses.Count > 0)
         {
             var parts = new List<string>();
             if (modifierLabel is not null)
                 parts.Add($"{modifierLabel} {FormatSigned(modifier)}");
             if (debility is { } penalty)
                 parts.Add($"{penalty.Debility} {FormatSigned(penalty.Penalty)}");
+            parts.AddRange(subclassBonuses.Select(b => $"{b.Source} {FormatSigned(b.Amount)}"));
             if (bonus != 0)
                 parts.Add($"Bonus {FormatSigned(bonus)}");
 
@@ -217,7 +234,7 @@ public class MoveCommand : CommandGroup
 
         if (isHit && move.RollsDamage)
         {
-            fields.Add(RollDamage(character));
+            fields.Add(await RollDamageAsync(character, move.Name));
         }
 
         var colour = MoveRoller.ColourFor(roll.Outcome);
@@ -238,13 +255,11 @@ public class MoveCommand : CommandGroup
         return reply;
     }
 
-    private IEmbedField RollDamage(Character character)
+    private async Task<IEmbedField> RollDamageAsync(Character character, string move)
     {
-        var expression = DiceHelper.AddModifier(character.DamageModifier ?? character.Class.Damage, character.DamageRating);
-
-        return _diceRoller.TryRoll(expression, out var damage)
-            ? new EmbedField("Damage", $"{expression} → **{damage.Value}**")
-            : new EmbedField("Damage", $"Couldn't roll `{expression}`. Fix it with /character damage-modifier-change");
+        return await _damageService.RollAsync(character, move) is { } damage
+            ? new EmbedField("Damage", $"{damage.Expression} → **{damage.Total}**{damage.Details}")
+            : new EmbedField("Damage", $"Couldn't roll `{character.DamageModifier ?? character.Class.Damage}`. Fix it with /character damage-modifier-change");
     }
 
     private static string FormatSigned(int value) => value >= 0 ? $"+{value}" : value.ToString();
