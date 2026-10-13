@@ -11,7 +11,12 @@ public class Character
     public Health Health { get; set; } = null!;
     public Inventory Inventory { get; set; } = null!;
     
+    /// <summary>
+    /// Physical armor from the character's gear and moves.
+    /// </summary>
     public int ArmorRating { get; set; }
+
+    public int MagicArmor { get; set; }
     
     public int DamageRating { get; set; }
     
@@ -22,6 +27,7 @@ public class Character
     public List<Debility>? Debilities { get; set; }
     public List<Ability>? Abilities { get; set; }
     public List<CharacterResource>? Resources { get; set; }
+    public List<ArmorBonus>? ArmorBonuses { get; set; }
 
     public Status? Status { get; set; }
     public Alignment Alignment { get; set; }

@@ -3,6 +3,7 @@ using System.Drawing;
 using DungeonWorldBot.Rolling;
 using DungeonWorldBot.CharacterCreation;
 using DungeonWorldBot.ClassSheets;
+using DungeonWorldBot.Combat;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Debilities;
 using DungeonWorldBot.Gear;
@@ -36,6 +37,7 @@ public class CharacterCommand : CommandGroup
     private readonly IGameMasterService _gameMaster;
     private readonly ILevelingService _leveling;
     private readonly IGameSettingsService _settings;
+    private readonly IArmorService _armorService;
 
     public CharacterCommand(
         ICommandContext context,
@@ -46,7 +48,8 @@ public class CharacterCommand : CommandGroup
         IResourceService resourceService,
         IGameMasterService gameMaster,
         ILevelingService leveling,
-        IGameSettingsService settings)
+        IGameSettingsService settings,
+        IArmorService armorService)
     {
         _context = context;
         _feedbackService = feedbackService;
@@ -57,6 +60,7 @@ public class CharacterCommand : CommandGroup
         _gameMaster = gameMaster;
         _leveling = leveling;
         _settings = settings;
+        _armorService = armorService;
     }
 
     [Command("create")]
@@ -131,7 +135,7 @@ public class CharacterCommand : CommandGroup
         embedFields.Add(new EmbedField(Name: "Debilities", Value: DebilityRules.Current(character) is { Count: > 0 } debilities
             ? string.Join(", ", debilities.Select(DebilityRules.Describe))
             : "None"));
-        embedFields.Add(new EmbedField(Name: "Total Armor", Value: character.ArmorRating.ToString()));
+        embedFields.Add(new EmbedField(Name: "Armor", Value: DamageRules.Summary(character)));
         embedFields.Add(new EmbedField(Name: "Bonds", Value:
             character.Bonds?.Count > 0 ? string.Join(", ", character.Bonds.Select(b => b.TargetName)) : "None"));
         var abilities = character.Abilities?.Count > 0 ? string.Join(", ", character.Abilities.Select(a => a.ToDisplay())) : "None";
@@ -200,12 +204,17 @@ public class CharacterCommand : CommandGroup
     }
 
     [Command("damage")]
-    [Description("Apply damage to a player's character")]
+    [Description("Apply damage to a player's character, reduced by their armor against its type")]
     public async Task<IResult> DamagePlayerAsync(
         [Description("The user to apply damage to.")]
         IUser user,
-        [Description("Amount to damage. Can be a dice roll or just flat damage")]
-        string damage)
+        [Description("Amount to damage, before armor. Can be a dice roll or just flat damage")]
+        string damage,
+        [Description("Physical (stopped by physical armor), Magical (stopped by magical armor), or True (ignores armor)")]
+        DamageType type = DamageType.Physical,
+        [Description("How much of their armor the hit ignores")]
+        [MinValue(0)]
+        int piercing = 0)
     {
         var character = await _characterService.GetCharacterFromUserAsync(user.ID);
         if (character is null)
@@ -219,13 +228,18 @@ public class CharacterCommand : CommandGroup
         }
 
         // Modifiers can push a roll below zero ("1d4-3"), which shouldn't heal anyone
-        var amount = Math.Max(0, roll.Value);
-        await _characterService.DamageAsync(character, amount);
+        var hit = await _armorService.TakeDamageAsync(character, roll.Value, type, piercing);
+
+        var description = $"{character.Name} took {hit.Taken} damage! ({character.Health.CurrentHP}/{character.Health.MaxHP} HP)" +
+                          (character.Health.CurrentHP == 0 ? " · at 0 HP, roll /move last-breath" : string.Empty) +
+                          $"\n{DamageRules.Describe(hit)}";
+        if (hit.Broken.Count > 0)
+            description += $"\n*Broken: {string.Join(", ", hit.Broken.Select(b => b.Source))}*";
 
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: "Damaged!",
-                Description: $"{character.Name} took {amount} damage! ({character.Health.CurrentHP}/{character.Health.MaxHP} HP)",
+                Description: description,
                 Colour: _feedbackService.Theme.Primary
             ),
             ct: CancellationToken

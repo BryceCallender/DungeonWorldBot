@@ -501,3 +501,6 @@ src/DungeonWorldBot/appsettings.json
 
 # JetBrains Rider project settings
 .idea/
+
+# DM settings written by the bot at runtime
+game-settings.json

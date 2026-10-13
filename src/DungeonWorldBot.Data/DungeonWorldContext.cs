@@ -74,7 +74,7 @@ public class DungeonWorldContext : DbContext
                         {
                             Name = "Leather Armor",
                             ArmorRating = 1,
-                            Type = ArmorType.Regular
+                            Type = ArmorType.Physical
                         },
                         new()
                         {
@@ -171,7 +171,7 @@ public class DungeonWorldContext : DbContext
                         new Armor
                         {
                             Name = "Leather Armor",
-                            Type = ArmorType.Regular,
+                            Type = ArmorType.Physical,
                             Amount = 1,
                             ArmorRating = 1
                         },
@@ -272,7 +272,7 @@ public class DungeonWorldContext : DbContext
                         new Armor
                         {
                             Name = "Leather Armor",
-                            Type = ArmorType.Regular,
+                            Type = ArmorType.Physical,
                             ArmorRating = 1
                         },
                         new()
@@ -368,7 +368,7 @@ public class DungeonWorldContext : DbContext
                             Name = "Scale Armor",
                             Amount = 1,
                             ArmorRating = 2,
-                            Type = ArmorType.Regular
+                            Type = ArmorType.Physical
                         },
                         new()
                         {
@@ -384,7 +384,7 @@ public class DungeonWorldContext : DbContext
                         new Armor
                         {
                             Name = "Shield",
-                            Type = ArmorType.Regular,
+                            Type = ArmorType.Physical,
                             ArmorRating = 1
                         },
                         new()
