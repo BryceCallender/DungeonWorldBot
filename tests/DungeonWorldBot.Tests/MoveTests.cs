@@ -73,4 +73,22 @@ public class MoveTests
         Assert.All(Enum.GetValues<MoveOutcome>(), outcome => Assert.False(string.IsNullOrWhiteSpace(move.Describe(outcome)), $"{move.Name}: {outcome}"));
         Assert.False(string.IsNullOrWhiteSpace(move.Trigger));
     }
+
+    [Theory]
+    [InlineData(MoveOutcome.StrongHit, false)]
+    [InlineData(MoveOutcome.WeakHit, true)]
+    [InlineData(MoveOutcome.Miss, false)]
+    public void Volley_OnlyShowsItsCostsOnAWeakHit(MoveOutcome outcome, bool shown)
+    {
+        Assert.Equal(shown, BasicMoves.Volley.ShowsOptions(outcome));
+    }
+
+    [Theory]
+    [InlineData(MoveOutcome.StrongHit, true)]
+    [InlineData(MoveOutcome.WeakHit, true)]
+    [InlineData(MoveOutcome.Miss, false)]
+    public void DiscernRealities_ShowsItsQuestionsOnAnyHit(MoveOutcome outcome, bool shown)
+    {
+        Assert.Equal(shown, BasicMoves.DiscernRealities.ShowsOptions(outcome));
+    }
 }

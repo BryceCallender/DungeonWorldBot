@@ -11,7 +11,15 @@ namespace DungeonWorldBot.Responder;
 /// <param name="Stat">The stat to roll 2d6 with, when this is a stat roll.</param>
 /// <param name="Bonus">Extra modifier for a stat roll.</param>
 /// <param name="Label">Optional text after the roll describing what it's for.</param>
-public sealed partial record DiceMessage(string? Expression, StatType? Stat, int Bonus, string? Label)
+/// <param name="Options">
+/// A numbered list sent alongside the roll, e.g. "1 hatter 2 ziedrich 3 zephyr" above ".1d3", so the roll picks one.
+/// </param>
+public sealed partial record DiceMessage(
+    string? Expression,
+    StatType? Stat,
+    int Bonus,
+    string? Label,
+    IReadOnlyDictionary<int, string>? Options = null)
 {
     public const char Prefix = '.';
 
@@ -23,8 +31,28 @@ public sealed partial record DiceMessage(string? Expression, StatType? Stat, int
     [GeneratedRegex(@"^[0-9dDkKpPlLfF!%+\-xX/()]+$")]
     private static partial Regex DiceToken();
 
+    // "1 hatter 2 ziedrich" or "1. hatter" / "2) ziedrich" on their own lines; each entry runs until the next number
+    [GeneratedRegex(@"(?:^|\s)(\d{1,3})[.):]?\s+(.+?)(?=\s+\d{1,3}[.):]?\s|$)")]
+    private static partial Regex OptionEntry();
+
+    /// <summary>
+    /// Finds the first line starting with '.' that's a roll; any numbered list on the other lines becomes its options.
+    /// </summary>
     /// <returns>The requested roll, or null if the message isn't a roll (e.g. "..." or ".hello").</returns>
     public static DiceMessage? TryParse(string content)
+    {
+        var lines = content.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        for (var i = 0; i < lines.Length; i++)
+        {
+            var roll = TryParseLine(lines[i]);
+            if (roll is not null)
+                return roll with { Options = ParseOptions(lines.Where((_, j) => j != i)) };
+        }
+
+        return null;
+    }
+
+    private static DiceMessage? TryParseLine(string content)
     {
         if (content.Length < 2 || content[0] != Prefix)
             return null;
@@ -55,6 +83,21 @@ public sealed partial record DiceMessage(string? Expression, StatType? Stat, int
     // Something like ".5" or ".+1" has no dice in it, so it's just a chat message
     private static bool IsReasonableRoll(string expression) =>
         DiceRoller.IsReasonable(expression) && DiceRoller.CountDice(expression) > 0;
+
+    // Needs at least two entries so a stray number in chat isn't treated as a list
+    private static IReadOnlyDictionary<int, string>? ParseOptions(IEnumerable<string> lines)
+    {
+        var options = new Dictionary<int, string>();
+        foreach (var line in lines)
+        foreach (Match match in OptionEntry().Matches(line))
+        {
+            var name = match.Groups[2].Value.Trim().TrimEnd(',', ';', '|').Trim();
+            if (name.Length > 0)
+                options.TryAdd(int.Parse(match.Groups[1].Value), name);
+        }
+
+        return options.Count >= 2 ? options : null;
+    }
 
     private static string? LabelFrom(string[] tokens, int start) =>
         start < tokens.Length ? string.Join(' ', tokens[start..]) : null;
