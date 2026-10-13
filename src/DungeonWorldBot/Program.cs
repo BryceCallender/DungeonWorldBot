@@ -7,6 +7,8 @@ using DungeonWorldBot.Responder;
 using DungeonWorldBot.Services;
 using DungeonWorldBot.Services.Implementation;
 using DungeonWorldBot.Services.Interactivity;
+using DungeonWorldBot.Spells;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
@@ -30,7 +32,7 @@ public class Program
 
         var services = host.Services;
         var log = services.GetRequiredService<ILogger<Program>>();
-        
+
         var slashService = services.GetRequiredService<SlashService>();
 
         var updateSlash = await slashService.UpdateSlashCommandsAsync();
@@ -72,10 +74,14 @@ public class Program
                     .AddScoped<IInventoryService, InventoryService>()
                     .AddScoped<IAbilityService, AbilityService>()
                     .AddScoped<IResourceService, ResourceService>()
+                    .AddScoped<IGameMasterService, GameMasterService>()
+                    .AddScoped<ILevelingService, LevelingService>()
+                    .AddScoped<IRollStatsService, RollStatsService>()
                     .AddAutocompleteProvider<ClassMoveAutocomplete>()
                     .AddAutocompleteProvider<AnyClassMoveAutocomplete>()
                     .AddAutocompleteProvider<RolledClassMoveAutocomplete>()
                     .AddAutocompleteProvider<ClassResourceAutocomplete>()
+                    .AddAutocompleteProvider<SpellAutocomplete>()
                     .AddSingleton<IDiceRoller, DiceRoller>()
                     .AddScoped<InteractivityService>()
                     .AddScoped<CharacterCreationDialogue>()

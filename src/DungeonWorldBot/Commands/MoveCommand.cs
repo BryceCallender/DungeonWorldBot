@@ -27,19 +27,22 @@ public class MoveCommand : CommandGroup
     private readonly ICharacterService _characterService;
     private readonly IDiceRoller _diceRoller;
     private readonly IResourceService _resourceService;
+    private readonly IRollStatsService _rollStatsService;
 
     public MoveCommand(
         ICommandContext context,
         FeedbackService feedbackService,
         ICharacterService characterService,
         IDiceRoller diceRoller,
-        IResourceService resourceService)
+        IResourceService resourceService,
+        IRollStatsService rollStatsService)
     {
         _context = context;
         _feedbackService = feedbackService;
         _characterService = characterService;
         _diceRoller = diceRoller;
         _resourceService = resourceService;
+        _rollStatsService = rollStatsService;
     }
 
     [Command("hack-and-slash")]
@@ -214,7 +217,7 @@ public class MoveCommand : CommandGroup
 
         var colour = MoveRoller.ColourFor(roll.Outcome);
 
-        return await _feedbackService.SendContextualEmbedAsync(
+        var reply = await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: $"🎲 {character.Name}: {move.Name}",
                 Description: $"*{move.Trigger}...*\n\n{DiceHelper.BuildDiceResult(roll.Dice)}",
@@ -223,6 +226,11 @@ public class MoveCommand : CommandGroup
             ),
             ct: CancellationToken
         );
+
+        if (reply.IsSuccess && _context.TryGetChannelID(out var channelID))
+            await _rollStatsService.RecordAsync(reply.Entity.ID, channelID, character.ID, roll.Dice);
+
+        return reply;
     }
 
     private IEmbedField RollDamage(Character character)

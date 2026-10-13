@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Spells;
 using static DungeonWorldBot.ClassSheets.ClassMove;
 
 namespace DungeonWorldBot.ClassSheets.DungeonWorld;
@@ -8,6 +9,8 @@ namespace DungeonWorldBot.ClassSheets.DungeonWorld;
 /// </summary>
 public static class Ranger
 {
+    private const string ClericLevel = "Cleric Level";
+
     public static readonly ClassSheet Sheet = new(
         ClassType.Ranger,
         "Dungeon World",
@@ -64,7 +67,7 @@ public static class Ranger
             new("Man's Best Friend", "When you let your animal companion take a blow meant for you, the damage is negated and its ferocity becomes 0 (you can't do this at 0). A few hours of rest together restores it."),
             new("Blot Out the Sun", "When you Volley, spend extra ammo before rolling: each extra ammo adds a target. Roll once and apply the damage to all of them."),
             new("Well-Trained", "Choose another training for your animal companion."),
-            new("God Amidst the Wastes", "Dedicate yourself to a deity. Gain the cleric's Commune and Cast a Spell moves as a level 1 cleric, gaining an effective cleric level each time you level up."),
+            new("God Amidst the Wastes", "Dedicate yourself to a deity. Gain the cleric's Commune and Cast a Spell moves as a level 1 cleric, gaining an effective cleric level each time you level up.") { GrantsSpells = new(SpellList.Cleric, ClericLevel) },
             new("Follow Me", "When you Undertake a Perilous Journey, you can take two roles, rolling separately for each."),
             new("A Safe Place", "When you set the watch for the night, everyone takes +1 to Take Watch."),
         ],
@@ -79,5 +82,13 @@ public static class Ranger
             new("Observant", "On a hit with Hunt and Track, also ask one Discern Realities question about the creature for free."),
             new("Special Trick", "Choose a move from another class. You can use it while working with your animal companion.") { Multiclass = MulticlassGrant.AnyClass() },
             new("Unnatural Ally", "Your animal companion is a monster. Describe it. It gets +2 ferocity, +1 instinct and a new training."),
+        ],
+        resources:
+        [
+            new ClassResource(ClericLevel, "Your effective cleric level for spells: 1 when you take God Amidst the Wastes, +1 each level after. Learn spells with /spell learn.", Start: 1, GrantedBy: "God Amidst the Wastes")
+            {
+                ResetWithAll = false,
+                GrowsWithLevel = true,
+            },
         ]);
 }

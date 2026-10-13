@@ -1,5 +1,6 @@
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Moves;
+using DungeonWorldBot.Spells;
 
 namespace DungeonWorldBot.ClassSheets;
 
@@ -61,6 +62,11 @@ public sealed record ClassMove(string Name, string Summary)
     /// For moves like the Ranger's Special Trick, which other classes' moves this one lets the character take.
     /// </summary>
     public MulticlassGrant? Multiclass { get; init; }
+
+    /// <summary>
+    /// For moves like God Amidst the Wastes, the spell list the move lets the character cast from.
+    /// </summary>
+    public SpellAccess? GrantsSpells { get; init; }
 
     /// <summary>
     /// Uses or charges the move starts with, if it's limited.
@@ -144,6 +150,11 @@ public sealed record ClassFeature(string Name, string Prompt, IReadOnlyList<Clas
 }
 
 /// <summary>
+/// Access to a spell list, at the caster level tracked by a class resource (like "Cleric Level").
+/// </summary>
+public sealed record SpellAccess(SpellList List, string LevelResource);
+
+/// <summary>
 /// Permission to take one move from another class's sheet.
 /// </summary>
 public sealed record MulticlassGrant
@@ -197,6 +208,11 @@ public sealed record ClassResource(string Name, string Summary, int Start = 0, i
     /// Whether resetting every resource at once includes this one. Off for things that build up over the campaign, like Trade.
     /// </summary>
     public bool ResetWithAll { get; init; } = true;
+
+    /// <summary>
+    /// Whether the resource goes up and down with the character's level, like a Ranger's effective cleric level.
+    /// </summary>
+    public bool GrowsWithLevel { get; init; }
 
     public IReadOnlyList<ResourceBonus> Bonuses { get; init; } = [];
 

@@ -1,4 +1,5 @@
 using System.Drawing;
+using d20Tek.DiceNotation.Results;
 using DungeonWorldBot.Rolling;
 using DungeonWorldBot.Helpers;
 using DungeonWorldBot.Moves;
@@ -23,12 +24,18 @@ public class DiceRollResponder : IResponder<IMessageCreate>
     private readonly IDiscordRestChannelAPI _channelAPI;
     private readonly IDiceRoller _diceRoller;
     private readonly ICharacterService _characterService;
+    private readonly IRollStatsService _rollStatsService;
 
-    public DiceRollResponder(IDiscordRestChannelAPI channelAPI, IDiceRoller diceRoller, ICharacterService characterService)
+    public DiceRollResponder(
+        IDiscordRestChannelAPI channelAPI,
+        IDiceRoller diceRoller,
+        ICharacterService characterService,
+        IRollStatsService rollStatsService)
     {
         _channelAPI = channelAPI;
         _diceRoller = diceRoller;
         _characterService = characterService;
+        _rollStatsService = rollStatsService;
     }
 
     public async Task<Result> RespondAsync(IMessageCreate gatewayEvent, CancellationToken ct = default)
@@ -41,7 +48,7 @@ public class DiceRollResponder : IResponder<IMessageCreate>
         if (request is null)
             return Result.FromSuccess();
 
-        var embed = request.Stat is not null
+        var (embed, roll) = request.Stat is not null
             ? await BuildStatRollAsync(gatewayEvent, request)
             : BuildDiceRoll(gatewayEvent, request);
 
@@ -55,26 +62,34 @@ public class DiceRollResponder : IResponder<IMessageCreate>
             allowedMentions: new AllowedMentions(MentionRepliedUser: false),
             ct: ct);
 
-        return reply.IsSuccess ? Result.FromSuccess() : Result.FromError(reply);
+        if (!reply.IsSuccess)
+            return Result.FromError(reply);
+
+        if (roll is not null)
+            await _rollStatsService.RecordAsync(reply.Entity.ID, gatewayEvent.ChannelID, gatewayEvent.Author.ID, roll);
+
+        return Result.FromSuccess();
     }
 
-    private Embed? BuildDiceRoll(IMessageCreate message, DiceMessage request)
+    private (Embed? Embed, DiceResult? Roll) BuildDiceRoll(IMessageCreate message, DiceMessage request)
     {
         if (!_diceRoller.TryRoll(request.Expression!, out var roll))
-            return null;
+            return (null, null);
 
         var outcome = MoveRoller.OutcomeOf(roll);
 
-        return new Embed(
+        var embed = new Embed(
             Title: Title(message.Author, request.Label),
             Description: DiceHelper.BuildDiceResult(roll),
             Fields: outcome is { } band
                 ? new List<IEmbedField> { new EmbedField(MoveRoller.Describe(band), MoveRoller.GeneralMeaning(band)) }
                 : new Optional<IReadOnlyList<IEmbedField>>(),
             Colour: outcome is { } o ? MoveRoller.ColourFor(o) : RollColour);
+
+        return (embed, roll);
     }
 
-    private async Task<Embed> BuildStatRollAsync(IMessageCreate message, DiceMessage request)
+    private async Task<(Embed? Embed, DiceResult? Roll)> BuildStatRollAsync(IMessageCreate message, DiceMessage request)
     {
         var statType = request.Stat!.Value;
         var character = await _characterService.GetCharacterFromUserAsync(message.Author.ID);
@@ -82,17 +97,17 @@ public class DiceRollResponder : IResponder<IMessageCreate>
 
         if (character is null || stat is null)
         {
-            return new Embed(
+            return (new Embed(
                 Title: Title(message.Author, request.Label),
                 Description: $"You need a character to roll +{statType.ToString().ToUpper()}. Try using /character create",
-                Colour: Color.Red);
+                Colour: Color.Red), null);
         }
 
         var roll = MoveRoller.Roll(_diceRoller, stat.Modifier + request.Bonus);
         var rolledWith = $"{statType.ToString().ToUpper()} {Signed(stat.Modifier)}"
                          + (request.Bonus != 0 ? $", Bonus {Signed(request.Bonus)}" : string.Empty);
 
-        return new Embed(
+        var embed = new Embed(
             Title: Title(message.Author, request.Label, character.Name),
             Description: DiceHelper.BuildDiceResult(roll.Dice),
             Fields: new List<IEmbedField>
@@ -101,6 +116,8 @@ public class DiceRollResponder : IResponder<IMessageCreate>
                 new EmbedField(MoveRoller.Describe(roll.Outcome), MoveRoller.GeneralMeaning(roll.Outcome)),
             },
             Colour: MoveRoller.ColourFor(roll.Outcome));
+
+        return (embed, roll.Dice);
     }
 
     private static string Title(IUser author, string? label, string? characterName = null)

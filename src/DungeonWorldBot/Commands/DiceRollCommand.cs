@@ -24,17 +24,20 @@ public class DiceRollCommand : CommandGroup
     private readonly FeedbackService _feedbackService;
     private readonly ICharacterService _characterService;
     private readonly IDiceRoller _diceRoller;
+    private readonly IRollStatsService _rollStatsService;
     
     public DiceRollCommand(
         ICommandContext commandContext, 
         FeedbackService feedbackService,
         ICharacterService characterService,
-        IDiceRoller diceRoller)
+        IDiceRoller diceRoller,
+        IRollStatsService rollStatsService)
     {
         _context = commandContext;
         _feedbackService = feedbackService;
         _characterService = characterService;
         _diceRoller = diceRoller;
+        _rollStatsService = rollStatsService;
     }
     
     [Command("die")]
@@ -124,6 +127,10 @@ public class DiceRollCommand : CommandGroup
             Colour: outcome is { } o ? MoveRoller.ColourFor(o) : _feedbackService.Theme.Success
         );
     
-        return await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);
+        var reply = await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);
+        if (reply.IsSuccess && _context.TryGetUserID(out var userID) && _context.TryGetChannelID(out var channelID))
+            await _rollStatsService.RecordAsync(reply.Entity.ID, channelID, userID, roll);
+
+        return reply;
     }
 }
