@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Moves;
 using static DungeonWorldBot.ClassSheets.ClassMove;
 
 namespace DungeonWorldBot.ClassSheets.GrimWorld;
@@ -22,7 +23,8 @@ public static class Necromancer
                     "You draw unwelcome attention or are put in a spot (the GM says how)",
                     "Magic barely holds it together: it disintegrates afterwards",
                 ],
-                note: "When Power runs out, the corpse collapses. You can try to raise whatever is left."),
+                note: "When Power runs out, the corpse collapses. You can try to raise whatever is left.",
+                optionsOn: OptionBands.WeakHit),
             Rolled("Attack Command", StatType.Int,
                 "When you order your Animated Corpse to do something harmful",
                 "It succeeds and deals 1d6 damage.",

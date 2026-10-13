@@ -61,4 +61,39 @@ public class DiceMessageTests
     {
         Assert.Null(DiceMessage.TryParse(content));
     }
+
+    [Fact]
+    public void OptionList_OnOneLine_IsPickedFrom()
+    {
+        var parsed = DiceMessage.TryParse("1 hatter 2 ziedrich 3 zephyr 4 cyan 5 ward 6 guy\n.1d6");
+
+        Assert.NotNull(parsed);
+        Assert.Equal("1d6", parsed.Expression);
+        Assert.Equal(
+            new Dictionary<int, string> { [1] = "hatter", [2] = "ziedrich", [3] = "zephyr", [4] = "cyan", [5] = "ward", [6] = "guy" },
+            parsed.Options);
+    }
+
+    [Fact]
+    public void OptionList_OnSeparateLines_AllowsPunctuationAndSpaces()
+    {
+        var parsed = DiceMessage.TryParse(".1d3 who gets ambushed\n1. the mad hatter\n2) Ziedrich,\n3: zephyr");
+
+        Assert.NotNull(parsed);
+        Assert.Equal("who gets ambushed", parsed.Label);
+        Assert.Equal(
+            new Dictionary<int, string> { [1] = "the mad hatter", [2] = "Ziedrich", [3] = "zephyr" },
+            parsed.Options);
+    }
+
+    [Theory]
+    [InlineData(".2d6")]
+    [InlineData("anyone up for round 2 tonight?\n.2d6")]
+    public void RollsWithoutAList_HaveNoOptions(string content)
+    {
+        var parsed = DiceMessage.TryParse(content);
+
+        Assert.NotNull(parsed);
+        Assert.Null(parsed.Options);
+    }
 }

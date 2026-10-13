@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Moves;
 using static DungeonWorldBot.ClassSheets.ClassMove;
 
 namespace DungeonWorldBot.ClassSheets.GrimWorld;
@@ -37,7 +38,8 @@ public static class Battlemaster
                     "The Tactic is slow to take hold: -1 forward",
                     "An earlier plan set this up: spend 1 Gambit",
                     "It puts you in a spot or draws attention to you (the GM says how)",
-                ]),
+                ],
+                optionsOn: OptionBands.WeakHit),
             Rolled("Counterattack", StatType.Dex,
                 "When you're attacked in melee while using Reactive Tactics and try to counter",
                 "You parry the attack and riposte, dealing your damage.",

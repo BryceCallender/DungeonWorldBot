@@ -16,20 +16,25 @@ public class LevelingService : ILevelingService
 
     private readonly ICharacterService _characterService;
     private readonly IResourceService _resourceService;
+    private readonly IGameSettingsService? _settings;
 
-    public LevelingService(ICharacterService characterService, IResourceService resourceService)
+    public LevelingService(ICharacterService characterService, IResourceService resourceService, IGameSettingsService? settings = null)
     {
         _characterService = characterService;
         _resourceService = resourceService;
+        _settings = settings;
     }
 
     public async Task ChangeLevelAsync(Character character, int level)
     {
-        var change = level - character.Level;
+        var previous = character.Level;
+        var change = level - previous;
         await _characterService.SetLevelAsync(character, level);
 
-        if (change > 0)
-            await GrantStatPointsAsync(character, change);
+        // Each level reached gives the DM's chosen amount of stat points
+        var points = Enumerable.Range(previous + 1, Math.Max(0, change)).Sum(l => _settings?.StatPointsForLevel(l) ?? 1);
+        if (points > 0)
+            await GrantStatPointsAsync(character, points);
 
         foreach (var resource in LevelBasedResources(character))
         {

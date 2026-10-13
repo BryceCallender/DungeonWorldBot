@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Moves;
 using static DungeonWorldBot.ClassSheets.ClassMove;
 
 namespace DungeonWorldBot.ClassSheets.GrimWorld;
@@ -33,7 +34,8 @@ public static class Shaman
                     "You draw unwelcome attention or are put in a spot (the GM says how)",
                     "-1 ongoing to Spirit Talk until you spend an hour honoring the spirits",
                     "The totem still loses a Charge",
-                ]),
+                ],
+                optionsOn: OptionBands.WeakHit),
             Rolled("Spirit Catcher", StatType.Wis,
                 "When you witness a creature die and bind its spirit to your Spirit Catcher totem",
                 "It's captured, and the GM tells you the supernatural effect it has when released.",

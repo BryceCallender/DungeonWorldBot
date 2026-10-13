@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Moves;
 using DungeonWorldBot.Spells;
 using static DungeonWorldBot.ClassSheets.ClassMove;
 
@@ -24,7 +25,8 @@ public static class Ranger
                 [
                     "Learn a useful bit of information about your quarry (the GM says what)",
                     "Find out what caused the trail to end",
-                ]),
+                ],
+                optionsOn: OptionBands.StrongHit),
             Rolled("Called Shot", StatType.Dex,
                 "When you attack a defenseless or surprised enemy at range, instead of just dealing your damage you can name a target",
                 "The effect for your target, plus your damage.",

@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Moves;
 using static DungeonWorldBot.ClassSheets.ClassMove;
 
 namespace DungeonWorldBot.ClassSheets.GrimWorld;
@@ -23,7 +24,8 @@ public static class Channeler
                     "It leaves a different part of your body, or comes out as a different element",
                     "It has an unintended effect on the environment",
                     "It causes a blast wave that throws you backwards",
-                ]),
+                ],
+                optionsOn: OptionBands.WeakHit),
             new("Techniques",
                 "You know up to 3 Techniques, each with a name and 2 tags. Spend several hours to develop a new one or replace one.\n" +
                 "• **Projectile:** 1d6 damage if near\n• **Barrier:** +1 armor until your next Channel\n• **Blast:** 1d8 damage if close\n" +
@@ -38,7 +40,8 @@ public static class Channeler
                     "It embodies a different tag (the GM says which)",
                     "It resents you and will be hostile later",
                 ],
-                note: "While it's leashed you have Elemental Protection and Elemental Attack. At 0 Control it breaks free, using its tag at will with HP equal to twice your level."),
+                note: "While it's leashed you have Elemental Protection and Elemental Attack. At 0 Control it breaks free, using its tag at will with HP equal to twice your level.",
+                optionsOn: OptionBands.WeakHit),
             new("Elemental Protection", "When you or your leashed Elemental takes damage, lose 1 Control and the damage is negated."),
             Rolled("Elemental Attack", null,
                 "When you command your leashed Elemental to use its tag",

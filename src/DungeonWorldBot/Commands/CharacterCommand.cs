@@ -4,6 +4,7 @@ using DungeonWorldBot.Rolling;
 using DungeonWorldBot.CharacterCreation;
 using DungeonWorldBot.ClassSheets;
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Debilities;
 using DungeonWorldBot.Helpers;
 using DungeonWorldBot.Services;
 using Remora.Commands.Attributes;
@@ -32,6 +33,7 @@ public class CharacterCommand : CommandGroup
     private readonly IResourceService _resourceService;
     private readonly IGameMasterService _gameMaster;
     private readonly ILevelingService _leveling;
+    private readonly IGameSettingsService _settings;
 
     public CharacterCommand(
         ICommandContext context,
@@ -41,7 +43,8 @@ public class CharacterCommand : CommandGroup
         IDiceRoller diceRoller,
         IResourceService resourceService,
         IGameMasterService gameMaster,
-        ILevelingService leveling)
+        ILevelingService leveling,
+        IGameSettingsService settings)
     {
         _context = context;
         _feedbackService = feedbackService;
@@ -51,6 +54,7 @@ public class CharacterCommand : CommandGroup
         _resourceService = resourceService;
         _gameMaster = gameMaster;
         _leveling = leveling;
+        _settings = settings;
     }
 
     [Command("create")]
@@ -122,7 +126,9 @@ public class CharacterCommand : CommandGroup
         embedFields.Add(new EmbedField(Name: "Health", Value: character.Health.ToDisplay(), IsInline: false));
         embedFields.Add(new EmbedField(Name: "Status", Value: character.Status?.ToString() ?? "Unknown..."));
         embedFields.Add(new EmbedField(Name: "Alignment", Value: character.Alignment.ToString()));
-        embedFields.Add(new EmbedField(Name: "Debilities", Value: "None"));
+        embedFields.Add(new EmbedField(Name: "Debilities", Value: DebilityRules.Current(character) is { Count: > 0 } debilities
+            ? string.Join(", ", debilities.Select(DebilityRules.Describe))
+            : "None"));
         embedFields.Add(new EmbedField(Name: "Total Armor", Value: character.ArmorRating.ToString()));
         embedFields.Add(new EmbedField(Name: "Bonds", Value:
             character.Bonds?.Count > 0 ? string.Join(", ", character.Bonds.Select(b => b.TargetName)) : "None"));
@@ -341,6 +347,53 @@ public class CharacterCommand : CommandGroup
             new Embed(
                 Title: "Stat Points Granted!",
                 Description: $"{character.Name} now has {_leveling.GetStatPoints(character)} stat point(s) to spend with /character allocate-stat",
+                Colour: _feedbackService.Theme.Primary
+            ),
+            ct: CancellationToken
+        );
+    }
+
+    [Command("level-points")]
+    [Description("Show how many stat points each level gives")]
+    public async Task<IResult> ShowLevelPointsAsync()
+    {
+        return await ReplyWithLevelPointsAsync("Stat Points per Level");
+    }
+
+    [Command("set-level-points")]
+    [Description("DM only: set how many stat points a level gives everyone")]
+    public async Task<IResult> SetLevelPointsAsync(
+        [Description("Stat points gained for reaching the level")]
+        [MinValue(0)]
+        int points,
+        [Description("The level this applies to. Leave blank to set every level")]
+        [MinValue(2)]
+        int? level = null)
+    {
+        if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            return await ReplyNotGameMasterAsync();
+
+        if (level is { } only)
+            await _settings.SetStatPointsForLevelAsync(only, points);
+        else
+            await _settings.SetDefaultStatPointsAsync(points);
+
+        return await ReplyWithLevelPointsAsync("Stat Points Updated!");
+    }
+
+    private async Task<IResult> ReplyWithLevelPointsAsync(string title)
+    {
+        var (perLevel, overrides) = _settings.GetStatPointTable();
+        var description = $"Every level gives **{perLevel}** stat point{(perLevel == 1 ? "" : "s")}";
+        description += overrides.Count == 0
+            ? "."
+            : ", except:\n" + string.Join('\n', overrides.OrderBy(o => o.Key).Select(o => $"• Level {o.Key}: **{o.Value}**"));
+        description += "\n\nPoints are given when a character levels up, for every character. Changes don't affect levels already gained; the DM can use /character grant-stat-points for those.";
+
+        return await _feedbackService.SendContextualEmbedAsync(
+            new Embed(
+                Title: title,
+                Description: description,
                 Colour: _feedbackService.Theme.Primary
             ),
             ct: CancellationToken

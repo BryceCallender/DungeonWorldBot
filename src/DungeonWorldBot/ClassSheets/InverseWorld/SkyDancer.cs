@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Moves;
 using static DungeonWorldBot.ClassSheets.ClassMove;
 
 namespace DungeonWorldBot.ClassSheets.InverseWorld;
@@ -19,7 +20,8 @@ public static class SkyDancer
                     "A threat is waiting when you arrive",
                     "The winds won't cooperate and it takes longer than expected",
                     "Your landing is better described as a crash",
-                ]),
+                ],
+                optionsOn: OptionBands.WeakHit),
             Rolled("Leaf on the Wind", StatType.Dex,
                 "When you dance away from an opponent's attack",
                 "Choose two:",

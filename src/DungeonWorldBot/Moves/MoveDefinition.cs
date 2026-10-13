@@ -15,11 +15,25 @@ public enum MoveOutcome
 }
 
 /// <summary>
+/// Which results a move's options apply on.
+/// </summary>
+[Flags]
+public enum OptionBands
+{
+    StrongHit = 1,
+    WeakHit = 2,
+    Miss = 4,
+    Hits = StrongHit | WeakHit,
+    All = Hits | Miss,
+}
+
+/// <summary>
 /// A Dungeon World move: roll 2d6 + modifier, then read the result by band (6-, 7-9, 10+).
 /// </summary>
 /// <param name="Stat">The stat the move always rolls with, or null when the player picks (Defy Danger) or it uses something else (Aid uses Bond).</param>
 /// <param name="Options">Choices the player picks from on a hit, if the move has any.</param>
 /// <param name="RollsDamage">Whether a hit deals the character's damage.</param>
+/// <param name="OptionsOn">Which results the options apply on, e.g. only a 7-9 when they're costs (Volley).</param>
 public sealed record MoveDefinition(
     string Name,
     StatType? Stat,
@@ -28,7 +42,8 @@ public sealed record MoveDefinition(
     string WeakHit,
     string Miss,
     IReadOnlyList<string>? Options = null,
-    bool RollsDamage = false)
+    bool RollsDamage = false,
+    OptionBands OptionsOn = OptionBands.Hits)
 {
     public const string DefaultMiss = "You fail.";
 
@@ -38,6 +53,13 @@ public sealed record MoveDefinition(
         MoveOutcome.WeakHit => WeakHit,
         _ => Miss,
     };
+
+    public bool ShowsOptions(MoveOutcome outcome) => Options is { Count: > 0 } && OptionsOn.HasFlag(outcome switch
+    {
+        MoveOutcome.StrongHit => OptionBands.StrongHit,
+        MoveOutcome.WeakHit => OptionBands.WeakHit,
+        _ => OptionBands.Miss,
+    });
 }
 
 public sealed record MoveRoll(DiceResult Dice, MoveOutcome Outcome);

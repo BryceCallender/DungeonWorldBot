@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Moves;
 using static DungeonWorldBot.ClassSheets.ClassMove;
 
 namespace DungeonWorldBot.ClassSheets.InverseWorld;
@@ -35,7 +36,8 @@ public static class Captain
                     "Point out a safe spot to rest, hide in, or travel through",
                     "Spout Lore about an expected hazard as if you rolled a 10+",
                 ],
-                note: "Spend 1 Map at any time for one option. You lose all Map once you make it through."),
+                note: "Spend 1 Map at any time for one option. You lose all Map once you make it through.",
+                optionsOn: OptionBands.All),
         ],
         features:
         [
@@ -91,7 +93,8 @@ public static class Captain
                     "Create an obstacle or distraction an enemy must deal with",
                     "Divert attention from yourself to an ally, or from an ally to yourself",
                 ],
-                note: "Spend 1 hold at any time for one option."),
+                note: "Spend 1 hold at any time for one option.",
+                optionsOn: OptionBands.All),
             Rolled("Take Charge", StatType.Cha,
                 "When you rein in a group of miscreants",
                 "They calm down and do as you say.",
@@ -115,7 +118,8 @@ public static class Captain
                     "They do it, but not well or not quite how you wanted",
                     "They offer you something they think you want instead",
                     "They stop what they're doing and turn their attention to you",
-                ]) with { Requires = "Take Charge" },
+                ],
+                optionsOn: OptionBands.WeakHit) with { Requires = "Take Charge" },
             new("Discerning Initiate", "Take another non-multiclass move from any class, treating your level as one lower unless the move rolls +WIS or improves your senses.") { Multiclass = MulticlassGrant.AnyClass(levelOneLower: true), Requires = "Discerning Dabbler" },
             new("Klabautermann", "A guardian spirit lives in your ship: an NPC with Priest +2, Protector +2, Loyalty +2 and Cost: Protect the Ship. It only obeys you, never leaves the ship, can pilot it alone, and returns at dawn if killed while the ship survives."),
             new(LegendaryShip, "Unlock the Ghost Ship, Opulent Ship and Storm Ship enhancements and gain one of them.") { Requires = $"Renovations OR {HellAndThunder}" },

@@ -76,6 +76,9 @@ public class DiceRollResponder : IResponder<IMessageCreate>
         if (!_diceRoller.TryRoll(request.Expression!, out var roll))
             return (null, null);
 
+        if (request.Options is not null)
+            return (BuildPick(message, request, request.Options, roll), roll);
+
         var outcome = MoveRoller.OutcomeOf(roll);
 
         var embed = new Embed(
@@ -87,6 +90,20 @@ public class DiceRollResponder : IResponder<IMessageCreate>
             Colour: outcome is { } o ? MoveRoller.ColourFor(o) : RollColour);
 
         return (embed, roll);
+    }
+
+    // A roll against a list isn't a move, so show what it landed on instead of hit/miss
+    private static Embed BuildPick(IMessageCreate message, DiceMessage request, IReadOnlyDictionary<int, string> options, DiceResult roll)
+    {
+        var picked = options.TryGetValue(roll.Value, out var name)
+            ? $"**{roll.Value}** → **{name}**"
+            : $"**{roll.Value}** isn't on the list ({options.Keys.Min()}–{options.Keys.Max()})";
+
+        return new Embed(
+            Title: Title(message.Author, request.Label),
+            Description: DiceHelper.BuildDiceResult(roll),
+            Fields: new List<IEmbedField> { new EmbedField("Picked", picked) },
+            Colour: RollColour);
     }
 
     private async Task<(Embed? Embed, DiceResult? Roll)> BuildStatRollAsync(IMessageCreate message, DiceMessage request)

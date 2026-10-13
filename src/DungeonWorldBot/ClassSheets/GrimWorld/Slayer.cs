@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Moves;
 using static DungeonWorldBot.ClassSheets.ClassMove;
 
 namespace DungeonWorldBot.ClassSheets.GrimWorld;
@@ -24,7 +25,8 @@ public static class Slayer
                     "You have it, but it has serious drawbacks",
                     "You had it, but it was lost or stolen",
                     "You don't have it, but you find a hint about where it is or how to get it",
-                ]),
+                ],
+                optionsOn: OptionBands.WeakHit),
             new("Old Friend", "An associate helps you on particularly hard hunts and is usually nearby when you really need them. Name them and decide how you met."),
         ],
         features:
@@ -33,7 +35,7 @@ public static class Slayer
             [
                 new("Deadly Throw", "When you Volley with a thrown weapon, you can use Slayer's Strike."),
                 new("Adrenaline", "When you Defy Danger with strength, you can roll +Thirst instead."),
-                new("Tenacity", "Ignore the -1 from CON debilities."),
+                new("Tenacity", "Ignore the -1 from CON debilities.") { IgnoresDebility = StatType.Con },
                 new("Penetrating Gaze", "When you Discern Realities on a creature you mean to slay, you can roll +Thirst instead of WIS."),
             ])
             {
@@ -82,6 +84,10 @@ public static class Slayer
             "When you die (failing or forgoing Last Breath), speak a name. Your soul is bound to hunt that quarry: while it lives, you keep control of your body with a permanent 6 Thirst and need no food or sleep, but everything you do must pursue it. If your body is destroyed, you haunt the quarry as a phantom until it dies."),
         resources:
         [
-            new ClassResource("Thirst", "Gained on any 6- roll; each point brings a Withdrawal debility. Resets to 0 on a Cathartic Kill."),
+            new ClassResource("Thirst", "Gained on any 6- roll; each point brings a Withdrawal debility. Resets to 0 on a Cathartic Kill.")
+            {
+                GainNote = "**Withdrawal:** take a debility you don't already have for each point of Thirst, with /debility add. With all six, take 1d6 damage (ignores armor) instead.",
+                ResetNote = "**Cathartic Kill:** debilities from Withdrawal fade. Remove them with /debility remove, or /debility clear if they're all from Withdrawal.",
+            },
         ]);
 }

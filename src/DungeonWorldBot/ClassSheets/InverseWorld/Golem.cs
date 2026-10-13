@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Moves;
 using static DungeonWorldBot.ClassSheets.ClassMove;
 
 namespace DungeonWorldBot.ClassSheets.InverseWorld;
@@ -77,7 +78,8 @@ public static class Golem
                         "Do great damage to an object or obstacle in your way",
                     ],
                     note: "Spend 1 hold at any time for an option.",
-                    rollsWith: Force),
+                    rollsWith: Force,
+                    optionsOn: OptionBands.All),
             ])
             {
                 LaterPicksAreAdvances = true,

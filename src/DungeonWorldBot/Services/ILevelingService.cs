@@ -5,7 +5,7 @@ namespace DungeonWorldBot.Services;
 public interface ILevelingService
 {
     /// <summary>
-    /// Changes the character's level. Each level gained gives a stat point, and level-based resources (like a Ranger's
+    /// Changes the character's level. Each level gained gives the DM's chosen stat points (1 by default), and level-based resources (like a Ranger's
     /// Cleric Level) move with it.
     /// </summary>
     Task ChangeLevelAsync(Character character, int level);

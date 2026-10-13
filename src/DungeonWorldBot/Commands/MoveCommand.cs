@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using DungeonWorldBot.ClassSheets;
+using DungeonWorldBot.Debilities;
 using DungeonWorldBot.Rolling;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Helpers;
@@ -169,7 +170,7 @@ public class MoveCommand : CommandGroup
         if (characterStat is null)
             return await ReplyWithErrorAsync($"Your character has no {statType} stat.");
 
-        return await ReplyWithMoveAsync(character, definition, statType.ToString().ToUpper(), characterStat.Modifier, bonus);
+        return await ReplyWithMoveAsync(character, definition, statType.ToString().ToUpper(), characterStat.Modifier, bonus, statType);
     }
 
     private async Task<IResult> MakeStatMoveAsync(MoveDefinition move, StatType statType, int bonus)
@@ -182,20 +183,24 @@ public class MoveCommand : CommandGroup
         if (stat is null)
             return await ReplyWithErrorAsync($"Your character has no {statType} stat.");
 
-        return await ReplyWithMoveAsync(character, move, statType.ToString().ToUpper(), stat.Modifier, bonus);
+        return await ReplyWithMoveAsync(character, move, statType.ToString().ToUpper(), stat.Modifier, bonus, statType);
     }
 
-    private async Task<IResult> ReplyWithMoveAsync(Character character, MoveDefinition move, string? modifierLabel, int modifier, int bonus)
+    /// <param name="stat">The stat being rolled, so its debility (if any) applies.</param>
+    private async Task<IResult> ReplyWithMoveAsync(Character character, MoveDefinition move, string? modifierLabel, int modifier, int bonus, StatType? stat = null)
     {
-        var roll = MoveRoller.Roll(_diceRoller, modifier + bonus);
+        var debility = stat is { } rolled ? DebilityRules.RollPenalty(character, rolled) : null;
+        var roll = MoveRoller.Roll(_diceRoller, modifier + bonus + (debility?.Penalty ?? 0));
 
         var fields = new List<IEmbedField>();
 
-        if (modifierLabel is not null || bonus != 0)
+        if (modifierLabel is not null || bonus != 0 || debility is not null)
         {
             var parts = new List<string>();
             if (modifierLabel is not null)
                 parts.Add($"{modifierLabel} {FormatSigned(modifier)}");
+            if (debility is { } penalty)
+                parts.Add($"{penalty.Debility} {FormatSigned(penalty.Penalty)}");
             if (bonus != 0)
                 parts.Add($"Bonus {FormatSigned(bonus)}");
 
@@ -205,9 +210,9 @@ public class MoveCommand : CommandGroup
         fields.Add(new EmbedField(MoveRoller.Describe(roll.Outcome), move.Describe(roll.Outcome)));
 
         var isHit = roll.Outcome != MoveOutcome.Miss;
-        if (isHit && move.Options is { Count: > 0 })
+        if (move.ShowsOptions(roll.Outcome))
         {
-            fields.Add(new EmbedField("Options", string.Join('\n', move.Options.Select(o => $"• {o}"))));
+            fields.Add(new EmbedField("Options", string.Join('\n', move.Options!.Select(o => $"• {o}"))));
         }
 
         if (isHit && move.RollsDamage)

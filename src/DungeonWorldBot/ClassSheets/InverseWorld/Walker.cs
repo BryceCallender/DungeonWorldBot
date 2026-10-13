@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Moves;
 using static DungeonWorldBot.ClassSheets.ClassMove;
 
 namespace DungeonWorldBot.ClassSheets.InverseWorld;
@@ -33,7 +34,8 @@ public static class Walker
                     "Leap around, over or through an obstacle or enemy in your path",
                     "Get somewhere out of reach or out of sight",
                 ],
-                note: "Spend 1 hold for an option. You lose all hold the moment you stop moving."),
+                note: "Spend 1 hold for an option. You lose all hold the moment you stop moving.",
+                optionsOn: OptionBands.All),
         ],
         features:
         [
@@ -79,7 +81,8 @@ public static class Walker
                     "Deal your damage with a deadly trap or surprise attack",
                     "Suddenly appear anywhere in the area",
                 ],
-                note: "When someone moves through the area, spend 1 hold for an option."),
+                note: "When someone moves through the area, spend 1 hold for an option.",
+                optionsOn: OptionBands.All),
             new("Respectable Member of Society", "When you make the Outstanding Warrants move, you can apply the result to another player instead of yourself."),
             new("Spider's Grip", "You never lose your grip while Wall Walking. When you fall or are sent flying, you can catch yourself on any wall or ceiling you pass."),
             new("Talk the Talk", "With people who value strength or physical skill, impressive athletic feats always count as leverage for Parley."),

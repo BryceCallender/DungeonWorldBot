@@ -89,6 +89,9 @@ public class ResourceCommand : CommandGroup
         if (after - before < amount)
             description += $"\n{resource.Name} can't go above {_resourceService.GetMax(character, resource)}.";
 
+        if (after > before && resource.GainNote is not null)
+            description += $"\n\n{resource.GainNote}";
+
         return await ReplyAsync($"+{after - before} {resource.Name}", description);
     }
 
@@ -129,9 +132,16 @@ public class ResourceCommand : CommandGroup
         if (error is not null)
             return error;
 
-        await _resourceService.SetValueAsync(character!, resource!, value);
+        var before = _resourceService.GetValue(character!, resource!);
+        var after = await _resourceService.SetValueAsync(character!, resource!, value);
 
-        return await ReplyAsync($"{resource!.Name} Set", $"{character!.Name}'s {resource.Name} is now {Format(character, resource)}");
+        var description = $"{character!.Name}'s {resource!.Name} is now {Format(character, resource)}";
+        if (after > before && resource.GainNote is not null)
+            description += $"\n\n{resource.GainNote}";
+        else if (after < before && resource.ResetNote is not null)
+            description += $"\n\n{resource.ResetNote}";
+
+        return await ReplyAsync($"{resource.Name} Set", description);
     }
 
     [Command("reset")]
@@ -165,7 +175,10 @@ public class ResourceCommand : CommandGroup
             await _resourceService.SetValueAsync(character, resource, _resourceService.GetResetValue(character, resource));
         }
 
-        return await ReplyAsync("Resources Reset", string.Join('\n', toReset.Select(r => $"**{r.Name}:** {Format(character, r)}")));
+        var notes = toReset.Where(r => r.ResetNote is not null).Select(r => r.ResetNote!).ToList();
+        var summary = string.Join('\n', toReset.Select(r => $"**{r.Name}:** {Format(character, r)}"));
+
+        return await ReplyAsync("Resources Reset", notes.Count > 0 ? $"{summary}\n\n{string.Join('\n', notes)}" : summary);
     }
 
     private string Format(Character character, ClassResource resource) => _resourceService.Format(character, resource);
