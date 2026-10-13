@@ -83,4 +83,10 @@ public class AbilityService : IAbilityService
         ability.Uses = uses;
         await _dungeonWorldContext.SaveChangesAsync();
     }
+
+    public async Task SetDescriptionAsync(Ability ability, string? description)
+    {
+        ability.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
+        await _dungeonWorldContext.SaveChangesAsync();
+    }
 }

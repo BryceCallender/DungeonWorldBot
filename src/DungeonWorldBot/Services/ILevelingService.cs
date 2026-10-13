@@ -6,7 +6,7 @@ public interface ILevelingService
 {
     /// <summary>
     /// Changes the character's level. Each level gained gives the DM's chosen stat points (1 by default), and level-based resources (like a Ranger's
-    /// Cleric Level) move with it.
+    /// Cleric Level) move with it. Subclass moves unlock as their levels are reached.
     /// </summary>
     Task ChangeLevelAsync(Character character, int level);
 

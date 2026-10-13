@@ -21,4 +21,6 @@ public interface IAbilityService
     Task RestoreAllAbilitiesAsync(Character character);
 
     Task SetAbilityUsesAsync(Ability ability, int uses);
+
+    Task SetDescriptionAsync(Ability ability, string? description);
 }

@@ -3,11 +3,13 @@ using DungeonWorldBot.CharacterCreation;
 using DungeonWorldBot.ClassSheets;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Extensions;
+using DungeonWorldBot.Gear;
 using DungeonWorldBot.Responder;
 using DungeonWorldBot.Services;
 using DungeonWorldBot.Services.Implementation;
 using DungeonWorldBot.Services.Interactivity;
 using DungeonWorldBot.Spells;
+using DungeonWorldBot.Subclasses;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -77,6 +79,9 @@ public class Program
                     .AddScoped<IGameMasterService, GameMasterService>()
                     .AddScoped<ILevelingService, LevelingService>()
                     .AddScoped<IDebilityService, DebilityService>()
+                    .AddScoped<ISubclassService, SubclassService>()
+                    .AddScoped<IGearService, GearService>()
+                    .AddScoped<IDamageService, DamageService>()
                     .AddSingleton<IGameSettingsService, GameSettingsService>()
                     .AddScoped<IRollStatsService, RollStatsService>()
                     .AddAutocompleteProvider<ClassMoveAutocomplete>()
@@ -84,6 +89,10 @@ public class Program
                     .AddAutocompleteProvider<RolledClassMoveAutocomplete>()
                     .AddAutocompleteProvider<ClassResourceAutocomplete>()
                     .AddAutocompleteProvider<SpellAutocomplete>()
+                    .AddAutocompleteProvider<SubclassAutocomplete>()
+                    .AddAutocompleteProvider<GearAutocomplete>()
+                    .AddAutocompleteProvider<GearModeAutocomplete>()
+                    .AddAutocompleteProvider<GearCounterAutocomplete>()
                     .AddSingleton<IDiceRoller, DiceRoller>()
                     .AddScoped<InteractivityService>()
                     .AddScoped<CharacterCreationDialogue>()
