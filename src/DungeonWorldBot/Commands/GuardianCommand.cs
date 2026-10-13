@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using DungeonWorldBot.Combat;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Debilities;
 using DungeonWorldBot.Helpers;
@@ -35,6 +36,7 @@ public class GuardianCommand : CommandGroup
     private readonly IDiceRoller _diceRoller;
     private readonly IRollStatsService _rollStatsService;
     private readonly IDamageService _damageService;
+    private readonly IArmorService _armorService;
 
     public GuardianCommand(
         ICommandContext context,
@@ -43,7 +45,8 @@ public class GuardianCommand : CommandGroup
         IAbilityService abilityService,
         IDiceRoller diceRoller,
         IRollStatsService rollStatsService,
-        IDamageService damageService)
+        IDamageService damageService,
+        IArmorService armorService)
     {
         _context = context;
         _feedbackService = feedbackService;
@@ -52,6 +55,7 @@ public class GuardianCommand : CommandGroup
         _diceRoller = diceRoller;
         _rollStatsService = rollStatsService;
         _damageService = damageService;
+        _armorService = armorService;
     }
 
     [Command("read-the-room")]
@@ -134,23 +138,29 @@ public class GuardianCommand : CommandGroup
     [Command("take-hit")]
     [Description("Take damage while defending. With Shielded Pursuit, half of it is stored")]
     public async Task<IResult> TakeHitAsync(
-        [Description("The damage you take, after armor")]
+        [Description("The damage dealt, before your armor")]
         [MinValue(0)]
         int damage,
         [Option("for-ally")]
-        [Description("You're taking an ally's hit with Guardian's Stand, which halves it (rounded down)")]
-        bool forAlly = false)
+        [Description("You're taking an ally's hit with Guardian's Stand, which halves it (rounded down) before your armor")]
+        bool forAlly = false,
+        [Description("Physical (stopped by physical armor), Magical (stopped by magical armor), or True (ignores armor)")]
+        DamageType type = DamageType.Physical,
+        [Description("How much of your armor the hit ignores")]
+        [MinValue(0)]
+        int piercing = 0)
     {
         var (character, error) = await GetGuardianAsync(forAlly ? TacticalGuardian.GuardiansStand : TacticalGuardian.ReadTheRoom);
         if (character is null)
             return await ReplyWithErrorAsync(error!);
 
-        var taken = TacticalGuardian.DamageTaken(damage, forAlly);
-        await _characterService.DamageAsync(character, taken);
+        var hit = await _armorService.TakeDamageAsync(character, TacticalGuardian.DamageTaken(damage, forAlly), type, piercing);
+        var taken = hit.Taken;
 
         var fields = new List<IEmbedField>
         {
-            new EmbedField("Damage taken", (forAlly ? $"{damage} halved → **{taken}**" : $"**{taken}**") +
+            new EmbedField("Damage taken", (forAlly ? $"{damage} halved → {hit.Damage}\n" : string.Empty) + DamageRules.Describe(hit) +
+                (hit.Broken.Count > 0 ? $"\n*Broken: {string.Join(", ", hit.Broken.Select(b => b.Source))}*" : string.Empty) +
                 $"\nHP: {character.Health.CurrentHP}/{character.Health.MaxHP}" +
                 (character.Health.CurrentHP == 0 ? " · at 0 HP, roll /move last-breath" : string.Empty)),
         };

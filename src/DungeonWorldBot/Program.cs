@@ -82,6 +82,7 @@ public class Program
                     .AddScoped<ISubclassService, SubclassService>()
                     .AddScoped<IGearService, GearService>()
                     .AddScoped<IDamageService, DamageService>()
+                    .AddScoped<IArmorService, ArmorService>()
                     .AddSingleton<IGameSettingsService, GameSettingsService>()
                     .AddScoped<IRollStatsService, RollStatsService>()
                     .AddAutocompleteProvider<ClassMoveAutocomplete>()

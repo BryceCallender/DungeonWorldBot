@@ -23,6 +23,7 @@ public class CharacterService : ICharacterService
             .Include(c => c.Debilities)
             .Include(c => c.Abilities)
             .Include(c => c.Resources)
+            .Include(c => c.ArmorBonuses)
             .Include(c => c.Inventory)
             .ThenInclude(i => i.Items);
 
