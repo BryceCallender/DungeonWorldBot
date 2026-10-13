@@ -134,7 +134,7 @@ public sealed class ClassMoveAutocomplete(ContextInjectionService? contextInject
 }
 
 /// <summary>
-/// Moves from every class sheet, for looking things up.
+/// Moves from every class sheet and subclass, for looking things up.
 /// </summary>
 public sealed class AnyClassMoveAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
     : ClassSheetAutocomplete(contextInjection, characterService)
@@ -147,7 +147,25 @@ public sealed class AnyClassMoveAutocomplete(ContextInjectionService? contextInj
 
     protected override IEnumerable<Suggestion> OwnClassCandidates(Character character, ClassSheet sheet) => AllClassCandidates();
 
-    protected override IEnumerable<Suggestion> AllClassCandidates() => Labelled(ClassSheetLibrary.All, s => s.AllMoves.Select(m => m.Name));
+    protected override IEnumerable<Suggestion> AllClassCandidates()
+    {
+        var classMoves = Labelled(ClassSheetLibrary.All, s => s.AllMoves.Select(m => m.Name)).ToList();
+        var taken = ClassSheetLibrary.All.SelectMany(s => s.AllMoves.Select(m => m.Name))
+            .Concat(SubclassLibrary.All.SelectMany(s => s.Moves.Where(m => !m.Hidden).Select(m => m.Move.Name)))
+            .GroupBy(n => n, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        // Subclass moves send "Name (Subclass)" when the name is also on a class sheet or another subclass
+        var subclassMoves = SubclassLibrary.All.SelectMany(s => s.Moves.Where(m => !m.Hidden).Select(m =>
+        {
+            var label = $"{m.Move.Name} ({s.Name})";
+            return new Suggestion(taken.Contains(m.Move.Name) ? label : m.Move.Name, label);
+        }));
+
+        return classMoves.Concat(subclassMoves);
+    }
 }
 
 /// <summary>

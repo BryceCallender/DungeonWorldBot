@@ -269,12 +269,34 @@ public class ClassCommand : CommandGroup
             found = qualified;
         }
 
+        if (found.Move is null && FindSubclassMove(move) is var (subclass, subclassMove))
+        {
+            return await ReplyAsync(
+                $"{subclassMove.Move.Name} ({subclass.Name}, level {subclassMove.Level})",
+                Truncate(subclassMove.Move.Summary, 4096));
+        }
+
         if (found.Move is null)
-            return await ReplyWithErrorAsync($"No class sheet has a move called {move}.");
+            return await ReplyWithErrorAsync($"No class sheet or subclass has a move called {move}.");
 
         return await ReplyAsync(
             $"{found.Move.Name} ({found.Sheet.Type}{TierLabel(found.Move)})",
             Truncate(found.Move.Summary, 4096));
+    }
+
+    /// <summary>
+    /// A subclass move by name, or by "Name (Subclass)" as autocomplete sends it. Hidden moves aren't found.
+    /// </summary>
+    private static (Subclass, SubclassMove)? FindSubclassMove(string move)
+    {
+        var moves = SubclassLibrary.All.SelectMany(s => s.Moves.Where(m => !m.Hidden).Select(m => (Subclass: s, Move: m))).ToList();
+        var name = move.Trim();
+
+        var match = moves.FirstOrDefault(m => m.Move.Move.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        if (match.Subclass is null)
+            match = moves.FirstOrDefault(m => $"{m.Move.Move.Name} ({m.Subclass.Name})".Equals(name, StringComparison.OrdinalIgnoreCase));
+
+        return match.Subclass is null ? null : match;
     }
 
     private async Task<IResult> LearnForeignMoveAsync(Character character, ClassSheet sheet, string move)
