@@ -167,8 +167,8 @@ public static partial class ChampionOfLuna
 
         var (champion, echo) = vow.Boon == LunaBoon.Wrath ? (6, 3) : (2, 1);
         yield return isChampion
-            ? new RollBonus($"Boon of {vow.Boon}", champion)
-            : new RollBonus($"Echo of {vow.Boon} ({owner.Name})", echo);
+            ? new RollBonus($"Boon of {vow.Boon} (your Vow)", champion)
+            : new RollBonus($"Echo of {vow.Boon} ({owner.Name}'s Vow)", echo);
     }
 
     /// <summary>

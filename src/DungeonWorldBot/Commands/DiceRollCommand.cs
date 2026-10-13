@@ -78,11 +78,12 @@ public class DiceRollCommand : CommandGroup
         if (!_diceRoller.TryRoll(DiceHelper.AddModifier(value, stat.Modifier + bonuses.Sum(b => b.Amount)), out var result))
             return await ReplyWithErrorAsync($"`{value}` is not a valid dice roll.");
 
-        var includes = bonuses.Count > 0
-            ? $"\nIncludes {string.Join(", ", bonuses.Select(b => $"{b.Source} {(b.Amount >= 0 ? "+" : "")}{b.Amount}"))}"
-            : null;
+        // Where every modifier came from, like /move's "Rolled with".
+        var rolledWith = bonuses
+            .Select(b => $"{b.Source} {FormatSigned(b.Amount)}")
+            .Prepend($"{statType.ToString().ToUpper()} {FormatSigned(stat.Modifier)}");
 
-        return await ReplyWithRoll(result, statType.ToString(), includes);
+        return await ReplyWithRoll(result, statType.ToString(), new EmbedField("Rolled with", string.Join(", ", rolledWith)));
     }
     
     [Command("damage")]
@@ -125,17 +126,21 @@ public class DiceRollCommand : CommandGroup
         return await ReplyWithRoll(roll, null);
     }
 
-    /// <param name="details">Extra lines under the dice, like the bonuses included.</param>
-    private async Task<IResult> ReplyWithRoll(DiceResult roll, string? rollDescription, string? details = null)
+    /// <param name="rolledWith">What went into the roll, shown above the outcome.</param>
+    private async Task<IResult> ReplyWithRoll(DiceResult roll, string? rollDescription, IEmbedField? rolledWith = null)
     {
         var outcome = MoveRoller.OutcomeOf(roll);
 
+        var fields = new List<IEmbedField>();
+        if (rolledWith is not null)
+            fields.Add(rolledWith);
+        if (outcome is { } band)
+            fields.Add(new EmbedField(MoveRoller.Describe(band), MoveRoller.GeneralMeaning(band)));
+
         var embed = new Embed(
             Title: $"🎲 {rollDescription} Roll(s)",
-            Description: DiceHelper.BuildDiceResult(roll) + details,
-            Fields: outcome is { } band
-                ? new List<IEmbedField> { new EmbedField(MoveRoller.Describe(band), MoveRoller.GeneralMeaning(band)) }
-                : new Optional<IReadOnlyList<IEmbedField>>(),
+            Description: DiceHelper.BuildDiceResult(roll),
+            Fields: fields.Count > 0 ? fields : new Optional<IReadOnlyList<IEmbedField>>(),
             Colour: outcome is { } o ? MoveRoller.ColourFor(o) : _feedbackService.Theme.Success
         );
     
@@ -145,4 +150,6 @@ public class DiceRollCommand : CommandGroup
 
         return reply;
     }
+
+    private static string FormatSigned(int value) => value >= 0 ? $"+{value}" : value.ToString();
 }
