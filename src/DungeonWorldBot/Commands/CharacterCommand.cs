@@ -4,6 +4,7 @@ using DungeonWorldBot.Rolling;
 using DungeonWorldBot.CharacterCreation;
 using DungeonWorldBot.ClassSheets;
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Debilities;
 using DungeonWorldBot.Helpers;
 using DungeonWorldBot.Services;
 using Remora.Commands.Attributes;
@@ -125,7 +126,9 @@ public class CharacterCommand : CommandGroup
         embedFields.Add(new EmbedField(Name: "Health", Value: character.Health.ToDisplay(), IsInline: false));
         embedFields.Add(new EmbedField(Name: "Status", Value: character.Status?.ToString() ?? "Unknown..."));
         embedFields.Add(new EmbedField(Name: "Alignment", Value: character.Alignment.ToString()));
-        embedFields.Add(new EmbedField(Name: "Debilities", Value: "None"));
+        embedFields.Add(new EmbedField(Name: "Debilities", Value: DebilityRules.Current(character) is { Count: > 0 } debilities
+            ? string.Join(", ", debilities.Select(DebilityRules.Describe))
+            : "None"));
         embedFields.Add(new EmbedField(Name: "Total Armor", Value: character.ArmorRating.ToString()));
         embedFields.Add(new EmbedField(Name: "Bonds", Value:
             character.Bonds?.Count > 0 ? string.Join(", ", character.Bonds.Select(b => b.TargetName)) : "None"));

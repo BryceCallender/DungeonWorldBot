@@ -20,6 +20,7 @@ public class CharacterService : ICharacterService
             .Include(c => c.Health)
             .Include(c => c.Stats)
             .Include(c => c.Bonds)
+            .Include(c => c.Debilities)
             .Include(c => c.Abilities)
             .Include(c => c.Resources)
             .Include(c => c.Inventory)

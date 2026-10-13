@@ -69,6 +69,11 @@ public sealed record ClassMove(string Name, string Summary)
     public SpellAccess? GrantsSpells { get; init; }
 
     /// <summary>
+    /// A stat whose debility the move lets the character ignore, like the Slayer's Tenacity for CON.
+    /// </summary>
+    public StatType? IgnoresDebility { get; init; }
+
+    /// <summary>
     /// Uses or charges the move starts with, if it's limited.
     /// </summary>
     public int? Uses { get; init; }
@@ -213,6 +218,16 @@ public sealed record ClassResource(string Name, string Summary, int Start = 0, i
     /// Whether the resource goes up and down with the character's level, like a Ranger's effective cleric level.
     /// </summary>
     public bool GrowsWithLevel { get; init; }
+
+    /// <summary>
+    /// A reminder shown when the resource goes up, like the Slayer's Withdrawal.
+    /// </summary>
+    public string? GainNote { get; init; }
+
+    /// <summary>
+    /// A reminder shown when the resource is reset.
+    /// </summary>
+    public string? ResetNote { get; init; }
 
     public IReadOnlyList<ResourceBonus> Bonuses { get; init; } = [];
 

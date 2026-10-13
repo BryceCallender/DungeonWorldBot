@@ -34,7 +34,7 @@ public static class Templar
                 new("Facet: Fear", "+1 to Parley when the character fears you."),
                 new("Facet: Surprise", "+1 piercing against surprised enemies."),
                 new("Facet: Ruthless Efficiency", "As Quartermaster on a Perilous Journey, treat a 7-9 as a 10+."),
-                new("Facet: Fanatical Devotion", "Ignore the effects of CHA debilities."),
+                new("Facet: Fanatical Devotion", "Ignore the effects of CHA debilities.") { IgnoresDebility = StatType.Cha },
             ])
             {
                 ExtraPicks = [("Nobody Expects", 3)],
