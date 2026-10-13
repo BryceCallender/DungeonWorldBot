@@ -21,8 +21,8 @@ public class DamageService : IDamageService
 
     public async Task<DamageRoll?> RollAsync(Character character, string move)
     {
-        var bonuses = await BonusesAsync(character, RollKind.Damage);
-        var expression = DiceHelper.AddModifier(character.DamageModifier ?? character.Class.Damage, character.DamageRating + bonuses.Sum(b => b.Amount));
+        var bonuses = await DamageBonusesAsync(character);
+        var expression = DiceHelper.AddModifier(character.DamageModifier ?? character.Class.Damage, bonuses.Sum(b => b.Amount));
         if (!_diceRoller.TryRoll(expression, out var dice))
             return null;
 
@@ -35,6 +35,14 @@ public class DamageService : IDamageService
 
     public async Task<IReadOnlyList<RollBonus>> BonusesAsync(Character character, RollKind kind, StatType? stat = null) =>
         SubclassLibrary.Bonuses(character, await _characterService.GetCharactersAsync(), kind, stat);
+
+    public async Task<IReadOnlyList<RollBonus>> DamageBonusesAsync(Character character)
+    {
+        var bonuses = await BonusesAsync(character, RollKind.Damage);
+        return character.DamageRating != 0
+            ? bonuses.Prepend(new RollBonus("Gear damage", character.DamageRating)).ToList()
+            : bonuses;
+    }
 
     /// <summary>
     /// The kept, positive dice in a roll, with their sides, e.g. (8, 5) for a d8 that rolled 5.
