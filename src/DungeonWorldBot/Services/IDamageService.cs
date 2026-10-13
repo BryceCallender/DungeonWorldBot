@@ -36,4 +36,10 @@ public interface IDamageService
     /// Subclass bonuses to a roll, from the character and the rest of the party.
     /// </summary>
     Task<IReadOnlyList<RollBonus>> BonusesAsync(Character character, RollKind kind, StatType? stat = null);
+
+    /// <summary>
+    /// Everything added to the character's damage, each with where it came from: their gear's damage rating and subclass
+    /// bonuses from them and the party.
+    /// </summary>
+    Task<IReadOnlyList<RollBonus>> DamageBonusesAsync(Character character);
 }

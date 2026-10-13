@@ -5,6 +5,8 @@ using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Helpers;
 using DungeonWorldBot.Moves;
 using DungeonWorldBot.Services;
+using DungeonWorldBot.Services.Implementation;
+using DungeonWorldBot.Debilities;
 using DungeonWorldBot.Subclasses;
 using Remora.Commands.Attributes;
 using Remora.Commands.Groups;
@@ -72,18 +74,17 @@ public class DiceRollCommand : CommandGroup
         if (stat is null)
             return await ReplyWithErrorAsync($"Your character has no {statType} stat.");
 
-        // Subclass bonuses, like a Boon of Aptitude or its Echo from a party member.
-        var bonuses = await _damageService.BonusesAsync(character, RollKind.Stat, statType);
+        // Everything that changes the roll, like /move: the stat's debility and subclass bonuses (a Boon of Aptitude or
+        // its Echo from a party member)
+        var bonuses = new List<RollBonus> { new(statType.ToString().ToUpper(), stat.Modifier) };
+        if (DebilityRules.RollPenalty(character, statType) is { } penalty)
+            bonuses.Add(new RollBonus(penalty.Debility.ToString(), penalty.Penalty));
+        bonuses.AddRange(await _damageService.BonusesAsync(character, RollKind.Stat, statType));
 
-        if (!_diceRoller.TryRoll(DiceHelper.AddModifier(value, stat.Modifier + bonuses.Sum(b => b.Amount)), out var result))
+        if (!_diceRoller.TryRoll(DiceHelper.AddModifier(value, bonuses.Sum(b => b.Amount)), out var result))
             return await ReplyWithErrorAsync($"`{value}` is not a valid dice roll.");
 
-        // Where every modifier came from, like /move's "Rolled with".
-        var rolledWith = bonuses
-            .Select(b => $"{b.Source} {FormatSigned(b.Amount)}")
-            .Prepend($"{statType.ToString().ToUpper()} {FormatSigned(stat.Modifier)}");
-
-        return await ReplyWithRoll(result, statType.ToString(), new EmbedField("Rolled with", string.Join(", ", rolledWith)));
+        return await ReplyWithRoll(result, statType.ToString(), RolledWith(bonuses));
     }
     
     [Command("damage")]
@@ -100,7 +101,10 @@ public class DiceRollCommand : CommandGroup
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to roll for damage. Try using /character create");
     
-        var rollString = $"{character.DamageModifier ?? character.Class.Damage}";
+        var damageDice = character.DamageModifier ?? character.Class.Damage;
+        var bonuses = await _damageService.DamageBonusesAsync(character);
+
+        var rollString = DiceHelper.AddModifier(damageDice, bonuses.Sum(b => b.Amount));
         if (modifiers.Length > 0)
         {
             rollString += $"+{modifiers}";
@@ -109,7 +113,18 @@ public class DiceRollCommand : CommandGroup
         if (!_diceRoller.TryRoll(rollString, out var result))
             return await ReplyWithErrorAsync($"`{rollString}` is not a valid dice roll.");
 
-        return await ReplyWithRoll(result, null);
+        // Gear that changes any damage (like a Sapphire reroll) still applies. It isn't for a particular move, so gear
+        // only used for some moves doesn't.
+        var gear = await _damageService.ApplyGearAsync(character, string.Empty, DamageService.DamageDice(result));
+
+        var parts = bonuses.Select(b => $"{b.Source} {FormatSigned(b.Amount)}").Prepend(damageDice).ToList();
+        if (modifiers.Length > 0)
+            parts.Add($"Extra +{modifiers}");
+
+        var details = (gear.Bonus != 0 ? $"\n**{result.Value + gear.Bonus}** damage" : string.Empty)
+                      + string.Concat(gear.Notes.Select(n => $"\n{n}"));
+
+        return await ReplyWithRoll(result, "Damage", new EmbedField("Rolled with", string.Join(", ", parts)), details);
     }
 
     private async Task<Result> ReplyWithErrorAsync(string error)
@@ -127,7 +142,8 @@ public class DiceRollCommand : CommandGroup
     }
 
     /// <param name="rolledWith">What went into the roll, shown above the outcome.</param>
-    private async Task<IResult> ReplyWithRoll(DiceResult roll, string? rollDescription, IEmbedField? rolledWith = null)
+    /// <param name="details">Extra lines under the dice, like what gear did.</param>
+    private async Task<IResult> ReplyWithRoll(DiceResult roll, string? rollDescription, IEmbedField? rolledWith = null, string? details = null)
     {
         var outcome = MoveRoller.OutcomeOf(roll);
 
@@ -139,7 +155,7 @@ public class DiceRollCommand : CommandGroup
 
         var embed = new Embed(
             Title: $"🎲 {rollDescription} Roll(s)",
-            Description: DiceHelper.BuildDiceResult(roll),
+            Description: DiceHelper.BuildDiceResult(roll) + details,
             Fields: fields.Count > 0 ? fields : new Optional<IReadOnlyList<IEmbedField>>(),
             Colour: outcome is { } o ? MoveRoller.ColourFor(o) : _feedbackService.Theme.Success
         );
@@ -150,6 +166,9 @@ public class DiceRollCommand : CommandGroup
 
         return reply;
     }
+
+    private static IEmbedField RolledWith(IEnumerable<RollBonus> bonuses) =>
+        new EmbedField("Rolled with", string.Join(", ", bonuses.Select(b => $"{b.Source} {FormatSigned(b.Amount)}")));
 
     private static string FormatSigned(int value) => value >= 0 ? $"+{value}" : value.ToString();
 }

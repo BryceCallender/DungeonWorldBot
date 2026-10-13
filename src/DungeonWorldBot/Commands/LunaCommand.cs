@@ -225,9 +225,9 @@ public class LunaCommand : CommandGroup
 
         // The damage builds before the arrow is released
         var dice = ChampionOfLuna.RollBarrage(() => _diceRoller.Roll("1d10").Value);
-        var damageBonuses = await BonusesAsync(character, RollKind.Damage);
+        var damageBonuses = await _damageService.DamageBonusesAsync(character);
         var gear = await _damageService.ApplyGearAsync(character, ChampionOfLuna.LunarBarrage, dice.Select(d => (10, d)).ToList());
-        var flat = character.DamageRating + damageBonuses.Sum(b => b.Amount) + gear.Bonus;
+        var flat = damageBonuses.Sum(b => b.Amount) + gear.Bonus;
         var total = Math.Max(0, dice.Sum() + flat);
 
         var (roll, rolledWith) = await RollStatAsync(character, StatType.Dex, bonus);
