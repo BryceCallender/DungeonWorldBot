@@ -1,25 +1,13 @@
-using DungeonWorldBot.Rolling;
-using DungeonWorldBot.CharacterCreation;
-using DungeonWorldBot.ClassSheets;
 using DungeonWorldBot.Data;
-using DungeonWorldBot.Extensions;
-using DungeonWorldBot.Gear;
-using DungeonWorldBot.Responder;
-using DungeonWorldBot.Services;
-using DungeonWorldBot.Services.Implementation;
-using DungeonWorldBot.Services.Interactivity;
-using DungeonWorldBot.Spells;
-using DungeonWorldBot.Subclasses;
+using DungeonWorldBot.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Remora.Discord.API.Abstractions.Gateway.Commands;
-using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Services;
 using Remora.Discord.Gateway;
-using Remora.Discord.Gateway.Extensions;
 using Remora.Discord.Hosting.Extensions;
 
 namespace DungeonWorldBot;
@@ -72,32 +60,7 @@ public class Program
                 });
                 services
                     .AddSqlite<DungeonWorldContext>(context.Configuration.GetConnectionString("DungeonWorldConnectionString"))
-                    .AddScoped<ICharacterService, CharacterService>()
-                    .AddScoped<IInventoryService, InventoryService>()
-                    .AddScoped<IAbilityService, AbilityService>()
-                    .AddScoped<IResourceService, ResourceService>()
-                    .AddScoped<IGameMasterService, GameMasterService>()
-                    .AddScoped<ILevelingService, LevelingService>()
-                    .AddScoped<IDebilityService, DebilityService>()
-                    .AddScoped<ISubclassService, SubclassService>()
-                    .AddScoped<IGearService, GearService>()
-                    .AddScoped<IDamageService, DamageService>()
-                    .AddScoped<IArmorService, ArmorService>()
-                    .AddSingleton<IGameSettingsService, GameSettingsService>()
-                    .AddScoped<IRollStatsService, RollStatsService>()
-                    .AddAutocompleteProvider<ClassMoveAutocomplete>()
-                    .AddAutocompleteProvider<AnyClassMoveAutocomplete>()
-                    .AddAutocompleteProvider<RolledClassMoveAutocomplete>()
-                    .AddAutocompleteProvider<ClassResourceAutocomplete>()
-                    .AddAutocompleteProvider<SpellAutocomplete>()
-                    .AddAutocompleteProvider<SubclassAutocomplete>()
-                    .AddAutocompleteProvider<GearAutocomplete>()
-                    .AddAutocompleteProvider<GearModeAutocomplete>()
-                    .AddAutocompleteProvider<GearCounterAutocomplete>()
-                    .AddSingleton<IDiceRoller, DiceRoller>()
-                    .AddScoped<InteractivityService>()
-                    .AddScoped<CharacterCreationDialogue>()
-                    .AddResponder<DiceRollResponder>()
+                    .AddAttributedServices(typeof(Program).Assembly)
                     .AddRemoraServices();
             }
         )

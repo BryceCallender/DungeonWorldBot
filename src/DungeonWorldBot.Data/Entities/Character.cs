@@ -28,6 +28,7 @@ public class Character
     public List<Ability>? Abilities { get; set; }
     public List<CharacterResource>? Resources { get; set; }
     public List<ArmorBonus>? ArmorBonuses { get; set; }
+    public List<Transformation>? Transformations { get; set; }
 
     public Status? Status { get; set; }
     public Alignment Alignment { get; set; }

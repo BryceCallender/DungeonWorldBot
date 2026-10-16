@@ -478,6 +478,11 @@ $RECYCLE.BIN/
 
 src/DungeonWorldBot/appsettings.json
 
+# Game databases are local state, not source
+src/DungeonWorldBot/*.db
+src/DungeonWorldBot/*.db-shm
+src/DungeonWorldBot/*.db-wal
+
 # User specific
 **/.idea/**/workspace.xml
 **/.idea/**/tasks.xml
