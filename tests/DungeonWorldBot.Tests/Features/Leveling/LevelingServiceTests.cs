@@ -1,5 +1,6 @@
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Features.Abilities;
 using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Features.Leveling;
 using DungeonWorldBot.Features.Resources;
@@ -85,6 +86,20 @@ public sealed class LevelingServiceTests : IDisposable
         Assert.Equal(1, character.Abilities[0].LevelTaken);
 
         await leveling.ChangeLevelAsync(character, 3);
+        Assert.Equal(3, resources.GetValue(character, clericLevel));
+    }
+
+    [Fact]
+    public async Task SettingLevelTaken_MovesTheClericLevel()
+    {
+        await using var context = CreateContext();
+        var (character, _, resources) = await SetupAsync(context);
+        character.Level = 5;
+        var clericLevel = SpellCasting.Access(character).Single().LevelResource;
+
+        await new AbilityService(context).SetLevelTakenAsync(character.Abilities![0], 3);
+
+        Assert.Equal(3, character.Abilities[0].LevelTaken);
         Assert.Equal(3, resources.GetValue(character, clericLevel));
     }
 

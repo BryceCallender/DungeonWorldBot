@@ -23,6 +23,14 @@ public class Program
         var services = host.Services;
         var log = services.GetRequiredService<ILogger<Program>>();
 
+        // The dashboard reads this file while the bot writes it. WAL lets those reads run alongside a write instead of
+        // locking the bot out. The mode is saved in the file, so this only changes anything the first time.
+        using (var scope = services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<DungeonWorldContext>();
+            await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
+        }
+
         var slashService = services.GetRequiredService<SlashService>();
 
         var updateSlash = await slashService.UpdateSlashCommandsAsync();

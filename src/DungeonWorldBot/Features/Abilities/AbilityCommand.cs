@@ -100,7 +100,7 @@ public class AbilityCommand : DungeonWorldCommandBase
 
         var fields = abilities
             .Take(MaxFields)
-            .Select(a => (IEmbedField)new EmbedField(a.ToDisplay(), Truncate(a.Description ?? "—", 1024)))
+            .Select(a => (IEmbedField)new EmbedField(a.ToDisplay(), Truncate(Describe(a), 1024)))
             .ToList();
 
         var description = abilities.Count > MaxFields
@@ -200,6 +200,35 @@ public class AbilityCommand : DungeonWorldCommandBase
 
         return await ReplyAsync("Uses Changed!", $"{character.Name}'s **{ability.ToDisplay()}**");
     }
+
+    [Command("set-level")]
+    [Description("Set the level you took an ability at, e.g. Divine Favor, which your cleric level counts up from")]
+    public async Task<IResult> SetLevelTakenAsync(
+        [Description(NameDescription)]
+        string name,
+        [Description("Your character level when you took it")]
+        [MinValue(1)]
+        int level)
+    {
+        var character = await GetOwnCharacterAsync();
+        if (character is null)
+            return await ReplyWithErrorAsync(NoCharacterMessage);
+
+        var ability = _abilityService.FindAbility(character, name);
+        if (ability is null)
+            return await ReplyWithErrorAsync($"{character.Name} doesn't have {name}.");
+        if (level > character.Level)
+            return await ReplyWithErrorAsync($"{character.Name} is only level {character.Level}, so they can't have taken {ability.Name} at level {level}.");
+
+        await _abilityService.SetLevelTakenAsync(ability, level);
+
+        return await ReplyAsync("Level Taken Set", $"{character.Name} took **{ability.Name}** at level {level}. " +
+                                                   "Anything that counts up from it, like a cleric level from Divine Favor, follows from there.");
+    }
+
+    // The level is only known for abilities added since it was recorded
+    private static string Describe(Ability ability) =>
+        ability.LevelTaken is { } level ? $"{ability.Description ?? "—"}\n*Taken at level {level}*" : ability.Description ?? "—";
 
     private async Task<Character?> GetOwnCharacterAsync() =>
         await _characterService.GetCharacterFromUserAsync(GetUserId());

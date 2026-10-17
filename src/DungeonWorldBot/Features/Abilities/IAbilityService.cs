@@ -23,4 +23,6 @@ public interface IAbilityService
     Task SetAbilityUsesAsync(Ability ability, int uses);
 
     Task SetDescriptionAsync(Ability ability, string? description);
+
+    Task SetLevelTakenAsync(Ability ability, int level);
 }

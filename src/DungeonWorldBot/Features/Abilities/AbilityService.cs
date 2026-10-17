@@ -87,6 +87,12 @@ public class AbilityService : IAbilityService
         await _dungeonWorldContext.SaveChangesAsync();
     }
 
+    public async Task SetLevelTakenAsync(Ability ability, int level)
+    {
+        ability.LevelTaken = level;
+        await _dungeonWorldContext.SaveChangesAsync();
+    }
+
     public async Task SetDescriptionAsync(Ability ability, string? description)
     {
         ability.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
