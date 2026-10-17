@@ -1,0 +1,20 @@
+@page "/denied"
+@attribute [Microsoft.AspNetCore.Authorization.AllowAnonymous]
+@inject Viewer Viewer
+
+@* Where people land after signing in with a Discord account that isn't in the campaign's server *@
+<PageTitle>Not in the server · Sana Solem</PageTitle>
+
+<div class="card notice">
+    <h1>This dashboard is for the Sana Solem server</h1>
+    @if (Viewer.SignedIn)
+    {
+        <p>You're signed in as <strong>@Viewer.Name</strong>, but that Discord account isn't in the campaign's server.</p>
+        <p><a href="logout">Sign out</a> and try a different account, or ask the DM for an invite.</p>
+    }
+    else
+    {
+        <p>Sign in with the Discord account you use in the campaign's server.</p>
+        <p><a href="login">Sign in with Discord</a></p>
+    }
+</div>

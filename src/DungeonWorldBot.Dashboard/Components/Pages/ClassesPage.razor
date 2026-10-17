@@ -1,0 +1,56 @@
+@page "/classes"
+@using DungeonWorldBot.Features.Classes
+@inject PartyReader PartyReader
+
+<PageTitle>Classes · Sana Solem</PageTitle>
+
+<h1>Classes</h1>
+<p class="muted">Every class the bot knows, straight from its class sheets. Open one for its moves, choices and starting gear.</p>
+
+@foreach (var source in ClassSheetLibrary.All.GroupBy(s => s.Source))
+{
+    <h2 class="section-title">@source.Key</h2>
+    <div class="lookup-grid">
+        @foreach (var sheet in source)
+        {
+            var (damage, hp) = Lookup.Basics(sheet.Type);
+            var players = _party.Where(c => c.Character.Class.Type == sheet.Type).ToList();
+            <a class="card lookup-card @Lookup.ColorOf(sheet.Type)" href="@Lookup.ClassUrl(sheet.Type)">
+                <div class="member-head">
+                    <h3 class="class-name">@PartyReader.ClassName(sheet.Type)</h3>
+                    <span class="chip class" title="Damage die">@damage</span>
+                </div>
+                <div class="small">
+                    @(hp)+CON HP ·
+                    @sheet.AdvancedMoves.Count advanced moves
+                    @if (sheet.Features.Count > 0)
+                    {
+                        <text> · @sheet.Features.Count choice@(sheet.Features.Count == 1 ? "" : "s")</text>
+                    }
+                </div>
+                @if (sheet.Resources.Count > 0)
+                {
+                    <div class="resource-chips">
+                        @foreach (var resource in sheet.Resources)
+                        {
+                            <span class="chip class" title="@resource.Summary">@resource.Name</span>
+                        }
+                    </div>
+                }
+                @if (players.Count > 0)
+                {
+                    <div class="small played-by">Played by @string.Join(", ", players.Select(p => p.Name))</div>
+                }
+            </a>
+        }
+    </div>
+}
+
+@code {
+    private IReadOnlyList<CharacterView> _party = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _party = await PartyReader.GetPartyAsync();
+    }
+}

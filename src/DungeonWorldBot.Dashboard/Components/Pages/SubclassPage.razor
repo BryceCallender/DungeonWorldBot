@@ -1,0 +1,125 @@
+@page "/subclasses/{Slug}"
+@using DungeonWorldBot.Features.Classes
+@using DungeonWorldBot.Features.Subclasses
+@inject PartyReader PartyReader
+@inject Viewer Viewer
+
+@if (_subclass is not { } subclass)
+{
+    <PageTitle>Not found · Sana Solem</PageTitle>
+    <p class="empty">No subclass called that. <a href="">Back to the party</a></p>
+    return;
+}
+
+<PageTitle>@subclass.Name · Sana Solem</PageTitle>
+
+@if (_character is { } from)
+{
+    <a class="back" href="@from.Url">← @from.Name</a>
+}
+else
+{
+    <a class="back" href="">← Party</a>
+}
+
+<header class="card hero @(subclass.Classes.Count == 1 ? Lookup.ColorOf(subclass.Classes[0]) : "")">
+    <div class="hero-main">
+        <h1>@subclass.Name</h1>
+        <div class="muted">@subclass.Title · @subclass.Source</div>
+        <div class="hero-chips">
+            @if (subclass.Classes.Count == 0)
+            {
+                <span class="chip">Any class</span>
+            }
+            @foreach (var type in subclass.Classes)
+            {
+                <a class="chip class @Lookup.ColorOf(type)" href="@Lookup.ClassUrl(type)">@PartyReader.ClassName(type)</a>
+            }
+            @if (_character is { } who)
+            {
+                <span class="chip accent">Showing @who.Name · level @who.Level</span>
+            }
+        </div>
+        @if (_members.Count > 0)
+        {
+            <div class="small bonds">
+                Taken by
+                @for (var i = 0; i < _members.Count; i++)
+                {
+                    var m = _members[i];
+                    <a href="@Lookup.SubclassUrl(subclass, m.Slug)">@m.Name</a>@(i < _members.Count - 1 ? ", " : "")
+                }
+            </div>
+        }
+    </div>
+</header>
+
+<div class="sheet">
+    <section class="card wide">
+        <h2>About</h2>
+        <p class="small">@ToHtml(subclass.Summary)</p>
+        @if (subclass.CommandHint is { } hint)
+        {
+            <p class="callout">@ToHtml(hint)</p>
+        }
+    </section>
+
+    <section class="card wide">
+        <div class="card-head">
+            <h2>Moves</h2>
+            <button type="button" class="tool" data-expand>Expand all</button>
+        </div>
+        <ul class="moves">
+            @foreach (var move in subclass.Moves)
+            {
+                @if (move.Hidden && !Viewer.IsDungeonMaster && !Has(move.Move))
+                {
+                    <li class="locked">
+                        <div class="move-name">🔒 ??? <span class="chip">Level @move.Level</span></div>
+                        <div class="small">Kept secret until the GM reveals it.</div>
+                    </li>
+                }
+                else
+                {
+                    <MoveItem Move="move.Move"
+                              Label="@(move.Hidden ? $"Level {move.Level} · secret" : $"Level {move.Level}")"
+                              Has="Has(move.Move)"
+                              CanTake="@(_character is { } c && _members.Contains(c) && !move.Hidden && !Has(move.Move) && move.Level <= c.Level)" />
+                }
+            }
+        </ul>
+    </section>
+</div>
+
+@code {
+    [Parameter]
+    public string Slug { get; set; } = string.Empty;
+
+    /// <summary>
+    /// A character whose moves to mark, by ID. Defaults to the viewer's own character when they've taken this subclass.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "for")]
+    public string? For { get; set; }
+
+    private Subclass? _subclass;
+    private CharacterView? _character;
+    private IReadOnlyCollection<string> _known = [];
+    private List<CharacterView> _members = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _subclass = Lookup.FindSubclass(Slug);
+        if (_subclass is null)
+            return;
+
+        var party = await PartyReader.GetPartyAsync();
+        _members = party.Where(c => c.Subclass?.Name == _subclass.Name).ToList();
+
+        _character = For is not null
+            ? PartyReader.Match(party, For)
+            : _members.FirstOrDefault(c => Viewer.Is(c.ID));
+        _known = _character is null ? [] : ClassSheetLibrary.KnownMoves(_character.Character);
+    }
+
+    private bool Has(ClassMove move) => _known.Contains(move.Name, StringComparer.OrdinalIgnoreCase);
+}

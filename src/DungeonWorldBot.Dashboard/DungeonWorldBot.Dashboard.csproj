@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+
+    <ItemGroup>
+      <!-- The bot project holds the game rules (class sheets, subclasses, spells, armor), so the dashboard reads characters the same way -->
+      <ProjectReference Include="..\DungeonWorldBot\DungeonWorldBot.csproj" />
+      <ProjectReference Include="..\DungeonWorldBot.Data\DungeonWorldBot.Data.csproj" />
+    </ItemGroup>
+
+    <!-- The bot's settings (with its token) and its database copy come along with the project reference. The dashboard uses neither. -->
+    <Target Name="RemoveBotRuntimeFiles" AfterTargets="Build">
+        <Delete Files="$(OutDir)appsettings.json;$(OutDir)SanaSolem.db" />
+    </Target>
+
+</Project>

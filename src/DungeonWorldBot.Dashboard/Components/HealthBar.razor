@@ -1,0 +1,19 @@
+<div class="hp">
+    <div class="hp-label">
+        <span><Icon Name="heart" />HP</span>
+        <strong>@View.CurrentHP / @View.MaxHP</strong>
+    </div>
+    <div class="bar"><div class="fill @Band" style="width: @(View.HealthPercent.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture))%"></div></div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public CharacterView View { get; set; } = null!;
+
+    private string Band => View.HealthPercent switch
+    {
+        > 50 => "good",
+        > 25 => "low",
+        _ => "critical",
+    };
+}

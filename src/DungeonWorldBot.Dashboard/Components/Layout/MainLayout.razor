@@ -1,0 +1,39 @@
+@inherits LayoutComponentBase
+@inject Viewer Viewer
+
+<header class="topbar">
+    <a class="brand" href="">🎲 Sana Solem</a>
+    <nav>
+        <NavLink href="" Match="NavLinkMatch.All">Party</NavLink>
+        <NavLink href="stats">Roll stats</NavLink>
+        <NavLink href="classes">Classes</NavLink>
+        <NavLink href="spells">Spells</NavLink>
+    </nav>
+
+    <div class="viewer">
+        <span class="live off" title="Connecting…"><i></i>Live</span>
+        @if (Viewer.SignedIn)
+        {
+            @if (!Viewer.IsDungeonMaster)
+            {
+                <a class="me" href="character/@Viewer.ID" title="Your character">
+                    <img src="@Viewer.AvatarUrl" alt="" width="26" height="26" />
+                    <span>@Viewer.Name</span>
+                </a>
+            }
+            else
+            {
+                <span class="me">
+                    <img src="@Viewer.AvatarUrl" alt="" width="26" height="26" />
+                    <span>@Viewer.Name</span>
+                    <span class="chip accent">DM</span>
+                </span>
+            }
+            <a class="signout" href="logout">Sign out</a>
+        }
+    </div>
+</header>
+
+<main>
+    @Body
+</main>
