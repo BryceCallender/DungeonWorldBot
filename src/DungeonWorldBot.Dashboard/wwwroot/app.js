@@ -64,10 +64,15 @@ addEventListener('scroll', () => document.querySelectorAll('.cal-pop:popover-ope
 // Live updates: the server says when the bot changed the database, and the page swaps in a fresh copy of itself,
 // keeping open moves, searches and scroll position.
 (() => {
+    // Pages for people who can't see the dashboard (like /denied) have nothing to keep live
+    if (document.querySelector('[data-no-live]')) return;
+
     const indicator = document.querySelector('.live');
     let refreshing = false;
     let again = false;
     let dropped = false;
+    // Once the sign-in has lapsed, every check would only be sent to Discord, so stop until they reload
+    let signedOut = false;
     // When the stream last said anything. The server pings every 20 seconds.
     let heard = Date.now();
     let lastHtml = document.querySelector('main')?.innerHTML;
@@ -85,14 +90,17 @@ addEventListener('scroll', () => document.querySelectorAll('.cal-pop:popover-ope
         source.onerror = () => {
             setLive(false);
             dropped = true;
-            // A closed stream (e.g. signed out) isn't retried by the browser, so retry here
-            if (source.readyState === EventSource.CLOSED) setTimeout(connect, 10000);
+            // A closed stream (e.g. signed out) isn't retried by the browser, so retry here, unless they're signed out
+            if (source.readyState === EventSource.CLOSED) setTimeout(async () => {
+                await refresh();
+                if (!signedOut) connect();
+            }, 10000);
         };
     }
 
     // Some tunnels (Cloudflare's quick tunnels) hold the stream back, so nothing ever arrives. Then check by hand.
     setInterval(() => {
-        if (Date.now() - heard < 45000) return;
+        if (signedOut || Date.now() - heard < 45000) return;
         if (indicator) indicator.title = 'Checking for changes every 10 seconds';
         refresh();
     }, 10000);
@@ -104,13 +112,21 @@ addEventListener('scroll', () => document.querySelectorAll('.cal-pop:popover-ope
     }
 
     async function refresh() {
+        if (signedOut) return;
         if (refreshing) { again = true; return; }
         refreshing = true;
 
         try {
-            const response = await fetch(location.href, { credentials: 'same-origin', cache: 'no-store' });
+            // Not following redirects: a lapsed sign-in redirects to /login and on to Discord, which a fetch can't
+            // reach, and retrying that would send them to Discord every few seconds
+            const response = await fetch(location.href, { credentials: 'same-origin', cache: 'no-store', redirect: 'manual' });
             // Signed out: leave the page as it is
-            if (response.redirected) return;
+            if (response.type === 'opaqueredirect') {
+                signedOut = true;
+                setLive(false);
+                if (indicator) indicator.title = 'Signed out. Reload to sign in again.';
+                return;
+            }
             // The server hiccuped (restarting, database busy mid-write): try once more shortly
             if (!response.ok) { retrySoon(); return; }
 

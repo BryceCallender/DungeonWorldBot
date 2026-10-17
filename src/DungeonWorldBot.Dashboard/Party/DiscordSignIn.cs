@@ -60,6 +60,14 @@ public static class DiscordSignIn
                         context.Response.Redirect(context.RedirectUri);
                     return Task.CompletedTask;
                 };
+                options.Events.OnRedirectToAccessDenied = context =>
+                {
+                    if (context.Request.Path.StartsWithSegments("/live"))
+                        context.Response.StatusCode = StatusCodes.Status403Forbidden;
+                    else
+                        context.Response.Redirect(context.RedirectUri);
+                    return Task.CompletedTask;
+                };
             })
             .AddOAuth(Scheme, options =>
             {
