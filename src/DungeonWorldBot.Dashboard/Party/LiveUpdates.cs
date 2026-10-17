@@ -8,6 +8,9 @@ public static class LiveUpdates
     // Comfortably inside the idle timeouts of tunnels and proxies (Cloudflare's is 100 seconds)
     private static readonly TimeSpan Heartbeat = TimeSpan.FromSeconds(20);
 
+    // A named event, so it doesn't count as a change; the browser drops events with no data
+    private const string Ping = "event: ping\ndata: ping\n\n";
+
     public static RouteHandlerBuilder MapLiveUpdates(this IEndpointRouteBuilder app) =>
         app.MapGet("/live", async (HttpContext context, DatabaseWatcher watcher) =>
         {
@@ -19,13 +22,15 @@ public static class LiveUpdates
 
             try
             {
-                await SendAsync(context, ": connected\n\n");
+                // Pings are events rather than comments so the page can see them, and notice when a tunnel that
+                // doesn't stream (like Cloudflare's quick tunnels) holds everything back
+                await SendAsync(context, Ping);
 
                 while (!ct.IsCancellationRequested)
                 {
                     var change = watcher.NextChange;
                     var finished = await Task.WhenAny(change, Task.Delay(Heartbeat, ct));
-                    await SendAsync(context, finished == change ? "data: changed\n\n" : ": ping\n\n");
+                    await SendAsync(context, finished == change ? "data: changed\n\n" : Ping);
                 }
             }
             catch (OperationCanceledException)

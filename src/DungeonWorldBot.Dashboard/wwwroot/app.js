@@ -68,6 +68,9 @@ addEventListener('scroll', () => document.querySelectorAll('.cal-pop:popover-ope
     let refreshing = false;
     let again = false;
     let dropped = false;
+    // When the stream last said anything. The server pings every 20 seconds.
+    let heard = Date.now();
+    let lastHtml = document.querySelector('main')?.innerHTML;
 
     function connect() {
         const source = new EventSource('live');
@@ -77,7 +80,8 @@ addEventListener('scroll', () => document.querySelectorAll('.cal-pop:popover-ope
             if (dropped) refresh();
             dropped = false;
         };
-        source.onmessage = () => refresh();
+        source.addEventListener('ping', () => { heard = Date.now(); setLive(true); });
+        source.onmessage = () => { heard = Date.now(); refresh(); };
         source.onerror = () => {
             setLive(false);
             dropped = true;
@@ -85,6 +89,13 @@ addEventListener('scroll', () => document.querySelectorAll('.cal-pop:popover-ope
             if (source.readyState === EventSource.CLOSED) setTimeout(connect, 10000);
         };
     }
+
+    // Some tunnels (Cloudflare's quick tunnels) hold the stream back, so nothing ever arrives. Then check by hand.
+    setInterval(() => {
+        if (Date.now() - heard < 45000) return;
+        if (indicator) indicator.title = 'Checking for changes every 10 seconds';
+        refresh();
+    }, 10000);
 
     function setLive(on) {
         if (!indicator) return;
@@ -107,6 +118,9 @@ addEventListener('scroll', () => document.querySelectorAll('.cal-pop:popover-ope
             const fresh = next.querySelector('main');
             const main = document.querySelector('main');
             if (!fresh || !main) return;
+            // Checking by hand mostly finds nothing new; leave the page alone then
+            if (fresh.innerHTML === lastHtml) return;
+            lastHtml = fresh.innerHTML;
 
             const state = capture(main);
             main.innerHTML = fresh.innerHTML;
