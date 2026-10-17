@@ -236,18 +236,17 @@ public class MoveCommand : DungeonWorldCommandBase
 
         var colour = MoveRoller.ColourFor(roll.Outcome);
 
-        var reply = await _feedbackService.SendContextualEmbedAsync(
-            new Embed(
-                Title: $"🎲 {character.Name}: {move.Name}",
-                Description: $"*{move.Trigger}...*\n\n{DiceHelper.BuildDiceResult(roll.Dice)}",
-                Fields: fields,
-                Colour: colour
-            ),
-            ct: CancellationToken
+        var embed = new Embed(
+            Title: $"🎲 {character.Name}: {move.Name}",
+            Description: $"*{move.Trigger}...*\n\n{DiceHelper.BuildDiceResult(roll.Dice)}",
+            Fields: fields,
+            Colour: colour
         );
 
+        var reply = await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);
+
         if (reply.IsSuccess && _context.TryGetChannelID(out var channelID))
-            await _rollStatsService.RecordAsync(reply.Entity.ID, channelID, character.ID, roll.Dice);
+            await _rollStatsService.RecordAsync(reply.Entity.ID, channelID, character.ID, roll.Dice, RollLabel.Of(embed));
 
         return reply;
     }

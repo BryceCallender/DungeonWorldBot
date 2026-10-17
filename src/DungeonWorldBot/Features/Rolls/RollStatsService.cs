@@ -30,7 +30,7 @@ public class RollStatsService : IRollStatsService
 
     public Snowflake? GameChatChannelID { get; }
 
-    public async Task RecordAsync(Snowflake messageID, Snowflake channelID, Snowflake userID, DiceResult roll)
+    public async Task RecordAsync(Snowflake messageID, Snowflake channelID, Snowflake userID, DiceResult roll, RollLabel? label = null)
     {
         if (MoveDice.From(roll) is not { } dice)
             return;
@@ -43,6 +43,8 @@ public class RollStatsService : IRollStatsService
             First = dice.First,
             Second = dice.Second,
             Total = dice.Total,
+            Move = label?.Move,
+            Stat = label?.Stat,
         });
 
         await _dungeonWorldContext.SaveChangesAsync();
@@ -54,13 +56,21 @@ public class RollStatsService : IRollStatsService
             return 0;
 
         var ids = rolls.Select(r => r.MessageID).ToList();
-        var existing = (await _dungeonWorldContext.Rolls
-                .Where(r => ids.Contains(r.MessageID))
-                .Select(r => r.MessageID)
-                .ToListAsync())
-            .ToHashSet();
+        var existing = await _dungeonWorldContext.Rolls
+            .Where(r => ids.Contains(r.MessageID))
+            .ToDictionaryAsync(r => r.MessageID);
 
-        var missing = rolls.Where(r => !existing.Contains(r.MessageID)).ToList();
+        // Rolls recorded before moves and stats were kept get them from the scan
+        foreach (var roll in rolls)
+        {
+            if (!existing.TryGetValue(roll.MessageID, out var recorded))
+                continue;
+
+            recorded.Move ??= roll.Move;
+            recorded.Stat ??= roll.Stat;
+        }
+
+        var missing = rolls.Where(r => !existing.ContainsKey(r.MessageID)).ToList();
         _dungeonWorldContext.Rolls.AddRange(missing);
         await _dungeonWorldContext.SaveChangesAsync();
 

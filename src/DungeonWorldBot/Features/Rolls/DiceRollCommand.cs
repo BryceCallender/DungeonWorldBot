@@ -142,7 +142,7 @@ public class DiceRollCommand : DungeonWorldCommandBase
     
         var reply = await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);
         if (reply.IsSuccess && _context.TryGetUserID(out var userID) && _context.TryGetChannelID(out var channelID))
-            await _rollStatsService.RecordAsync(reply.Entity.ID, channelID, userID, roll);
+            await _rollStatsService.RecordAsync(reply.Entity.ID, channelID, userID, roll, RollLabel.Of(embed));
 
         return reply;
     }

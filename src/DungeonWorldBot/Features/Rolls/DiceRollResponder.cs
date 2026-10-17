@@ -64,7 +64,7 @@ public class DiceRollResponder : IResponder<IMessageCreate>
             return Result.FromError(reply);
 
         if (roll is not null)
-            await _rollStatsService.RecordAsync(reply.Entity.ID, gatewayEvent.ChannelID, gatewayEvent.Author.ID, roll);
+            await _rollStatsService.RecordAsync(reply.Entity.ID, gatewayEvent.ChannelID, gatewayEvent.Author.ID, roll, RollLabel.Of(embed));
 
         return Result.FromSuccess();
     }

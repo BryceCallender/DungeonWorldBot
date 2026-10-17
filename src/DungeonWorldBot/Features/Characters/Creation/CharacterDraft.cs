@@ -50,6 +50,11 @@ public sealed class CharacterDraft
 
     public ClassSheet? Sheet => ClassSheetLibrary.For(Kit.Type);
 
+    /// <summary>
+    /// Whether the table counts item weight. When it doesn't, kit items are saved with no weight.
+    /// </summary>
+    public bool TrackWeight { get; init; } = true;
+
     public List<Item> Items { get; } = new();
     public int ArmorRating { get; private set; }
     public int DamageRating { get; private set; }
@@ -95,6 +100,9 @@ public sealed class CharacterDraft
     /// </summary>
     private void AddItem(Item item)
     {
+        if (!TrackWeight)
+            item.Weight = 0;
+
         var existing = item is HexedJars
             ? null
             : Items.FirstOrDefault(i => i is not HexedJars && i.Name.Equals(item.Name, StringComparison.OrdinalIgnoreCase));

@@ -332,18 +332,17 @@ public partial class SubclassCommand
 
         private async Task<IResult> ReplyWithRollAsync(Character character, string title, string flavour, MoveRoll roll, IReadOnlyList<IEmbedField> fields)
         {
-            var reply = await _feedbackService.SendContextualEmbedAsync(
-                new Embed(
-                    Title: title,
-                    Description: $"{flavour}\n\n{DiceHelper.BuildDiceResult(roll.Dice)}",
-                    Fields: fields.ToList(),
-                    Colour: MoveRoller.ColourFor(roll.Outcome)
-                ),
-                ct: CancellationToken
+            var embed = new Embed(
+                Title: title,
+                Description: $"{flavour}\n\n{DiceHelper.BuildDiceResult(roll.Dice)}",
+                Fields: fields.ToList(),
+                Colour: MoveRoller.ColourFor(roll.Outcome)
             );
 
+            var reply = await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);
+
             if (reply.IsSuccess && _context.TryGetChannelID(out var channelID))
-                await _rollStatsService.RecordAsync(reply.Entity.ID, channelID, character.ID, roll.Dice);
+                await _rollStatsService.RecordAsync(reply.Entity.ID, channelID, character.ID, roll.Dice, RollLabel.Of(embed));
 
             return reply;
         }

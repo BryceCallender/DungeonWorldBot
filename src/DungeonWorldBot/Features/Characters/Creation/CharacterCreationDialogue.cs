@@ -2,6 +2,7 @@ using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Characters.Creation.Steps;
 using DungeonWorldBot.Features.Rolls;
 using DungeonWorldBot.Infrastructure;
+using Microsoft.Extensions.Configuration;
 using Remora.Discord.API.Abstractions.Rest;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Rest.Core;
@@ -32,17 +33,22 @@ public class CharacterCreationDialogue
     private readonly InteractivityService _interactivity;
     private readonly IDiscordRestUserAPI _userAPI;
     private readonly IDiceRoller _dice;
+    private readonly bool _trackWeight;
 
     public CharacterCreationDialogue(
         FeedbackService feedbackService,
         InteractivityService interactivity,
         IDiscordRestUserAPI userAPI,
-        IDiceRoller dice)
+        IDiceRoller dice,
+        IConfiguration configuration)
     {
         _feedbackService = feedbackService;
         _interactivity = interactivity;
         _userAPI = userAPI;
         _dice = dice;
+
+        // Off unless the TrackWeight setting turns it on, since the table doesn't count weight
+        _trackWeight = configuration.GetValue("TrackWeight", false);
     }
 
     /// <returns>The finished (unsaved) character, or null if the player cancelled or stopped responding.</returns>
@@ -53,7 +59,7 @@ public class CharacterCreationDialogue
             return null;
 
         var session = new Session(this, getDM.Entity.ID, userId, ct);
-        var draft = new CharacterDraft();
+        var draft = new CharacterDraft { TrackWeight = _trackWeight };
 
         Section[] firstPass = [Section.Name, Section.Race, Section.Class, Section.Stats, Section.Alignment];
         foreach (var section in firstPass)

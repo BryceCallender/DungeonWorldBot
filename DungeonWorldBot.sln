@@ -4,8 +4,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DungeonWorldBot", "src\Dung
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DungeonWorldBot.Data", "src\DungeonWorldBot.Data\DungeonWorldBot.Data.csproj", "{CAA86172-DB8F-4FE9-A85F-A0D4F3EC751C}"
 EndProject
-Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DungeonWorldBot.Tests", "tests\DungeonWorldBot.Tests\DungeonWorldBot.Tests.csproj", "{2F46F5E2-84AE-41B7-86A3-DA8C972C7A44}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DungeonWorldBot.Dashboard", "src\DungeonWorldBot.Dashboard\DungeonWorldBot.Dashboard.csproj", "{0498A769-334F-4231-B170-02E14B8EA39C}"
@@ -73,6 +71,5 @@ Global
 		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(NestedProjects) = preSolution
-		{2F46F5E2-84AE-41B7-86A3-DA8C972C7A44} = {0AB3BF05-4346-4AA6-1389-037BE0695223}
 	EndGlobalSection
 EndGlobal

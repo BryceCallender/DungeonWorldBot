@@ -38,13 +38,15 @@ public sealed partial class RollHistoryReader
                 continue;
             }
 
-            var dice = message.Embeds
+            var (embed, dice) = message.Embeds
                 .Where(e => e.Title.OrDefault(string.Empty)?.StartsWith("🎲") == true)
-                .Select(e => MoveDice.FromDescription(e.Description.OrDefault(string.Empty) ?? string.Empty))
-                .FirstOrDefault(d => d is not null);
+                .Select(e => (Embed: e, Dice: MoveDice.FromDescription(e.Description.OrDefault(string.Empty) ?? string.Empty)))
+                .FirstOrDefault(d => d.Dice is not null);
 
-            if (dice is null || WhoRolled(message) is not { } userID)
+            if (embed is null || dice is null || WhoRolled(message) is not { } userID)
                 continue;
+
+            var label = RollLabel.Of(embed);
 
             yield return new RollRecord
             {
@@ -54,6 +56,8 @@ public sealed partial class RollHistoryReader
                 First = dice.First,
                 Second = dice.Second,
                 Total = dice.Total,
+                Move = label.Move,
+                Stat = label.Stat,
             };
         }
     }

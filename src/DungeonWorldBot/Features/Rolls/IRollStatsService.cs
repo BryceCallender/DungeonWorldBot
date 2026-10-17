@@ -19,10 +19,12 @@ public interface IRollStatsService
     /// <summary>
     /// Records a roll the bot just posted, if it's a 2d6 roll.
     /// </summary>
-    Task RecordAsync(Snowflake messageID, Snowflake channelID, Snowflake userID, DiceResult roll);
+    /// <param name="label">The move and stat it was for, usually read off the roll's embed with <see cref="RollLabel.Of"/>.</param>
+    Task RecordAsync(Snowflake messageID, Snowflake channelID, Snowflake userID, DiceResult roll, RollLabel? label = null);
 
     /// <summary>
-    /// Adds rolls found in chat history, skipping any already recorded.
+    /// Adds rolls found in chat history, skipping any already recorded. Recorded rolls missing their move or stat get
+    /// them from the scan.
     /// </summary>
     /// <returns>How many were new.</returns>
     Task<int> AddMissingAsync(IReadOnlyList<RollRecord> rolls);
