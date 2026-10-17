@@ -140,7 +140,7 @@ public sealed class CharacterDraft
             Class = characterClass,
             ArmorRating = ArmorRating + startingMoves.Sum(m => m.Armor),
             DamageModifier = startingMoves.Select(m => m.DamageDie).LastOrDefault(d => d is not null),
-            DamageRating = DamageRating,
+            DamageRating = DamageRating + startingMoves.Sum(m => m.Damage),
             Stats = StatOrder
                 .Where(Stats.ContainsKey)
                 .Select(type => new Stat { StatType = type, Value = Stats[type] })
@@ -153,6 +153,7 @@ public sealed class CharacterDraft
                 Description = m.Summary,
                 MaxUses = m.Uses,
                 Uses = m.Uses ?? 0,
+                LevelTaken = 1,
             }).ToList(),
         };
     }

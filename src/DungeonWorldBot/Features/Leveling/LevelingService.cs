@@ -48,7 +48,9 @@ public class LevelingService : ILevelingService
         if (points > 0)
             await GrantStatPointsAsync(character, points);
 
-        foreach (var resource in LevelBasedResources(character))
+        // Most of these are worked out from the level already. The rest are from moves taken before levels were recorded,
+        // and setting them records when the move was taken.
+        foreach (var resource in LevelBasedResources(character).Where(r => !_resourceService.TracksLevel(character, r)))
         {
             var value = _resourceService.GetValue(character, resource);
             await _resourceService.SetValueAsync(character, resource, Math.Max(1, value + change));

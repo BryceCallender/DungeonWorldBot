@@ -58,6 +58,37 @@ public sealed class LevelingServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task ClericLevel_CountsFromTheLevelTheMoveWasTaken()
+    {
+        await using var context = CreateContext();
+        var (character, leveling, resources) = await SetupAsync(context);
+        character.Abilities![0].LevelTaken = 2;
+        var clericLevel = SpellCasting.Access(character).Single().LevelResource;
+
+        Assert.Equal(1, resources.GetValue(character, clericLevel));
+
+        await leveling.ChangeLevelAsync(character, 5);
+        Assert.Equal(4, resources.GetValue(character, clericLevel));
+        Assert.Equal(2, character.Abilities[0].LevelTaken);
+    }
+
+    [Fact]
+    public async Task SettingClericLevel_RecordsWhenTheMoveWasTaken()
+    {
+        await using var context = CreateContext();
+        var (character, leveling, resources) = await SetupAsync(context);
+        var clericLevel = SpellCasting.Access(character).Single().LevelResource;
+
+        // Taken before levels were recorded: set it once and it follows from then on
+        Assert.Null(character.Abilities![0].LevelTaken);
+        Assert.Equal(2, await resources.SetValueAsync(character, clericLevel, 2));
+        Assert.Equal(1, character.Abilities[0].LevelTaken);
+
+        await leveling.ChangeLevelAsync(character, 3);
+        Assert.Equal(3, resources.GetValue(character, clericLevel));
+    }
+
+    [Fact]
     public async Task AllocatingStats_SpendsPointsAndUpdatesHp()
     {
         await using var context = CreateContext();

@@ -37,6 +37,29 @@ public class CharacterCreationTests
     }
 
     [Fact]
+    public void KitItemsHaveNoWeightWhenWeightIsNotTracked()
+    {
+        // The Necromancer's kit has weighted items, including the hexed jars
+        var draft = new CharacterDraft { TrackWeight = false };
+        draft.SetClass(Kit(ClassType.Necromancer), _dice);
+        foreach (var question in draft.Kit.Questions)
+            draft.ApplyChoice(question.Choices[0], _dice);
+
+        Assert.All(draft.Items, i => Assert.Equal(0, i.Weight));
+    }
+
+    [Fact]
+    public void KitItemsKeepTheirWeightWhenWeightIsTracked()
+    {
+        var draft = new CharacterDraft();
+        draft.SetClass(Kit(ClassType.Necromancer), _dice);
+        foreach (var question in draft.Kit.Questions)
+            draft.ApplyChoice(question.Choices[0], _dice);
+
+        Assert.Contains(draft.Items, i => i.Weight > 0);
+    }
+
+    [Fact]
     public void EveryAlignmentCanBePicked()
     {
         var pickable = CharacterDraft.AlignmentOptions.Select(o => o.Value).ToHashSet();

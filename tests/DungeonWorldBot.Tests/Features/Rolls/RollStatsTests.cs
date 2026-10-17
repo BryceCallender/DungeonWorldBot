@@ -4,6 +4,7 @@ using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Rolls;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Remora.Discord.API.Objects;
 using Remora.Rest.Core;
 
 namespace DungeonWorldBot.Tests.Features.Rolls;
@@ -120,6 +121,44 @@ public class RollStatsTests
 
         Assert.Equal(new Snowflake(RollStatsService.DefaultGameChatChannelID), new RollStatsService(null!, empty).GameChatChannelID);
         Assert.Equal(new Snowflake(222), new RollStatsService(null!, GameChat(222)).GameChatChannelID);
+    }
+
+    [Theory]
+    [InlineData("🎲 Zephyr: Hack and Slash", "STR +2, Bonus +1", "Hack and Slash", StatType.Str)]
+    // "." rolls labelled with a move's name count as that move
+    [InlineData("🎲 Zephyr: volley", "DEX +1", "Volley", StatType.Dex)]
+    [InlineData("🎲 Zephyr: dodge the trap", "DEX +1", null, StatType.Dex)]
+    [InlineData("🎲 Str Roll(s)", "STR +0", null, StatType.Str)]
+    [InlineData("🎲 Zephyr: Aid or Interfere", "Bond with ren +1", "Aid or Interfere", null)]
+    [InlineData("🎲 Zephyr rolled", null, null, null)]
+    public void Labels_AreReadOffTheRollEmbed(string title, string? rolledWith, string? move, StatType? stat)
+    {
+        var embed = new Embed(
+            Title: title,
+            Fields: rolledWith is null ? [] : new List<EmbedField> { new(RollLabel.RolledWith, rolledWith) });
+
+        Assert.Equal(new RollLabel(move, stat), RollLabel.Of(embed));
+    }
+
+    [Fact]
+    public async Task Scans_FillInMovesForRollsRecordedWithoutThem()
+    {
+        using var database = new TestDatabase();
+        await using var context = database.CreateContext();
+        var service = new RollStatsService(context, GameChat(222));
+
+        var channel = new Snowflake(222);
+        await service.RecordAsync(new Snowflake(1), channel, new Snowflake(111), new DiceRoller(new ConstantDieRoller(3)).Roll("2d6"));
+
+        var added = await service.AddMissingAsync(new[]
+        {
+            new RollRecord { MessageID = new Snowflake(1), ChannelID = channel, UserID = new Snowflake(111), First = 3, Second = 3, Total = 6, Move = "Volley", Stat = StatType.Dex },
+        });
+
+        Assert.Equal(0, added);
+        var roll = Assert.Single(await context.Rolls.AsNoTracking().ToListAsync());
+        Assert.Equal("Volley", roll.Move);
+        Assert.Equal(StatType.Dex, roll.Stat);
     }
 
     private static IConfiguration GameChat(ulong channelID) =>

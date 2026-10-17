@@ -9,6 +9,11 @@ public enum DamageType
     Magical,
 
     /// <summary>
+    /// From divine weapons and powers. Only divine armor reduces it.
+    /// </summary>
+    Divine,
+
+    /// <summary>
     /// Ignores all armor.
     /// </summary>
     True

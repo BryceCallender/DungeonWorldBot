@@ -26,7 +26,8 @@ public class AbilityService : IAbilityService
             Name = name.Trim(),
             Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim(),
             MaxUses = maxUses,
-            Uses = maxUses ?? 0
+            Uses = maxUses ?? 0,
+            LevelTaken = character.Level,
         };
 
         character.Abilities ??= new List<Ability>();

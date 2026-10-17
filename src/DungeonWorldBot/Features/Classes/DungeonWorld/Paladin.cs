@@ -69,7 +69,7 @@ public static class Paladin
         ],
         resources:
         [
-            new ClassResource(ClericLevel, "Your effective cleric level for spells: 1 when you take Divine Favor, +1 each level after. Learn spells with /spell learn.", Start: 1, GrantedBy: "Divine Favor")
+            new ClassResource(ClericLevel, "Your effective cleric level for spells: 1 at the level you took Divine Favor, +1 each level after, worked out automatically. If it's wrong, fix it once with /resource set. Learn spells with /spell learn.", Start: 1, GrantedBy: "Divine Favor")
             {
                 ResetWithAll = false,
                 GrowsWithLevel = true,

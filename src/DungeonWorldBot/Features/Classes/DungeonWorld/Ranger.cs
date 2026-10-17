@@ -87,7 +87,7 @@ public static class Ranger
         ],
         resources:
         [
-            new ClassResource(ClericLevel, "Your effective cleric level for spells: 1 when you take God Amidst the Wastes, +1 each level after. Learn spells with /spell learn.", Start: 1, GrantedBy: "God Amidst the Wastes")
+            new ClassResource(ClericLevel, "Your effective cleric level for spells: 1 at the level you took God Amidst the Wastes, +1 each level after, worked out automatically. If it's wrong, fix it once with /resource set. Learn spells with /spell learn.", Start: 1, GrantedBy: "God Amidst the Wastes")
             {
                 ResetWithAll = false,
                 GrowsWithLevel = true,

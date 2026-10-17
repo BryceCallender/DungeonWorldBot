@@ -17,6 +17,11 @@ public class Character
     public int ArmorRating { get; set; }
 
     public int MagicArmor { get; set; }
+
+    /// <summary>
+    /// Armor that only divine weapons and powers can get through.
+    /// </summary>
+    public int DivineArmor { get; set; }
     
     public int DamageRating { get; set; }
     

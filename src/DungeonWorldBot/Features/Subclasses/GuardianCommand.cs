@@ -142,7 +142,7 @@ public partial class SubclassCommand
             [Option("for-ally")]
             [Description("You're taking an ally's hit with Guardian's Stand, which halves it (rounded down) before your armor")]
             bool forAlly = false,
-            [Description("Physical (stopped by physical armor), Magical (stopped by magical armor), or True (ignores armor)")]
+            [Description("Physical, Magical or Divine (divine weapons), each stopped by its own armor, or True (ignores armor)")]
             DamageType type = DamageType.Physical,
             [Description("How much of your armor the hit ignores")]
             [MinValue(0)]

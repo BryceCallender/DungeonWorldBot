@@ -31,10 +31,18 @@ public class ArmorService : IArmorService
 
     public async Task SetArmorAsync(Character character, ArmorType type, int value)
     {
-        if (type == ArmorType.Physical)
-            character.ArmorRating = value;
-        else
-            character.MagicArmor = value;
+        switch (type)
+        {
+            case ArmorType.Physical:
+                character.ArmorRating = value;
+                break;
+            case ArmorType.Magical:
+                character.MagicArmor = value;
+                break;
+            default:
+                character.DivineArmor = value;
+                break;
+        }
 
         await _dungeonWorldContext.SaveChangesAsync();
     }

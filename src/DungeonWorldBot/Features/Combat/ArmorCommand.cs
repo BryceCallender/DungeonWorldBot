@@ -15,7 +15,7 @@ using Remora.Results;
 namespace DungeonWorldBot.Features.Combat;
 
 /// <summary>
-/// Physical and magical armor, and temporary armor from moves like Guardian's Stand or a Lightning barrier.
+/// Physical, magical and divine armor, and temporary armor from moves like Guardian's Stand or a Lightning barrier.
 /// Damage taken with /character damage or /subclass guardian take-hit is reduced by the armor matching its type.
 /// </summary>
 [Group("armor")]
@@ -42,7 +42,7 @@ public class ArmorCommand : DungeonWorldCommandBase
     }
 
     [Command("show")]
-    [Description("Show a character's physical and magical armor, and any temporary armor")]
+    [Description("Show a character's physical, magical and divine armor, and any temporary armor")]
     public async Task<IResult> ShowAsync(
         [Description("The user to see the armor of. Don't specify a user to see your own.")]
         IUser? user = null)
@@ -55,9 +55,9 @@ public class ArmorCommand : DungeonWorldCommandBase
     }
 
     [Command("set")]
-    [Description("Set your own physical or magical armor, e.g. after changing gear (the DM can set anyone's)")]
+    [Description("Set your own physical, magical or divine armor, e.g. after changing gear (the DM can set anyone's)")]
     public async Task<IResult> SetAsync(
-        [Description("Physical armor stops physical damage, magical armor stops magical damage")]
+        [Description("Physical stops physical damage, magical stops magical, divine stops divine weapons and powers")]
         ArmorType type,
         [Description("The new armor value, before temporary armor")]
         [MinValue(0)]
@@ -84,7 +84,7 @@ public class ArmorCommand : DungeonWorldCommandBase
     public async Task<IResult> AddAsync(
         [Description("How much armor. Negative lowers it, e.g. sundered armor")]
         int amount,
-        [Description("Physical armor stops physical damage, magical armor stops magical damage")]
+        [Description("Physical stops physical damage, magical stops magical, divine stops divine weapons and powers")]
         ArmorType type = ArmorType.Physical,
         [Description("Fight: until /armor end-fight. UntilHit: breaks on the next hit. UntilRemoved: until /armor remove")]
         ArmorDuration duration = ArmorDuration.Fight,

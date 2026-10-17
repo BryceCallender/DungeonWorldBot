@@ -18,5 +18,12 @@ public enum ClassType
     SkyDancer,
     Survivor,
     Walker,
-    Golem
+    Golem,
+    Barbarian,
+    Bard,
+    Cleric,
+    Fighter,
+    Immolator,
+    Thief,
+    Wizard
 }

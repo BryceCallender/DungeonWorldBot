@@ -11,6 +11,11 @@ public interface IResourceService
     int GetValue(Character character, ClassResource resource);
 
     /// <summary>
+    /// Whether the value is worked out from the character's level, like a cleric level counting up from when Divine Favor was taken.
+    /// </summary>
+    bool TracksLevel(Character character, ClassResource resource);
+
+    /// <summary>
     /// The resource's max for this character, which some moves raise, or null if it has none.
     /// </summary>
     int? GetMax(Character character, ClassResource resource);

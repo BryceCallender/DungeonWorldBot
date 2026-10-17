@@ -20,14 +20,19 @@ public static class DamageRules
     {
         DamageType.Physical => ArmorType.Physical,
         DamageType.Magical => ArmorType.Magical,
+        DamageType.Divine => ArmorType.Divine,
         _ => null,
     };
 
     /// <summary>
     /// The character's own armor of this type, without temporary armor.
     /// </summary>
-    public static int BaseArmor(Character character, ArmorType type) =>
-        type == ArmorType.Physical ? character.ArmorRating : character.MagicArmor;
+    public static int BaseArmor(Character character, ArmorType type) => type switch
+    {
+        ArmorType.Physical => character.ArmorRating,
+        ArmorType.Magical => character.MagicArmor,
+        _ => character.DivineArmor,
+    };
 
     /// <summary>
     /// The character's own armor plus their temporary armor of this type, never below 0.
@@ -62,7 +67,12 @@ public static class DamageRules
         return $"{hit.Damage} {type} − {armor} = **{hit.Taken}**";
     }
 
-    public static string Describe(ArmorType type) => type == ArmorType.Physical ? "physical" : "magical";
+    public static string Describe(ArmorType type) => type switch
+    {
+        ArmorType.Physical => "physical",
+        ArmorType.Magical => "magical",
+        _ => "divine",
+    };
 
     public static string Describe(ArmorDuration duration) => duration switch
     {
@@ -78,10 +88,13 @@ public static class DamageRules
         $"{(bonus.Amount >= 0 ? "+" : "")}{bonus.Amount} {Describe(bonus.Type)} from {bonus.Source} ({Describe(bonus.Duration)})";
 
     /// <summary>
-    /// e.g. "Physical 2 · Magical 1", including temporary armor.
+    /// e.g. "Physical 2 · Magical 1", including temporary armor. Divine armor is only shown when the character has some.
     /// </summary>
-    public static string Totals(Character character) =>
-        $"Physical {Armor(character, ArmorType.Physical)} · Magical {Armor(character, ArmorType.Magical)}";
+    public static string Totals(Character character)
+    {
+        var totals = $"Physical {Armor(character, ArmorType.Physical)} · Magical {Armor(character, ArmorType.Magical)}";
+        return Armor(character, ArmorType.Divine) is > 0 and var divine ? $"{totals} · Divine {divine}" : totals;
+    }
 
     /// <summary>
     /// The character's armor of each type, then each piece of temporary armor on its own line.

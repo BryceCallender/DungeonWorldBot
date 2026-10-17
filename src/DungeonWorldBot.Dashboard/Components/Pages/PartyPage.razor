@@ -72,6 +72,10 @@ else
                 <div class="armor-row">
                     <span title="Physical armor"><Icon Name="shield" />@c.Armor.Physical</span>
                     <span title="Magical armor"><Icon Name="magic" />@c.Armor.Magical</span>
+                    @if (c.Armor.Divine != 0)
+                    {
+                        <span title="Divine armor"><Icon Name="divine" />@c.Armor.Divine</span>
+                    }
                     <span title="Damage"><Icon Name="sword" />@c.Damage</span>
                 </div>
 

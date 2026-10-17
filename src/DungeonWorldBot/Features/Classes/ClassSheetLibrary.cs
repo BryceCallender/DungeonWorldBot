@@ -16,6 +16,13 @@ public static class ClassSheetLibrary
         Ranger.Sheet,
         Paladin.Sheet,
         Druid.Sheet,
+        Barbarian.Sheet,
+        Bard.Sheet,
+        Cleric.Sheet,
+        Fighter.Sheet,
+        Immolator.Sheet,
+        Thief.Sheet,
+        Wizard.Sheet,
 
         Battlemaster.Sheet,
         Channeler.Sheet,

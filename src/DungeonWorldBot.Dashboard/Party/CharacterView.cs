@@ -30,7 +30,7 @@ public sealed record SubclassView(string Name, string Title, string? Status, IRe
 
 public sealed record GearView(string Name, string ModeKind, string? Mode, string? ModeTitle, string? Effect);
 
-public sealed record ArmorView(int Physical, int Magical, int BasePhysical, int BaseMagical, IReadOnlyList<string> Bonuses);
+public sealed record ArmorView(int Physical, int Magical, int Divine, int BasePhysical, int BaseMagical, int BaseDivine, IReadOnlyList<string> Bonuses);
 
 /// <summary>
 /// Everything about a character worth showing, worked out with the bot's own rules.

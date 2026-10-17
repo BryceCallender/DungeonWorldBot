@@ -34,6 +34,13 @@ public class Class
                 ClassType.Survivor => "d10",
                 ClassType.Walker => "d8",
                 ClassType.Golem => "d8",
+                ClassType.Barbarian => "d10",
+                ClassType.Bard => "d6",
+                ClassType.Cleric => "d6",
+                ClassType.Fighter => "d10",
+                ClassType.Immolator => "d4",
+                ClassType.Thief => "d8",
+                ClassType.Wizard => "d4",
                 _ => "d6"
             };
         }
@@ -62,6 +69,13 @@ public class Class
                 ClassType.Survivor => 10,
                 ClassType.Walker => 8,
                 ClassType.Golem => 10,
+                ClassType.Barbarian => 8,
+                ClassType.Bard => 6,
+                ClassType.Cleric => 8,
+                ClassType.Fighter => 10,
+                ClassType.Immolator => 4,
+                ClassType.Thief => 6,
+                ClassType.Wizard => 4,
                 _ => 4
             };
         }

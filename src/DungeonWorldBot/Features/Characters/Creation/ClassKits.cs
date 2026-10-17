@@ -154,6 +154,151 @@ public static class ClassKits
                 ]),
             ]),
 
+        new(ClassType.Barbarian, "Barbarian",
+            [DungeonRations, ItemGrant.Of("Dagger (hand)", 1, 1), ItemGrant.Of("Token of Where You've Travelled", 1, 0)],
+            BaseArmor: 0,
+            [
+                new("Which weapon would you like to have?",
+                [
+                    new("Axe (close)", [ItemGrant.Of("Axe (close)", 1, 1)]),
+                    new("Two-Handed Sword (close, +1 damage)", [ItemGrant.Of("Two-Handed Sword (close, +1 damage)", 1, 2)], Damage: 1),
+                ]),
+                new("Which would you like to have?",
+                [
+                    new("Adventuring Gear (5 uses) and 5 Dungeon Rations", [AdventuringGear, DungeonRations]),
+                    new("Chainmail (+1 armor)", [ItemGrant.Of("Chainmail", 1, 1)], Armor: 1),
+                ]),
+            ]),
+
+        new(ClassType.Bard, "Bard",
+            [DungeonRations],
+            BaseArmor: 0,
+            [
+                new("Which instrument would you like to have?",
+                [
+                    new("Your father's mandolin, repaired", [ItemGrant.Of("Father's Mandolin", 1, 0)]),
+                    new("A fine lute, a gift from a noble", [ItemGrant.Of("Fine Lute", 1, 0)]),
+                    new("The pipes with which you courted your first love", [ItemGrant.Of("Courting Pipes", 1, 0)]),
+                    new("A stolen horn", [ItemGrant.Of("Stolen Horn", 1, 0)]),
+                    new("A fiddle, never before played", [ItemGrant.Of("Unplayed Fiddle", 1, 0)]),
+                    new("A songbook in a forgotten tongue", [ItemGrant.Of("Songbook in a Forgotten Tongue", 1, 0)]),
+                ]),
+                new("Which clothing would you like to have?",
+                [
+                    new("Leather Armor (+1 armor)", [ItemGrant.Of("Leather Armor", 1, 1)], Armor: 1),
+                    new("Ostentatious Clothes", [ItemGrant.Of("Ostentatious Clothes", 1, 0)]),
+                ]),
+                new("Which armament would you like to have?",
+                [
+                    new("Dueling Rapier (close, precise)", [ItemGrant.Of("Dueling Rapier (close, precise)", 1, 2)]),
+                    new("Worn Bow (near), a Bundle of Arrows and a Short Sword (close)",
+                        [ItemGrant.Of("Worn Bow (near)", 1, 2), ItemGrant.Of("Bundle of Arrows", 3, 1), ItemGrant.Of("Short Sword (close)", 1, 1)]),
+                ]),
+                new("Which item would you like to have?",
+                [
+                    new("Adventuring Gear (5 uses)", [AdventuringGear]),
+                    new("Bandages (3 uses, slow)", [ItemGrant.Of("Bandages", 3, 0)]),
+                    new("Halfling Pipeleaf (6 uses)", [ItemGrant.Of("Halfling Pipeleaf", 6, 0)]),
+                    new("3 coins", [Coins(3)]),
+                ]),
+            ]),
+
+        new(ClassType.Cleric, "Cleric",
+            [DungeonRations, ItemGrant.Of("Holy Symbol", 1, 1)],
+            BaseArmor: 0,
+            [
+                new("Which defenses would you like to have?",
+                [
+                    new("Chainmail (+1 armor)", [ItemGrant.Of("Chainmail", 1, 1)], Armor: 1),
+                    new("Shield (+1 armor)", [ItemGrant.Of("Shield", 1, 2)], Armor: 1),
+                ]),
+                new("Which armament would you like to have?",
+                [
+                    new("Warhammer (close)", [ItemGrant.Of("Warhammer (close)", 1, 1)]),
+                    new("Mace (close)", [ItemGrant.Of("Mace (close)", 1, 1)]),
+                    new("Staff (close, Two-Handed) and Bandages (3 uses, slow)",
+                        [ItemGrant.Of("Staff (close, Two-Handed)", 1, 1), ItemGrant.Of("Bandages", 3, 0)]),
+                ]),
+                new("Which would you like to have?",
+                [
+                    new("Adventuring Gear (5 uses) and 5 Dungeon Rations", [AdventuringGear, DungeonRations]),
+                    new("A Healing Potion", [ItemGrant.Of("Healing Potions", 1, 0)]),
+                ]),
+            ]),
+
+        new(ClassType.Fighter, "Fighter",
+            [DungeonRations, ItemGrant.Of("Signature Weapon", 1, 2)],
+            BaseArmor: 0,
+            [
+                new("Which defenses would you like to have?",
+                [
+                    new("Chainmail (+1 armor) and Adventuring Gear (5 uses)", [ItemGrant.Of("Chainmail", 1, 1), AdventuringGear], Armor: 1),
+                    new("Scale Armor (+2 armor, clumsy)", [ItemGrant.Of("Scale Armor", 1, 3)], Armor: 2),
+                ]),
+                new("Which items would you like to have?",
+                [
+                    new("2 Healing Potions", [ItemGrant.Of("Healing Potions", 2, 0)]),
+                    new("Shield (+1 armor)", [ItemGrant.Of("Shield", 1, 2)], Armor: 1),
+                    new("Antitoxin, 5 Dungeon Rations and Poultices and Herbs (2 uses, slow)",
+                        [ItemGrant.Of("Antitoxin", 1, 0), DungeonRations, ItemGrant.Of("Poultices & Herbs", 2, 1)]),
+                    new("22 coins", [Coins(22)]),
+                ], Picks: 2),
+            ]),
+
+        new(ClassType.Immolator, "Immolator",
+            [ItemGrant.Of("Symbol of Past Sacrifices", 1, 0), AdventuringGear, ItemGrant.Of("Healing Potions", 1, 0)],
+            BaseArmor: 0,
+            [
+                new("Which items would you like to have?",
+                [
+                    new("5 Dungeon Rations", [DungeonRations]),
+                    new("A Healing Potion", [ItemGrant.Of("Healing Potions", 1, 0)]),
+                    new("10 coins", [Coins(10)]),
+                ], Picks: 2),
+            ]),
+
+        new(ClassType.Thief, "Thief",
+            [DungeonRations, ItemGrant.Of("Leather Armor", 1, 1), ItemGrant.Of("Poison", 3, 0), Coins(10)],
+            BaseArmor: 1,
+            [
+                new("Which arms would you like to have?",
+                [
+                    new("Dagger (hand) and Short Sword (close)", [ItemGrant.Of("Dagger (hand)", 1, 1), ItemGrant.Of("Short Sword (close)", 1, 1)]),
+                    new("Rapier (close, precise)", [ItemGrant.Of("Rapier (close, precise)", 1, 1)]),
+                ]),
+                new("Which ranged weapon would you like to have?",
+                [
+                    new("3 Throwing Daggers (thrown, near)", [ItemGrant.Of("Throwing Daggers (thrown, near)", 3, 0)]),
+                    new("Ragged Bow (near) and a Bundle of Arrows", [ItemGrant.Of("Ragged Bow (near)", 1, 2), ItemGrant.Of("Bundle of Arrows", 3, 1)]),
+                ]),
+                new("Which item would you like to have?",
+                [
+                    new("Adventuring Gear (5 uses)", [AdventuringGear]),
+                    new("A Healing Potion", [ItemGrant.Of("Healing Potions", 1, 0)]),
+                ]),
+            ]),
+
+        new(ClassType.Wizard, "Wizard",
+            [DungeonRations, ItemGrant.Of("Spellbook", 1, 1)],
+            BaseArmor: 0,
+            [
+                new("Which defenses would you like to have?",
+                [
+                    new("Leather Armor (+1 armor)", [ItemGrant.Of("Leather Armor", 1, 1)], Armor: 1),
+                    new("Bag of Books (5 uses) and 3 Healing Potions", [ItemGrant.Of("Bag of Books", 5, 2), ItemGrant.Of("Healing Potions", 3, 0)]),
+                ]),
+                new("Which weapon would you like to have?",
+                [
+                    new("Dagger (hand)", [ItemGrant.Of("Dagger (hand)", 1, 1)]),
+                    new("Staff (close, Two-Handed)", [ItemGrant.Of("Staff (close, Two-Handed)", 1, 1)]),
+                ]),
+                new("Which would you like to have?",
+                [
+                    new("A Healing Potion", [ItemGrant.Of("Healing Potions", 1, 0)]),
+                    new("3 Antitoxins", [ItemGrant.Of("Antitoxin", 3, 0)]),
+                ]),
+            ]),
+
         new(ClassType.Battlemaster, "Battle Master",
             [DungeonRations, ItemGrant.Of("Spyglass", 1, 1), ItemGrant.Of("Dagger", 1, 1)],
             BaseArmor: 0,

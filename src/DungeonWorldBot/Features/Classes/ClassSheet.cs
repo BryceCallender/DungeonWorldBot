@@ -54,6 +54,11 @@ public sealed record ClassMove(string Name, string Summary)
     public int Armor { get; init; }
 
     /// <summary>
+    /// Damage rating the move gives the character when picked during character creation, like a Fighter's serrated edges.
+    /// </summary>
+    public int Damage { get; init; }
+
+    /// <summary>
     /// A damage die that replaces the class's usual one, e.g. a winged Sky Dancer's d8.
     /// </summary>
     public string? DamageDie { get; init; }

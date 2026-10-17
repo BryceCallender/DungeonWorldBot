@@ -18,7 +18,7 @@ public sealed class ArmorTests : IDisposable
 
     private DungeonWorldContext CreateContext() => _db.CreateContext();
 
-    private static async Task<Character> AddCharacterAsync(DungeonWorldContext context, int physical = 2, int magical = 1)
+    private static async Task<Character> AddCharacterAsync(DungeonWorldContext context, int physical = 2, int magical = 1, int divine = 0)
     {
         var character = new Character
         {
@@ -30,6 +30,7 @@ public sealed class ArmorTests : IDisposable
             Stats = [],
             ArmorRating = physical,
             MagicArmor = magical,
+            DivineArmor = divine,
         };
         await new CharacterService(context).AddCharacterAsync(character);
         return character;
@@ -47,11 +48,12 @@ public sealed class ArmorTests : IDisposable
     [Theory]
     [InlineData(DamageType.Physical, 13)]
     [InlineData(DamageType.Magical, 14)]
+    [InlineData(DamageType.Divine, 15)]
     [InlineData(DamageType.True, 10)]
     public async Task Damage_IsOnlyReducedByMatchingArmor(DamageType type, int expectedHp)
     {
         await using var context = CreateContext();
-        var character = await AddCharacterAsync(context, physical: 3, magical: 4);
+        var character = await AddCharacterAsync(context, physical: 3, magical: 4, divine: 5);
 
         var hit = await new ArmorService(context).TakeDamageAsync(character, 10, type);
 
@@ -137,5 +139,20 @@ public sealed class ArmorTests : IDisposable
             DamageRules.Describe(new DamageTaken(9, DamageType.Physical, 3, 1, 7, [])));
         Assert.Equal("4 true damage, ignoring armor = **4**",
             DamageRules.Describe(new DamageTaken(4, DamageType.True, 0, 0, 4, [])));
+        Assert.Equal("6 divine − 2 divine armor = **4**",
+            DamageRules.Describe(new DamageTaken(6, DamageType.Divine, 2, 0, 4, [])));
+    }
+
+    [Fact]
+    public async Task SetArmor_SetsDivineArmor()
+    {
+        await using var context = CreateContext();
+        var character = await AddCharacterAsync(context);
+
+        await new ArmorService(context).SetArmorAsync(character, ArmorType.Divine, 3);
+
+        Assert.Equal(3, character.DivineArmor);
+        Assert.Equal(1, character.MagicArmor);
+        Assert.Equal("Physical 2 · Magical 1 · Divine 3", DamageRules.Totals(character));
     }
 }

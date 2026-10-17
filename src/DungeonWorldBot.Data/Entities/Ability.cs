@@ -21,6 +21,12 @@ public class Ability
     public int? MaxUses { get; set; }
     public int Uses { get; set; }
 
+    /// <summary>
+    /// The character's level when they took the ability, or null for abilities added before this was recorded.
+    /// A Paladin's cleric level from Divine Favor counts up from here.
+    /// </summary>
+    public int? LevelTaken { get; set; }
+
     public bool IsLimited => MaxUses is not null;
 
     public string ToDisplay() => IsLimited ? $"{Name} ({Uses}/{MaxUses})" : Name;

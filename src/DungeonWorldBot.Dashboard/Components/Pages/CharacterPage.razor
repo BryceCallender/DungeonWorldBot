@@ -73,6 +73,17 @@
                 <span class="small">base @c.Armor.BaseMagical</span>
             }
         </div>
+        @if (c.Armor.Divine != 0 || c.Armor.BaseDivine != 0)
+        {
+            <div class="vital divine" title="Divine armor: only divine weapons get through@(c.Armor.Divine != c.Armor.BaseDivine ? $" (base {c.Armor.BaseDivine})" : "")">
+                <span class="tile-label"><Icon Name="divine" />Divine armor</span>
+                <strong>@c.Armor.Divine</strong>
+                @if (c.Armor.Divine != c.Armor.BaseDivine)
+                {
+                    <span class="small">base @c.Armor.BaseDivine</span>
+                }
+            </div>
+        }
         <div class="vital damage">
             <span class="tile-label"><Icon Name="sword" />Damage</span>
             <strong>@c.Damage</strong>

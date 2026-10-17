@@ -13,6 +13,7 @@
     --warn-soft: #fde8e6;
     --armor: #2f6fbf;
     --magic: #8a4fd0;
+    --divine: #b8860b;
     --damage: #c75f12;
     --heart: #d1453b;
     --class: var(--accent);
@@ -35,6 +36,7 @@
         --warn-soft: #43201e;
         --armor: #6fa8ec;
         --magic: #b48cf0;
+        --divine: #e8c35a;
         --damage: #f09a50;
         --heart: #ef6a5f;
         color-scheme: dark;
@@ -293,7 +295,7 @@ strong.over { color: var(--critical); }
 
 .hero-vitals {
     display: grid;
-    grid-template-columns: minmax(180px, 1.6fr) repeat(3, minmax(90px, 1fr));
+    grid-template-columns: minmax(180px, 1.6fr) repeat(auto-fit, minmax(90px, 1fr));
     gap: .6rem;
 }
 
@@ -489,6 +491,13 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 .cls-survivor { --class: #5f6b2e; }
 .cls-walker { --class: #3f5aa8; }
 .cls-golem { --class: #66625b; }
+.cls-barbarian { --class: #9c3d1c; }
+.cls-bard { --class: #b0457a; }
+.cls-cleric { --class: #8c7a2b; }
+.cls-fighter { --class: #5a5f6b; }
+.cls-immolator { --class: #d4480f; }
+.cls-thief { --class: #3d4a45; }
+.cls-wizard { --class: #4a3fa8; }
 
 @media (prefers-color-scheme: dark) {
     .cls-ranger { --class: #5cc27e; }
@@ -508,6 +517,13 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
     .cls-survivor { --class: #a7b46a; }
     .cls-walker { --class: #8aa0ec; }
     .cls-golem { --class: #aca69c; }
+    .cls-barbarian { --class: #e07a52; }
+    .cls-bard { --class: #ec8ab8; }
+    .cls-cleric { --class: #d8c46a; }
+    .cls-fighter { --class: #a6adbd; }
+    .cls-immolator { --class: #ff8a4c; }
+    .cls-thief { --class: #8fa89e; }
+    .cls-wizard { --class: #9c92f0; }
 }
 
 .class-name { color: var(--class); font-weight: 600; }
@@ -532,10 +548,12 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 .icon-heart { color: var(--heart); }
 .icon-shield { color: var(--armor); }
 .icon-magic { color: var(--magic); }
+.icon-divine { color: var(--divine); }
 .icon-sword { color: var(--damage); }
 .tile-label { display: inline-flex; align-items: center; gap: .3rem; }
 .vital.armor { box-shadow: inset 3px 0 0 var(--armor); }
 .vital.magic { box-shadow: inset 3px 0 0 var(--magic); }
+.vital.divine { box-shadow: inset 3px 0 0 var(--divine); }
 .vital.damage { box-shadow: inset 3px 0 0 var(--damage); }
 .vital.heart { box-shadow: inset 3px 0 0 var(--heart); }
 .armor-row span { display: inline-flex; align-items: center; gap: .3rem; }
@@ -635,7 +653,7 @@ td.unlucky { color: var(--critical); font-weight: 700; }
     .dice-grid { grid-template-columns: 1fr; }
     .tiles { grid-template-columns: repeat(2, 1fr); }
     .hero { grid-template-columns: 1fr; }
-    .hero-vitals { grid-template-columns: repeat(3, 1fr); }
+    .hero-vitals { grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); }
     .vital-hp { grid-column: 1 / -1; }
     .jump { margin: 0 -1rem 1rem; padding: .5rem 1rem; }
     .filter { width: 100%; }

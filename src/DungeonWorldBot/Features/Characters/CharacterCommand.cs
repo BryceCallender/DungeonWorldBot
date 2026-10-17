@@ -200,7 +200,7 @@ public class CharacterCommand : CharacterCommandBase
         IUser user,
         [Description("Amount to damage, before armor. Can be a dice roll or just flat damage")]
         string damage,
-        [Description("Physical (stopped by physical armor), Magical (stopped by magical armor), or True (ignores armor)")]
+        [Description("Physical, Magical or Divine (divine weapons), each stopped by its own armor, or True (ignores armor)")]
         DamageType type = DamageType.Physical,
         [Description("How much of their armor the hit ignores")]
         [MinValue(0)]

@@ -102,8 +102,10 @@ public class PartyReader
     private static ArmorView Armor(Character character) => new(
         DamageRules.Armor(character, ArmorType.Physical),
         DamageRules.Armor(character, ArmorType.Magical),
+        DamageRules.Armor(character, ArmorType.Divine),
         DamageRules.BaseArmor(character, ArmorType.Physical),
         DamageRules.BaseArmor(character, ArmorType.Magical),
+        DamageRules.BaseArmor(character, ArmorType.Divine),
         (character.ArmorBonuses ?? []).Select(DamageRules.Describe).ToList());
 
     private IReadOnlyList<ResourceLine> Resources(Character character, ClassSheet? sheet, IReadOnlyCollection<string> known, IReadOnlyList<OwnedGear> gear)
