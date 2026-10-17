@@ -98,8 +98,10 @@ addEventListener('scroll', () => document.querySelectorAll('.cal-pop:popover-ope
 
         try {
             const response = await fetch(location.href, { credentials: 'same-origin', cache: 'no-store' });
-            // Signed out or the server is restarting: leave the page as it is
-            if (!response.ok || response.redirected) return;
+            // Signed out: leave the page as it is
+            if (response.redirected) return;
+            // The server hiccuped (restarting, database busy mid-write): try once more shortly
+            if (!response.ok) { retrySoon(); return; }
 
             const next = new DOMParser().parseFromString(await response.text(), 'text/html');
             const fresh = next.querySelector('main');
@@ -112,11 +114,17 @@ addEventListener('scroll', () => document.querySelectorAll('.cal-pop:popover-ope
             document.title = next.title;
             pulse();
         } catch {
-            // Try again on the next change
+            retrySoon();
         } finally {
             refreshing = false;
             if (again) { again = false; refresh(); }
         }
+    }
+
+    let retry = null;
+    function retrySoon() {
+        if (retry) return;
+        retry = setTimeout(() => { retry = null; refresh(); }, 2000);
     }
 
     // Where something sits on the page, stable across refreshes

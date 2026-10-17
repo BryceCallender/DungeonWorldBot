@@ -1,23 +1,27 @@
+using Microsoft.Data.Sqlite;
+
 namespace DungeonWorldBot.Dashboard.Party;
 
 /// <summary>
 /// Notices when the bot writes to its database, so open pages can refresh themselves.
 /// </summary>
 /// <remarks>
-/// Polls the database file and its write-ahead log rather than using a file watcher: two file checks a second cost
-/// nothing, and it can't be set off by the dashboard's own reads.
+/// Asks SQLite once a second whether another connection has committed anything (<c>PRAGMA data_version</c>). That
+/// catches every committed write in any journal mode, and only once it's committed, so a refresh never lands halfway
+/// through one. The file is checked too, in case it's swapped for another copy, which needs a fresh connection.
 /// </remarks>
 public sealed class DatabaseWatcher : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(1);
 
-    private readonly string[] _files;
+    private readonly string _path;
+    private readonly ILogger<DatabaseWatcher> _logger;
     private TaskCompletionSource _next = NewSignal();
 
-    public DatabaseWatcher(string databasePath)
+    public DatabaseWatcher(string databasePath, ILogger<DatabaseWatcher> logger)
     {
-        // Only the bot writes these. Readers can touch "-shm", which would make every refresh trigger another.
-        _files = [databasePath, databasePath + "-wal"];
+        _path = databasePath;
+        _logger = logger;
     }
 
     /// <summary>
@@ -27,24 +31,73 @@ public sealed class DatabaseWatcher : BackgroundService
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var last = Fingerprint();
+        SqliteConnection? connection = null;
+        long? lastVersion = null;
+        var lastFile = FileIdentity();
         using var timer = new PeriodicTimer(Interval);
 
-        while (await timer.WaitForNextTickAsync(stoppingToken))
+        try
         {
-            var now = Fingerprint();
-            if (now == last)
-                continue;
+            while (await timer.WaitForNextTickAsync(stoppingToken))
+            {
+                var changed = false;
 
-            last = now;
-            Interlocked.Exchange(ref _next, NewSignal()).TrySetResult();
+                // A different file (restored, copied over) has its own version count, so start again on it
+                var file = FileIdentity();
+                if (file != lastFile)
+                {
+                    lastFile = file;
+                    connection?.Dispose();
+                    connection = null;
+                    lastVersion = null;
+                    changed = true;
+                }
+
+                try
+                {
+                    connection ??= Open();
+                    var version = DataVersion(connection);
+                    if (lastVersion is not null && version != lastVersion)
+                        changed = true;
+                    lastVersion = version;
+                }
+                catch (SqliteException e)
+                {
+                    // Missing or locked for a moment: try again next tick
+                    _logger.LogDebug(e, "Couldn't check the database for changes");
+                    connection?.Dispose();
+                    connection = null;
+                    lastVersion = null;
+                }
+
+                if (changed)
+                    Interlocked.Exchange(ref _next, NewSignal()).TrySetResult();
+            }
+        }
+        finally
+        {
+            connection?.Dispose();
         }
     }
 
-    private string Fingerprint() =>
-        string.Join('|', _files.Select(path => new FileInfo(path) is { Exists: true } file
-            ? $"{file.Length}:{file.LastWriteTimeUtc.Ticks}"
-            : "-"));
+    private SqliteConnection Open()
+    {
+        // Unpooled, so dropping it lets go of a file that's been replaced
+        var connection = new SqliteConnection($"Data Source={_path};Mode=ReadOnly;Pooling=False");
+        connection.Open();
+        return connection;
+    }
+
+    private static long DataVersion(SqliteConnection connection)
+    {
+        using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA data_version";
+        return (long)command.ExecuteScalar()!;
+    }
+
+    // Creation time changes when the file is replaced; edits in place don't touch it
+    private string FileIdentity() =>
+        new FileInfo(_path) is { Exists: true } file ? file.CreationTimeUtc.Ticks.ToString() : "-";
 
     private static TaskCompletionSource NewSignal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
 }

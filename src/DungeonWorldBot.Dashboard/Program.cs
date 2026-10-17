@@ -35,7 +35,8 @@ var settings = DashboardSettings.From(builder.Configuration);
 builder.Services.AddSingleton(settings);
 
 // Pages refresh themselves when the bot writes to the database
-builder.Services.AddSingleton(new DatabaseWatcher(databasePath));
+builder.Services.AddSingleton(services =>
+    new DatabaseWatcher(databasePath, services.GetRequiredService<ILogger<DatabaseWatcher>>()));
 builder.Services.AddHostedService(services => services.GetRequiredService<DatabaseWatcher>());
 
 var signInEnabled = builder.AddDiscordSignIn();
