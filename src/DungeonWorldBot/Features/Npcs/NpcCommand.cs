@@ -1,0 +1,176 @@
+using System.ComponentModel;
+using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Features.Moves;
+using DungeonWorldBot.Features.Rolls;
+using DungeonWorldBot.Infrastructure;
+using Remora.Commands.Attributes;
+using Remora.Discord.API.Abstractions.Objects;
+using Remora.Discord.API.Objects;
+using Remora.Discord.Commands.Attributes;
+using Remora.Discord.Commands.Contexts;
+using Remora.Discord.Commands.Feedback.Services;
+using Remora.Results;
+
+namespace DungeonWorldBot.Features.Npcs;
+
+/// <summary>
+/// Looking after the NPCs travelling with the party. The DM adds and changes them with /dm npc.
+/// </summary>
+[Group("npc")]
+public class NpcCommand : DungeonWorldCommandBase
+{
+    private const string NameDescription = "The NPC";
+
+    private readonly INpcService _npcService;
+    private readonly IDiceRoller _diceRoller;
+
+    public NpcCommand(ICommandContext context, FeedbackService feedbackService, INpcService npcService, IDiceRoller diceRoller)
+        : base(context, feedbackService)
+    {
+        _npcService = npcService;
+        _diceRoller = diceRoller;
+    }
+
+    [Command("list")]
+    [Description("List the NPCs travelling with the party")]
+    public async Task<IResult> ListAsync()
+    {
+        var npcs = await _npcService.GetAllAsync();
+        if (npcs.Count == 0)
+            return await ReplyWithErrorAsync("No NPCs are with the party. The DM can add one with /dm npc add.");
+
+        // Discord allows 25 fields per embed
+        var fields = npcs.Take(25)
+            .Select(n => (IEmbedField)new EmbedField(NpcSheet.Title(n), NpcSheet.Summary(n)))
+            .ToList();
+
+        return await ReplyAsync("Party NPCs", npcs.Count > 25 ? $"Showing 25 of {npcs.Count}." : string.Empty, fields);
+    }
+
+    [Command("show")]
+    [Description("Show an NPC's sheet")]
+    public async Task<IResult> ShowAsync(
+        [Description(NameDescription)]
+        [AutocompleteProvider(NpcAutocomplete.ID)]
+        string name)
+    {
+        var npc = await _npcService.FindAsync(name);
+        if (npc is null)
+            return await ReplyWithErrorAsync(NotFound(name));
+
+        return await ReplyAsync(NpcSheet.Title(npc), npc.CurrentHP == 0 ? "**Down at 0 HP**" : string.Empty, NpcSheet.Fields(npc));
+    }
+
+    [Command("damage")]
+    [Description("Damage an NPC, reduced by their armor if it's physical")]
+    public async Task<IResult> DamageAsync(
+        [Description(NameDescription)]
+        [AutocompleteProvider(NpcAutocomplete.ID)]
+        string name,
+        [Description("Amount to damage, before armor. Can be a dice roll or just flat damage")]
+        string damage,
+        [Description("Physical damage is stopped by their armor; anything else goes straight through")]
+        DamageType type = DamageType.Physical,
+        [Description("How much of their armor the hit ignores")]
+        [MinValue(0)]
+        int piercing = 0)
+    {
+        var npc = await _npcService.FindAsync(name);
+        if (npc is null)
+            return await ReplyWithErrorAsync(NotFound(name));
+
+        if (!_diceRoller.TryRoll(damage, out var roll))
+            return await ReplyWithErrorAsync($"`{damage}` is not a valid amount or dice roll.");
+
+        var hit = await _npcService.DamageAsync(npc, roll.Value, type, piercing);
+
+        var description = $"{npc.Name} took {hit.Taken} damage! ({npc.CurrentHP}/{npc.MaxHP} HP)" +
+                          (npc.CurrentHP == 0 ? " · they're down" : string.Empty);
+        if (hit.Blocked > 0)
+            description += $"\nRolled {hit.Rolled}, armor stopped {hit.Blocked}";
+
+        return await ReplyAsync("Damaged!", description);
+    }
+
+    [Command("heal")]
+    [Description("Heal an NPC")]
+    public async Task<IResult> HealAsync(
+        [Description(NameDescription)]
+        [AutocompleteProvider(NpcAutocomplete.ID)]
+        string name,
+        [Description("Amount to heal. Can be a dice roll or left blank to full heal")]
+        string? heal = null)
+    {
+        var npc = await _npcService.FindAsync(name);
+        if (npc is null)
+            return await ReplyWithErrorAsync(NotFound(name));
+
+        string description;
+        if (string.IsNullOrWhiteSpace(heal))
+        {
+            await _npcService.HealAsync(npc);
+            description = $"{npc.Name} was fully healed";
+        }
+        else
+        {
+            if (!_diceRoller.TryRoll(heal, out var roll))
+                return await ReplyWithErrorAsync($"`{heal}` is not a valid amount or dice roll.");
+
+            var amount = Math.Max(0, roll.Value);
+            await _npcService.HealAsync(npc, amount);
+            description = $"{npc.Name} was healed for {amount} HP";
+        }
+
+        return await ReplyAsync("Healed!", $"{description} ({npc.CurrentHP}/{npc.MaxHP} HP)");
+    }
+
+    [Command("roll")]
+    [Description("Roll for an NPC: 2d6 plus a stat, their loyalty or a skill, or their damage dice")]
+    public async Task<IResult> RollAsync(
+        [Description(NameDescription)]
+        [AutocompleteProvider(NpcAutocomplete.ID)]
+        string name,
+        [Description("A stat (STR, DEX...), Loyalty, one of their skills, or Damage")]
+        [AutocompleteProvider(NpcRollAutocomplete.ID)]
+        string with,
+        [Description("Anything else added to the roll, like +1 from aid or -1 forward")]
+        int bonus = 0)
+    {
+        var npc = await _npcService.FindAsync(name);
+        if (npc is null)
+            return await ReplyWithErrorAsync(NotFound(name));
+
+        var option = NpcRolls.Find(npc, with);
+        if (option is null)
+        {
+            var choices = string.Join(", ", NpcRolls.Options(npc).Select(o => o.Name));
+            return await ReplyWithErrorAsync($"{npc.Name} can't roll with {with}. Try one of: {choices}.");
+        }
+
+        if (!_diceRoller.TryRoll(DiceHelper.AddModifier(option.Dice, bonus), out var roll))
+            return await ReplyWithErrorAsync($"{npc.Name}'s {option.Name} dice (`{option.Dice}`) can't be rolled. The DM can fix them with /dm npc edit.");
+
+        var rolledWith = option.Modifier is { } mod ? $"{option.Name} {NpcSheet.Signed(mod)}" : option.Dice;
+        if (bonus != 0)
+            rolledWith += $", Bonus {NpcSheet.Signed(bonus)}";
+
+        // Only 2d6 rolls have hit bands; a damage roll is just a number
+        var outcome = option.Modifier is null ? null : MoveRoller.OutcomeOf(roll);
+        var fields = new List<IEmbedField> { new EmbedField("Rolled with", rolledWith) };
+        if (outcome is { } band)
+            fields.Add(new EmbedField(MoveRoller.Describe(band), MoveRoller.GeneralMeaning(band)));
+
+        // Not recorded in roll stats, which belong to the player who rolled
+        return await _feedbackService.SendContextualEmbedAsync(
+            new Embed(
+                Title: $"🎲 {npc.Name}: {option.Name}",
+                Description: DiceHelper.BuildDiceResult(roll),
+                Fields: fields,
+                Colour: outcome is { } o ? MoveRoller.ColourFor(o) : _feedbackService.Theme.Success
+            ),
+            ct: CancellationToken
+        );
+    }
+
+    public static string NotFound(string name) => $"No NPC called {name} is with the party. See them all with /npc list.";
+}
