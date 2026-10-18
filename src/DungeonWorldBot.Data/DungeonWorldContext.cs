@@ -14,9 +14,18 @@ public class DungeonWorldContext : DbContext
 
     public DbSet<RollRecord> Rolls => Set<RollRecord>();
 
+    public DbSet<Npc> Npcs => Set<Npc>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<Npc>(npc =>
+        {
+            npc.HasIndex(n => n.Name).IsUnique();
+            // Names are looked up however they're typed
+            npc.Property(n => n.Name).UseCollation("NOCASE");
+        });
 
         modelBuilder.Entity<RollRecord>(roll =>
         {
