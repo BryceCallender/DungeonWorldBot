@@ -248,6 +248,16 @@ public class ClassSheetTests
     }
 
     [Fact]
+    public void PlayingTheLongGame_KeepsOneGambitOnReset()
+    {
+        var gambit = Sheet(ClassType.Battlemaster).FindResource("Gambit")!;
+
+        Assert.Equal(0, gambit.ResetValueFor([]));
+        Assert.Equal(1, gambit.ResetValueFor(["Playing the Long Game"]));
+        Assert.Equal(0, gambit.StartFor(["Playing the Long Game"]));
+    }
+
+    [Fact]
     public void ClassStat_ComesFromTheFirstPickedOption()
     {
         var sheet = Sheet(ClassType.Collector);

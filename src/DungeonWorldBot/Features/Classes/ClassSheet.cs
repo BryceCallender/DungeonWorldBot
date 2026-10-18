@@ -199,9 +199,10 @@ public sealed record MulticlassGrant
 public sealed record ClassStat(string Name, string Feature);
 
 /// <summary>
-/// A change to a resource's starting value or max from having a move.
+/// A change to a resource's starting value, max or reset value from having a move.
 /// </summary>
-public sealed record ResourceBonus(string Move, int Start = 0, int Max = 0);
+/// <param name="Reset">Extra kept when the resource resets, on top of what it would reset to (Playing the Long Game keeps 1 Gambit).</param>
+public sealed record ResourceBonus(string Move, int Start = 0, int Max = 0, int Reset = 0);
 
 /// <summary>
 /// A pool of points a class tracks, like the Battlemaster's Gambits.
@@ -239,7 +240,8 @@ public sealed record ClassResource(string Name, string Summary, int Start = 0, i
 
     public int StartFor(IReadOnlyCollection<string> ownedMoves) => Start + BonusesFor(ownedMoves).Sum(b => b.Start);
 
-    public int ResetValueFor(IReadOnlyCollection<string> ownedMoves) => ResetTo ?? StartFor(ownedMoves);
+    public int ResetValueFor(IReadOnlyCollection<string> ownedMoves) =>
+        (ResetTo ?? StartFor(ownedMoves)) + BonusesFor(ownedMoves).Sum(b => b.Reset);
 
     public int? MaxFor(IReadOnlyCollection<string> ownedMoves) => Max + BonusesFor(ownedMoves).Sum(b => b.Max);
 

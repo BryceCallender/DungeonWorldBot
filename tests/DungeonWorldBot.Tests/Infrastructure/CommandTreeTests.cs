@@ -53,6 +53,9 @@ public class CommandTreeTests
     [InlineData("/dm level set")]
     [InlineData("/dm level set-points")]
     [InlineData("/dm diag temp")]
+    [InlineData("/npc roll")]
+    [InlineData("/dm npc add")]
+    [InlineData("/dm npc stats")]
     public void Tree_HasNestedCommand(string path)
     {
         Assert.Contains(path, Paths(BuildTree().Root));
