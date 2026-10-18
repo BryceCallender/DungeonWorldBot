@@ -11,6 +11,9 @@ public static class LiveUpdates
     // A named event, so it doesn't count as a change; the browser drops events with no data
     private const string Ping = "event: ping\ndata: ping\n\n";
 
+    // How long the browser waits to reconnect a dropped stream, sooner than its own default
+    private const string Retry = "retry: 2000\n\n";
+
     public static RouteHandlerBuilder MapLiveUpdates(this IEndpointRouteBuilder app) =>
         app.MapGet("/live", async (HttpContext context, DatabaseWatcher watcher) =>
         {
@@ -23,7 +26,7 @@ public static class LiveUpdates
             try
             {
                 // Pings are events rather than comments so the page can see them and show it's live
-                await SendAsync(context, Ping);
+                await SendAsync(context, Retry + Ping);
 
                 while (!ct.IsCancellationRequested)
                 {

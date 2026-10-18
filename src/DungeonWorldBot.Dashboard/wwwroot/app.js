@@ -94,28 +94,84 @@ setInterval(showTimes, 60000);
     let signedOut = false;
     let lastHtml = document.querySelector('main')?.innerHTML;
 
+    // The server pings every 20 seconds, so this long without one means the stream died without saying so (a laptop
+    // waking up, a network change, the tunnel dropping it), which the browser can take minutes to notice
+    const silence = 45000;
+    let source = null;
+    let live = false;
+    let watchdog = null;
+    let reconnectTimer = null;
+    let attempts = 0;
+
     function connect() {
-        const source = new EventSource('live');
-        source.onopen = () => {
+        if (signedOut) return;
+        clearTimeout(reconnectTimer);
+        reconnectTimer = null;
+        source?.close();
+        const current = source = new EventSource('live');
+        expectPing();
+
+        current.onopen = () => {
             setLive(true);
             // Changes made while disconnected were missed
             if (dropped) refresh();
             dropped = false;
         };
-        source.addEventListener('ping', () => setLive(true));
-        source.onmessage = () => refresh();
-        source.onerror = () => {
-            setLive(false);
-            dropped = true;
-            // A closed stream (e.g. signed out) isn't retried by the browser, so retry here, unless they're signed out
-            if (source.readyState === EventSource.CLOSED) setTimeout(async () => {
-                await refresh();
-                if (!signedOut) connect();
-            }, 10000);
+        current.addEventListener('ping', () => {
+            attempts = 0;
+            setLive(true);
+            expectPing();
+        });
+        current.onmessage = () => {
+            expectPing();
+            refresh();
+        };
+        current.onerror = () => {
+            if (current !== source) return;
+            lost();
+            // The browser retries a dropped stream itself, but not a closed one (an error page from the tunnel,
+            // signed out), so retry that here
+            if (current.readyState === EventSource.CLOSED) reconnectSoon();
         };
     }
 
+    function lost() {
+        setLive(false);
+        dropped = true;
+    }
+
+    function expectPing() {
+        clearTimeout(watchdog);
+        watchdog = setTimeout(() => {
+            lost();
+            connect();
+        }, silence);
+    }
+
+    // Soon at first, then backing off to every 30 seconds while the server stays unreachable
+    function reconnectSoon() {
+        if (reconnectTimer) return;
+        const delay = Math.min(1000 * 2 ** attempts++, 30000);
+        reconnectTimer = setTimeout(async () => {
+            reconnectTimer = null;
+            // Finds out whether they've been signed out, which connecting can't tell
+            await refresh();
+            connect();
+        }, delay);
+    }
+
+    // Back online, or back on the tab after the browser put it to sleep: reconnect now instead of waiting
+    function reconnectNow() {
+        if (live || signedOut) return;
+        attempts = 0;
+        connect();
+    }
+    window.addEventListener('online', reconnectNow);
+    window.addEventListener('pageshow', e => { if (e.persisted) { lost(); reconnectNow(); } });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) reconnectNow(); });
+
     function setLive(on) {
+        live = on;
         if (!indicator) return;
         indicator.classList.toggle('off', !on);
         indicator.title = on ? 'Live: updates as the bot changes things' : 'Reconnecting…';
@@ -133,6 +189,8 @@ setInterval(showTimes, 60000);
             // Signed out: leave the page as it is
             if (response.type === 'opaqueredirect') {
                 signedOut = true;
+                clearTimeout(watchdog);
+                source?.close();
                 setLive(false);
                 if (indicator) indicator.title = 'Signed out. Reload to sign in again.';
                 return;
