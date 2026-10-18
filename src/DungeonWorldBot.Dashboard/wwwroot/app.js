@@ -73,8 +73,6 @@ addEventListener('scroll', () => document.querySelectorAll('.cal-pop:popover-ope
     let dropped = false;
     // Once the sign-in has lapsed, every check would only be sent to Discord, so stop until they reload
     let signedOut = false;
-    // When the stream last said anything. The server pings every 20 seconds.
-    let heard = Date.now();
     let lastHtml = document.querySelector('main')?.innerHTML;
 
     function connect() {
@@ -85,8 +83,8 @@ addEventListener('scroll', () => document.querySelectorAll('.cal-pop:popover-ope
             if (dropped) refresh();
             dropped = false;
         };
-        source.addEventListener('ping', () => { heard = Date.now(); setLive(true); });
-        source.onmessage = () => { heard = Date.now(); refresh(); };
+        source.addEventListener('ping', () => setLive(true));
+        source.onmessage = () => refresh();
         source.onerror = () => {
             setLive(false);
             dropped = true;
@@ -97,13 +95,6 @@ addEventListener('scroll', () => document.querySelectorAll('.cal-pop:popover-ope
             }, 10000);
         };
     }
-
-    // Some tunnels (Cloudflare's quick tunnels) hold the stream back, so nothing ever arrives. Then check by hand.
-    setInterval(() => {
-        if (signedOut || Date.now() - heard < 45000) return;
-        if (indicator) indicator.title = 'Checking for changes every 10 seconds';
-        refresh();
-    }, 10000);
 
     function setLive(on) {
         if (!indicator) return;
@@ -134,7 +125,7 @@ addEventListener('scroll', () => document.querySelectorAll('.cal-pop:popover-ope
             const fresh = next.querySelector('main');
             const main = document.querySelector('main');
             if (!fresh || !main) return;
-            // Checking by hand mostly finds nothing new; leave the page alone then
+            // Catching up after a reconnect often finds nothing new; leave the page alone then
             if (fresh.innerHTML === lastHtml) return;
             lastHtml = fresh.innerHTML;
 

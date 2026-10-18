@@ -22,8 +22,7 @@ public static class LiveUpdates
 
             try
             {
-                // Pings are events rather than comments so the page can see them, and notice when a tunnel that
-                // doesn't stream (like Cloudflare's quick tunnels) holds everything back
+                // Pings are events rather than comments so the page can see them and show it's live
                 await SendAsync(context, Ping);
 
                 while (!ct.IsCancellationRequested)

@@ -48,7 +48,7 @@ else
     <div class="party">
         @foreach (var c in _party)
         {
-            <a class="card member @Lookup.ColorOf(c.Character.Class.Type) @(Viewer.Is(c.ID) ? "mine" : "")" href="@c.Url">
+            <a class="card member @Lookup.ColorOf(c.Character.Class.Type)" href="@c.Url">
                 <div class="member-head">
                     <div>
                         <h2>@c.Name @if (Viewer.Is(c.ID)) { <span class="chip accent">You</span> }</h2>
@@ -128,13 +128,87 @@ else
     </div>
 }
 
+@if (_npcs.Count > 0)
+{
+    <h2 class="section-title">Companions</h2>
+    <div class="party">
+        @foreach (var npc in _npcs)
+        {
+            <div class="card member npc">
+                <div class="member-head">
+                    <div>
+                        <h2>@npc.Name</h2>
+                        <div class="muted class-line">
+                            <span>@(npc.Role ?? "NPC")</span>
+                            @if (Follows(npc) is { } leader)
+                            {
+                                <span class="chip accent">follows @leader</span>
+                            }
+                        </div>
+                    </div>
+                    @if (npc.CurrentHP == 0)
+                    {
+                        <span class="chip warn">Down</span>
+                    }
+                </div>
+
+                <HealthBar Current="npc.CurrentHP" Max="npc.MaxHP" />
+
+                <div class="armor-row">
+                    <span title="Armor"><Icon Name="shield" />@npc.Armor</span>
+                    @if (npc.Damage is not null)
+                    {
+                        <span title="Damage"><Icon Name="sword" />@npc.Damage</span>
+                    }
+                    <span title="Loyalty">Loyalty @Signed(npc.Loyalty)</span>
+                </div>
+
+                @* Modifiers only: NPCs don't have scores *@
+                <div class="stats">
+                    @foreach (var stat in Enum.GetValues<StatType>())
+                    {
+                        <div class="stat">
+                            <span class="stat-name">@stat.ToString().ToUpper()</span>
+                            <span class="stat-mod">@Signed(npc.Modifier(stat))</span>
+                        </div>
+                    }
+                </div>
+
+                @if (npc.Skills is not null || npc.Cost is not null || npc.Notes is not null)
+                {
+                    <div class="member-extra small">
+                        @if (npc.Skills is not null)
+                        {
+                            <div><strong>Skills</strong> @npc.Skills</div>
+                        }
+                        @if (npc.Cost is not null)
+                        {
+                            <div><strong>Cost</strong> @npc.Cost</div>
+                        }
+                        @if (npc.Notes is not null)
+                        {
+                            <div class="muted">@npc.Notes</div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+}
+
 @code {
     private IReadOnlyList<CharacterView> _party = [];
+    private IReadOnlyList<Npc> _npcs = [];
 
     protected override async Task OnInitializedAsync()
     {
         _party = await PartyReader.GetPartyAsync();
+        _npcs = await PartyReader.GetNpcsAsync();
     }
+
+    // The name of the character they follow, if that player has one
+    private string? Follows(Npc npc) =>
+        npc.FollowsID is { } id ? PartyReader.Match(_party, id.Value.ToString())?.Name : null;
 
     private static List<string> ActiveShapes(CharacterView c) =>
         (c.Character.Transformations ?? []).Where(f => f.IsActive).Select(f => f.Name).ToList();

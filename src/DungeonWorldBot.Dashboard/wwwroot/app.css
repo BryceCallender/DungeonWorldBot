@@ -533,7 +533,6 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 /* A stripe along the top in the class color */
 .member, .lookup-card[class*="cls-"], .hero[class*="cls-"] { box-shadow: inset 0 4px 0 var(--class); }
 .member:hover, .lookup-card[class*="cls-"]:hover { border-color: var(--class); }
-.member.mine { border-color: var(--accent); box-shadow: inset 0 4px 0 var(--class), 0 0 0 1px var(--accent); }
 
 /* A soft wash of the class color behind a character's or class's name */
 .hero[class*="cls-"] {
@@ -660,3 +659,8 @@ td.unlucky { color: var(--critical); font-weight: 700; }
     .jump-filter { width: 10rem; }
     .tools { width: 100%; }
 }
+
+/* NPCs aren't links, so their cards stay put */
+.member.npc { box-shadow: inset 0 4px 0 var(--muted); }
+.member.npc:hover { border-color: var(--border); transform: none; }
+.member.npc .member-extra { gap: .35rem; }

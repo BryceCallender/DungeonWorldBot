@@ -3,10 +3,12 @@ using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Features.Classes;
 using DungeonWorldBot.Features.Gear;
 using DungeonWorldBot.Features.Leveling;
+using DungeonWorldBot.Features.Npcs;
 using DungeonWorldBot.Features.Resources;
 using DungeonWorldBot.Features.Spells;
 using DungeonWorldBot.Features.Subclasses;
 using DungeonWorldBot.Rules;
+using Microsoft.Data.Sqlite;
 using Remora.Rest.Core;
 
 namespace DungeonWorldBot.Dashboard.Party;
@@ -19,12 +21,14 @@ public class PartyReader
     private readonly ICharacterService _characterService;
     private readonly IResourceService _resourceService;
     private readonly ILevelingService _levelingService;
+    private readonly INpcService _npcService;
 
-    public PartyReader(ICharacterService characterService, IResourceService resourceService, ILevelingService levelingService)
+    public PartyReader(ICharacterService characterService, IResourceService resourceService, ILevelingService levelingService, INpcService npcService)
     {
         _characterService = characterService;
         _resourceService = resourceService;
         _levelingService = levelingService;
+        _npcService = npcService;
     }
 
     public async Task<IReadOnlyList<CharacterView>> GetPartyAsync() =>
@@ -32,6 +36,22 @@ public class PartyReader
             .OrderBy(c => c.Name)
             .Select(Describe)
             .ToList();
+
+    /// <summary>
+    /// The NPCs travelling with the party, in name order. None when the database predates NPCs.
+    /// </summary>
+    public async Task<IReadOnlyList<Npc>> GetNpcsAsync()
+    {
+        try
+        {
+            return await _npcService.GetAllAsync();
+        }
+        catch (SqliteException e) when (e.Message.Contains("no such table"))
+        {
+            // The dashboard only reads, so it can't add the table; the bot's migration does
+            return [];
+        }
+    }
 
     /// <summary>
     /// A character by name as it appears in addresses ("mr-hatter"), or by Discord ID for older links.

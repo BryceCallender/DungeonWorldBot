@@ -30,6 +30,11 @@ public static class DiscordSignIn
     public static bool AddDiscordSignIn(this WebApplicationBuilder builder)
     {
         var discord = builder.Configuration.GetSection("Discord");
+
+        // Lets local testing skip sign-in without touching the secrets (Discord:SignIn=false)
+        if (!discord.GetValue("SignIn", true))
+            return false;
+
         var clientId = discord["ClientId"];
         var clientSecret = discord["ClientSecret"];
         if (string.IsNullOrWhiteSpace(clientId) || string.IsNullOrWhiteSpace(clientSecret))
