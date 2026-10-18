@@ -6,4 +6,5 @@ public enum CanvasItemType
     Token,
     Text,
     Image,
+    Shape,
 }

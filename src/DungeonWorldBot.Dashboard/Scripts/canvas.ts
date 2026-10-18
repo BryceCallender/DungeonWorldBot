@@ -136,7 +136,8 @@ function itemOf(shape: Konva.Node): Konva.Node | null {
 // Things the saved JSON doesn't say but the page needs, like how easy a thin line is to hit with the eraser
 function prepare(node: Konva.Node, type: CanvasItemType) {
     if (node instanceof Konva.Line) node.hitStrokeWidth(20);
-    if (type === 'token' || type === 'image' || node instanceof Konva.Text) node.draggable(tool === 'move');
+    if (type === 'shape' && node instanceof Konva.Shape) node.hitStrokeWidth(20);
+    if (type === 'token' || type === 'image' || type === 'shape' || node instanceof Konva.Text) node.draggable(tool === 'move');
     showPictures(node);
 }
 
@@ -187,7 +188,8 @@ function showPictures(node: Konva.Node) {
 function addItem(id: string, type: CanvasItemType, json: ItemJson) {
     const wasSelected = selected()?.id() === id;
     stage.findOne('#' + id)?.destroy();                    // the same ID again replaces it
-    const node = Konva.Node.create(json);
+    let node = Konva.Node.create(json);
+    if (type === 'token') node = withInitials(node);
     node.id(id);
     prepare(node, type);
     layerFor(type).add(node as Konva.Shape | Konva.Group);
@@ -250,16 +252,23 @@ tokenList.addEventListener('click', e => {
 
 // ---- Tools ---------------------------------------------------------------------------------------------------------
 
-type Tool = 'pen' | 'erase' | 'move' | 'token' | 'text';
+type Tool = 'pen' | 'erase' | 'move' | 'token' | 'text' | 'shape';
+type ShapeKind = 'rect' | 'ellipse' | 'line' | 'arrow';
+let shapeKind: ShapeKind = 'rect';
 let tool: Tool = 'pen';
 let color = (document.querySelector<HTMLElement>('[data-color].on')?.dataset.color) ?? '#7F77DD';
 
+// The strip of shape kinds beside the Shape button, which opens like a menu and closes once you've picked
+const shapeTool = document.querySelector<HTMLElement>('.shape-tool')!;
+const showShapes = (open: boolean) => shapeTool.classList.toggle('open', open);
+
 function setTool(next: Tool) {
+    if (next !== 'shape') showShapes(false);
     tool = next;
     container.dataset.tool = next;                         // for the cursor, in CanvasPage.razor.css
     document.querySelectorAll<HTMLElement>('.board-rail [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === next));
     tokens.getChildren().forEach(t => t.draggable(next === 'move'));
-    drawing.find('Text').forEach(t => t.draggable(next === 'move'));
+    drawing.find('Text, .shape').forEach(t => t.draggable(next === 'move'));
     pictures.getChildren().forEach(p => p.draggable(next === 'move'));
     if (next !== 'move') select(null);
     updatePanning();
@@ -269,14 +278,22 @@ function setTool(next: Tool) {
 document.querySelector('.board-page')!.addEventListener('click', e => {
     const button = (e.target as HTMLElement).closest('button');
     if (!button) return;
+    // The Shape button opens its strip; clicking it again while it's open closes it
+    if (button.dataset.tool === 'shape') showShapes(!(tool === 'shape' && shapeTool.classList.contains('open')));
     if (button.dataset.tool) setTool(button.dataset.tool as Tool);
     if (button.dataset.color) {
         color = button.dataset.color;
         document.querySelectorAll('[data-color]').forEach(b => b.classList.toggle('on', b === button));
-        // Picking a color means you want to draw with it, unless you're placing tokens or text in it
-        if (tool !== 'token' && tool !== 'text') setTool('pen');
+        // Picking a color means you want to draw with it, unless you're placing tokens, text or shapes in it
+        if (tool !== 'token' && tool !== 'text' && tool !== 'shape') setTool('pen');
     }
     if (button.hasAttribute('data-undo')) undo();
+    if (button.dataset.shape) {
+        shapeKind = button.dataset.shape as ShapeKind;
+        document.querySelectorAll('[data-shape]').forEach(b => b.classList.toggle('on', b === button));
+        setTool('shape');
+        showShapes(false);
+    }
     // The buttons zoom around the middle of the box
     const middle = { x: stage.width() / 2, y: stage.height() / 2 };
     if (button.dataset.zoom === 'in') zoomAt(middle, 1.25);
@@ -284,7 +301,7 @@ document.querySelector('.board-page')!.addEventListener('click', e => {
     if (button.dataset.zoom === 'fit') fitView();
 });
 
-const keys: Record<string, Tool> = { p: 'pen', e: 'erase', m: 'move', t: 'token', x: 'text' };
+const keys: Record<string, Tool> = { p: 'pen', e: 'erase', m: 'move', t: 'token', x: 'text', s: 'shape' };
 document.addEventListener('keydown', e => {
     // Typing text on the board, or anywhere else, isn't a shortcut
     if ((e.target as HTMLElement).closest('input, textarea, [contenteditable]')) return;
@@ -300,6 +317,12 @@ document.addEventListener('keydown', e => {
 document.addEventListener('keyup', e => {
     if (e.key === ' ') { spaceHeld = false; updatePanning(); }
 });
+
+// Like a menu: pressing anywhere else (the board included) or Escape closes the shape strip
+document.addEventListener('pointerdown', e => {
+    if (!(e.target as HTMLElement).closest('.shape-tool')) showShapes(false);
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape') showShapes(false); });
 
 // What you've added, newest last, for undo
 const mine: string[] = [];
@@ -339,14 +362,19 @@ stage.on('pointerdown', e => {
     } else if (tool === 'move') {
         // Text under the pointer gets selection handles; anywhere else drops them. Handles themselves are left alone.
         if (e.target.getParent() instanceof Konva.Transformer) return;
-        const text = e.target instanceof Konva.Text && e.target.getLayer() === drawing;
+        const onDrawing = e.target.getLayer() === drawing;
+        const text = e.target instanceof Konva.Text && onDrawing;
+        const shape = e.target.hasName('shape') && onDrawing;
         const picture = e.target instanceof Konva.Image && e.target.getLayer() === pictures;
-        select(text || picture ? e.target as Konva.Shape : null);
+        select(text || shape || picture ? e.target as Konva.Shape : null);
     } else if (tool === 'erase') {
         erasing = true;
         eraseHere();
     } else if (tool === 'token') {
         placeToken(x, y);
+    } else if (tool === 'shape') {
+        shapeDraft = { node: newShape(shapeKind, x, y), start: { x, y } };
+        drawing.add(shapeDraft.node);
     } else if (tool === 'text') {
         // Clicking existing text edits it; clicking anywhere else starts new text there
         const target = e.target instanceof Konva.Text && e.target.getLayer() === drawing ? e.target : null;
@@ -366,6 +394,8 @@ stage.on('pointermove', () => {
         stroke.unsent.push(x, y);
         // Send the new points in batches, about 20 a second, so the others see it being drawn
         stroke.timer ??= window.setTimeout(sendProgress, 50);
+    } else if (shapeDraft) {
+        sizeShape(shapeDraft.node, shapeDraft.start, { x, y }, shiftHeld);
     } else if (erasing) {
         eraseHere();
     }
@@ -380,6 +410,7 @@ function sendProgress() {
 // On the window, so letting go outside the board still finishes the stroke
 window.addEventListener('pointerup', () => {
     erasing = false;
+    if (shapeDraft) finishShape();
     if (!stroke) return;
     if (stroke.timer) clearTimeout(stroke.timer);
     sendProgress();
@@ -398,7 +429,68 @@ function eraseHere() {
     removeItem(item);
 }
 
-// ---- Moving and scaling text and pictures --------------------------------------------------------------------------------------
+// ---- Shapes --------------------------------------------------------------------------------------------------------
+
+// The shape being dragged out, from where it started
+let shapeDraft: { node: Konva.Shape; start: { x: number; y: number } } | null = null;
+
+// Shift makes squares, circles and lines at 45° steps
+let shiftHeld = false;
+document.addEventListener('keydown', e => { if (e.key === 'Shift') shiftHeld = true; });
+document.addEventListener('keyup', e => { if (e.key === 'Shift') shiftHeld = false; });
+
+function newShape(kind: ShapeKind, x: number, y: number): Konva.Shape {
+    // Named 'shape' so Move can tell them from freehand strokes. Lines stay 4 wide however they're resized.
+    const look = {
+        id: crypto.randomUUID(), name: 'shape', x, y, stroke: color, strokeWidth: 4,
+        strokeScaleEnabled: false, hitStrokeWidth: 20, lineCap: 'round' as const, lineJoin: 'round' as const,
+    };
+    switch (kind) {
+        case 'rect': return new Konva.Rect({ ...look, width: 0, height: 0, cornerRadius: 4 });
+        case 'ellipse': return new Konva.Ellipse({ ...look, radiusX: 0, radiusY: 0 });
+        case 'line': return new Konva.Line({ ...look, points: [0, 0, 0, 0] });
+        case 'arrow': return new Konva.Arrow({ ...look, points: [0, 0, 0, 0], fill: color, pointerLength: 14, pointerWidth: 14 });
+    }
+}
+
+// Stretch it from where the drag started to where the pointer is
+function sizeShape(node: Konva.Shape, start: { x: number; y: number }, at: { x: number; y: number }, even: boolean) {
+    let dx = at.x - start.x, dy = at.y - start.y;
+    if (node instanceof Konva.Line) {                     // a line or arrow, drawn from its start
+        if (even) {
+            const angle = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)) * (Math.PI / 4);
+            const length = Math.hypot(dx, dy);
+            dx = Math.round(Math.cos(angle) * length);
+            dy = Math.round(Math.sin(angle) * length);
+        }
+        node.points([0, 0, dx, dy]);
+        return;
+    }
+    if (even) {
+        const side = Math.max(Math.abs(dx), Math.abs(dy));
+        dx = Math.sign(dx || 1) * side;
+        dy = Math.sign(dy || 1) * side;
+    }
+    if (node instanceof Konva.Ellipse) {                  // placed by its middle
+        node.position({ x: start.x + dx / 2, y: start.y + dy / 2 });
+        node.radius({ x: Math.abs(dx) / 2, y: Math.abs(dy) / 2 });
+    } else {                                              // a rectangle, placed by its top-left corner
+        node.position({ x: Math.min(start.x, start.x + dx), y: Math.min(start.y, start.y + dy) });
+        node.size({ width: Math.abs(dx), height: Math.abs(dy) });
+    }
+}
+
+function finishShape() {
+    const { node } = shapeDraft!;
+    shapeDraft = null;
+    // A click without a drag isn't a shape
+    const box = node.getClientRect({ skipStroke: true, relativeTo: stage });
+    if (Math.max(box.width, box.height) < 4) { node.destroy(); return; }
+    live?.addItem(node.id(), 'shape', node.toObject());
+    mine.push(node.id());
+}
+
+// ---- Moving and scaling text, shapes and pictures --------------------------------------------------------------------------------------
 
 // Konva's Transformer draws a box with corner handles around whatever it's given. Dragging a corner scales the text
 // or picture; dragging it moves it (they're draggable with the Move tool).
@@ -417,6 +509,12 @@ handles.add(transformer);
 
 const selected = () => (transformer.nodes()[0] as Konva.Shape | undefined) ?? null;
 function select(shape: Konva.Shape | null) {
+    // Text and pictures keep their shape; drawn shapes can be stretched either way
+    const free = !!shape?.hasName('shape');
+    transformer.keepRatio(!free);
+    transformer.enabledAnchors(free
+        ? ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right']
+        : ['top-left', 'top-right', 'bottom-left', 'bottom-right']);
     transformer.nodes(shape ? [shape] : []);
 }
 
@@ -425,6 +523,13 @@ function select(shape: Konva.Shape | null) {
 transformer.on('transformend', () => {
     const shape = selected();
     if (!shape) return;
+    if (shape.hasName('shape')) {
+        // Shapes keep their scale: their lines don't thicken (strokeScaleEnabled is off), so there's nothing to convert
+        shape.x(Math.round(shape.x() * 10) / 10);
+        shape.y(Math.round(shape.y() * 10) / 10);
+        live?.addItem(shape.id(), 'shape', shape.toObject());
+        return;
+    }
     if (shape instanceof Konva.Text) {
         shape.fontSize(Math.max(8, Math.round(shape.fontSize() * shape.scaleX())));
     } else {
@@ -510,6 +615,41 @@ function editText(existing: Konva.Text | null, at: { x: number; y: number }) {
 
 // ---- Tokens --------------------------------------------------------------------------------------------------------
 
+// "Goblin boss" is GB, "Kael" is K: the first letter of up to two words
+const initialsOf = (name: string) =>
+    name.split(/\s+/).filter(Boolean).slice(0, 2).map(word => [...word][0]).join('').toUpperCase();
+
+// Their initials in white, centred in a token's circle and sized to it
+function addInitials(token: Konva.Group, name: string, radius: number) {
+    token.add(new Konva.Text({
+        text: initialsOf(name), fontSize: Math.round(radius * 0.8), fontStyle: 'bold', fill: '#ffffff',
+        width: radius * 2, height: radius * 2, offsetX: radius, offsetY: radius,
+        align: 'center', verticalAlign: 'middle', listening: false,
+    }));
+}
+
+// Tokens without a picture show initials, including ones saved as a bare circle (like the samples) or before tokens
+// had them. The circle is wrapped in a group just for showing; it sits at the same spot, so moves still line up.
+function withInitials(token: Konva.Node): Konva.Node {
+    if (srcOf(token)) return token;
+    if (token instanceof Konva.Circle) {
+        const group = new Konva.Group({ x: token.x(), y: token.y(), name: token.name() });
+        token.position({ x: 0, y: 0 });
+        token.name('');
+        // Old saves have the circle draggable, and Konva drags the innermost draggable thing, which would leave the
+        // group (the saved item) where it was
+        token.draggable(false);
+        group.add(token);
+        addInitials(group, group.name(), token.radius());
+        return group;
+    }
+    if (token instanceof Konva.Group) {
+        const circle = token.findOne<Konva.Circle>('Circle');
+        if (circle && !srcOf(circle) && !token.findOne('Text')) addInitials(token, token.name(), circle.radius());
+    }
+    return token;
+}
+
 // A colored circle with their initials, or with a picture in it if there's one
 function placeToken(x: number, y: number, picture?: string, name = window.prompt('Token name')?.trim()) {
     if (!name) return;
@@ -518,10 +658,7 @@ function placeToken(x: number, y: number, picture?: string, name = window.prompt
     const circle = new Konva.Circle({ radius: 22, fill: color, stroke: '#ffffff', strokeWidth: 2 });
     if (picture) circle.setAttr('src', picture);
     token.add(circle);
-    if (!picture) token.add(new Konva.Text({
-        text: name.slice(0, 2).toUpperCase(), fontSize: 16, fontStyle: 'bold', fill: '#ffffff',
-        width: 44, height: 44, offsetX: 22, offsetY: 22, align: 'center', verticalAlign: 'middle',
-    }));
+    if (!picture) addInitials(token, name, circle.radius());
     prepare(token, 'token');
     tokens.add(token);
     listTokens();
@@ -600,7 +737,7 @@ async function addPictureToken(file: File, at = viewCenter()) {
     placeToken(at.x, at.y, url, name);
 }
 
-// Board pictures, or token pictures while the Token tool is on (or from the sidebar's button)
+// A picture on the board, or a token's picture (only from the sidebar's "+ Image token")
 function addFile(file: File | undefined, asToken: boolean, at?: { x: number; y: number }) {
     if (!file?.type.startsWith('image/')) return;
     (asToken ? addPictureToken(file, at) : addPicture(file, at))
@@ -624,14 +761,14 @@ container.addEventListener('dragover', e => e.preventDefault());
 container.addEventListener('drop', e => {
     e.preventDefault();
     stage.setPointersPositions(e);
-    addFile(e.dataTransfer?.files[0], tool === 'token', stage.getRelativePointerPosition() ?? undefined);
+    addFile(e.dataTransfer?.files[0], false, stage.getRelativePointerPosition() ?? undefined);
 });
 
 // Pasting a picture (like a screenshot) puts it in the middle of what you can see
 document.addEventListener('paste', e => {
     if ((e.target as HTMLElement).closest('input, textarea, [contenteditable]')) return;
     const file = [...e.clipboardData?.files ?? []].find(f => f.type.startsWith('image/'));
-    if (file) { e.preventDefault(); addFile(file, tool === 'token'); }
+    if (file) { e.preventDefault(); addFile(file, false); }
 });
 
 // ---- Thumbnail for the canvases page --------------------------------------------------------------------------
@@ -708,23 +845,33 @@ function colorOf(personId: string) {
     return palette[Math.abs(hash) % palette.length];
 }
 
+// An arrow pointer like the one on your own screen, its tip at (0, 0)
+const POINTER = 'M0 0 L0 17 L4.6 12.6 L7.6 19.4 L10.4 18.2 L7.4 11.6 L13.4 11.6 Z';
+
+// Cursors are drawn in board units, so undo the zoom to keep them the size of a real pointer
+const keepScreenSize = (group: Konva.Group) => group.scale({ x: 1 / stage.scaleX(), y: 1 / stage.scaleY() });
+
 function showCursor(personId: string, x: number, y: number) {
     let cursor = cursors.get(personId);
     if (!cursor) {
         const group = new Konva.Group();
-        group.add(new Konva.Circle({ radius: 6, fill: colorOf(personId) }));
-        group.add(new Konva.Label({ x: 8, y: 6 })
+        group.add(new Konva.Path({ data: POINTER, fill: colorOf(personId), stroke: '#ffffff', strokeWidth: 1.5, lineJoin: 'round' }));
+        group.add(new Konva.Label({ x: 12, y: 18 })
             .add(new Konva.Tag({ fill: colorOf(personId), cornerRadius: 4 }))
-            .add(new Konva.Text({ text: people.get(personId)?.name ?? '…', fontSize: 13, padding: 4, fill: '#ffffff' })));
+            .add(new Konva.Text({ text: people.get(personId)?.name ?? '…', fontSize: 12, padding: 4, fill: '#ffffff' })));
         others.add(group);
         cursor = { group, hide: 0 };
         cursors.set(personId, cursor);
     }
+    keepScreenSize(cursor.group);
     cursor.group.position({ x, y }).visible(true);
     // Hide it when they stop moving, so a cursor isn't left sitting on the board
     clearTimeout(cursor.hide);
     cursor.hide = window.setTimeout(() => cursor!.group.visible(false), 4000);
 }
+
+// And when you zoom, every cursor already showing
+stage.on('scaleXChange', () => cursors.forEach(c => keepScreenSize(c.group)));
 
 function showPeople(list: CanvasPerson[]) {
     people.clear();
@@ -754,6 +901,22 @@ function showStatus(state: 'live' | 'reconnecting' | 'offline', text?: string) {
 setTool('pen');
 
 // ---- Connecting ----------------------------------------------------------------------------------------------------
+
+// Leaving by a link (like the back arrow): tell the server first, or the page you land on (like the canvases list)
+// can be drawn before it notices the connection closed, and still count you as here. Half a second at most.
+document.addEventListener('click', e => {
+    const link = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[href]');
+    if (!link || !live || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    if (link.target === '_blank' || new URL(link.href).origin !== location.origin) return;
+    e.preventDefault();
+    Promise.race([live.leave(), new Promise(resolve => setTimeout(resolve, 500))])
+        .finally(() => { location.href = link.href; });
+});
+
+// The browser's own Back button or closing the tab can't be held up, so just disconnect as the page goes
+window.addEventListener('pagehide', () => { live?.stop(); });
+// Coming back to a page the browser kept in memory, the connection is gone; load it fresh
+window.addEventListener('pageshow', e => { if (e.persisted) location.reload(); });
 
 let live: CanvasLive | null = null;
 try {

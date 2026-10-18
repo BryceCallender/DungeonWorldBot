@@ -82,9 +82,12 @@
 
 .tool.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
 
+/* Two columns, so the rail fits on shorter screens */
+.swatches { display: grid; grid-template-columns: repeat(2, 18px); gap: 6px; padding: 2px 0; }
+
 .swatch {
-    width: 22px;
-    height: 22px;
+    width: 18px;
+    height: 18px;
     padding: 0;
     border-radius: 50%;
     border: 2px solid transparent;
@@ -108,6 +111,26 @@
 #container[data-tool="erase"] { cursor: cell; }
 #container[data-tool="move"], #container.panning { cursor: grab; }
 #container[data-tool="text"] { cursor: text; }
+#container[data-tool="shape"] { cursor: crosshair; }
+
+/* The kinds of shape, in a strip beside the Shape button, opened by clicking it (canvas.ts adds .open) */
+.shape-tool { position: relative; display: inline-flex; }
+
+.shape-picker {
+    position: absolute;
+    top: -5px;
+    left: calc(100% + 10px);
+    z-index: 2;
+    display: none;
+    gap: .25rem;
+    padding: 4px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .25);
+}
+
+.shape-tool.open .shape-picker { display: flex; }
 
 /* Where text is typed before it goes on the board: no box, just the words, at the board's zoom */
 #container ::deep .board-text-editor {
@@ -175,6 +198,9 @@
     #container { aspect-ratio: 16 / 10; }
     .board-rail { flex-direction: row; flex-wrap: wrap; justify-content: center; padding: .4rem; border-right: 0; border-bottom: 1px solid var(--border); }
     .board-rail hr { width: auto; height: 20px; margin: 0 .2rem; border-top: 0; border-left: 1px solid var(--border); }
+    .swatches { grid-template-columns: repeat(6, 18px); }
     .board-zoom { flex-direction: row; margin-top: 0; }
+    /* Below the button when the tools are a row */
+    .shape-picker { top: calc(100% + 8px); left: 0; }
     .board-side { border-left: 0; border-top: 1px solid var(--border); }
 }

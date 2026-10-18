@@ -39,14 +39,26 @@
             <button type="button" class="tool" data-tool="move" title="Move tokens (M)" aria-label="Move tokens"><Icon Name="move" /></button>
             <button type="button" class="tool" data-tool="token" title="Place a token (T)" aria-label="Place a token"><Icon Name="token" /></button>
             <button type="button" class="tool" data-tool="text" title="Text (X)" aria-label="Text"><Icon Name="text" /></button>
+            @* The kinds of shape show beside the button while the Shape tool is on *@
+            <span class="shape-tool">
+                <button type="button" class="tool" data-tool="shape" title="Shapes (S); hold Shift for squares, circles and 45° lines" aria-label="Shapes"><Icon Name="shapes" /></button>
+                <span class="shape-picker" role="group" aria-label="Shape">
+                    <button type="button" class="tool on" data-shape="rect" title="Rectangle" aria-label="Rectangle"><Icon Name="rect" /></button>
+                    <button type="button" class="tool" data-shape="ellipse" title="Ellipse" aria-label="Ellipse"><Icon Name="ellipse" /></button>
+                    <button type="button" class="tool" data-shape="line" title="Line" aria-label="Line"><Icon Name="line" /></button>
+                    <button type="button" class="tool" data-shape="arrow" title="Arrow" aria-label="Arrow"><Icon Name="arrow" /></button>
+                </span>
+            </span>
             <button type="button" class="tool" data-pick="board" title="Add a picture or map (or drop or paste one)" aria-label="Add a picture"><Icon Name="image" /></button>
 
             <hr />
-            @foreach (var color in Colors)
-            {
-                <button type="button" class="swatch@(color == Colors[0] ? " on" : "")" data-color="@color"
-                        style="--swatch: @color" title="@color" aria-label="Color @color"></button>
-            }
+            <span class="swatches">
+                @foreach (var color in Colors)
+                {
+                    <button type="button" class="swatch@(color == Colors[0] ? " on" : "")" data-color="@color"
+                            style="--swatch: @color" title="@color" aria-label="Color @color"></button>
+                }
+            </span>
             <hr />
 
             <button type="button" class="tool" data-undo title="Undo your last change (Ctrl+Z)" aria-label="Undo"><Icon Name="undo" /></button>

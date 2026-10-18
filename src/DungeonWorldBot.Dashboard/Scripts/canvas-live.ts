@@ -27,7 +27,7 @@ export interface CanvasPerson {
     isDungeonMaster: boolean;
 }
 
-export type CanvasItemType = 'stroke' | 'token' | 'text' | 'image';
+export type CanvasItemType = 'stroke' | 'token' | 'text' | 'image' | 'shape';
 
 /** An item as the page draws it, like a Konva node's toObject(). */
 export type ItemJson = Record<string, unknown>;
@@ -67,6 +67,8 @@ export interface CanvasLive {
     moveItem(itemId: string, x: number, y: number): void;
     removeItem(itemId: string): void;
     stop(): Promise<void>;
+    /** Tells the server you've gone, and waits until it has, then disconnects. */
+    leave(): Promise<void>;
 }
 
 interface JoinResult {
@@ -120,6 +122,13 @@ export async function connect(canvasId: string, on: CanvasHandlers = {}): Promis
         moveItem: (itemId, x, y) => save('MoveItem', itemId, x, y),
         removeItem: itemId => save('RemoveItem', itemId),
         stop: () => connection.stop(),
+        leave: async () => {
+            try {
+                if (connection.state === signalR.HubConnectionState.Connected) await connection.invoke('Leave');
+            } finally {
+                await connection.stop();
+            }
+        },
     };
 
     async function join() {
