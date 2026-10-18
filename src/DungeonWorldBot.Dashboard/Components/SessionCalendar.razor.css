@@ -1,0 +1,53 @@
+.calendar {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: .75rem;
+    margin: .75rem 0 1.25rem;
+}
+
+.cal-month { padding: .75rem; }
+.cal-month h3 { margin: 0 0 .5rem; }
+
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; }
+.cal-weekday { font-size: .65rem; font-weight: 700; color: var(--muted); }
+
+.cal-day {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    aspect-ratio: 1;
+    border-radius: 6px;
+    font-size: .75rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.cal-day.played {
+    background: var(--accent);
+    opacity: var(--busy, 1);
+    color: var(--surface);
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.cal-day.played:hover, .cal-day.played:focus-visible { opacity: 1; outline: 2px solid var(--accent); outline-offset: 1px; }
+.cal-day.today { outline: 1px solid var(--accent); color: var(--accent); }
+
+button.cal-day { border: 0; padding: 0; font: inherit; font-size: .75rem; cursor: pointer; }
+
+/* Placed next to its day by app.js */
+.cal-pop {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    padding: .75rem .9rem;
+    min-width: 190px;
+    color: var(--text);
+    box-shadow: 0 8px 24px rgb(0 0 0 / .25);
+}
+
+.cal-pop dl { display: grid; grid-template-columns: 1fr auto; gap: .2rem 1rem; margin: .5rem 0 0; font-size: .85rem; }
+.cal-pop dt { color: var(--muted); }
+.cal-pop dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.cal-pop dd.lucky { color: var(--good); font-weight: 700; }
+.cal-pop dd.unlucky { color: var(--critical); font-weight: 700; }

@@ -1,0 +1,136 @@
+/* Laid out like the canvases mockup: a header with filters and "New canvas", then a grid of cards */
+.canvases-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .6rem 1rem;
+    margin-bottom: 1rem;
+}
+
+.canvases-head h1 { margin: 0; }
+
+.canvas-filters { display: flex; gap: .35rem; flex-wrap: wrap; }
+.canvas-filters .chip { text-decoration: none; color: var(--muted); }
+.canvas-filters .chip.on { background: var(--accent-soft); color: var(--accent); }
+
+/* "New canvas" sits at the right, and opens into a small form below the header */
+.new-canvas { margin-left: auto; }
+.new-canvas[open] { flex-basis: 100%; order: 1; margin-left: 0; }
+.new-canvas summary { list-style: none; display: inline-block; }
+.new-canvas summary::-webkit-details-marker { display: none; }
+.new-canvas[open] summary { margin-bottom: .6rem; }
+
+.new-canvas form {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem;
+    padding: .75rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+}
+
+.new-canvas input { flex: 1; min-width: 12rem; width: auto; }
+.new-canvas .create { background: var(--accent); border-color: var(--accent); color: #fff; }
+.new-canvas .create:hover { color: #fff; opacity: .9; }
+.form-error { flex-basis: 100%; font-size: .85rem; color: var(--critical); }
+
+.canvas-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 1rem;
+}
+
+.canvas-card {
+    display: flex;
+    flex-direction: column;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+    transition: border-color .15s;
+}
+
+.canvas-card:hover { border-color: var(--accent); }
+
+.canvas-link { display: flex; flex-direction: column; color: inherit; text-decoration: none; }
+
+/* The board's own shape (1600 by 1000), so thumbnails fit without cropping */
+.canvas-thumbnail {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    background: var(--surface-2);
+    border-bottom: 1px solid var(--border);
+}
+
+.canvas-thumbnail img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+.canvas-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: var(--muted);
+    opacity: .5;
+}
+
+.canvas-placeholder ::deep .icon { width: 40px; height: 40px; }
+
+.canvas-name {
+    padding: .65rem .8rem .2rem;
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.canvas-description {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .4rem .5rem;
+    padding: .25rem .8rem .7rem;
+    font-size: .8rem;
+    color: var(--muted);
+}
+
+.canvas-description .chip { display: inline-flex; align-items: center; gap: .25rem; }
+
+/* Who's on it right now, on the picture's corner */
+.here {
+    position: absolute;
+    top: .5rem;
+    right: .5rem;
+    padding: .15rem .5rem;
+    border-radius: 999px;
+    background: var(--surface);
+    color: var(--good);
+    font-size: .75rem;
+    font-weight: 600;
+    box-shadow: 0 0 0 1px var(--border);
+}
+
+/* Archive / Restore: quiet until you look for it */
+.canvas-action { margin-left: auto; }
+
+.link-button {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--muted);
+    font: inherit;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity .15s;
+}
+
+.canvas-card:hover .link-button,
+.link-button:focus-visible { opacity: 1; }
+.link-button:hover { color: var(--accent); text-decoration: underline; }
+
+/* No hovering on a touch screen, so it's always there */
+@media (hover: none) { .link-button { opacity: 1; } }
+
+.archived-link { margin-top: 1rem; font-size: .85rem; }
+.archived-link a { color: var(--muted); }

@@ -1,6 +1,6 @@
 using Microsoft.Data.Sqlite;
 
-namespace DungeonWorldBot.Dashboard.Party;
+namespace DungeonWorldBot.Dashboard.Live;
 
 /// <summary>
 /// Notices when the bot writes to its database, so open pages can refresh themselves.

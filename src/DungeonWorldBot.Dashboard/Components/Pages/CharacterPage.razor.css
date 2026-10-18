@@ -1,0 +1,42 @@
+.hero-bonuses { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .35rem; }
+
+/* HealthBar draws the label, so it needs ::deep to be reached from here */
+.vital-hp ::deep .hp-label strong { font-size: 1.1rem; }
+
+.tools { display: flex; gap: .4rem; align-items: center; }
+
+ul.moves li.active { outline: 2px solid var(--accent); }
+
+strong.over { color: var(--critical); }
+.over-note { color: var(--critical); margin: .35rem 0 0; }
+
+ul.meters { list-style: none; margin: .5rem 0 0; padding: 0; display: grid; gap: .8rem; }
+ul.meters .small { margin-top: .2rem; }
+
+ul.items {
+    list-style: none;
+    margin: .5rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: .4rem;
+}
+
+ul.items li {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: .75rem;
+    padding: .45rem .65rem;
+    border-radius: 8px;
+    background: var(--surface-2);
+}
+
+.item-name { display: flex; flex-direction: column; }
+.jar-contents { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .25rem; }
+.item-meta { display: flex; gap: .6rem; align-items: baseline; white-space: nowrap; }
+
+@media (max-width: 600px) {
+    .vital-hp { grid-column: 1 / -1; }
+    .tools { width: 100%; }
+}

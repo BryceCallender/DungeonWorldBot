@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OAuth;
 
-namespace DungeonWorldBot.Dashboard.Party;
+namespace DungeonWorldBot.Dashboard.Auth;
 
 /// <summary>
 /// "Sign in with Discord", limited to members of the campaign's server.
@@ -56,10 +56,10 @@ public static class DiscordSignIn
                 options.ExpireTimeSpan = TimeSpan.FromDays(30);
                 options.SlidingExpiration = true;
 
-                // The live stream can't follow a redirect to Discord, so it gets a plain 401
+                // The live stream and canvas hub can't follow a redirect to Discord, so they get a plain 401
                 options.Events.OnRedirectToLogin = context =>
                 {
-                    if (context.Request.Path.StartsWithSegments("/live"))
+                    if (NoRedirects(context.Request.Path))
                         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                     else
                         context.Response.Redirect(context.RedirectUri);
@@ -67,7 +67,7 @@ public static class DiscordSignIn
                 };
                 options.Events.OnRedirectToAccessDenied = context =>
                 {
-                    if (context.Request.Path.StartsWithSegments("/live"))
+                    if (NoRedirects(context.Request.Path))
                         context.Response.StatusCode = StatusCodes.Status403Forbidden;
                     else
                         context.Response.Redirect(context.RedirectUri);
@@ -146,6 +146,9 @@ public static class DiscordSignIn
             return Results.Redirect("/");
         });
     }
+
+    private static bool NoRedirects(PathString path) =>
+        path.StartsWithSegments("/live") || path.StartsWithSegments("/hubs");
 
     // Only ever send people back into the dashboard, never to another site
     private static string LocalOnly(string? returnUrl) =>

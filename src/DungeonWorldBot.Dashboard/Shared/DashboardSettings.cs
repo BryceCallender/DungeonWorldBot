@@ -1,4 +1,4 @@
-namespace DungeonWorldBot.Dashboard.Party;
+namespace DungeonWorldBot.Dashboard.Shared;
 
 /// <summary>
 /// How this campaign plays, for the things the dashboard can't tell from the database.

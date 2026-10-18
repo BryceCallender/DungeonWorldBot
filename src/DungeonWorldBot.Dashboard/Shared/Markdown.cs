@@ -2,7 +2,7 @@ using System.Net;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Components;
 
-namespace DungeonWorldBot.Dashboard.Party;
+namespace DungeonWorldBot.Dashboard.Shared;
 
 /// <summary>
 /// Shows the bits of Discord markdown the bot writes in move and ability text: **bold**, *italic*, `code` and line breaks.

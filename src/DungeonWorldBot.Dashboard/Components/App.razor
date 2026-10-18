@@ -4,7 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
+    @* Styles shared across the site. Styles for one component sit next to it (Foo.razor.css) and are bundled into the file below. *@
     <link rel="stylesheet" href="@Assets["app.css"]" />
+    <link rel="stylesheet" href="@Assets["DungeonWorldBot.Dashboard.styles.css"]" />
     <HeadOutlet />
 </head>
 <body>

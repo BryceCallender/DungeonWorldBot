@@ -1,0 +1,97 @@
+@page "/canvas/{Id}"
+@using DungeonWorldBot.Dashboard.Canvases
+@using Microsoft.AspNetCore.Components.Forms
+@inject CanvasStore CanvasStore
+@inject CanvasPresence Presence
+@inject Viewer Viewer
+
+@if (_canvas is not { } c)
+{
+    <PageTitle>Not found · Sana Solem</PageTitle>
+    <p class="empty">No canvas with that ID. <a href="">Back to the canvases</a></p>
+    return;
+}
+
+<PageTitle>@c.Name · Sana Solem </PageTitle>
+
+@* Built from Scripts/canvas.ts, with Konva and SignalR bundled in. Modules are deferred, so the page is there when it runs. *@
+<HeadContent>
+    <script type="module" src="@Assets["canvas.js"]"></script>
+</HeadContent>
+
+<div class="board-page">
+    <header class="board-head">
+        <a class="board-back tool" href="canvases" title="Back to the canvases" aria-label="Back to the canvases"><Icon Name="back" /></a>
+        <div class="board-title">
+            <h1>@c.Name</h1>
+            <span class="board-meta">@c.Kind · edited @c.UpdatedAt.ToString("MMM d")</span>
+        </div>
+        @* The rest of the header is filled in by canvas.ts *@
+        <span class="board-status" data-status>Connecting…</span>
+        <span class="board-here" data-here></span>
+        <span class="board-people" data-people></span>
+    </header>
+
+    <div class="board-body">
+        <div class="board-rail" role="toolbar" aria-label="Drawing tools">
+            <button type="button" class="tool on" data-tool="pen" title="Pen (P)" aria-label="Pen"><Icon Name="pen" /></button>
+            <button type="button" class="tool" data-tool="erase" title="Eraser (E)" aria-label="Eraser"><Icon Name="eraser" /></button>
+            <button type="button" class="tool" data-tool="move" title="Move tokens (M)" aria-label="Move tokens"><Icon Name="move" /></button>
+            <button type="button" class="tool" data-tool="token" title="Place a token (T)" aria-label="Place a token"><Icon Name="token" /></button>
+            <button type="button" class="tool" data-tool="text" title="Text (X)" aria-label="Text"><Icon Name="text" /></button>
+            <button type="button" class="tool" data-pick="board" title="Add a picture or map (or drop or paste one)" aria-label="Add a picture"><Icon Name="image" /></button>
+
+            <hr />
+            @foreach (var color in Colors)
+            {
+                <button type="button" class="swatch@(color == Colors[0] ? " on" : "")" data-color="@color"
+                        style="--swatch: @color" title="@color" aria-label="Color @color"></button>
+            }
+            <hr />
+
+            <button type="button" class="tool" data-undo title="Undo your last change (Ctrl+Z)" aria-label="Undo"><Icon Name="undo" /></button>
+
+            @* Pinch or Ctrl/Cmd+scroll zooms, scrolling or Space+drag pans; these are for everyone else *@
+            <span class="board-zoom">
+                <button type="button" class="tool" data-zoom="in" title="Zoom in (Ctrl/Cmd +)" aria-label="Zoom in">+</button>
+                <button type="button" class="tool zoom-level" data-zoom="fit" title="Fit the whole board (Ctrl/Cmd 0)" aria-label="Fit the whole board">100%</button>
+                <button type="button" class="tool" data-zoom="out" title="Zoom out (Ctrl/Cmd −)" aria-label="Zoom out">−</button>
+            </span>
+        </div>
+
+        <div id="container" data-no-live data-canvas-id="@Id" data-has-thumbnail="@(_hasThumbnail ? "true" : null)"></div>
+
+        @* For the picture buttons, and the token the uploads send back so the server knows they came from this page *@
+        <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden data-file />
+        <AntiforgeryToken />
+
+        <aside class="board-side">
+            <h2>Tokens</h2>
+            @* Filled in by canvas.ts; clicking one makes it jump so you can find it on the board *@
+            <ol class="token-list" data-tokens></ol>
+            <p class="token-empty" data-tokens-empty>Nothing on the board yet.</p>
+            <button type="button" class="tool token-add" data-tool="token">+ Add token</button>
+            <button type="button" class="tool token-add" data-pick="token">+ Image token</button>
+        </aside>
+    </div>
+</div>
+
+@code {
+    [Parameter] 
+    public string Id { get; set; } = string.Empty;
+    
+    private Canvas? _canvas;
+    private bool _hasThumbnail;
+
+    // Ink that reads on the board in both light and dark mode
+    private static readonly string[] Colors = ["#7F77DD", "#D85A30", "#1D9E75", "#378ADD", "#BA7517", "#888780"];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanvasIds.TryDecode(Id, out var id))
+        {
+            _canvas = await CanvasStore.FindAsync(id);
+            _hasThumbnail = await CanvasStore.HasThumbnailAsync(id);
+        }
+    }
+}

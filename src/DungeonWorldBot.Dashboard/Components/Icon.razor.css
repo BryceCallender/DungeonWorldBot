@@ -1,0 +1,6 @@
+.icon { flex: none; vertical-align: -2px; }
+.icon-heart { color: var(--heart); }
+.icon-shield { color: var(--armor); }
+.icon-magic { color: var(--magic); }
+.icon-divine { color: var(--divine); }
+.icon-sword { color: var(--damage); }

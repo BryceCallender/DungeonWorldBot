@@ -1,6 +1,7 @@
 using System.Security.Claims;
+using DungeonWorldBot.Dashboard.Shared;
 
-namespace DungeonWorldBot.Dashboard.Party;
+namespace DungeonWorldBot.Dashboard.Auth;
 
 /// <summary>
 /// Who's looking at the page. Without Discord sign-in, nobody in particular.

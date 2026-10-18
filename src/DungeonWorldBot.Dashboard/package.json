@@ -1,0 +1,18 @@
+{
+  "name": "sana-solem-dashboard",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild Scripts/canvas.ts --bundle --minify --sourcemap --format=esm --target=es2022 --outfile=wwwroot/canvas.js",
+    "watch": "npm run build -- --watch",
+    "check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@microsoft/signalr": "10.0.11",
+    "konva": "10.7.0"
+  },
+  "devDependencies": {
+    "esbuild": "0.28.2",
+    "typescript": "7.0.2"
+  }
+}

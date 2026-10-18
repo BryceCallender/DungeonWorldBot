@@ -1,4 +1,4 @@
-namespace DungeonWorldBot.Dashboard.Party;
+namespace DungeonWorldBot.Dashboard.Live;
 
 /// <summary>
 /// A server-sent event stream that tells open pages when the bot changed something, so they can refresh in place.

@@ -3,7 +3,7 @@ using DungeonWorldBot.Features.Characters.Creation;
 using DungeonWorldBot.Features.Classes;
 using DungeonWorldBot.Features.Subclasses;
 
-namespace DungeonWorldBot.Dashboard.Party;
+namespace DungeonWorldBot.Dashboard.Reference;
 
 /// <summary>
 /// Addresses and summaries for the class, subclass and spell reference pages, read from the bot's own rules.

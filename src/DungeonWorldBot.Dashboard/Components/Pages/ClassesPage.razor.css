@@ -1,0 +1,16 @@
+.lookup-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: .75rem;
+    margin-top: .5rem;
+}
+
+.lookup-card { display: flex; flex-direction: column; gap: .45rem; color: inherit; text-decoration: none; transition: border-color .15s, transform .15s; }
+.lookup-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.lookup-card h3 { margin: 0; font-size: 1.05rem; }
+
+/* A stripe along the top in the class color */
+.lookup-card[class*="cls-"] { box-shadow: inset 0 4px 0 var(--class); }
+.lookup-card[class*="cls-"]:hover { border-color: var(--class); }
+
+.played-by { color: var(--class); }

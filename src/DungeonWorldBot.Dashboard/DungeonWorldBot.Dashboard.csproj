@@ -8,6 +8,32 @@
       <ProjectReference Include="..\DungeonWorldBot.Data\DungeonWorldBot.Data.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <!-- For dotnet ef, which makes the canvas database's migrations -->
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
+        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        <PrivateAssets>all</PrivateAssets>
+      </PackageReference>
+      <!-- Short IDs for canvas links, like /canvas/Xb3kQ9 instead of /canvas/4 -->
+      <PackageReference Include="Sqids" Version="3.2.1" />
+    </ItemGroup>
+
+    <!-- TypeScript in Scripts/ is bundled by esbuild into wwwroot/canvas.js, which is built, not edited or committed -->
+    <ItemGroup>
+      <Content Remove="node_modules/**;package.json;package-lock.json;tsconfig.json" />
+      <None Remove="node_modules/**" />
+      <ScriptSource Include="Scripts/**/*.ts;package.json;package-lock.json;tsconfig.json" />
+    </ItemGroup>
+
+    <Target Name="BuildScripts" BeforeTargets="BeforeBuild" Inputs="@(ScriptSource)" Outputs="wwwroot/canvas.js">
+      <Exec Command="npm ci" Condition="!Exists('node_modules')" />
+      <Exec Command="npm run build" />
+      <!-- On a fresh clone the bundle didn't exist when the project was read, so it has to be added to be served -->
+      <ItemGroup>
+        <Content Include="wwwroot/canvas.js;wwwroot/canvas.js.map" Exclude="@(Content)" />
+      </ItemGroup>
+    </Target>
+
     <!-- The bot's settings (with its token) and its database copy come along with the project reference. The dashboard uses neither. -->
     <Target Name="RemoveBotRuntimeFiles" AfterTargets="Build">
         <Delete Files="$(OutDir)appsettings.json;$(OutDir)SanaSolem.db" />

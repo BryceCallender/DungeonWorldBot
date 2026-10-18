@@ -58,30 +58,6 @@ h1 { font-size: 1.8rem; margin: 0 0 .25rem; }
 h2 { font-size: 1.1rem; margin: 0 0 .5rem; }
 h3 { font-size: .95rem; margin: 1rem 0 .4rem; }
 
-.topbar {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    padding: .75rem 1.5rem;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-}
-
-.brand { font-weight: 700; color: var(--text); text-decoration: none; }
-
-.topbar nav { display: flex; gap: .25rem; }
-
-.topbar nav a {
-    padding: .35rem .75rem;
-    border-radius: 999px;
-    color: var(--muted);
-    text-decoration: none;
-}
-
-.topbar nav a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-
-main { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
-
 .muted { color: var(--muted); }
 
 code {
@@ -114,32 +90,12 @@ code {
 .chip.accent { background: var(--accent-soft); color: var(--accent); }
 .chip.warn { background: var(--warn-soft); color: var(--critical); }
 
-/* Party */
-
-.party {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-    gap: 1rem;
-    margin-top: 1rem;
-}
-
-.member {
-    display: flex;
-    flex-direction: column;
-    gap: .75rem;
-    color: inherit;
-    text-decoration: none;
-    transition: border-color .15s, transform .15s;
-}
-
-.member:hover { border-color: var(--accent); transform: translateY(-2px); }
+/* Party cards and class cards */
 
 .member-head { display: flex; justify-content: space-between; align-items: flex-start; }
 .member-head h2 { margin: 0; font-size: 1.25rem; }
 
 .subclass-line { display: flex; flex-wrap: wrap; gap: .4rem; align-items: center; }
-
-.armor-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; font-weight: 600; }
 
 /* Health */
 
@@ -230,25 +186,11 @@ details > .small { margin-top: .4rem; }
     border-radius: 0 8px 8px 0;
 }
 
-/* Roll stats */
-
-.table-card { padding: 0; overflow-x: auto; margin-top: 1rem; }
-
-table { width: 100%; border-collapse: collapse; }
-th, td { padding: .6rem .9rem; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
-th { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
-tbody tr:last-child td { border-bottom: 0; }
-.num { text-align: right; font-variant-numeric: tabular-nums; }
-.spread { width: 35%; min-width: 140px; }
-
-.spread-bar { display: flex; height: 12px; border-radius: 999px; overflow: hidden; background: var(--surface-2); }
+/* Roll outcomes, in the roll stats tables and dice charts */
 
 .strong { background: var(--good); }
 .weak { background: var(--low); }
 .miss { background: var(--critical); }
-
-.legend { display: flex; gap: 1rem; margin-top: .6rem; font-size: .85rem; color: var(--muted); }
-.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: .35rem; vertical-align: middle; }
 
 /* Summary tiles */
 
@@ -264,18 +206,8 @@ tbody tr:last-child td { border-bottom: 0; }
 .tile strong { font-size: 1.4rem; font-variant-numeric: tabular-nums; }
 
 .resource-chips { display: flex; flex-wrap: wrap; gap: .3rem; }
-/* Class and subclass on one line, the pill shortening rather than wrapping so every card's header is the same height */
-.class-line { display: flex; align-items: center; gap: .45rem; min-width: 0; white-space: nowrap; }
-.class-line .chip { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .member-head > div:first-child { min-width: 0; }
-.member-extra { display: flex; flex-direction: column; gap: .5rem; padding-top: .75rem; border-top: 1px solid var(--border); }
-.member-foot { display: flex; flex-wrap: wrap; gap: .9rem; margin-top: auto; padding-top: .5rem; border-top: 1px solid var(--border); }
 
-ul.moves li.active { outline: 2px solid var(--accent); }
-
-.jar-contents { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .25rem; }
-.item-meta { display: flex; gap: .6rem; align-items: baseline; white-space: nowrap; }
-strong.over { color: var(--critical); }
 .sheet .bar { margin-bottom: .25rem; }
 
 /* Character header */
@@ -310,13 +242,10 @@ strong.over { color: var(--critical); }
 }
 
 .vital strong { font-size: 1.35rem; line-height: 1.2; }
-.vital-hp .hp-label strong { font-size: 1.1rem; }
 
 @media (max-width: 1000px) {
     .hero { grid-template-columns: 1fr; }
 }
-
-.hero-bonuses { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: .35rem; }
 
 /* Section links stay in view while scrolling the sheet */
 .jump {
@@ -351,8 +280,6 @@ strong.over { color: var(--critical); }
 
 .card-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: .5rem 1rem; margin-bottom: .5rem; }
 .card-head h2 { margin: 0; }
-.tools { display: flex; gap: .4rem; align-items: center; }
-
 .filter, .tool {
     font: inherit;
     font-size: .85rem;
@@ -368,105 +295,14 @@ strong.over { color: var(--critical); }
 .tool { cursor: pointer; white-space: nowrap; }
 .tool:hover { border-color: var(--accent); color: var(--accent); }
 a.tool { text-decoration: none; display: inline-block; }
-.over-note { color: var(--critical); margin: .35rem 0 0; }
-
-ul.meters { list-style: none; margin: .5rem 0 0; padding: 0; display: grid; gap: .8rem; }
-ul.meters .small { margin-top: .2rem; }
-
-ul.items {
-    list-style: none;
-    margin: .5rem 0 0;
-    padding: 0;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
-    gap: .4rem;
-}
-
-ul.items li {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    gap: .75rem;
-    padding: .45rem .65rem;
-    border-radius: 8px;
-    background: var(--surface-2);
-}
-
-.item-name { display: flex; flex-direction: column; }
-
 li[hidden] { display: none !important; }
 
-/* Signed-in viewer and live updates */
-
-.viewer { margin-left: auto; display: flex; align-items: center; gap: .9rem; font-size: .85rem; }
-
-.live { display: inline-flex; align-items: center; gap: .6rem; color: var(--muted); }
-.live i { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 0 var(--good); }
-.live.off i { background: var(--muted); }
-
-/* A ring that ripples out every few seconds while connected, so the dot reads as live */
-.live i::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    border-radius: 50%;
-    background: var(--good);
-    animation: live-ping 2.4s cubic-bezier(0, 0, .2, 1) infinite;
-}
-
-.live.off i::after { animation: none; opacity: 0; }
-
-/* A bigger flash when an update lands */
-.live.pulse i { animation: live-pulse 1s ease-out; }
-
-@keyframes live-ping {
-    0% { transform: scale(1); opacity: .7; }
-    70%, 100% { transform: scale(2.8); opacity: 0; }
-}
-
-@keyframes live-pulse {
-    from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--good) 70%, transparent); }
-    to { box-shadow: 0 0 0 10px transparent; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .live i::after, .live.pulse i { animation: none; }
-}
-
-.me { display: inline-flex; align-items: center; gap: .45rem; color: var(--text); text-decoration: none; font-weight: 600; }
-.me img { border-radius: 50%; }
-a.me:hover span { color: var(--accent); }
-.signout { color: var(--muted); }
-
-tr.mine td { background: var(--accent-soft); }
-tr.mine td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
-
-.notice { max-width: 560px; margin: 3rem auto; padding: 1.5rem 1.75rem; }
-.notice h1 { font-size: 1.4rem; margin-bottom: .75rem; }
-
 /* Reference pages */
-
-.lookup-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-    gap: .75rem;
-    margin-top: .5rem;
-}
-
-.lookup-card { display: flex; flex-direction: column; gap: .45rem; color: inherit; text-decoration: none; transition: border-color .15s, transform .15s; }
-.lookup-card:hover { border-color: var(--accent); transform: translateY(-2px); }
-.lookup-card h3 { margin: 0; font-size: 1.05rem; }
-.played-by { color: var(--class); }
 
 .jump-filter { margin-left: auto; flex: 0 1 13rem; min-width: 7rem; }
 a.chip { text-decoration: none; }
 .chip.good { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
 ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
-
-.spell-list { margin-bottom: 1rem; }
-.spell-list h3 { margin: 1rem 0 .4rem; color: var(--muted); font-size: .8rem; text-transform: uppercase; letter-spacing: .04em; }
-.kit-base { margin: .35rem 0 .5rem; }
-.kit-choices li { padding: .15rem 0; }
 
 [data-filter-group][hidden] { display: none !important; }
 .hero .muted a, .hero-main > .muted a { color: inherit; text-decoration-color: var(--accent); }
@@ -530,9 +366,8 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 .chip.class { background: color-mix(in srgb, var(--class) 16%, transparent); color: var(--class); }
 .fill.class { background: var(--class); }
 
-/* A stripe along the top in the class color */
-.member, .lookup-card[class*="cls-"], .hero[class*="cls-"] { box-shadow: inset 0 4px 0 var(--class); }
-.member:hover, .lookup-card[class*="cls-"]:hover { border-color: var(--class); }
+/* A stripe along the top in the class color (party and class cards add their own) */
+.hero[class*="cls-"] { box-shadow: inset 0 4px 0 var(--class); }
 
 /* A soft wash of the class color behind a character's or class's name */
 .hero[class*="cls-"] {
@@ -541,126 +376,25 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
         var(--surface);
 }
 
-/* Stat icons */
+/* Armor, magic and damage tints (the icons themselves are styled in Icon.razor.css) */
 
-.icon { flex: none; vertical-align: -2px; }
-.icon-heart { color: var(--heart); }
-.icon-shield { color: var(--armor); }
-.icon-magic { color: var(--magic); }
-.icon-divine { color: var(--divine); }
-.icon-sword { color: var(--damage); }
 .tile-label { display: inline-flex; align-items: center; gap: .3rem; }
 .vital.armor { box-shadow: inset 3px 0 0 var(--armor); }
 .vital.magic { box-shadow: inset 3px 0 0 var(--magic); }
 .vital.divine { box-shadow: inset 3px 0 0 var(--divine); }
 .vital.damage { box-shadow: inset 3px 0 0 var(--damage); }
 .vital.heart { box-shadow: inset 3px 0 0 var(--heart); }
-.armor-row span { display: inline-flex; align-items: center; gap: .3rem; }
 .hp-label > span:first-child { display: inline-flex; align-items: center; gap: .3rem; }
-
-/* Dice sums */
 
 .section-title { margin-top: 2rem; }
 
-.dice-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 1rem;
-    margin-top: .75rem;
-}
-
-.dice-grid h3 { margin-top: 0; }
-
-.dice-chart { display: grid; grid-template-columns: repeat(11, 1fr); gap: 4px; align-items: end; }
-.dice-col { display: flex; flex-direction: column; align-items: center; gap: .15rem; }
-.dice-track { position: relative; width: 100%; height: 110px; background: var(--surface-2); border-radius: 4px; }
-.dice-bar { position: absolute; bottom: 0; left: 0; right: 0; border-radius: 4px 4px 0 0; }
-.dice-expected { position: absolute; left: -2px; right: -2px; height: 2px; background: var(--text); opacity: .55; }
-.dice-count { font-size: .7rem; color: var(--muted); font-variant-numeric: tabular-nums; }
-.dice-sum { font-size: .8rem; font-weight: 700; }
-
-.legend i.expected { height: 2px; background: var(--text); opacity: .55; }
-
-/* Session calendar */
-
-.calendar {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: .75rem;
-    margin: .75rem 0 1.25rem;
-}
-
-.cal-month { padding: .75rem; }
-.cal-month h3 { margin: 0 0 .5rem; }
-
-.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; text-align: center; }
-.cal-weekday { font-size: .65rem; font-weight: 700; color: var(--muted); }
-
-.cal-day {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    aspect-ratio: 1;
-    border-radius: 6px;
-    font-size: .75rem;
-    color: var(--muted);
-    font-variant-numeric: tabular-nums;
-}
-
-.cal-day.played {
-    background: var(--accent);
-    opacity: var(--busy, 1);
-    color: var(--surface);
-    font-weight: 700;
-    text-decoration: none;
-}
-
-.cal-day.played:hover, .cal-day.played:focus-visible { opacity: 1; outline: 2px solid var(--accent); outline-offset: 1px; }
-.cal-day.today { outline: 1px solid var(--accent); color: var(--accent); }
-
-button.cal-day { border: 0; padding: 0; font: inherit; font-size: .75rem; cursor: pointer; }
-
-/* Placed next to its day by app.js */
-.cal-pop {
-    position: fixed;
-    inset: auto;
-    margin: 0;
-    padding: .75rem .9rem;
-    min-width: 190px;
-    color: var(--text);
-    box-shadow: 0 8px 24px rgb(0 0 0 / .25);
-}
-
-.cal-pop dl { display: grid; grid-template-columns: 1fr auto; gap: .2rem 1rem; margin: .5rem 0 0; font-size: .85rem; }
-.cal-pop dt { color: var(--muted); }
-.cal-pop dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
-.cal-pop dd.lucky { color: var(--good); font-weight: 700; }
-.cal-pop dd.unlucky { color: var(--critical); font-weight: 700; }
-
-tr.dm-row td { background: var(--surface-2); }
-
-td.lucky { color: var(--good); font-weight: 700; }
-td.unlucky { color: var(--critical); font-weight: 700; }
-
 @media (max-width: 600px) {
-    main { padding: 1rem; }
-    .topbar { padding: .75rem 1rem; gap: .5rem .75rem; flex-wrap: wrap; }
-    .viewer { gap: .6rem; }
-    .me span:not(.chip) { display: none; }
     .sheet { grid-template-columns: 1fr; }
     .wide ul.moves { grid-template-columns: 1fr; }
-    .dice-grid { grid-template-columns: 1fr; }
     .tiles { grid-template-columns: repeat(2, 1fr); }
     .hero { grid-template-columns: 1fr; }
     .hero-vitals { grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); }
-    .vital-hp { grid-column: 1 / -1; }
     .jump { margin: 0 -1rem 1rem; padding: .5rem 1rem; }
     .filter { width: 100%; }
     .jump-filter { width: 10rem; }
-    .tools { width: 100%; }
 }
-
-/* NPCs aren't links, so their cards stay put */
-.member.npc { box-shadow: inset 0 4px 0 var(--muted); }
-.member.npc:hover { border-color: var(--border); transform: none; }
-.member.npc .member-extra { gap: .35rem; }

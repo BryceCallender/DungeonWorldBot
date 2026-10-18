@@ -1,0 +1,148 @@
+@page "/canvases/"
+@using DungeonWorldBot.Dashboard.Canvases
+@using Microsoft.AspNetCore.Components.Forms
+@inject CanvasStore CanvasStore
+@inject CanvasPresence Presence
+@inject Viewer Viewer
+
+<PageTitle>Canvases · Sana Solem</PageTitle>
+
+<div class="canvases-head">
+    <h1>@(Archived ? "Archived canvases" : "Canvases")</h1>
+
+    @if (!Archived)
+    {
+        @* Plain links, filtered on the server, so they need no script *@
+        <nav class="canvas-filters" aria-label="Show">
+            <a class="chip@(_kind is null ? " on" : "")" href="canvases">All</a>
+            @foreach (var kind in Enum.GetValues<CanvasKind>())
+            {
+                <a class="chip@(_kind == kind ? " on" : "")" href="canvases?kind=@kind">@Plural(kind)</a>
+            }
+        </nav>
+
+        @* <details> opens and closes on its own, and stays open to show a mistake in the name *@
+        <details class="new-canvas" open="@(Error is not null)">
+            <summary class="tool">+ New canvas</summary>
+            <form method="post" action="api/canvases">
+                <AntiforgeryToken />
+                <input class="filter" name="name" maxlength="@CanvasStore.MaxNameLength" placeholder="Goblin ambush at the ford" required autofocus />
+                <select class="filter" name="kind">
+                    @foreach (var kind in Enum.GetValues<CanvasKind>())
+                    {
+                        <option selected="@(kind == (_kind ?? CanvasKind.Encounter))">@kind</option>
+                    }
+                </select>
+                <button class="tool create">Create</button>
+                @if (Error == "name")
+                {
+                    <span class="form-error">Give it a name, up to @CanvasStore.MaxNameLength letters.</span>
+                }
+            </form>
+        </details>
+    }
+    else
+    {
+        <a class="tool" href="canvases">← Back to canvases</a>
+    }
+</div>
+
+@if (_canvasList.Count == 0)
+{
+    <p class="empty">
+        @if (Archived) { <text>Nothing's been put away.</text> }
+        else if (_kind is { } kind) { <text>No @Plural(kind).ToLowerInvariant() yet.</text> }
+        else { <text>No canvases yet. Make one for your next encounter or map.</text> }
+    </p>
+}
+else
+{
+    <div class="canvas-grid">
+        @foreach (var c in _canvasList)
+        {
+            var sqid = CanvasIds.Encode(c.ID);
+            var peopleOnCanvas = Presence.On(c.ID);
+
+            <article class="canvas-card">
+                <a class="canvas-link" href="canvas/@sqid">
+                    <div class="canvas-thumbnail">
+                        @if (_thumbnails.TryGetValue(c.ID, out var taken))
+                        {
+                            @* The time it was taken is in the URL, so a new picture gets a new address *@
+                            <img src="api/canvases/@sqid/thumbnail?v=@taken.Ticks" alt="" loading="lazy" />
+                        }
+                        else
+                        {
+                            <span class="canvas-placeholder"><Icon Name="@KindIcon(c.Kind)" /></span>
+                        }
+                        @if (peopleOnCanvas.Count > 0)
+                        {
+                            <span class="here" title="@string.Join(", ", peopleOnCanvas.Select(p => p.Name))">● @peopleOnCanvas.Count here</span>
+                        }
+                    </div>
+                    <span class="canvas-name">@c.Name</span>
+                </a>
+
+                <div class="canvas-description">
+                    <span class="chip @KindClass(c.Kind)"><Icon Name="@KindIcon(c.Kind)" /> @c.Kind</span>
+                    @* Shown as "2 minutes ago" by app.js, in the viewer's own time zone *@
+                    <time datetime="@DateTime.SpecifyKind(c.UpdatedAt, DateTimeKind.Utc).ToString("o")" data-ago>@c.UpdatedAt.ToString("MMM d")</time>
+
+                    @if (CanPutAway(c))
+                    {
+                        <form method="post" action="api/canvases/@sqid/@(Archived ? "restore" : "archive")" class="canvas-action">
+                            <AntiforgeryToken />
+                            <button class="link-button" title="@(Archived ? "Bring it back to the list" : "Hide it from the list; it's kept")">@(Archived ? "Restore" : "Archive")</button>
+                        </form>
+                    }
+                </div>
+            </article>
+        }
+    </div>
+}
+
+@if (!Archived && _archivedCount > 0)
+{
+    <p class="archived-link"><a href="canvases?archived=true">Archived (@_archivedCount)</a></p>
+}
+
+@code {
+    [SupplyParameterFromQuery] public string? Kind { get; set; }
+    [SupplyParameterFromQuery] public bool Archived { get; set; }
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+
+    private IReadOnlyList<Canvas> _canvasList = [];
+    private Dictionary<int, DateTime> _thumbnails = [];
+    private int _archivedCount;
+    private CanvasKind? _kind;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _kind = Enum.TryParse<CanvasKind>(Kind, ignoreCase: true, out var kind) ? kind : null;
+
+        var all = await CanvasStore.ListAsync(Archived);
+        _canvasList = _kind is null ? all : all.Where(c => c.Kind == _kind).ToList();
+        _thumbnails = await CanvasStore.ThumbnailTimesAsync();
+        _archivedCount = Archived ? 0 : await CanvasStore.CountArchivedAsync();
+    }
+
+    // The same rule as the archive endpoint: the DM, whoever made it, or anyone when sign-in is off
+    private bool CanPutAway(Canvas canvas) =>
+        !Viewer.SignedIn || Viewer.IsDungeonMaster || Viewer.Is(canvas.CreatedBy ?? "");
+
+    private static string Plural(CanvasKind kind) => kind == CanvasKind.Notes ? "Notes" : $"{kind}s";
+
+    private static string KindIcon(CanvasKind kind) => kind switch
+    {
+        CanvasKind.Encounter => "sword",
+        CanvasKind.Map => "map",
+        _ => "notes",
+    };
+
+    private static string KindClass(CanvasKind kind) => kind switch
+    {
+        CanvasKind.Encounter => "warn",
+        CanvasKind.Map => "good",
+        _ => "accent",
+    };
+}

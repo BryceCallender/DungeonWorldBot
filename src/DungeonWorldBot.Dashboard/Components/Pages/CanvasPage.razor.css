@@ -1,0 +1,180 @@
+/* Laid out like the canvas mockup: a header, then tools | board | tokens */
+.board-page {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+
+.board-head {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: .5rem .75rem;
+    padding: .6rem 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.board-back { display: inline-flex; padding: .45rem; }
+.board-back ::deep .icon { width: 16px; height: 16px; }
+
+.board-title { display: flex; flex-direction: column; min-width: 0; }
+.board-title h1 { margin: 0; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.board-meta { font-size: .8rem; color: var(--muted); }
+
+.board-status { margin-left: auto; font-size: .8rem; color: var(--muted); }
+.board-status.live { color: var(--good); }
+.board-status.reconnecting { color: var(--low); }
+.board-status.offline { color: var(--critical); }
+
+.board-here { font-size: .8rem; color: var(--muted); }
+
+/* Avatars of everyone here, overlapping a little */
+.board-people { display: flex; padding-left: 6px; }
+
+.board-people ::deep img,
+.board-people ::deep .initial {
+    width: 26px;
+    height: 26px;
+    margin-left: -6px;
+    border-radius: 50%;
+    border: 2px solid var(--surface);
+}
+
+.board-people ::deep .initial {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: .7rem;
+    font-weight: 700;
+    background: var(--accent-soft);
+    color: var(--accent);
+}
+
+.board-body {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr) 210px;
+    height: calc(100dvh - 170px);
+    min-height: 380px;
+}
+
+.board-rail {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: .35rem;
+    padding: .5rem 0;
+    border-right: 1px solid var(--border);
+}
+
+/* Every rail button is the same square, whatever is in it (an icon, a +, or a zoom level like "500%") */
+.board-rail .tool {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+}
+.board-rail ::deep .icon { width: 18px; height: 18px; }
+.board-rail hr { width: 60%; margin: .2rem 0; border: 0; border-top: 1px solid var(--border); }
+
+.tool.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
+.swatch {
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    background: var(--swatch);
+    cursor: pointer;
+}
+
+.swatch.on { outline: 2px solid var(--text); outline-offset: 1px; }
+
+/* The board sizes its stage from this box, and an empty div has no height of its own */
+#container {
+    position: relative;                                    /* for the text editor laid over the board */
+    min-width: 0;
+    background: var(--surface-2);
+    overflow: hidden;
+    /* Drawing on a touch screen shouldn't scroll the page */
+    touch-action: none;
+}
+
+#container[data-tool="pen"], #container[data-tool="token"] { cursor: crosshair; }
+#container[data-tool="erase"] { cursor: cell; }
+#container[data-tool="move"], #container.panning { cursor: grab; }
+#container[data-tool="text"] { cursor: text; }
+
+/* Where text is typed before it goes on the board: no box, just the words, at the board's zoom */
+#container ::deep .board-text-editor {
+    position: absolute;
+    z-index: 1;
+    min-width: 6ch;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    outline: 1px dashed var(--accent);
+    background: transparent;
+    font-family: system-ui, sans-serif;
+    line-height: 1;
+    resize: none;
+    overflow: hidden;
+    field-sizing: content;
+    white-space: pre;
+}
+
+.board-zoom { display: flex; flex-direction: column; align-items: center; gap: .25rem; margin-top: auto; }
+.board-zoom .tool { font-weight: 600; }
+/* Digits all the same width, so the number doesn't jiggle as you zoom */
+.board-zoom .zoom-level { font-size: .65rem; font-variant-numeric: tabular-nums; letter-spacing: -.02em; }
+
+.board-side {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    padding: .75rem;
+    border-left: 1px solid var(--border);
+    overflow-y: auto;
+}
+
+.board-side h2 { margin: 0; font-size: .8rem; font-weight: 600; color: var(--muted); }
+
+.token-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .15rem; }
+
+.token-list ::deep button {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+    width: 100%;
+    padding: .35rem .4rem;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: var(--text);
+    font: inherit;
+    font-size: .85rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.token-list ::deep button:hover { background: var(--surface-2); }
+.token-list ::deep .dot { flex: none; width: 12px; height: 12px; border-radius: 50%; }
+.token-list ::deep .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.token-empty { margin: 0; font-size: .8rem; color: var(--muted); }
+.token-add { margin-top: .25rem; }
+
+/* On a phone: tools in a row above the board, tokens below it */
+@media (max-width: 800px) {
+    .board-body { grid-template-columns: minmax(0, 1fr); height: auto; min-height: 0; }
+    /* The board's own shape (BOARD_WIDTH by BOARD_HEIGHT in canvas.ts), so it fills the width with no bands */
+    #container { aspect-ratio: 16 / 10; }
+    .board-rail { flex-direction: row; flex-wrap: wrap; justify-content: center; padding: .4rem; border-right: 0; border-bottom: 1px solid var(--border); }
+    .board-rail hr { width: auto; height: 20px; margin: 0 .2rem; border-top: 0; border-left: 1px solid var(--border); }
+    .board-zoom { flex-direction: row; margin-top: 0; }
+    .board-side { border-left: 0; border-top: 1px solid var(--border); }
+}

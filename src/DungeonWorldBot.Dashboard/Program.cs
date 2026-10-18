@@ -1,11 +1,20 @@
+using DungeonWorldBot.Dashboard.Auth;
+using DungeonWorldBot.Dashboard.Canvases;
 using DungeonWorldBot.Dashboard.Components;
+using DungeonWorldBot.Dashboard.Live;
 using DungeonWorldBot.Dashboard.Party;
+using DungeonWorldBot.Dashboard.Rolls;
+using DungeonWorldBot.Dashboard.Shared;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Features.Leveling;
+using DungeonWorldBot.Features.Npcs;
 using DungeonWorldBot.Features.Resources;
 using DungeonWorldBot.Features.Rolls;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -28,6 +37,7 @@ builder.Services.AddScoped<ICharacterService, CharacterService>();
 builder.Services.AddScoped<IResourceService, ResourceService>();
 builder.Services.AddScoped<ILevelingService, LevelingService>();
 builder.Services.AddScoped<IRollStatsService, RollStatsService>();
+builder.Services.AddScoped<INpcService, NpcService>();
 builder.Services.AddScoped<PartyReader>();
 builder.Services.AddScoped<RollReader>();
 
@@ -46,12 +56,37 @@ builder.Services.AddScoped(services =>
 
 builder.Services.AddRazorComponents();
 
+// Canvases are the dashboard's own, so they live in a database it can write. Set CanvasDatabasePath to keep it elsewhere.
+var canvasDatabasePath = Path.GetFullPath(
+    builder.Configuration.GetValue<string?>("CanvasDatabasePath")
+    ?? Path.Combine(builder.Environment.ContentRootPath, "canvases.db"));
+builder.Services.AddSqlite<CanvasContext>($"Data Source={canvasDatabasePath}");
+builder.Services.AddScoped<CanvasStore>();
+
+// Canvases are shared live between everyone who has one open
+// The default 32 KB is less than one long freehand stroke; CanvasStore.MaxItemLength sets the real limit per item
+builder.Services.AddSignalR(o => o.MaximumReceiveMessageSize = 512 * 1024)
+    // Item types go back and forth as "stroke", "token" and "text" rather than numbers
+    .AddJsonProtocol(o => o.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
+builder.Services.AddSingleton<CanvasPresence>();
+
 var app = builder.Build();
 
 if (!File.Exists(databasePath))
     app.Logger.LogWarning("No database at {Path}. Set DatabasePath to the bot's SanaSolem.db.", databasePath);
 else
     app.Logger.LogInformation("Reading {Path}", databasePath);
+
+// Creates the canvas database, or brings it up to date, before anyone opens a canvas
+using (var scope = app.Services.CreateScope())
+{
+    var canvasDb = scope.ServiceProvider.GetRequiredService<CanvasContext>();
+    canvasDb.Database.Migrate();
+
+    // Made-up canvases for trying out the pages (SeedCanvases=true), only while there are none
+    if (app.Configuration.GetValue("SeedCanvases", false))
+        CanvasSeed.Seed(canvasDb, settings.DungeonMasterID.ToString());
+}
 
 if (!signInEnabled)
     app.Logger.LogWarning("Discord sign-in is off, so anyone who can reach the dashboard can see it. Set Discord:ClientId and Discord:ClientSecret to turn it on.");
@@ -79,12 +114,16 @@ app.MapStaticAssets();
 
 var pages = app.MapRazorComponents<App>();
 var live = app.MapLiveUpdates();
+var canvases = app.MapHub<CanvasHub>("/hubs/canvas");
+var canvasForms = app.MapCanvasEndpoints();
 
 if (signInEnabled)
 {
     app.MapDiscordSignIn();
     pages.RequireAuthorization(DiscordSignIn.Policy);
     live.RequireAuthorization(DiscordSignIn.Policy);
+    canvases.RequireAuthorization(DiscordSignIn.Policy);
+    canvasForms.RequireAuthorization(DiscordSignIn.Policy);
 }
 
 app.Run();

@@ -509,3 +509,10 @@ src/DungeonWorldBot/*.db-wal
 
 # DM settings written by the bot at runtime
 game-settings.json
+
+# The dashboard's canvases, written at runtime
+canvases.db*
+
+# Built from the dashboard's Scripts/ by npm run build
+src/DungeonWorldBot.Dashboard/wwwroot/canvas.js
+src/DungeonWorldBot.Dashboard/wwwroot/canvas.js.map

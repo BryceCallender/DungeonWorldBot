@@ -1,0 +1,791 @@
+// The canvas page's board. Built into wwwroot/canvas.js by `npm run build` (dotnet build runs it too).
+import Konva from 'konva';
+import { connect, type CanvasItemType, type CanvasLive, type CanvasPerson, type ItemJson, type SavedItem } from './canvas-live';
+
+// ---- The board ----------------------------------------------------------------------------------------------------
+
+// Everything is drawn and saved in these units, whatever size the screen is, so everyone's drawings line up.
+// The stage fills the box on the page and is a camera onto the board: zooming scales it, panning moves it.
+const BOARD_WIDTH = 1600;
+const BOARD_HEIGHT = 1000;
+
+const container = document.getElementById('container') as HTMLDivElement;
+const canvasId = container.dataset.canvasId!;
+
+const stage = new Konva.Stage({ container, width: container.clientWidth, height: container.clientHeight });
+const grid = new Konva.Layer({ listening: false });        // squares to line things up on; never changes
+const pictures = new Konva.Layer();                        // maps and handouts, under everything drawn on them
+const drawing = new Konva.Layer();                         // saved strokes and text
+const tokens = new Konva.Layer();                          // pieces you can move
+const handles = new Konva.Layer();                         // the box and corners around selected text
+const others = new Konva.Layer({ listening: false });      // other people's cursors and half-drawn strokes
+stage.add(grid, pictures, drawing, tokens, handles, others);
+
+// The board's edges, so you can tell it from the space around it once you zoom out or pan away
+grid.add(new Konva.Rect({
+    width: BOARD_WIDTH, height: BOARD_HEIGHT, cornerRadius: 8,
+    fill: getComputedStyle(container).getPropertyValue('--surface').trim() || '#ffffff',
+}));
+
+// A square every 50 units. Gray at low opacity reads on both the light and dark board. Lines stay 1px however far
+// you zoom (strokeScaleEnabled: false), instead of getting chunky.
+const GRID_SIZE = 50;
+for (let x = GRID_SIZE; x < BOARD_WIDTH; x += GRID_SIZE)
+    grid.add(new Konva.Line({ points: [x, 0, x, BOARD_HEIGHT], stroke: 'rgba(128,128,128,0.18)', strokeWidth: 1, strokeScaleEnabled: false }));
+for (let y = GRID_SIZE; y < BOARD_HEIGHT; y += GRID_SIZE)
+    grid.add(new Konva.Line({ points: [0, y, BOARD_WIDTH, y], stroke: 'rgba(128,128,128,0.18)', strokeWidth: 1, strokeScaleEnabled: false }));
+
+// ---- Pan and zoom --------------------------------------------------------------------------------------------------
+
+// The scale that fits the whole board in the box. Zoom is shown relative to it, so "100%" means "all of it".
+let fitScale = 1;
+// Until you pan or zoom, the board keeps fitting the box as the window resizes
+let viewMoved = false;
+
+const MIN_ZOOM = 0.5;                                      // of fitScale
+const MAX_ZOOM = 5;
+
+function resize() {
+    // A box with no size yet (hidden, or still laying out) would make the scale 0; wait until it has one
+    if (!container.clientWidth || !container.clientHeight) return;
+    stage.size({ width: container.clientWidth, height: container.clientHeight });
+    fitScale = Math.min(stage.width() / BOARD_WIDTH, stage.height() / BOARD_HEIGHT);
+    if (!viewMoved) fitView();
+    showZoom();
+}
+
+function fitView() {
+    stage.scale({ x: fitScale, y: fitScale });
+    stage.position({ x: (stage.width() - BOARD_WIDTH * fitScale) / 2, y: (stage.height() - BOARD_HEIGHT * fitScale) / 2 });
+    viewMoved = false;
+    showZoom();
+}
+
+// Keep at least this much of the board in view, so panning can never lose it entirely
+const KEEP_VISIBLE = 80;
+function clamp(position: { x: number; y: number }) {
+    const width = BOARD_WIDTH * stage.scaleX(), height = BOARD_HEIGHT * stage.scaleY();
+    return {
+        x: Math.min(Math.max(position.x, KEEP_VISIBLE - width), stage.width() - KEEP_VISIBLE),
+        y: Math.min(Math.max(position.y, KEEP_VISIBLE - height), stage.height() - KEEP_VISIBLE),
+    };
+}
+
+// Zoom by `factor`, keeping the board point under `screen` (a spot in the box, in pixels) where it is
+function zoomAt(screen: { x: number; y: number }, factor: number) {
+    const old = stage.scaleX();
+    const next = Math.min(Math.max(old * factor, fitScale * MIN_ZOOM), fitScale * MAX_ZOOM);
+    const board = { x: (screen.x - stage.x()) / old, y: (screen.y - stage.y()) / old };
+    stage.scale({ x: next, y: next });
+    stage.position(clamp({ x: screen.x - board.x * next, y: screen.y - board.y * next }));
+    viewMoved = true;
+    showZoom();
+}
+
+const zoomLevel = document.querySelector<HTMLElement>('[data-zoom="fit"]');
+function showZoom() {
+    if (zoomLevel) zoomLevel.textContent = `${Math.round((stage.scaleX() / fitScale) * 100)}%`;
+}
+
+// Trackpads: two fingers pan, pinching zooms (the browser reports a pinch as a wheel with ctrlKey).
+// Mice: the wheel pans up and down, Shift+wheel sideways, Ctrl/Cmd+wheel zooms.
+stage.on('wheel', e => {
+    e.evt.preventDefault();
+    if (e.evt.ctrlKey || e.evt.metaKey) {
+        // Clamped so one notch of a mouse wheel is a step, not a leap
+        const delta = Math.max(-50, Math.min(50, e.evt.deltaY));
+        zoomAt(stage.getPointerPosition()!, Math.exp(-delta * 0.01));
+    } else {
+        const dx = e.evt.shiftKey && !e.evt.deltaX ? e.evt.deltaY : e.evt.deltaX;
+        const dy = e.evt.shiftKey && !e.evt.deltaX ? 0 : e.evt.deltaY;
+        stage.position(clamp({ x: stage.x() - dx, y: stage.y() - dy }));
+        viewMoved = true;
+    }
+});
+
+// Dragging the board itself pans: with the Move tool on empty space, or with any tool while Space is held.
+// A token under the pointer wins, since Konva drags the deepest draggable thing.
+let spaceHeld = false;
+function updatePanning() {
+    stage.draggable(tool === 'move' || spaceHeld);
+    container.classList.toggle('panning', spaceHeld);
+}
+stage.dragBoundFunc(clamp);
+stage.on('dragmove', e => { if (e.target === stage) viewMoved = true; });
+
+new ResizeObserver(resize).observe(container);
+resize();
+
+// Where the pointer is, in board units rather than screen pixels, to a tenth (more is just bigger JSON)
+function pointer() {
+    const { x, y } = stage.getRelativePointerPosition() ?? { x: 0, y: 0 };
+    return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 };
+}
+
+// ---- Items: turning saved JSON into shapes and back ----------------------------------------------------------------
+
+const layerFor = (type: CanvasItemType) => (type === 'token' ? tokens : type === 'image' ? pictures : drawing);
+
+// The node an item is saved as: the shape itself, or the group a token's circle and label sit in
+function itemOf(shape: Konva.Node): Konva.Node | null {
+    let node: Konva.Node | null = shape;
+    while (node && !(node.getParent() instanceof Konva.Layer)) node = node.getParent();
+    return node && node.getLayer() !== others ? node : null;
+}
+
+// Things the saved JSON doesn't say but the page needs, like how easy a thin line is to hit with the eraser
+function prepare(node: Konva.Node, type: CanvasItemType) {
+    if (node instanceof Konva.Line) node.hitStrokeWidth(20);
+    if (type === 'token' || type === 'image' || node instanceof Konva.Text) node.draggable(tool === 'move');
+    showPictures(node);
+}
+
+// ---- Pictures ------------------------------------------------------------------------------------------------------
+
+// A loaded picture can't be saved as JSON, so items keep its URL in a `src` attribute and get the picture put back
+// here. Each URL is fetched once, however many tokens use it.
+const loading = new Map<string, Promise<HTMLImageElement>>();
+function loadPicture(src: string) {
+    let picture = loading.get(src);
+    if (!picture) {
+        picture = new Promise((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve(img);
+            img.onerror = reject;
+            img.src = src;
+        });
+        loading.set(src, picture);
+    }
+    return picture;
+}
+
+// The picture URL a node keeps, if it has one
+const srcOf = (node: Konva.Node): string | undefined => node.getAttr('src');
+
+// The node, and anything in it, with a picture to show: a board image, or the circle of an image token
+function showPictures(node: Konva.Node) {
+    const all: Konva.Node[] = node instanceof Konva.Container ? [node, ...node.find((n: Konva.Node) => !!srcOf(n))] : [node];
+    for (const target of all) {
+        const src = srcOf(target);
+        if (!src) continue;
+        loadPicture(src).then(img => {
+            if (target instanceof Konva.Image) {
+                target.image(img);
+            } else if (target instanceof Konva.Circle) {
+                // Fill the circle with the middle of the picture, however wide or tall it is
+                const scale = (target.radius() * 2) / Math.min(img.width, img.height);
+                target.fillPatternImage(img);
+                target.fillPriority('pattern');            // a shape with a color and a pattern shows the color otherwise
+                target.fillPatternRepeat('no-repeat');
+                target.fillPatternScale({ x: scale, y: scale });
+                target.fillPatternOffset({ x: img.width / 2, y: img.height / 2 });
+            }
+        }).catch(() => { /* a picture that's gone leaves the shape plain */ });
+    }
+}
+
+function addItem(id: string, type: CanvasItemType, json: ItemJson) {
+    const wasSelected = selected()?.id() === id;
+    stage.findOne('#' + id)?.destroy();                    // the same ID again replaces it
+    const node = Konva.Node.create(json);
+    node.id(id);
+    prepare(node, type);
+    layerFor(type).add(node as Konva.Shape | Konva.Group);
+    if (wasSelected) select(node as Konva.Shape);
+    if (type === 'token') listTokens();
+    return node;
+}
+
+function removeItem(node: Konva.Node) {
+    if (selected() === node) select(null);
+    const wasToken = node.getLayer() === tokens;
+    node.destroy();
+    if (wasToken) listTokens();
+}
+
+function load(items: SavedItem[]) {
+    drawing.destroyChildren();
+    tokens.destroyChildren();
+    for (const item of items) addItem(item.id, item.type, item.item);
+    listTokens();
+    mine.length = 0;
+}
+
+// ---- The token list beside the board -------------------------------------------------------------------------------
+
+const tokenList = document.querySelector<HTMLOListElement>('[data-tokens]')!;
+
+// A token is a circle (like the sample ones) or a group with a circle and its initials in it
+function tokenColor(token: Konva.Node) {
+    const circle = token instanceof Konva.Circle ? token : (token as Konva.Group).findOne<Konva.Circle>('Circle');
+    return (circle?.fill() as string | undefined) ?? '#888780';
+}
+
+function listTokens() {
+    const all = tokens.getChildren();
+    document.querySelector<HTMLElement>('[data-tokens-empty]')!.hidden = all.length > 0;
+    tokenList.replaceChildren(...all.map(token => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.token = token.id();
+        const dot = Object.assign(document.createElement('span'), { className: 'dot' });
+        dot.style.background = tokenColor(token);
+        const holder = token instanceof Konva.Group ? token.findOne((n: Konva.Node) => !!srcOf(n)) : token;
+        const picture = holder && srcOf(holder);
+        if (picture) dot.style.background = `center / cover url("${picture}")`;
+        button.append(dot, Object.assign(document.createElement('span'), { className: 'name', textContent: token.name() || 'Token' }));
+        const li = document.createElement('li');
+        li.append(button);
+        return li;
+    }));
+}
+
+// Clicking a token in the list makes it jump, so you can find it on a busy board
+tokenList.addEventListener('click', e => {
+    const id = (e.target as HTMLElement).closest<HTMLElement>('[data-token]')?.dataset.token;
+    const token = id && stage.findOne('#' + id);
+    if (!token) return;
+    token.to({ scaleX: 1.6, scaleY: 1.6, duration: 0.15, onFinish: () => token.to({ scaleX: 1, scaleY: 1, duration: 0.15 }) });
+});
+
+// ---- Tools ---------------------------------------------------------------------------------------------------------
+
+type Tool = 'pen' | 'erase' | 'move' | 'token' | 'text';
+let tool: Tool = 'pen';
+let color = (document.querySelector<HTMLElement>('[data-color].on')?.dataset.color) ?? '#7F77DD';
+
+function setTool(next: Tool) {
+    tool = next;
+    container.dataset.tool = next;                         // for the cursor, in CanvasPage.razor.css
+    document.querySelectorAll<HTMLElement>('.board-rail [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === next));
+    tokens.getChildren().forEach(t => t.draggable(next === 'move'));
+    drawing.find('Text').forEach(t => t.draggable(next === 'move'));
+    pictures.getChildren().forEach(p => p.draggable(next === 'move'));
+    if (next !== 'move') select(null);
+    updatePanning();
+}
+
+// The tool rail, and the sidebar's "Add token"
+document.querySelector('.board-page')!.addEventListener('click', e => {
+    const button = (e.target as HTMLElement).closest('button');
+    if (!button) return;
+    if (button.dataset.tool) setTool(button.dataset.tool as Tool);
+    if (button.dataset.color) {
+        color = button.dataset.color;
+        document.querySelectorAll('[data-color]').forEach(b => b.classList.toggle('on', b === button));
+        // Picking a color means you want to draw with it, unless you're placing tokens or text in it
+        if (tool !== 'token' && tool !== 'text') setTool('pen');
+    }
+    if (button.hasAttribute('data-undo')) undo();
+    // The buttons zoom around the middle of the box
+    const middle = { x: stage.width() / 2, y: stage.height() / 2 };
+    if (button.dataset.zoom === 'in') zoomAt(middle, 1.25);
+    if (button.dataset.zoom === 'out') zoomAt(middle, 0.8);
+    if (button.dataset.zoom === 'fit') fitView();
+});
+
+const keys: Record<string, Tool> = { p: 'pen', e: 'erase', m: 'move', t: 'token', x: 'text' };
+document.addEventListener('keydown', e => {
+    // Typing text on the board, or anywhere else, isn't a shortcut
+    if ((e.target as HTMLElement).closest('input, textarea, [contenteditable]')) return;
+    if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); return; }
+    if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) { e.preventDefault(); zoomAt({ x: stage.width() / 2, y: stage.height() / 2 }, 1.25); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); zoomAt({ x: stage.width() / 2, y: stage.height() / 2 }, 0.8); return; }
+    if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); fitView(); return; }
+    if (e.key === ' ' && !spaceHeld) { e.preventDefault(); spaceHeld = true; updatePanning(); return; }
+    const chosen = selected();
+    if (chosen && (e.key === 'Delete' || e.key === 'Backspace')) { live?.removeItem(chosen.id()); removeItem(chosen); return; }
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && keys[e.key]) setTool(keys[e.key]);
+});
+document.addEventListener('keyup', e => {
+    if (e.key === ' ') { spaceHeld = false; updatePanning(); }
+});
+
+// What you've added, newest last, for undo
+const mine: string[] = [];
+
+function undo() {
+    while (mine.length) {
+        const node = stage.findOne('#' + mine.pop()!);
+        if (!node) continue;                               // someone already erased it
+        live?.removeItem(node.id());
+        removeItem(node);
+        return;
+    }
+}
+
+// ---- Drawing -------------------------------------------------------------------------------------------------------
+
+// The stroke being drawn, and the points not sent to the others yet
+let stroke: { line: Konva.Line; unsent: number[]; timer: number | null } | null = null;
+let erasing = false;
+
+stage.on('pointerdown', e => {
+    if (spaceHeld) return;                                 // the stage drag pans instead
+    const { x, y } = pointer();
+    if (tool === 'pen') {
+        const line = new Konva.Line({
+            id: crypto.randomUUID(),
+            points: [x, y],
+            stroke: color,
+            strokeWidth: 4,
+            lineCap: 'round',
+            lineJoin: 'round',
+            tension: 0.5,
+            hitStrokeWidth: 20,
+        });
+        drawing.add(line);
+        stroke = { line, unsent: [x, y], timer: null };
+    } else if (tool === 'move') {
+        // Text under the pointer gets selection handles; anywhere else drops them. Handles themselves are left alone.
+        if (e.target.getParent() instanceof Konva.Transformer) return;
+        const text = e.target instanceof Konva.Text && e.target.getLayer() === drawing;
+        const picture = e.target instanceof Konva.Image && e.target.getLayer() === pictures;
+        select(text || picture ? e.target as Konva.Shape : null);
+    } else if (tool === 'erase') {
+        erasing = true;
+        eraseHere();
+    } else if (tool === 'token') {
+        placeToken(x, y);
+    } else if (tool === 'text') {
+        // Clicking existing text edits it; clicking anywhere else starts new text there
+        const target = e.target instanceof Konva.Text && e.target.getLayer() === drawing ? e.target : null;
+        editText(target, target ? target.position() : { x, y });
+    }
+});
+
+stage.on('pointermove', () => {
+    const { x, y } = pointer();
+    live?.cursor(x, y);
+
+    if (stroke) {
+        const points = stroke.line.points();
+        // Skip points too close to the last one; they add size, not shape
+        if (Math.hypot(x - points[points.length - 2], y - points[points.length - 1]) < 2) return;
+        stroke.line.points(points.concat(x, y));
+        stroke.unsent.push(x, y);
+        // Send the new points in batches, about 20 a second, so the others see it being drawn
+        stroke.timer ??= window.setTimeout(sendProgress, 50);
+    } else if (erasing) {
+        eraseHere();
+    }
+});
+
+function sendProgress() {
+    if (!stroke) return;
+    stroke.timer = null;
+    if (stroke.unsent.length) live?.strokeProgress(stroke.line.id(), stroke.unsent.splice(0));
+}
+
+// On the window, so letting go outside the board still finishes the stroke
+window.addEventListener('pointerup', () => {
+    erasing = false;
+    if (!stroke) return;
+    if (stroke.timer) clearTimeout(stroke.timer);
+    sendProgress();
+    const { line } = stroke;
+    stroke = null;
+    live?.strokeEnd(line.id(), line.toObject());
+    mine.push(line.id());
+});
+
+function eraseHere() {
+    const shape = stage.getIntersection(stage.getPointerPosition()!);
+    const item = shape && itemOf(shape);
+    // Sweeping the eraser over a map shouldn't take the whole map; pictures go with Move, then Delete
+    if (!item || item.getLayer() === pictures) return;
+    live?.removeItem(item.id());
+    removeItem(item);
+}
+
+// ---- Moving and scaling text and pictures --------------------------------------------------------------------------------------
+
+// Konva's Transformer draws a box with corner handles around whatever it's given. Dragging a corner scales the text
+// or picture; dragging it moves it (they're draggable with the Move tool).
+const transformer = new Konva.Transformer({
+    keepRatio: true,
+    rotateEnabled: false,
+    enabledAnchors: ['top-left', 'top-right', 'bottom-left', 'bottom-right'],
+    anchorSize: 9,
+    anchorCornerRadius: 2,
+    borderStroke: '#7F77DD',
+    anchorStroke: '#7F77DD',
+    // Not smaller than readable
+    boundBoxFunc: (old, next) => (next.height < 10 ? old : next),
+});
+handles.add(transformer);
+
+const selected = () => (transformer.nodes()[0] as Konva.Shape | undefined) ?? null;
+function select(shape: Konva.Shape | null) {
+    transformer.nodes(shape ? [shape] : []);
+}
+
+// The handles scale it; when you let go, the scale becomes a real font size or width and height, so text stays crisp
+// and what's saved is plain bigger (or smaller) text or picture
+transformer.on('transformend', () => {
+    const shape = selected();
+    if (!shape) return;
+    if (shape instanceof Konva.Text) {
+        shape.fontSize(Math.max(8, Math.round(shape.fontSize() * shape.scaleX())));
+    } else {
+        shape.width(Math.round(shape.width() * shape.scaleX()));
+        shape.height(Math.round(shape.height() * shape.scaleY()));
+    }
+    shape.scale({ x: 1, y: 1 });
+    shape.x(Math.round(shape.x() * 10) / 10);
+    shape.y(Math.round(shape.y() * 10) / 10);
+    live?.addItem(shape.id(), shape instanceof Konva.Text ? 'text' : 'image', shape.toObject());
+});
+
+// Double-click text with the Move tool to change the words
+drawing.on('dblclick dbltap', e => {
+    if (tool === 'move' && e.target instanceof Konva.Text) {
+        select(null);
+        editText(e.target, e.target.position());
+    }
+});
+
+// ---- Text ----------------------------------------------------------------------------------------------------------
+
+const TEXT_SIZE = 22;
+
+// Typing happens in a real <textarea> laid over the board at the right spot and zoom, since a canvas can't take
+// typing itself. Enter (or clicking away) puts it on the board as a Konva.Text; Escape cancels; Shift+Enter adds a line.
+function editText(existing: Konva.Text | null, at: { x: number; y: number }) {
+    // Where that board point is on screen, after zoom and pan
+    const screen = stage.getAbsoluteTransform().point(at);
+    const scale = stage.scaleX();
+
+    const editor = document.createElement('textarea');
+    editor.className = 'board-text-editor';
+    editor.rows = 1;
+    editor.value = existing?.text() ?? '';
+    Object.assign(editor.style, {
+        left: `${screen.x}px`,
+        top: `${screen.y}px`,
+        fontSize: `${(existing?.fontSize() ?? TEXT_SIZE) * scale}px`,
+        color: (existing?.fill() as string | undefined) ?? color,
+    });
+    existing?.hide();                                      // so the old words don't show through while editing
+    container.append(editor);
+    // After this click has finished, or the board takes the focus straight back
+    setTimeout(() => editor.focus());
+
+    let finished = false;
+    function finish(save: boolean) {
+        if (finished) return;
+        finished = true;
+        const words = editor.value.trim();
+        editor.remove();
+
+        if (existing) {
+            existing.show();
+            if (!save || words === existing.text()) return;
+            if (!words) {                                  // emptied out: it goes
+                live?.removeItem(existing.id());
+                removeItem(existing);
+                return;
+            }
+            existing.text(words);
+            live?.addItem(existing.id(), 'text', existing.toObject());   // the same ID replaces it for everyone
+            return;
+        }
+
+        if (!save || !words) return;
+        const text = new Konva.Text({
+            id: crypto.randomUUID(), x: at.x, y: at.y, text: words,
+            fontSize: TEXT_SIZE, fontFamily: 'system-ui, sans-serif', fill: color,
+        });
+        drawing.add(text);
+        live?.addItem(text.id(), 'text', text.toObject());
+        mine.push(text.id());
+    }
+
+    editor.addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); finish(true); }
+        if (e.key === 'Escape') finish(false);
+    });
+    editor.addEventListener('blur', () => finish(true));
+}
+
+// ---- Tokens --------------------------------------------------------------------------------------------------------
+
+// A colored circle with their initials, or with a picture in it if there's one
+function placeToken(x: number, y: number, picture?: string, name = window.prompt('Token name')?.trim()) {
+    if (!name) return;
+
+    const token = new Konva.Group({ id: crypto.randomUUID(), x, y, name });
+    const circle = new Konva.Circle({ radius: 22, fill: color, stroke: '#ffffff', strokeWidth: 2 });
+    if (picture) circle.setAttr('src', picture);
+    token.add(circle);
+    if (!picture) token.add(new Konva.Text({
+        text: name.slice(0, 2).toUpperCase(), fontSize: 16, fontStyle: 'bold', fill: '#ffffff',
+        width: 44, height: 44, offsetX: 22, offsetY: 22, align: 'center', verticalAlign: 'middle',
+    }));
+    prepare(token, 'token');
+    tokens.add(token);
+    listTokens();
+    live?.addItem(token.id(), 'token', token.toObject());
+    mine.push(token.id());
+}
+
+// Others see a dragged token or text move about 12 times a second; where it's dropped is always sent
+let lastMove = 0;
+for (const layer of [tokens, drawing, pictures]) {
+    layer.on('dragmove', e => {
+        // Dragging takes over the pointer, so the stage's pointermove doesn't send the cursor meanwhile
+        const { x, y } = pointer();
+        live?.cursor(x, y);
+        if (Date.now() - lastMove < 80) return;
+        lastMove = Date.now();
+        live?.moveItem(e.target.id(), e.target.x(), e.target.y());
+    });
+    layer.on('dragend', e => live?.moveItem(e.target.id(), e.target.x(), e.target.y()));
+}
+
+// ---- Adding pictures -----------------------------------------------------------------------------------------------
+
+// Pictures are shrunk in the browser before uploading: plenty sharp on the board, and small to store and send.
+// The server only checks the file really is a picture; it never has to decode one.
+const TOKEN_PICTURE_SIZE = 512;
+const BOARD_PICTURE_SIZE = 2560;
+
+async function shrink(file: File, largest: number) {
+    const bitmap = await createImageBitmap(file);            // fails for anything that isn't a picture
+    const scale = Math.min(1, largest / Math.max(bitmap.width, bitmap.height));
+    const canvas = new OffscreenCanvas(Math.round(bitmap.width * scale), Math.round(bitmap.height * scale));
+    canvas.getContext('2d')!.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+    bitmap.close();
+    // WebP where the browser can make it (Safari can't, and gives PNG instead)
+    return { blob: await canvas.convertToBlob({ type: 'image/webp', quality: 0.85 }), width: canvas.width, height: canvas.height };
+}
+
+// The form's antiforgery token, from <AntiforgeryToken /> on the page, which the upload has to send back
+const antiforgery = () => document.querySelector<HTMLInputElement>('input[name="__RequestVerificationToken"]')?.value ?? '';
+
+async function upload(file: File, largest: number) {
+    const { blob, width, height } = await shrink(file, largest);
+    const form = new FormData();
+    form.append('file', blob, 'picture');
+    form.append('__RequestVerificationToken', antiforgery());
+    const response = await fetch(`api/canvases/${canvasId}/images`, { method: 'POST', body: form });
+    if (!response.ok) throw new Error((await response.text()) || `Upload failed (${response.status})`);
+    const { url } = await response.json() as { url: string };
+    return { url, width, height };
+}
+
+// The board point in the middle of what you can see
+const viewCenter = () => stage.getAbsoluteTransform().copy().invert().point({ x: stage.width() / 2, y: stage.height() / 2 });
+
+// A map or handout on the board, centred where you're looking (or where it was dropped), at most 800 by 600 units
+async function addPicture(file: File, at = viewCenter()) {
+    const { url, width, height } = await upload(file, BOARD_PICTURE_SIZE);
+    const scale = Math.min(1, 800 / width, 600 / height);
+    const picture = new Konva.Image({
+        id: crypto.randomUUID(), image: undefined,
+        x: Math.round(at.x - (width * scale) / 2), y: Math.round(at.y - (height * scale) / 2),
+        width: Math.round(width * scale), height: Math.round(height * scale),
+    });
+    picture.setAttr('src', url);
+    prepare(picture, 'image');
+    pictures.add(picture);
+    live?.addItem(picture.id(), 'image', picture.toObject());
+    mine.push(picture.id());
+}
+
+async function addPictureToken(file: File, at = viewCenter()) {
+    const name = window.prompt('Token name')?.trim();
+    if (!name) return;
+    const { url } = await upload(file, TOKEN_PICTURE_SIZE);
+    placeToken(at.x, at.y, url, name);
+}
+
+// Board pictures, or token pictures while the Token tool is on (or from the sidebar's button)
+function addFile(file: File | undefined, asToken: boolean, at?: { x: number; y: number }) {
+    if (!file?.type.startsWith('image/')) return;
+    (asToken ? addPictureToken(file, at) : addPicture(file, at))
+        .catch(err => window.alert(`Couldn't add that picture: ${err instanceof Error ? err.message : err}`));
+}
+
+// The rail's picture button and the sidebar's "+ Image token" share one hidden file picker
+const filePicker = document.querySelector<HTMLInputElement>('[data-file]')!;
+let pickingToken = false;
+document.querySelector('.board-page')!.addEventListener('click', e => {
+    const button = (e.target as HTMLElement).closest<HTMLElement>('[data-pick]');
+    if (!button) return;
+    pickingToken = button.dataset.pick === 'token';
+    filePicker.value = '';
+    filePicker.click();
+});
+filePicker.addEventListener('change', () => addFile(filePicker.files?.[0], pickingToken));
+
+// Dropping a picture on the board puts it where it was dropped
+container.addEventListener('dragover', e => e.preventDefault());
+container.addEventListener('drop', e => {
+    e.preventDefault();
+    stage.setPointersPositions(e);
+    addFile(e.dataTransfer?.files[0], tool === 'token', stage.getRelativePointerPosition() ?? undefined);
+});
+
+// Pasting a picture (like a screenshot) puts it in the middle of what you can see
+document.addEventListener('paste', e => {
+    if ((e.target as HTMLElement).closest('input, textarea, [contenteditable]')) return;
+    const file = [...e.clipboardData?.files ?? []].find(f => f.type.startsWith('image/'));
+    if (file) { e.preventDefault(); addFile(file, tool === 'token'); }
+});
+
+// ---- Thumbnail for the canvases page --------------------------------------------------------------------------
+
+// A couple of seconds after your last change, the board takes a small picture of itself for its card on the canvases
+// page: framed on what's drawn (see thumbnailFrame), wherever you're zoomed or panned to, without cursors or handles.
+const THUMBNAIL_WIDTH = 480;
+let thumbnailTimer = 0;
+
+function thumbnailSoon() {
+    clearTimeout(thumbnailTimer);
+    thumbnailTimer = window.setTimeout(() => saveThumbnail().catch(() => { /* only the card misses out */ }), 2000);
+}
+
+// The part of the board worth showing, in board units: everything on it, with room around it, in the card's shape
+// (16:10, like the board), never smaller than a third of the board so one scribble isn't blown up. An empty board
+// shows all of it.
+function thumbnailFrame() {
+    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+    for (const layer of [pictures, drawing, tokens])
+        for (const item of layer.getChildren()) {
+            const r = item.getClientRect({ relativeTo: stage });   // in board units, whatever the zoom
+            left = Math.min(left, r.x); top = Math.min(top, r.y);
+            right = Math.max(right, r.x + r.width); bottom = Math.max(bottom, r.y + r.height);
+        }
+    if (left === Infinity) return { x: 0, y: 0, width: BOARD_WIDTH, height: BOARD_HEIGHT };
+
+    const PADDING = 40;
+    const aspect = BOARD_WIDTH / BOARD_HEIGHT;
+    let width = Math.max(right - left + PADDING * 2, BOARD_WIDTH / 3);
+    let height = Math.max(bottom - top + PADDING * 2, width / aspect);
+    width = Math.min(Math.max(width, height * aspect), BOARD_WIDTH);
+    height = Math.min(width / aspect, BOARD_HEIGHT);
+
+    // Centred on what's there, but kept on the board
+    const x = Math.min(Math.max((left + right) / 2 - width / 2, 0), BOARD_WIDTH - width);
+    const y = Math.min(Math.max((top + bottom) / 2 - height / 2, 0), BOARD_HEIGHT - height);
+    return { x, y, width, height };
+}
+
+async function saveThumbnail() {
+    const scale = stage.scaleX();
+    const frame = thumbnailFrame();
+    handles.hide();
+    others.hide();
+    try {
+        // Where that frame is on screen right now; Konva draws all of it, even parts panned out of view
+        const blob = await stage.toBlob({
+            x: stage.x() + frame.x * scale, y: stage.y() + frame.y * scale,
+            width: frame.width * scale, height: frame.height * scale,
+            pixelRatio: THUMBNAIL_WIDTH / (frame.width * scale), mimeType: 'image/webp', quality: 0.8,
+        }) as Blob;
+        const form = new FormData();
+        form.append('file', blob, 'thumbnail');
+        form.append('__RequestVerificationToken', antiforgery());
+        await fetch(`api/canvases/${canvasId}/thumbnail`, { method: 'POST', body: form });
+    } finally {
+        handles.show();
+        others.show();
+    }
+}
+
+// ---- Other people --------------------------------------------------------------------------------------------------
+
+const people = new Map<string, CanvasPerson>();
+const cursors = new Map<string, { group: Konva.Group; hide: number }>();
+const drafts = new Map<string, Konva.Line>();               // their half-drawn strokes, by stroke ID
+
+// Each person keeps the same color for their cursor and half-drawn strokes
+const palette = ['#7F77DD', '#D85A30', '#1D9E75', '#378ADD', '#BA7517', '#D4537E'];
+function colorOf(personId: string) {
+    let hash = 0;
+    for (const c of personId) hash = (hash * 31 + c.charCodeAt(0)) | 0;
+    return palette[Math.abs(hash) % palette.length];
+}
+
+function showCursor(personId: string, x: number, y: number) {
+    let cursor = cursors.get(personId);
+    if (!cursor) {
+        const group = new Konva.Group();
+        group.add(new Konva.Circle({ radius: 6, fill: colorOf(personId) }));
+        group.add(new Konva.Label({ x: 8, y: 6 })
+            .add(new Konva.Tag({ fill: colorOf(personId), cornerRadius: 4 }))
+            .add(new Konva.Text({ text: people.get(personId)?.name ?? '…', fontSize: 13, padding: 4, fill: '#ffffff' })));
+        others.add(group);
+        cursor = { group, hide: 0 };
+        cursors.set(personId, cursor);
+    }
+    cursor.group.position({ x, y }).visible(true);
+    // Hide it when they stop moving, so a cursor isn't left sitting on the board
+    clearTimeout(cursor.hide);
+    cursor.hide = window.setTimeout(() => cursor!.group.visible(false), 4000);
+}
+
+function showPeople(list: CanvasPerson[]) {
+    people.clear();
+    for (const person of list) people.set(person.id, person);
+
+    // Their cursors go when they leave
+    for (const [id, cursor] of cursors)
+        if (!people.has(id)) { cursor.group.destroy(); cursors.delete(id); }
+
+    document.querySelector('[data-here]')!.textContent = `${list.length} here`;
+    const box = document.querySelector('[data-people]')!;
+    box.replaceChildren(...list.map(person => {
+        const el = person.avatarUrl ? Object.assign(document.createElement('img'), { src: person.avatarUrl, alt: '' })
+            : Object.assign(document.createElement('span'), { className: 'initial', textContent: person.name[0] });
+        el.title = person.id === live?.me.id ? `${person.name} (you)` : person.name;
+        return el;
+    }));
+}
+
+function showStatus(state: 'live' | 'reconnecting' | 'offline', text?: string) {
+    const el = document.querySelector<HTMLElement>('[data-status]')!;
+    el.className = 'board-status ' + state;
+    el.textContent = text ?? { live: '● Live', reconnecting: 'Reconnecting…', offline: 'Offline' }[state];
+}
+
+// Everything above exists now, so the tools can be set up
+setTool('pen');
+
+// ---- Connecting ----------------------------------------------------------------------------------------------------
+
+let live: CanvasLive | null = null;
+try {
+    live = await connect(canvasId, {
+        load: items => {
+            load(items);
+            // A canvas without a picture yet (like one made before thumbnails) gets one when it's first opened
+            if (!container.dataset.hasThumbnail && items.length) thumbnailSoon();
+        },
+        changed: thumbnailSoon,
+        presence: showPeople,
+        status: showStatus,
+        cursor: showCursor,
+        strokeProgress: (personId, strokeId, points) => {
+            let line = drafts.get(strokeId);
+            if (!line) {
+                line = new Konva.Line({ points: [], stroke: colorOf(personId), strokeWidth: 4, lineCap: 'round', lineJoin: 'round', tension: 0.5, opacity: 0.6 });
+                others.add(line);
+                drafts.set(strokeId, line);
+            }
+            line.points(line.points().concat(points));
+        },
+        strokeEnd: (_, strokeId, json) => {
+            drafts.get(strokeId)?.destroy();
+            drafts.delete(strokeId);
+            addItem(strokeId, 'stroke', json);
+        },
+        itemAdded: (_, itemId, type, json) => addItem(itemId, type, json),
+        itemMoved: (_, itemId, x, y) => stage.findOne('#' + itemId)?.position({ x, y }),
+        itemRemoved: (_, itemId) => { const node = stage.findOne('#' + itemId); if (node) removeItem(node); },
+    });
+} catch {
+    // You can still draw, but nothing is saved or shared
+    showStatus('offline', "Couldn't connect. Drawings won't be saved.");
+}

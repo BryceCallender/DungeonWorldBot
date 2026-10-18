@@ -61,6 +61,25 @@ document.addEventListener('toggle', e => {
 // They're placed for where the page was, so close them when it scrolls
 addEventListener('scroll', () => document.querySelectorAll('.cal-pop:popover-open').forEach(p => p.hidePopover()), { passive: true });
 
+// <time data-ago> shows how long ago it was ("2 minutes ago", "yesterday"), in the viewer's own language and time
+// zone, which the server can't know. The text inside is what shows until this runs.
+const relativeTime = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+const timeUnits = [['year', 31536000], ['month', 2592000], ['week', 604800], ['day', 86400], ['hour', 3600], ['minute', 60]];
+
+function showTimes(root = document) {
+    for (const el of root.querySelectorAll('time[data-ago]')) {
+        const date = new Date(el.dateTime);
+        if (isNaN(date)) continue;
+        const seconds = (date - Date.now()) / 1000;
+        const [unit, size] = timeUnits.find(([, size]) => Math.abs(seconds) >= size) ?? [];
+        el.textContent = unit ? relativeTime.format(Math.round(seconds / size), unit) : 'just now';
+        el.title = date.toLocaleString();
+    }
+}
+showTimes();
+// So "2 minutes ago" keeps counting
+setInterval(showTimes, 60000);
+
 // Live updates: the server says when the bot changed the database, and the page swaps in a fresh copy of itself,
 // keeping open moves, searches and scroll position.
 (() => {
@@ -132,6 +151,7 @@ addEventListener('scroll', () => document.querySelectorAll('.cal-pop:popover-ope
             const state = capture(main);
             main.innerHTML = fresh.innerHTML;
             restore(main, state);
+            showTimes(main);
             document.title = next.title;
             pulse();
         } catch {

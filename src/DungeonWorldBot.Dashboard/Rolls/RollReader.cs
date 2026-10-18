@@ -5,53 +5,7 @@ using DungeonWorldBot.Features.Rolls;
 using Microsoft.EntityFrameworkCore;
 using Remora.Rest.Core;
 
-namespace DungeonWorldBot.Dashboard.Party;
-
-/// <param name="Sums">How many times each natural 2d6 sum came up, indexed 0–10 for sums 2–12.</param>
-public sealed record DiceSpread(int Rolls, double AverageNatural, double AverageTotal, IReadOnlyList<int> Sums)
-{
-    public static DiceSpread Of(IReadOnlyCollection<MoveDice> dice)
-    {
-        var sums = new int[11];
-        foreach (var d in dice)
-            sums[d.First + d.Second - 2]++;
-
-        return new DiceSpread(
-            dice.Count,
-            dice.Count == 0 ? 0 : dice.Average(d => d.First + d.Second),
-            dice.Count == 0 ? 0 : dice.Average(d => d.Total),
-            sums);
-    }
-
-    /// <summary>
-    /// The share of fair 2d6 rolls that land on each sum from 2 to 12.
-    /// </summary>
-    public static double Expected(int sum) => (6 - Math.Abs(sum - 7)) / 36.0;
-}
-
-/// <summary>
-/// How a group of rolls went, like every Hack and Slash or every +DEX roll.
-/// </summary>
-public sealed record OutcomeTally(string Name, int Rolls, int StrongHits, int WeakHits, int Misses)
-{
-    public static OutcomeTally Of(string name, IReadOnlyCollection<MoveDice> dice) => new(
-        name,
-        dice.Count,
-        dice.Count(d => d.Outcome == MoveOutcome.StrongHit),
-        dice.Count(d => d.Outcome == MoveOutcome.WeakHit),
-        dice.Count(d => d.Outcome == MoveOutcome.Miss));
-}
-
-/// <param name="Players">How many people other than the DM rolled.</param>
-/// <param name="Misses">Each miss marks XP.</param>
-public sealed record SessionRolls(DateTime Started, int Players, int Rolls, int Hits, int Misses, int Natural12s, int Natural2s, double AverageNatural);
-
-/// <param name="Unlabelled">Rolls that weren't for a known move, like plain dice or ".dex dodge the trap".</param>
-public sealed record RollBreakdown(
-    IReadOnlyList<OutcomeTally> Moves,
-    IReadOnlyList<OutcomeTally> Stats,
-    IReadOnlyList<SessionRolls> Sessions,
-    int Unlabelled);
+namespace DungeonWorldBot.Dashboard.Rolls;
 
 /// <summary>
 /// Reads the raw game chat rolls, for the dice spreads the bot's own roll stats don't work out.

@@ -1,0 +1,73 @@
+.topbar {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    padding: .75rem 1.5rem;
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+}
+
+.brand { font-weight: 700; color: var(--text); text-decoration: none; }
+
+.topbar nav { display: flex; gap: .25rem; }
+
+/* NavLink draws the links, so they need ::deep to be reached from here */
+.topbar nav ::deep a {
+    padding: .35rem .75rem;
+    border-radius: 999px;
+    color: var(--muted);
+    text-decoration: none;
+}
+
+.topbar nav ::deep a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+main { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+
+/* Signed-in viewer and live updates */
+
+.viewer { margin-left: auto; display: flex; align-items: center; gap: .9rem; font-size: .85rem; }
+
+.live { display: inline-flex; align-items: center; gap: .6rem; color: var(--muted); }
+.live i { position: relative; width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 0 0 var(--good); }
+.live.off i { background: var(--muted); }
+
+/* A ring that ripples out every few seconds while connected, so the dot reads as live */
+.live i::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--good);
+    animation: live-ping 2.4s cubic-bezier(0, 0, .2, 1) infinite;
+}
+
+.live.off i::after { animation: none; opacity: 0; }
+
+/* A bigger flash when an update lands */
+.live.pulse i { animation: live-pulse 1s ease-out; }
+
+@keyframes live-ping {
+    0% { transform: scale(1); opacity: .7; }
+    70%, 100% { transform: scale(2.8); opacity: 0; }
+}
+
+@keyframes live-pulse {
+    from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--good) 70%, transparent); }
+    to { box-shadow: 0 0 0 10px transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .live i::after, .live.pulse i { animation: none; }
+}
+
+.me { display: inline-flex; align-items: center; gap: .45rem; color: var(--text); text-decoration: none; font-weight: 600; }
+.me img { border-radius: 50%; }
+a.me:hover span { color: var(--accent); }
+.signout { color: var(--muted); }
+
+@media (max-width: 600px) {
+    main { padding: 1rem; }
+    .topbar { padding: .75rem 1rem; gap: .5rem .75rem; flex-wrap: wrap; }
+    .viewer { gap: .6rem; }
+    .me span:not(.chip) { display: none; }
+}

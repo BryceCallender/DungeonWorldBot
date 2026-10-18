@@ -1,0 +1,34 @@
+.party {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.member {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+    color: inherit;
+    text-decoration: none;
+    transition: border-color .15s, transform .15s;
+    /* A stripe along the top in the class color */
+    box-shadow: inset 0 4px 0 var(--class);
+}
+
+.member:hover { border-color: var(--class); transform: translateY(-2px); }
+
+.armor-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; font-weight: 600; }
+.armor-row span { display: inline-flex; align-items: center; gap: .3rem; }
+
+/* Class and subclass on one line, the pill shortening rather than wrapping so every card's header is the same height */
+.class-line { display: flex; align-items: center; gap: .45rem; min-width: 0; white-space: nowrap; }
+.class-line .chip { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+
+.member-extra { display: flex; flex-direction: column; gap: .5rem; padding-top: .75rem; border-top: 1px solid var(--border); }
+.member-foot { display: flex; flex-wrap: wrap; gap: .9rem; margin-top: auto; padding-top: .5rem; border-top: 1px solid var(--border); }
+
+/* NPCs aren't links, so their cards stay put */
+.member.npc { box-shadow: inset 0 4px 0 var(--muted); }
+.member.npc:hover { border-color: var(--border); transform: none; }
+.member.npc .member-extra { gap: .35rem; }
