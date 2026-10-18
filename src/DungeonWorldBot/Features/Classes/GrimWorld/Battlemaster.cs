@@ -88,6 +88,9 @@ public static class Battlemaster
             "When you die (failing or forgoing Last Breath), your death is revealed as your final gambit. Work with the GM to reveal your master plot: it gives your allies a major advantage, sets your enemies up for destruction, or sets big world events in motion."),
         resources:
         [
-            new ClassResource("Gambit", "Gained when you or a bonded ally takes outside damage. Spent on Gambit options. Resets to 0 after a battle."),
+            new ClassResource("Gambit", "Gained when you or a bonded ally takes outside damage. Spent on Gambit options. Resets to 0 after a battle.")
+            {
+                Bonuses = [new("Playing the Long Game", Reset: 1)],
+            },
         ]);
 }
