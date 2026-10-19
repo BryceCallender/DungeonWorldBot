@@ -7,8 +7,7 @@
       "launchBrowser": true,
       "applicationUrl": "http://localhost:5280",
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development",
-        "SeedCanvases": "true"
+        "ASPNETCORE_ENVIRONMENT": "Development"
       }
     }
   }

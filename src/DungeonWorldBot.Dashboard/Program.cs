@@ -86,10 +86,6 @@ using (var scope = app.Services.CreateScope())
 {
     var canvasDb = scope.ServiceProvider.GetRequiredService<CanvasContext>();
     canvasDb.Database.Migrate();
-
-    // Made-up canvases for trying out the pages (SeedCanvases=true), only while there are none
-    if (app.Configuration.GetValue("SeedCanvases", false))
-        CanvasSeed.Seed(canvasDb, settings.DungeonMasterID.ToString());
 }
 
 if (!signInEnabled)
