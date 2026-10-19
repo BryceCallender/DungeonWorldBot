@@ -1,29 +1,31 @@
-@page "/canvases/"
+@page "/scenes"
+@* The old address, so links already shared in Discord still work *@
+@page "/canvases"
 @using DungeonWorldBot.Dashboard.Canvases
 @using Microsoft.AspNetCore.Components.Forms
 @inject CanvasStore CanvasStore
 @inject CanvasPresence Presence
 @inject Viewer Viewer
 
-<PageTitle>Canvases · Sana Solem</PageTitle>
+<PageTitle>Scenes · Sana Solem</PageTitle>
 
 <div class="canvases-head">
-    <h1>@(Archived ? "Archived canvases" : "Canvases")</h1>
+    <h1>@(Archived ? "Archived scenes" : "Scenes")</h1>
 
     @if (!Archived)
     {
         @* Plain links, filtered on the server, so they need no script *@
         <nav class="canvas-filters" aria-label="Show">
-            <a class="chip@(_kind is null ? " on" : "")" href="canvases">All</a>
+            <a class="chip@(_kind is null ? " on" : "")" href="scenes">All</a>
             @foreach (var kind in Enum.GetValues<CanvasKind>())
             {
-                <a class="chip@(_kind == kind ? " on" : "")" href="canvases?kind=@kind">@Plural(kind)</a>
+                <a class="chip@(_kind == kind ? " on" : "")" href="scenes?kind=@kind">@Plural(kind)</a>
             }
         </nav>
 
         @* <details> opens and closes on its own, and stays open to show a mistake in the name *@
         <details class="new-canvas" open="@(Error is not null)">
-            <summary class="tool">+ New canvas</summary>
+            <summary class="tool">+ New scene</summary>
             <form method="post" action="api/canvases">
                 <AntiforgeryToken />
                 <input class="filter" name="name" maxlength="@CanvasStore.MaxNameLength" placeholder="Goblin ambush at the ford" required autofocus />
@@ -43,7 +45,7 @@
     }
     else
     {
-        <a class="tool" href="canvases">← Back to canvases</a>
+        <a class="tool" href="scenes">← Back to scenes</a>
     }
 </div>
 
@@ -52,7 +54,7 @@
     <p class="empty">
         @if (Archived) { <text>Nothing's been put away.</text> }
         else if (_kind is { } kind) { <text>No @Plural(kind).ToLowerInvariant() yet.</text> }
-        else { <text>No canvases yet. Make one for your next encounter or map.</text> }
+        else { <text>No scenes yet. Make one for your next encounter or map.</text> }
     </p>
 }
 else
@@ -64,7 +66,7 @@ else
             var peopleOnCanvas = Presence.On(c.ID);
 
             <article class="canvas-card">
-                <a class="canvas-link" href="canvas/@sqid">
+                <a class="canvas-link" href="scene/@sqid">
                     <div class="canvas-thumbnail">
                         @if (_thumbnails.TryGetValue(c.ID, out var taken))
                         {
@@ -103,7 +105,7 @@ else
 
 @if (!Archived && _archivedCount > 0)
 {
-    <p class="archived-link"><a href="canvases?archived=true">Archived (@_archivedCount)</a></p>
+    <p class="archived-link"><a href="scenes?archived=true">Archived (@_archivedCount)</a></p>
 }
 
 @code {
@@ -130,19 +132,17 @@ else
     private bool CanPutAway(Canvas canvas) =>
         !Viewer.SignedIn || Viewer.IsDungeonMaster || Viewer.Is(canvas.CreatedBy ?? "");
 
-    private static string Plural(CanvasKind kind) => kind == CanvasKind.Notes ? "Notes" : $"{kind}s";
+    private static string Plural(CanvasKind kind) => $"{kind}s";
 
     private static string KindIcon(CanvasKind kind) => kind switch
     {
         CanvasKind.Encounter => "sword",
-        CanvasKind.Map => "map",
-        _ => "notes",
+        _ => "map",
     };
 
     private static string KindClass(CanvasKind kind) => kind switch
     {
         CanvasKind.Encounter => "warn",
-        CanvasKind.Map => "good",
-        _ => "accent",
+        _ => "good",
     };
 }

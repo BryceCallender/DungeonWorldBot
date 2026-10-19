@@ -18,7 +18,11 @@
 
 <header class="card hero @Lookup.ColorOf(c.Character.Class.Type)">
     <div class="hero-main">
-        <h1>@c.Name</h1>
+        @* Backstory, goals and notes have their own page; the link sits with the name, since it's about who they are *@
+        <div class="hero-title">
+            <h1>@c.Name</h1>
+            <a class="story-link" href="@c.Url/story"><Icon Name="notes" />Story →</a>
+        </div>
         <div class="muted">
             Level @c.Level <a href="@Lookup.ClassUrl(c.Character.Class.Type, c.Slug)" title="See the @c.ClassName class" class="class-name">@c.ClassName</a> · @c.Character.Race · @PartyReader.Spaced(c.Character.Alignment.ToString())
         </div>
@@ -29,7 +33,7 @@
             }
             @if (c.Subclass is { } sub && SubclassLibrary.Find(sub.Name) is { } subclassRules)
             {
-                <a class="chip accent" href="@Lookup.SubclassUrl(subclassRules, c.Slug)">@sub.Name</a>
+                <a class="chip class" href="@Lookup.SubclassUrl(subclassRules, c.Slug)">@sub.Name</a>
             }
             @if (ActiveShapes(c) is { Count: > 0 } shapes)
             {
@@ -119,8 +123,8 @@
     {
         <a href="@c.Url#shapes">Shapes</a>
     }
-    <a href="@c.Url#moves">Moves <span class="count">@c.Moves.Count</span></a>
-    <a href="@c.Url#inventory">Inventory <span class="count">@(c.Character.Inventory?.Items?.Count ?? 0)</span></a>
+    <a href="@c.Url#moves">Moves</a>
+    <a href="@c.Url#inventory">Inventory</a>
 </nav>
 
 <div class="sheet">

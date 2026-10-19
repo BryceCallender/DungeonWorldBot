@@ -36,6 +36,11 @@ ul.items li {
 .jar-contents { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .25rem; }
 .item-meta { display: flex; gap: .6rem; align-items: baseline; white-space: nowrap; }
 
+/* The name, with the story link beside it (wrapping underneath when there's no room) */
+.hero-title { display: flex; flex-wrap: wrap; align-items: baseline; gap: .2rem .9rem; }
+.story-link { display: inline-flex; align-items: center; gap: .3rem; font-size: .9rem; color: var(--muted); text-decoration: none; white-space: nowrap; }
+.story-link:hover { color: var(--accent); }
+
 @media (max-width: 600px) {
     .vital-hp { grid-column: 1 / -1; }
     .tools { width: 100%; }

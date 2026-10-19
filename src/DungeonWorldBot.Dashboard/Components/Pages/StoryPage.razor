@@ -1,0 +1,211 @@
+@page "/character/{Id}/story"
+@inject NavigationManager Navigation
+@inject PartyReader PartyReader
+@inject Viewer Viewer
+
+@if (_view is not { } c)
+{
+    <PageTitle>Not found · Sana Solem</PageTitle>
+    <p class="empty">No character with that ID. <a href="">Back to the party</a></p>
+    return;
+}
+
+<PageTitle>@c.Name's story · Sana Solem</PageTitle>
+
+<a class="back" href="@c.Url">← @c.Name</a>
+
+@* Only the character's own player writes these; everyone else reads them. Editing opens in place (<details>), so it
+   reads like a page until there's something to change. Live updates are off here (data-no-live): the bot changes the
+   character all through a fight, and swapping the page in would throw away whatever's being typed. *@
+<header class="story-head">
+    <h1>@c.Name's story</h1>
+    <div class="muted">Level @c.Level @c.ClassName · @c.Character.Race</div>
+</header>
+
+@{
+    var mine = Viewer.Is(c.ID);
+    var back = $"/{c.Url}/story";
+    var goals = c.Character.Goals ?? [];
+    var notes = c.Character.Notes ?? [];
+    var done = goals.Count(g => g.Completed);
+}
+<div class="story" data-no-live>
+    <section class="card story-part backstory" id="backstory">
+        <h2>Backstory @if (Words(c.Character.Backstory) is > LongBackstoryWords and var words) { <span class="small">· @words.ToString("N0") words</span> }</h2>
+        @if (mine)
+        {
+            <details class="editable">
+                <summary class="@(c.Character.Backstory is null ? "add-tile" : "edit-toggle")">
+                    @if (c.Character.Backstory is null)
+                    {
+                        <span class="when-closed">+ Write your backstory</span>
+                    }
+                    else
+                    {
+                        <span class="when-closed"><Icon Name="pen" /> Edit</span>
+                    }
+                    <span class="when-open">Cancel</span>
+                </summary>
+                <form method="post" action="api/characters/@c.ID/backstory" class="story-form">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="back" value="@(back)#backstory" />
+                    <textarea class="filter grow" name="text" rows="8" maxlength="@CharacterJournal.MaxBackstoryLength" placeholder="Where do they come from? What drove them to adventure?">@c.Character.Backstory</textarea>
+                    <div class="form-foot">
+                        <span class="small">**bold** and *italic* work</span>
+                        <button class="tool primary">Save</button>
+                    </div>
+                </form>
+            </details>
+        }
+        @if (c.Character.Backstory is { } backstory)
+        {
+            var isLong = Words(backstory) > LongBackstoryWords;
+            <div class="prose @(isLong ? "clamped" : "")">@ToHtml(backstory)</div>
+            @* A long one shows its start, faded out, until it's opened *@
+            @if (isLong)
+            {
+                <details class="read-more">
+                    <summary><span class="when-closed">Read the whole backstory ↓</span><span class="when-open">Show less ↑</span></summary>
+                </details>
+            }
+        }
+        else if (!mine)
+        {
+            <p class="empty">No backstory yet. Only @c.Name's player can write one.</p>
+        }
+    </section>
+
+    <section class="card story-part goals-part" id="goals">
+        <h2>Goals @if (goals.Count > 0) { <span class="small">· @done of @goals.Count done</span> }</h2>
+        @if (goals.Count > 0)
+        {
+            <div class="goal-progress" title="@done of @goals.Count done">
+                <div class="bar"><div class="fill good" style="width: @Percent(done, goals.Count)%"></div></div>
+            </div>
+            <ul class="goals">
+                @foreach (var goal in goals.OrderBy(g => g.Completed).ThenBy(g => g.ID))
+                {
+                    var label = goal.Completed ? "Mark not done" : "Mark done";
+                    <li class="@(goal.Completed ? "done" : "")">
+                        @if (mine)
+                        {
+                            @* Click the text to change it; Enter saves. Save comes first so Enter presses it rather than the
+                               checkbox (the first button in a form is the one Enter uses); CSS puts the checkbox back in front. *@
+                            <form method="post" action="api/characters/@c.ID/goals/@goal.ID">
+                                <AntiforgeryToken />
+                                <input type="hidden" name="back" value="@(back)#goals" />
+                                <input type="hidden" name="completed" value="@((!goal.Completed).ToString().ToLower())" />
+                                <button class="row-button save">Save</button>
+                                <button class="checkbox" formaction="api/characters/@c.ID/goals/@goal.ID/complete" formnovalidate title="@label" aria-label="@label" aria-pressed="@goal.Completed.ToString().ToLower()"></button>
+                                <input class="goal-text" name="text" value="@goal.Text" maxlength="@CharacterJournal.MaxGoalLength" required aria-label="Goal" title="Click to edit" />
+                                <button class="row-button remove" formaction="api/characters/@c.ID/goals/@goal.ID/remove" formnovalidate title="Remove goal" aria-label="Remove goal">×</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <span class="checkbox" role="img" aria-label="@(goal.Completed ? "Done" : "Not done")"></span>
+                            <span class="goal-text">@goal.Text</span>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+        else if (!mine)
+        {
+            <p class="empty">No goals yet. Only @c.Name's player can add them.</p>
+        }
+        @if (mine)
+        {
+            <form method="post" action="api/characters/@c.ID/goals" class="add-goal">
+                <AntiforgeryToken />
+                <input type="hidden" name="back" value="@(back)#goals" />
+                <span class="plus" aria-hidden="true">+</span>
+                <input name="text" maxlength="@CharacterJournal.MaxGoalLength" placeholder="Add a goal…" required aria-label="New goal" />
+                <button class="row-button save">Add</button>
+            </form>
+        }
+    </section>
+
+    <section class="card story-part notes-part" id="notes">
+        <h2>Notes @if (notes.Count > 0) { <span class="small">· @notes.Count</span> }</h2>
+        @if (mine)
+        {
+            <details class="new-note">
+                <summary class="add-tile"><span class="when-closed">+ New note</span><span class="when-open">Cancel</span></summary>
+                <form method="post" action="api/characters/@c.ID/notes" class="story-form">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="back" value="@(back)#notes" />
+                    <textarea class="filter" name="text" rows="4" maxlength="@CharacterJournal.MaxTextLength" placeholder="Names, clues, debts, anything worth remembering" required></textarea>
+                    <div class="form-foot">
+                        <span class="small">**bold** and *italic* work</span>
+                        <button class="tool primary">Add note</button>
+                    </div>
+                </form>
+            </details>
+        }
+        @if (notes.Count > 0)
+        {
+            @* A timeline, newest at the top: when on the left, the note on the right *@
+            <ol class="notes">
+                @foreach (var note in notes.OrderByDescending(n => n.CreatedAt))
+                {
+                    // Saved in UTC; marked as such so the browser shows "2 days ago" in the viewer's own time
+                    var created = DateTime.SpecifyKind(note.CreatedAt, DateTimeKind.Utc);
+                    <li>
+                        <div class="note-when">
+                            <strong>@created.ToString("d MMM")</strong>
+                            <time class="small" datetime="@created.ToString("O")" data-ago>@created.ToString("yyyy")</time>
+                        </div>
+                        <div class="note-card">
+                            @if (mine)
+                            {
+                                <details class="editable">
+                                    <summary class="edit-toggle"><span class="when-closed"><Icon Name="pen" /> Edit</span><span class="when-open">Cancel</span></summary>
+                                    <form method="post" action="api/characters/@c.ID/notes/@note.ID" class="story-form">
+                                        <AntiforgeryToken />
+                                        <input type="hidden" name="back" value="@(back)#notes" />
+                                        <textarea class="filter" name="text" rows="4" maxlength="@CharacterJournal.MaxTextLength" required aria-label="Note">@note.Text</textarea>
+                                        <div class="form-foot">
+                                            <button class="tool danger" formaction="api/characters/@c.ID/notes/@note.ID/remove" formnovalidate>Delete</button>
+                                            <button class="tool primary">Save</button>
+                                        </div>
+                                    </form>
+                                </details>
+                            }
+                            <div class="prose">@ToHtml(note.Text)</div>
+                        </div>
+                    </li>
+                }
+            </ol>
+        }
+        else if (!mine)
+        {
+            <p class="empty">No notes yet. Only @c.Name's player can add them.</p>
+        }
+    </section>
+</div>
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    private CharacterView? _view;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _view = await PartyReader.GetCharacterAsync(Id);
+
+        // Links by Discord ID go to the address with the character's name
+        if (_view is not null && Id != _view.Slug)
+            Navigation.NavigateTo($"{_view.Url}/story", replace: true);
+    }
+
+    // Past this a backstory starts folded, so it doesn't push everything else off the page
+    private const int LongBackstoryWords = 150;
+
+    private static int Words(string? text) =>
+        text?.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries).Length ?? 0;
+
+    private static string Percent(int value, int max) =>
+        (max <= 0 ? 0 : Math.Clamp(value * 100.0 / max, 0, 100)).ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+}

@@ -1,7 +1,7 @@
 namespace DungeonWorldBot.Dashboard.Canvases;
 
 /// <summary>
-/// A board the table draws on together, like an encounter or a map.
+/// A scene: a board the table draws on together, for an encounter or a map.
 /// </summary>
 public class Canvas
 {

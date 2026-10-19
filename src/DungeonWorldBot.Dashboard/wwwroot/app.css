@@ -247,36 +247,39 @@ details > .small { margin-top: .4rem; }
     .hero { grid-template-columns: 1fr; }
 }
 
-/* Section links stay in view while scrolling the sheet */
+/* Section links stay in view while scrolling the sheet: tabs, with the section on screen underlined (app.js) */
 .jump {
     position: sticky;
     top: 0;
     z-index: 5;
     display: flex;
-    gap: .35rem;
+    align-items: center;
+    gap: 1.4rem;
     overflow-x: auto;
     scrollbar-width: none;
     margin: 0 -1.5rem 1rem;
-    padding: .5rem 1.5rem;
+    padding: 0 1.5rem;
     background: var(--bg);
-    border-bottom: 1px solid var(--border);
+    /* Drawn inside, so the tabs' underlines sit on top of it */
+    box-shadow: inset 0 -1px 0 var(--border);
 }
 
 .jump a {
     flex: none;
-    padding: .25rem .7rem;
-    border-radius: 999px;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    color: var(--text);
-    font-size: .85rem;
+    padding: .7rem 0 .6rem;
+    border-bottom: 2px solid transparent;
+    color: var(--muted);
+    font-size: .9rem;
+    font-weight: 500;
     text-decoration: none;
+    transition: color .15s, border-color .15s;
 }
 
-.jump a:hover { border-color: var(--accent); color: var(--accent); }
-.jump .count { color: var(--muted); font-size: .75rem; margin-left: .15rem; }
+.jump a:hover { color: var(--text); }
+.jump a[aria-current] { color: var(--text); border-bottom-color: var(--accent); }
 
-.sheet section[id] { scroll-margin-top: 3.5rem; }
+/* Any page with the bar: jumping to a section (a tab, a #link, coming back from a form) stops below it, not under it */
+html:has(.jump) { scroll-padding-top: 3.5rem; }
 
 .card-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: .5rem 1rem; margin-bottom: .5rem; }
 .card-head h2 { margin: 0; }
@@ -394,7 +397,50 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
     .tiles { grid-template-columns: repeat(2, 1fr); }
     .hero { grid-template-columns: 1fr; }
     .hero-vitals { grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); }
-    .jump { margin: 0 -1rem 1rem; padding: .5rem 1rem; }
+    .jump { margin: 0 -1rem 1rem; padding: 0 1rem; gap: 1.1rem; }
     .filter { width: 100%; }
     .jump-filter { width: 10rem; }
+}
+
+/* ---- Live dot ---------------------------------------------------------------------------------------------------- */
+
+/* The dot beside "Live", in the top bar and on canvases: green with a ring that ripples out every few seconds while
+   connected, gray and still with .off, and a bigger flash with .pulse when something changes (app.js and canvas.ts
+   set those). Its color can be changed with --dot, like amber while a canvas reconnects. */
+.live-dot {
+    --dot: var(--good);
+    position: relative;
+    display: inline-block;
+    flex: none;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--dot);
+}
+
+.live-dot::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--dot);
+    animation: live-ping 2.4s cubic-bezier(0, 0, .2, 1) infinite;
+}
+
+.live-dot.off { --dot: var(--muted); }
+.live-dot.off::after { animation: none; opacity: 0; }
+.live-dot.pulse { animation: live-pulse 1s ease-out; }
+
+@keyframes live-ping {
+    0% { transform: scale(1); opacity: .7; }
+    70%, 100% { transform: scale(2.8); opacity: 0; }
+}
+
+@keyframes live-pulse {
+    from { box-shadow: 0 0 0 0 color-mix(in srgb, var(--dot) 70%, transparent); }
+    to { box-shadow: 0 0 0 10px transparent; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .live-dot::after, .live-dot.pulse { animation: none; }
 }

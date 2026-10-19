@@ -5,15 +5,16 @@ import { connect, type CanvasItemType, type CanvasLive, type CanvasPerson, type 
 // ---- The board ----------------------------------------------------------------------------------------------------
 
 // Everything is drawn and saved in these units, whatever size the screen is, so everyone's drawings line up.
-// The stage fills the box on the page and is a camera onto the board: zooming scales it, panning moves it.
-const BOARD_WIDTH = 1600;
-const BOARD_HEIGHT = 1000;
+// The board goes on forever in every direction. The stage fills the box on the page and is a camera onto it: zooming
+// scales it, panning moves it.
+// Boards used to be this size, so older drawings sit in it; an empty board opens looking at it.
+const HOME = { x: 0, y: 0, width: 1600, height: 1000 };
 
 const container = document.getElementById('container') as HTMLDivElement;
 const canvasId = container.dataset.canvasId!;
 
 const stage = new Konva.Stage({ container, width: container.clientWidth, height: container.clientHeight });
-const grid = new Konva.Layer({ listening: false });        // squares to line things up on; never changes
+const grid = new Konva.Layer({ listening: false });        // squares to line things up on, drawn as you look around
 const pictures = new Konva.Layer();                        // maps and handouts, under everything drawn on them
 const drawing = new Konva.Layer();                         // saved strokes and text
 const tokens = new Konva.Layer();                          // pieces you can move
@@ -21,71 +22,114 @@ const handles = new Konva.Layer();                         // the box and corner
 const others = new Konva.Layer({ listening: false });      // other people's cursors and half-drawn strokes
 stage.add(grid, pictures, drawing, tokens, handles, others);
 
-// The board's edges, so you can tell it from the space around it once you zoom out or pan away
-grid.add(new Konva.Rect({
-    width: BOARD_WIDTH, height: BOARD_HEIGHT, cornerRadius: 8,
-    fill: getComputedStyle(container).getPropertyValue('--surface').trim() || '#ffffff',
-}));
+// The part of the board you can see, in board units
+function visibleArea() {
+    const scale = stage.scaleX();
+    return { x: -stage.x() / scale, y: -stage.y() / scale, width: stage.width() / scale, height: stage.height() / scale };
+}
 
-// A square every 50 units. Gray at low opacity reads on both the light and dark board. Lines stay 1px however far
-// you zoom (strokeScaleEnabled: false), instead of getting chunky.
+// A square every 50 units, drawn only where you're looking, since there's no end to them. Gray at low opacity reads
+// on both the light and dark board. Lines stay 1px however far you zoom, and zoomed far out only every fifth one is
+// drawn, so the board doesn't turn into gray mush. Taking the thumbnail points it at the part being pictured instead.
 const GRID_SIZE = 50;
-for (let x = GRID_SIZE; x < BOARD_WIDTH; x += GRID_SIZE)
-    grid.add(new Konva.Line({ points: [x, 0, x, BOARD_HEIGHT], stroke: 'rgba(128,128,128,0.18)', strokeWidth: 1, strokeScaleEnabled: false }));
-for (let y = GRID_SIZE; y < BOARD_HEIGHT; y += GRID_SIZE)
-    grid.add(new Konva.Line({ points: [0, y, BOARD_WIDTH, y], stroke: 'rgba(128,128,128,0.18)', strokeWidth: 1, strokeScaleEnabled: false }));
+const surface = getComputedStyle(container).getPropertyValue('--surface').trim() || '#ffffff';
+let gridArea: { x: number; y: number; width: number; height: number } | null = null;
+grid.add(new Konva.Shape({
+    sceneFunc: context => {
+        const area = gridArea ?? visibleArea();
+        const scale = stage.scaleX();
+        context.fillStyle = surface;
+        context.fillRect(area.x, area.y, area.width, area.height);
+
+        const step = GRID_SIZE * scale < 10 ? GRID_SIZE * 5 : GRID_SIZE;
+        context.beginPath();
+        for (let x = Math.ceil(area.x / step) * step; x <= area.x + area.width; x += step) {
+            context.moveTo(x, area.y);
+            context.lineTo(x, area.y + area.height);
+        }
+        for (let y = Math.ceil(area.y / step) * step; y <= area.y + area.height; y += step) {
+            context.moveTo(area.x, y);
+            context.lineTo(area.x + area.width, y);
+        }
+        context.strokeStyle = 'rgba(128,128,128,0.18)';
+        context.lineWidth = 1 / scale;
+        context.stroke();
+    },
+}));
 
 // ---- Pan and zoom --------------------------------------------------------------------------------------------------
 
-// The scale that fits the whole board in the box. Zoom is shown relative to it, so "100%" means "all of it".
-let fitScale = 1;
-// Until you pan or zoom, the board keeps fitting the box as the window resizes
+// Until you pan or zoom, the view keeps fitting what's drawn as the window resizes and the board loads
 let viewMoved = false;
 
-const MIN_ZOOM = 0.5;                                      // of fitScale
+// 100% is one board unit to a pixel
+const MIN_ZOOM = 0.05;
 const MAX_ZOOM = 5;
 
 function resize() {
     // A box with no size yet (hidden, or still laying out) would make the scale 0; wait until it has one
     if (!container.clientWidth || !container.clientHeight) return;
     stage.size({ width: container.clientWidth, height: container.clientHeight });
-    fitScale = Math.min(stage.width() / BOARD_WIDTH, stage.height() / BOARD_HEIGHT);
     if (!viewMoved) fitView();
-    showZoom();
 }
 
+// Everything drawn, in board units, or null when nothing is
+function contentBounds() {
+    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
+    for (const layer of [pictures, drawing, tokens])
+        for (const item of layer.getChildren()) {
+            if (!item.visible()) continue;
+            const r = item.getClientRect({ relativeTo: stage });   // in board units, whatever the zoom
+            left = Math.min(left, r.x); top = Math.min(top, r.y);
+            right = Math.max(right, r.x + r.width); bottom = Math.max(bottom, r.y + r.height);
+        }
+    return left === Infinity ? null : { x: left, y: top, width: right - left, height: bottom - top };
+}
+
+// `box` (in board units) grown to at least `least` wide and in `aspect`'s shape, around the same middle
+function frameAround(box: { x: number; y: number; width: number; height: number }, padding: number, least: number, aspect: number) {
+    let width = Math.max(box.width + padding * 2, least);
+    let height = Math.max(box.height + padding * 2, width / aspect);
+    width = Math.max(width, height * aspect);
+    height = width / aspect;
+    return { x: box.x + box.width / 2 - width / 2, y: box.y + box.height / 2 - height / 2, width, height };
+}
+
+// Everything that's drawn, or where boards start when nothing is. One scribble isn't blown up to fill the screen.
 function fitView() {
-    stage.scale({ x: fitScale, y: fitScale });
-    stage.position({ x: (stage.width() - BOARD_WIDTH * fitScale) / 2, y: (stage.height() - BOARD_HEIGHT * fitScale) / 2 });
+    const content = contentBounds();
+    const frame = content ? frameAround(content, 40, HOME.width / 2, stage.width() / stage.height()) : HOME;
+    const scale = clampZoom(Math.min(stage.width() / frame.width, stage.height() / frame.height));
+    stage.scale({ x: scale, y: scale });
+    stage.position({
+        x: stage.width() / 2 - (frame.x + frame.width / 2) * scale,
+        y: stage.height() / 2 - (frame.y + frame.height / 2) * scale,
+    });
     viewMoved = false;
-    showZoom();
 }
 
-// Keep at least this much of the board in view, so panning can never lose it entirely
-const KEEP_VISIBLE = 80;
-function clamp(position: { x: number; y: number }) {
-    const width = BOARD_WIDTH * stage.scaleX(), height = BOARD_HEIGHT * stage.scaleY();
-    return {
-        x: Math.min(Math.max(position.x, KEEP_VISIBLE - width), stage.width() - KEEP_VISIBLE),
-        y: Math.min(Math.max(position.y, KEEP_VISIBLE - height), stage.height() - KEEP_VISIBLE),
-    };
-}
+const clampZoom = (scale: number) => Math.min(Math.max(scale, MIN_ZOOM), MAX_ZOOM);
 
 // Zoom by `factor`, keeping the board point under `screen` (a spot in the box, in pixels) where it is
 function zoomAt(screen: { x: number; y: number }, factor: number) {
     const old = stage.scaleX();
-    const next = Math.min(Math.max(old * factor, fitScale * MIN_ZOOM), fitScale * MAX_ZOOM);
+    const next = clampZoom(old * factor);
     const board = { x: (screen.x - stage.x()) / old, y: (screen.y - stage.y()) / old };
     stage.scale({ x: next, y: next });
-    stage.position(clamp({ x: screen.x - board.x * next, y: screen.y - board.y * next }));
+    stage.position({ x: screen.x - board.x * next, y: screen.y - board.y * next });
     viewMoved = true;
-    showZoom();
+}
+
+// Puts a board point in the middle of the box, keeping the zoom
+function lookAt(point: { x: number; y: number }) {
+    stage.position({ x: stage.width() / 2 - point.x * stage.scaleX(), y: stage.height() / 2 - point.y * stage.scaleY() });
+    viewMoved = true;
 }
 
 const zoomLevel = document.querySelector<HTMLElement>('[data-zoom="fit"]');
-function showZoom() {
-    if (zoomLevel) zoomLevel.textContent = `${Math.round((stage.scaleX() / fitScale) * 100)}%`;
-}
+stage.on('scaleXChange', () => {
+    if (zoomLevel) zoomLevel.textContent = `${Math.round(stage.scaleX() * 100)}%`;
+});
 
 // Trackpads: two fingers pan, pinching zooms (the browser reports a pinch as a wheel with ctrlKey).
 // Mice: the wheel pans up and down, Shift+wheel sideways, Ctrl/Cmd+wheel zooms.
@@ -98,7 +142,7 @@ stage.on('wheel', e => {
     } else {
         const dx = e.evt.shiftKey && !e.evt.deltaX ? e.evt.deltaY : e.evt.deltaX;
         const dy = e.evt.shiftKey && !e.evt.deltaX ? 0 : e.evt.deltaY;
-        stage.position(clamp({ x: stage.x() - dx, y: stage.y() - dy }));
+        stage.position({ x: stage.x() - dx, y: stage.y() - dy });
         viewMoved = true;
     }
 });
@@ -110,7 +154,6 @@ function updatePanning() {
     stage.draggable(tool === 'move' || spaceHeld);
     container.classList.toggle('panning', spaceHeld);
 }
-stage.dragBoundFunc(clamp);
 stage.on('dragmove', e => { if (e.target === stage) viewMoved = true; });
 
 new ResizeObserver(resize).observe(container);
@@ -193,7 +236,7 @@ function addItem(id: string, type: CanvasItemType, json: ItemJson) {
     node.id(id);
     prepare(node, type);
     layerFor(type).add(node as Konva.Shape | Konva.Group);
-    if (wasSelected) select(node as Konva.Shape);
+    if (wasSelected) select(node);
     if (type === 'token') listTokens();
     return node;
 }
@@ -236,18 +279,35 @@ function listTokens() {
         const picture = holder && srcOf(holder);
         if (picture) dot.style.background = `center / cover url("${picture}")`;
         button.append(dot, Object.assign(document.createElement('span'), { className: 'name', textContent: token.name() || 'Token' }));
+        // Beside the name rather than in it, since a button can't hold another button
+        const remove = Object.assign(document.createElement('button'), {
+            type: 'button', className: 'remove', textContent: '×', title: `Remove ${token.name() || 'token'}`,
+        });
+        remove.dataset.removeToken = token.id();
+        remove.setAttribute('aria-label', remove.title);
         const li = document.createElement('li');
-        li.append(button);
+        li.append(button, remove);
         return li;
     }));
 }
 
 // Clicking a token in the list makes it jump, so you can find it on a busy board
+// and its × takes it off the board for everyone
 tokenList.addEventListener('click', e => {
+    const removeId = (e.target as HTMLElement).closest<HTMLElement>('[data-remove-token]')?.dataset.removeToken;
+    const removing = removeId && stage.findOne('#' + removeId);
+    if (removing) {
+        live?.removeItem(removing.id());
+        removeItem(removing);
+        return;
+    }
+
     const id = (e.target as HTMLElement).closest<HTMLElement>('[data-token]')?.dataset.token;
     const token = id && stage.findOne('#' + id);
     if (!token) return;
-    token.to({ scaleX: 1.6, scaleY: 1.6, duration: 0.15, onFinish: () => token.to({ scaleX: 1, scaleY: 1, duration: 0.15 }) });
+    // From whatever size it's been made, and back to it
+    const size = token.scaleX();
+    token.to({ scaleX: size * 1.6, scaleY: size * 1.6, duration: 0.15, onFinish: () => token.to({ scaleX: size, scaleY: size, duration: 0.15 }) });
 });
 
 // ---- Tools ---------------------------------------------------------------------------------------------------------
@@ -255,7 +315,7 @@ tokenList.addEventListener('click', e => {
 type Tool = 'pen' | 'erase' | 'move' | 'token' | 'text' | 'shape';
 type ShapeKind = 'rect' | 'ellipse' | 'line' | 'arrow';
 let shapeKind: ShapeKind = 'rect';
-let tool: Tool = 'pen';
+let tool: Tool = 'move';
 let color = (document.querySelector<HTMLElement>('[data-color].on')?.dataset.color) ?? '#7F77DD';
 
 // The strip of shape kinds beside the Shape button, which opens like a menu and closes once you've picked
@@ -360,13 +420,16 @@ stage.on('pointerdown', e => {
         drawing.add(line);
         stroke = { line, unsent: [x, y], timer: null };
     } else if (tool === 'move') {
-        // Text under the pointer gets selection handles; anywhere else drops them. Handles themselves are left alone.
+        // Text, shapes, pictures and tokens under the pointer get selection handles; anywhere else drops them.
+        // Handles themselves are left alone.
         if (e.target.getParent() instanceof Konva.Transformer) return;
         const onDrawing = e.target.getLayer() === drawing;
         const text = e.target instanceof Konva.Text && onDrawing;
         const shape = e.target.hasName('shape') && onDrawing;
         const picture = e.target instanceof Konva.Image && e.target.getLayer() === pictures;
-        select(text || shape || picture ? e.target as Konva.Shape : null);
+        // A token is a group, so whichever part was clicked (its circle or initials), the whole token is selected
+        const token = e.target.getLayer() === tokens ? itemOf(e.target) : null;
+        select(token ?? (text || shape || picture ? e.target : null));
     } else if (tool === 'erase') {
         erasing = true;
         eraseHere();
@@ -492,8 +555,8 @@ function finishShape() {
 
 // ---- Moving and scaling text, shapes and pictures --------------------------------------------------------------------------------------
 
-// Konva's Transformer draws a box with corner handles around whatever it's given. Dragging a corner scales the text
-// or picture; dragging it moves it (they're draggable with the Move tool).
+// Konva's Transformer draws a box with corner handles around whatever it's given. Dragging a corner scales the text,
+// picture or token; dragging it moves it (they're draggable with the Move tool).
 const transformer = new Konva.Transformer({
     keepRatio: true,
     rotateEnabled: false,
@@ -507,10 +570,12 @@ const transformer = new Konva.Transformer({
 });
 handles.add(transformer);
 
-const selected = () => (transformer.nodes()[0] as Konva.Shape | undefined) ?? null;
-function select(shape: Konva.Shape | null) {
-    // Text and pictures keep their shape; drawn shapes can be stretched either way
-    const free = !!shape?.hasName('shape');
+const selected = () => transformer.nodes()[0] ?? null;
+const isToken = (node: Konva.Node) => node.getLayer() === tokens;
+function select(shape: Konva.Node | null) {
+    // Text, pictures and tokens keep their shape; drawn shapes can be stretched either way. (A token's name is what
+    // it's called, which could be anything, even "shape".)
+    const free = !!shape && !isToken(shape) && shape.hasName('shape');
     transformer.keepRatio(!free);
     transformer.enabledAnchors(free
         ? ['top-left', 'top-center', 'top-right', 'middle-left', 'middle-right', 'bottom-left', 'bottom-center', 'bottom-right']
@@ -523,6 +588,14 @@ function select(shape: Konva.Shape | null) {
 transformer.on('transformend', () => {
     const shape = selected();
     if (!shape) return;
+    if (isToken(shape)) {
+        // Tokens keep their scale too: a token is a circle with initials or a picture in it, all of which grow with it
+        shape.scale({ x: Math.round(shape.scaleX() * 100) / 100, y: Math.round(shape.scaleX() * 100) / 100 });
+        shape.x(Math.round(shape.x() * 10) / 10);
+        shape.y(Math.round(shape.y() * 10) / 10);
+        live?.addItem(shape.id(), 'token', shape.toObject());
+        return;
+    }
     if (shape.hasName('shape')) {
         // Shapes keep their scale: their lines don't thicken (strokeScaleEnabled is off), so there's nothing to convert
         shape.x(Math.round(shape.x() * 10) / 10);
@@ -650,12 +723,16 @@ function withInitials(token: Konva.Node): Konva.Node {
     return token;
 }
 
+// New tokens start big enough to read their initials at a glance (a grid square and a half across); the corner
+// handles shrink them for a crowded board
+const TOKEN_RADIUS = 36;
+
 // A colored circle with their initials, or with a picture in it if there's one
 function placeToken(x: number, y: number, picture?: string, name = window.prompt('Token name')?.trim()) {
     if (!name) return;
 
     const token = new Konva.Group({ id: crypto.randomUUID(), x, y, name });
-    const circle = new Konva.Circle({ radius: 22, fill: color, stroke: '#ffffff', strokeWidth: 2 });
+    const circle = new Konva.Circle({ radius: TOKEN_RADIUS, fill: color, stroke: '#ffffff', strokeWidth: 2 });
     if (picture) circle.setAttr('src', picture);
     token.add(circle);
     if (!picture) addInitials(token, name, circle.radius());
@@ -784,29 +861,11 @@ function thumbnailSoon() {
 }
 
 // The part of the board worth showing, in board units: everything on it, with room around it, in the card's shape
-// (16:10, like the board), never smaller than a third of the board so one scribble isn't blown up. An empty board
-// shows all of it.
+// (16:10), never smaller than a third of where boards start so one scribble isn't blown up. An empty board shows
+// where boards start.
 function thumbnailFrame() {
-    let left = Infinity, top = Infinity, right = -Infinity, bottom = -Infinity;
-    for (const layer of [pictures, drawing, tokens])
-        for (const item of layer.getChildren()) {
-            const r = item.getClientRect({ relativeTo: stage });   // in board units, whatever the zoom
-            left = Math.min(left, r.x); top = Math.min(top, r.y);
-            right = Math.max(right, r.x + r.width); bottom = Math.max(bottom, r.y + r.height);
-        }
-    if (left === Infinity) return { x: 0, y: 0, width: BOARD_WIDTH, height: BOARD_HEIGHT };
-
-    const PADDING = 40;
-    const aspect = BOARD_WIDTH / BOARD_HEIGHT;
-    let width = Math.max(right - left + PADDING * 2, BOARD_WIDTH / 3);
-    let height = Math.max(bottom - top + PADDING * 2, width / aspect);
-    width = Math.min(Math.max(width, height * aspect), BOARD_WIDTH);
-    height = Math.min(width / aspect, BOARD_HEIGHT);
-
-    // Centred on what's there, but kept on the board
-    const x = Math.min(Math.max((left + right) / 2 - width / 2, 0), BOARD_WIDTH - width);
-    const y = Math.min(Math.max((top + bottom) / 2 - height / 2, 0), BOARD_HEIGHT - height);
-    return { x, y, width, height };
+    const content = contentBounds();
+    return content ? frameAround(content, 40, HOME.width / 3, HOME.width / HOME.height) : HOME;
 }
 
 async function saveThumbnail() {
@@ -815,17 +874,23 @@ async function saveThumbnail() {
     handles.hide();
     others.hide();
     try {
+        // The grid is only drawn where you're looking; draw it under the frame instead, just while the picture is
+        // drawn (which happens before toBlob returns), so the board on screen never shows it
+        gridArea = frame;
         // Where that frame is on screen right now; Konva draws all of it, even parts panned out of view
-        const blob = await stage.toBlob({
+        const picture = stage.toBlob({
             x: stage.x() + frame.x * scale, y: stage.y() + frame.y * scale,
             width: frame.width * scale, height: frame.height * scale,
             pixelRatio: THUMBNAIL_WIDTH / (frame.width * scale), mimeType: 'image/webp', quality: 0.8,
-        }) as Blob;
+        });
+        gridArea = null;
+        const blob = await picture as Blob;
         const form = new FormData();
         form.append('file', blob, 'thumbnail');
         form.append('__RequestVerificationToken', antiforgery());
         await fetch(`api/canvases/${canvasId}/thumbnail`, { method: 'POST', body: form });
     } finally {
+        gridArea = null;
         handles.show();
         others.show();
     }
@@ -867,11 +932,58 @@ function showCursor(personId: string, x: number, y: number) {
     cursor.group.position({ x, y }).visible(true);
     // Hide it when they stop moving, so a cursor isn't left sitting on the board
     clearTimeout(cursor.hide);
-    cursor.hide = window.setTimeout(() => cursor!.group.visible(false), 4000);
+    cursor.hide = window.setTimeout(() => {
+        cursor!.group.visible(false);
+        showPointers();
+    }, 4000);
+    showPointers();
 }
 
 // And when you zoom, every cursor already showing
 stage.on('scaleXChange', () => cursors.forEach(c => keepScreenSize(c.group)));
+
+// Someone whose cursor is off the screen gets a marker at the edge pointing their way, since the board has no end to
+// lose them on. Clicking it goes there.
+const pointers = new Map<string, HTMLButtonElement>();
+const EDGE_INSET = 24;                                     // from the edge to the marker's middle, leaving room for its arrow
+
+function showPointers() {
+    const width = stage.width(), height = stage.height();
+    const middle = { x: width / 2, y: height / 2 };
+    const transform = stage.getAbsoluteTransform();
+    for (const id of new Set([...cursors.keys(), ...pointers.keys()])) {
+        const cursor = cursors.get(id);
+        const at = cursor && transform.point(cursor.group.position());
+        let marker = pointers.get(id);
+        if (!cursor || !at || !cursor.group.visible() || (at.x >= 0 && at.y >= 0 && at.x <= width && at.y <= height)) {
+            marker?.remove();
+            pointers.delete(id);
+            continue;
+        }
+
+        if (!marker) {
+            const name = people.get(id)?.name ?? 'Someone';
+            marker = Object.assign(document.createElement('button'), {
+                type: 'button', className: 'offscreen-cursor', textContent: [...name][0]?.toUpperCase() ?? '?', title: `Go to ${name}`,
+            });
+            marker.style.setProperty('--who', colorOf(id));
+            marker.addEventListener('click', () => {
+                const where = cursors.get(id)?.group.position();
+                if (where) lookAt(where);
+            });
+            container.append(marker);
+            pointers.set(id, marker);
+        }
+
+        // Where the line from the middle of the box towards them crosses the edge (pulled in a little)
+        const dx = at.x - middle.x, dy = at.y - middle.y;
+        const reach = Math.min((middle.x - EDGE_INSET) / Math.abs(dx || 1e-9), (middle.y - EDGE_INSET) / Math.abs(dy || 1e-9));
+        marker.style.left = `${middle.x + dx * reach}px`;
+        marker.style.top = `${middle.y + dy * reach}px`;
+        marker.style.setProperty('--angle', `${Math.atan2(dy, dx)}rad`);
+    }
+}
+stage.on('xChange yChange scaleXChange widthChange heightChange', showPointers);
 
 function showPeople(list: CanvasPerson[]) {
     people.clear();
@@ -880,6 +992,7 @@ function showPeople(list: CanvasPerson[]) {
     // Their cursors go when they leave
     for (const [id, cursor] of cursors)
         if (!people.has(id)) { cursor.group.destroy(); cursors.delete(id); }
+    showPointers();
 
     document.querySelector('[data-here]')!.textContent = `${list.length} here`;
     const box = document.querySelector('[data-people]')!;
@@ -891,14 +1004,24 @@ function showPeople(list: CanvasPerson[]) {
     }));
 }
 
+const status = document.querySelector<HTMLElement>('[data-status]')!;
+const statusDot = status.querySelector<HTMLElement>('.live-dot')!;
+
 function showStatus(state: 'live' | 'reconnecting' | 'offline', text?: string) {
-    const el = document.querySelector<HTMLElement>('[data-status]')!;
-    el.className = 'board-status ' + state;
-    el.textContent = text ?? { live: '● Live', reconnecting: 'Reconnecting…', offline: 'Offline' }[state];
+    status.className = 'board-status ' + state;
+    statusDot.classList.toggle('off', state !== 'live');
+    status.querySelector('[data-status-text]')!.textContent = text ?? { live: 'Live', reconnecting: 'Reconnecting…', offline: 'Offline' }[state];
+}
+
+// A flash of the dot when someone else changes the board, like the top bar's when the bot changes something
+function pulse() {
+    statusDot.classList.remove('pulse');
+    void statusDot.offsetWidth;
+    statusDot.classList.add('pulse');
 }
 
 // Everything above exists now, so the tools can be set up
-setTool('pen');
+setTool('move');
 
 // ---- Connecting ----------------------------------------------------------------------------------------------------
 
@@ -923,6 +1046,7 @@ try {
     live = await connect(canvasId, {
         load: items => {
             load(items);
+            if (!viewMoved) fitView();
             // A canvas without a picture yet (like one made before thumbnails) gets one when it's first opened
             if (!container.dataset.hasThumbnail && items.length) thumbnailSoon();
         },
@@ -943,10 +1067,12 @@ try {
             drafts.get(strokeId)?.destroy();
             drafts.delete(strokeId);
             addItem(strokeId, 'stroke', json);
+            pulse();
         },
-        itemAdded: (_, itemId, type, json) => addItem(itemId, type, json),
+        itemAdded: (_, itemId, type, json) => { addItem(itemId, type, json); pulse(); },
         itemMoved: (_, itemId, x, y) => stage.findOne('#' + itemId)?.position({ x, y }),
-        itemRemoved: (_, itemId) => { const node = stage.findOne('#' + itemId); if (node) removeItem(node); },
+        // Moves aren't flashed: a drag sends a dozen a second, which would keep it lit
+        itemRemoved: (_, itemId) => { const node = stage.findOne('#' + itemId); if (node) removeItem(node); pulse(); },
     });
 } catch {
     // You can still draw, but nothing is saved or shared

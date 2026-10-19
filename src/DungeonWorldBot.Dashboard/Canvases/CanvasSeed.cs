@@ -3,7 +3,7 @@ using System.Text.Json;
 namespace DungeonWorldBot.Dashboard.Canvases;
 
 /// <summary>
-/// Made-up canvases for trying out the pages, added with SeedCanvases=true while there are none yet.
+/// Made-up scenes for trying out the pages, added with SeedCanvases=true while there are none yet.
 /// </summary>
 public static class CanvasSeed
 {
@@ -36,7 +36,7 @@ public static class CanvasSeed
                 Stroke("#BA7517", 100, 100, 180, 160, 260, 120, 300, 200),
                 Token("Owlbear", "#D85A30", 260, 160),
                 Token("Steve", "#534AB7", 120, 220)),
-            New("Faction web: who owes what to the Ashen Court and why nobody trusts the harbourmaster", CanvasKind.Notes,
+            New("Faction web: who owes what to the Ashen Court and why nobody trusts the harbourmaster", CanvasKind.Map,
                 now.AddDays(-9), now.AddDays(-30), dungeonMaster,
                 Stroke("#7F77DD", 100, 100, 300, 200),
                 Stroke("#7F77DD", 300, 200, 480, 90),
@@ -93,7 +93,7 @@ public static class CanvasSeed
         (CanvasItemType.Token, new
         {
             className = "Circle",
-            attrs = new { x, y, radius = 16, fill = color, name, draggable = true },
+            attrs = new { x, y, radius = 36, fill = color, name, draggable = true },
         });
 
     private static (CanvasItemType, object) Text(string text, double x, double y) =>

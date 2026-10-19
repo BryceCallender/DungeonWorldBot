@@ -13,36 +13,42 @@
 }
 else
 {
-    var hp = _party.Sum(c => c.CurrentHP);
-    var maxHp = _party.Sum(c => c.MaxHP);
-    <div class="tiles">
-        <div class="card tile">
-            <span class="tile-label">Party HP</span>
-            <strong>@hp / @maxHp</strong>
-            <span class="small">@(maxHp == 0 ? 0 : hp * 100 / maxHp)%</span>
+    @* Who needs something, worst first; only what applies shows up *@
+    <div class="alerts">
+        <div class="card alert party-hp">
+            <span class="tile-label">Party</span>
+            <HealthBar Current="_party.Sum(c => c.CurrentHP)" Max="_party.Sum(c => c.MaxHP)" />
         </div>
-        <div class="card tile">
-            <span class="tile-label">Hurt</span>
-            <strong>@_party.Count(c => c.CurrentHP < c.MaxHP)</strong>
-            <span class="small">@_party.Count(c => c.HealthPercent <= 25) critical</span>
-        </div>
-        <div class="card tile">
-            <span class="tile-label">Average level</span>
-            <strong>@_party.Average(c => c.Level).ToString("0.#")</strong>
-        </div>
-        <div class="card tile">
-            <span class="tile-label">Coin</span>
-            <strong>@_party.Sum(Coin)</strong>
-            <span class="small">across the party</span>
-        </div>
-        <div class="card tile">
-            <span class="tile-label">Debilities</span>
-            <strong>@_party.Sum(c => c.Debilitated.Count)</strong>
-        </div>
-        <div class="card tile">
-            <span class="tile-label">Unspent stat points</span>
-            <strong>@_party.Sum(c => c.StatPoints)</strong>
-        </div>
+        @if (_alerts.Count == 0)
+        {
+            <div class="card alert good">
+                <span class="tile-label">All hale</span>
+                <span class="small muted">Nobody needs attention.</span>
+            </div>
+        }
+        @foreach (var alert in _alerts)
+        {
+            <div class="card alert @alert.Severity">
+                <div class="alert-head">
+                    <span class="tile-label">@alert.Title</span>
+                    <strong>@alert.Who.Count</strong>
+                </div>
+                <span class="small muted">@alert.Hint</span>
+                <div class="resource-chips">
+                    @foreach (var who in alert.Who)
+                    {
+                        @if (who.Url is { } url)
+                        {
+                            <a class="chip @alert.Severity" href="@url">@who.Label</a>
+                        }
+                        else
+                        {
+                            <span class="chip @alert.Severity">@who.Label</span>
+                        }
+                    }
+                </div>
+            </div>
+        }
     </div>
 
     <div class="party">
@@ -51,12 +57,18 @@ else
             <a class="card member @Lookup.ColorOf(c.Character.Class.Type)" href="@c.Url">
                 <div class="member-head">
                     <div>
-                        <h2>@c.Name @if (Viewer.Is(c.ID)) { <span class="chip accent">You</span> }</h2>
+                        <div class="member-name">
+                            <h2>@c.Name</h2>
+                            @if (Viewer.Is(c.ID))
+                            {
+                                <span class="chip accent">You</span>
+                            }
+                        </div>
                         <div class="muted class-line">
                             <span>Level @c.Level <span class="class-name">@c.ClassName</span></span>
                             @if (c.Subclass is { } sub)
                             {
-                                <span class="chip accent" title="@sub.Name">@sub.Name</span>
+                                <span class="chip class" title="@sub.Name">@sub.Name</span>
                             }
                         </div>
                     </div>
@@ -125,86 +137,136 @@ else
                 </div>
             </a>
         }
+        @foreach (var npc in _partyNpcs)
+        {
+            @NpcCard(npc)
+        }
     </div>
 }
 
-@if (_npcs.Count > 0)
+@if (_companions.Count > 0)
 {
     <h2 class="section-title">Companions</h2>
     <div class="party">
-        @foreach (var npc in _npcs)
+        @foreach (var npc in _companions)
         {
-            <div class="card member npc">
-                <div class="member-head">
-                    <div>
-                        <h2>@npc.Name</h2>
-                        <div class="muted class-line">
-                            <span>@(npc.Role ?? "NPC")</span>
-                            @if (Follows(npc) is { } leader)
-                            {
-                                <span class="chip accent">follows @leader</span>
-                            }
-                        </div>
-                    </div>
-                    @if (npc.CurrentHP == 0)
-                    {
-                        <span class="chip warn">Down</span>
-                    }
-                </div>
-
-                <HealthBar Current="npc.CurrentHP" Max="npc.MaxHP" />
-
-                <div class="armor-row">
-                    <span title="Armor"><Icon Name="shield" />@npc.Armor</span>
-                    @if (npc.Damage is not null)
-                    {
-                        <span title="Damage"><Icon Name="sword" />@npc.Damage</span>
-                    }
-                    <span title="Loyalty">Loyalty @Signed(npc.Loyalty)</span>
-                </div>
-
-                @* Modifiers only: NPCs don't have scores *@
-                <div class="stats">
-                    @foreach (var stat in Enum.GetValues<StatType>())
-                    {
-                        <div class="stat">
-                            <span class="stat-name">@stat.ToString().ToUpper()</span>
-                            <span class="stat-mod">@Signed(npc.Modifier(stat))</span>
-                        </div>
-                    }
-                </div>
-
-                @if (npc.Skills is not null || npc.Cost is not null || npc.Notes is not null)
-                {
-                    <div class="member-extra small">
-                        @if (npc.Skills is not null)
-                        {
-                            <div><strong>Skills</strong> @npc.Skills</div>
-                        }
-                        @if (npc.Cost is not null)
-                        {
-                            <div><strong>Cost</strong> @npc.Cost</div>
-                        }
-                        @if (npc.Notes is not null)
-                        {
-                            <div class="muted">@npc.Notes</div>
-                        }
-                    </div>
-                }
-            </div>
+            @NpcCard(npc)
         }
     </div>
 }
 
 @code {
     private IReadOnlyList<CharacterView> _party = [];
-    private IReadOnlyList<Npc> _npcs = [];
+    private IReadOnlyList<Npc> _partyNpcs = [];
+    private IReadOnlyList<Npc> _companions = [];
+
+    // NPCs who travel as full members of the party rather than hirelings or companions
+    private static readonly HashSet<string> PartyNpcNames = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Elden Notetaker",
+        "Serena",
+        "Jin",
+    };
 
     protected override async Task OnInitializedAsync()
     {
         _party = await PartyReader.GetPartyAsync();
-        _npcs = await PartyReader.GetNpcsAsync();
+        var npcs = await PartyReader.GetNpcsAsync();
+        _partyNpcs = npcs.Where(n => PartyNpcNames.Contains(n.Name)).ToList();
+        _companions = npcs.Where(n => !PartyNpcNames.Contains(n.Name)).ToList();
+        _alerts = Alerts().Where(a => a.Who.Count > 0).ToList();
     }
+
+    private List<Alert> _alerts = [];
+
+    private sealed record Who(string Label, string? Url = null);
+
+    private sealed record Alert(string Severity, string Title, string Hint, IReadOnlyList<Who> Who);
+
+    // Worst first; empty ones are dropped
+    private IEnumerable<Alert> Alerts()
+    {
+        var alive = _party.Where(c => c.Character.Status is null or Status.Alive).ToList();
+        var critical = alive.Where(c => c.MaxHP > 0 && c.HealthPercent <= 25).ToList();
+
+        yield return new("critical", "Dead", "Fallen and awaiting what comes next",
+            _party.Where(c => c.Character.Status == Status.Dead).Select(c => new Who(c.Name, c.Url)).ToList());
+        yield return new("critical", "Critical", "At 25% HP or less",
+            critical.Select(Hp).ToList());
+        yield return new("critical", "NPCs down", "At 0 HP",
+            _partyNpcs.Concat(_companions).Where(n => n.CurrentHP == 0).Select(n => new Who(n.Name)).ToList());
+        yield return new("low", "Debilitated", "Rolling at −1 with these stats",
+            _party.Where(c => c.Debilitated.Count > 0)
+                .Select(c => new Who($"{c.Name} · {string.Join(", ", c.Debilitated.Select(s => s.Debility))}", c.Url)).ToList());
+        yield return new("low", "Hurt", "Below max HP",
+            alive.Except(critical).Where(c => c.CurrentHP < c.MaxHP).Select(Hp).ToList());
+        yield return new("muted", "Resting", "Out of the action for now",
+            _party.Where(c => c.Character.Status == Status.Resting).Select(c => new Who(c.Name, c.Url)).ToList());
+        yield return new("accent", "Stat points to spend", "Unspent after leveling",
+            _party.Where(c => c.StatPoints > 0).Select(c => new Who($"{c.Name} · {c.StatPoints}", c.Url)).ToList());
+    }
+
+    private static Who Hp(CharacterView c) => new($"{c.Name} {c.CurrentHP}/{c.MaxHP}", c.Url);
+
+    private RenderFragment NpcCard(Npc npc) =>
+    @<div class="card member npc">
+        <div class="member-head">
+            <div>
+                <h2>@npc.Name</h2>
+                <div class="muted class-line">
+                    <span>@(npc.Role ?? "NPC")</span>
+                    @if (Follows(npc) is { } leader)
+                    {
+                        <span class="chip accent">follows @leader</span>
+                    }
+                </div>
+            </div>
+            @if (npc.CurrentHP == 0)
+            {
+                <span class="chip warn">Down</span>
+            }
+        </div>
+
+        <HealthBar Current="npc.CurrentHP" Max="npc.MaxHP" />
+
+        <div class="armor-row">
+            <span title="Armor"><Icon Name="shield" />@npc.Armor</span>
+            @if (npc.Damage is not null)
+            {
+                <span title="Damage"><Icon Name="sword" />@npc.Damage</span>
+            }
+            <span title="Loyalty">Loyalty @Signed(npc.Loyalty)</span>
+        </div>
+
+        @* Modifiers only: NPCs don't have scores *@
+        <div class="stats">
+            @foreach (var stat in Enum.GetValues<StatType>())
+            {
+                <div class="stat">
+                    <span class="stat-name">@stat.ToString().ToUpper()</span>
+                    <span class="stat-mod">@Signed(npc.Modifier(stat))</span>
+                </div>
+            }
+        </div>
+
+        @if (npc.Skills is not null || npc.Cost is not null || npc.Notes is not null)
+        {
+            <div class="member-extra small">
+                @if (npc.Skills is not null)
+                {
+                    <div><strong>Skills</strong> @npc.Skills</div>
+                }
+                @if (npc.Cost is not null)
+                {
+                    <div><strong>Cost</strong> @npc.Cost</div>
+                }
+                @if (npc.Notes is not null)
+                {
+                    <div class="muted">@npc.Notes</div>
+                }
+            </div>
+        }
+    </div>;
 
     // The name of the character they follow, if that player has one
     private string? Follows(Npc npc) =>

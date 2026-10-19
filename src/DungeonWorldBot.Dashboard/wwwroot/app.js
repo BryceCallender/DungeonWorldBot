@@ -80,6 +80,62 @@ showTimes();
 // So "2 minutes ago" keeps counting
 setInterval(showTimes, 60000);
 
+// On a phone the tabs scroll sideways, so bring the current one into view (Scenes is last and starts off the edge)
+document.querySelector('.topbar nav a.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+
+// The jump bar underlines the section on screen:
+// - the one just jumped to, while it's still where the jump left it (or anywhere on screen once at the bottom, since
+//   sections near the end can't reach the top),
+// - otherwise the last one whose top has passed just under the bar,
+// - otherwise the last of all at the bottom of the page, or the first before any has reached the bar.
+// Looked up fresh each time, since live updates swap the page out from under it.
+function markSection() {
+    const bar = document.querySelector('.jump');
+    if (!bar) return;
+
+    const links = [...bar.querySelectorAll('a[href*="#"]')]
+        .map(a => [a, document.getElementById(decodeURIComponent(new URL(a.href).hash.slice(1)))])
+        .filter(([a, section]) => section && new URL(a.href).pathname === location.pathname);
+    if (links.length === 0) return;
+
+    const barBottom = bar.getBoundingClientRect().bottom;
+    const atBottom = innerHeight + scrollY >= document.documentElement.scrollHeight - 2;
+    const target = links.find(([a]) => new URL(a.href).hash === location.hash);
+    const targetTop = target?.[1].getBoundingClientRect().top;
+
+    let current;
+    if (target && (atBottom ? targetTop < innerHeight : Math.abs(targetTop - barBottom) < 48)) {
+        current = target[0];
+    } else if (atBottom) {
+        current = links.at(-1)[0];
+    } else {
+        current = links[0][0];
+        for (const [a, section] of links) {
+            if (section.getBoundingClientRect().top <= barBottom + 32) current = a;
+        }
+    }
+
+    for (const [a] of links) {
+        if (a === current) a.setAttribute('aria-current', 'true');
+        else a.removeAttribute('aria-current');
+    }
+
+    // Keep the underlined tab visible when the bar scrolls sideways (phones)
+    if (current && (current.offsetLeft < bar.scrollLeft || current.offsetLeft + current.offsetWidth > bar.scrollLeft + bar.clientWidth))
+        bar.scrollTo({ left: current.offsetLeft - 16, behavior: 'smooth' });
+}
+
+let markPending = false;
+addEventListener('scroll', () => {
+    if (markPending) return;
+    markPending = true;
+    requestAnimationFrame(() => { markPending = false; markSection(); });
+}, { passive: true });
+addEventListener('resize', markSection);
+// A tab for a section already in place doesn't scroll, so nothing else would notice it
+addEventListener('hashchange', markSection);
+markSection();
+
 // Live updates: the server says when the bot changed the database, and the page swaps in a fresh copy of itself,
 // keeping open moves, searches and scroll position.
 (() => {
@@ -87,6 +143,7 @@ setInterval(showTimes, 60000);
     if (document.querySelector('[data-no-live]')) return;
 
     const indicator = document.querySelector('.live');
+    const dot = indicator?.querySelector('.live-dot');
     let refreshing = false;
     let again = false;
     let dropped = false;
@@ -173,7 +230,7 @@ setInterval(showTimes, 60000);
     function setLive(on) {
         live = on;
         if (!indicator) return;
-        indicator.classList.toggle('off', !on);
+        dot?.classList.toggle('off', !on);
         indicator.title = on ? 'Live: updates as the bot changes things' : 'Reconnecting…';
     }
 
@@ -210,6 +267,7 @@ setInterval(showTimes, 60000);
             main.innerHTML = fresh.innerHTML;
             restore(main, state);
             showTimes(main);
+            markSection();
             document.title = next.title;
             pulse();
         } catch {
@@ -277,10 +335,10 @@ setInterval(showTimes, 60000);
     }
 
     function pulse() {
-        if (!indicator) return;
-        indicator.classList.remove('pulse');
-        void indicator.offsetWidth;
-        indicator.classList.add('pulse');
+        if (!dot) return;
+        dot.classList.remove('pulse');
+        void dot.offsetWidth;
+        dot.classList.add('pulse');
     }
 
     if (window.EventSource) connect();

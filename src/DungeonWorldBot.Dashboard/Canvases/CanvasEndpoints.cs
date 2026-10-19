@@ -21,10 +21,10 @@ public static class CanvasEndpoints
         {
             name = name?.Trim();
             if (string.IsNullOrEmpty(name) || name.Length > CanvasStore.MaxNameLength)
-                return Results.LocalRedirect("/canvases?error=name");
+                return Results.LocalRedirect("/scenes?error=name");
 
             var canvas = await store.CreateAsync(name, kind, viewer.ID?.ToString());
-            return Results.LocalRedirect($"/canvas/{CanvasIds.Encode(canvas.ID)}");
+            return Results.LocalRedirect($"/scene/{CanvasIds.Encode(canvas.ID)}");
         });
 
         group.MapPost("/{id}/archive", (string id, CanvasStore store, Viewer viewer) => Archive(id, true, store, viewer));
@@ -113,6 +113,6 @@ public static class CanvasEndpoints
             return Results.Forbid();
 
         await store.SetArchivedAsync(id, archived);
-        return Results.LocalRedirect("/canvases");
+        return Results.LocalRedirect("/scenes");
     }
 }

@@ -58,12 +58,9 @@
         case "arrow":
             <path d="M5 17.59 15.59 7H9V5h10v10h-2V8.41L6.41 19z" />
             break;
-        @* Canvas kinds, for cards without a thumbnail yet (an encounter uses sword) *@
+        @* Scene kinds, for cards without a thumbnail yet (an encounter uses sword) *@
         case "map":
             <path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5a.5.5 0 0 0 .5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5a.5.5 0 0 0-.5-.5zM15 19l-6-2.11V5l6 2.11V19z" />
-            break;
-        case "notes":
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z" />
             break;
         case "back":
             <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z" />
@@ -73,7 +70,7 @@
 
 @code {
     /// <summary>
-    /// heart, shield, magic, divine or sword, or the canvas tools: pen, eraser, move, token, text, image, shapes (and rect, ellipse, line, arrow), undo and back; or the canvas kinds map and notes.
+    /// heart, shield, magic, divine or sword, or the canvas tools: pen, eraser, move, token, text, image, shapes (and rect, ellipse, line, arrow), undo and back; or the scene kind map.
     /// </summary>
     [Parameter, EditorRequired]
     public string Name { get; set; } = string.Empty;

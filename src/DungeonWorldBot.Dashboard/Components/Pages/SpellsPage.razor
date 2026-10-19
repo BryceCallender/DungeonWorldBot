@@ -12,7 +12,7 @@
     <nav class="jump">
         @foreach (var list in Enum.GetValues<SpellList>())
         {
-            <a href="@Lookup.SpellsUrl(For)#@list.ToString().ToLower()">@list <span class="count">@SpellLists.For(list).Count()</span></a>
+            <a href="@Lookup.SpellsUrl(For)#@list.ToString().ToLower()">@list</a>
         }
         <input type="search" class="filter jump-filter" placeholder="Search spells…" aria-label="Search spells" data-filter />
     </nav>

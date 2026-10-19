@@ -1,18 +1,19 @@
 @inherits LayoutComponentBase
 @inject Viewer Viewer
+@inject NavigationManager Nav
 
 <header class="topbar">
-    <a class="brand" href="">🎲 Sana Solem</a>
+    <a class="brand" href=""><span aria-hidden="true">🎲</span>Sana Solem</a>
     <nav>
-        <NavLink href="" Match="NavLinkMatch.All">Party</NavLink>
+        <NavLink href="" Match="NavLinkMatch.All" class="@ActiveFor("character/")">Party</NavLink>
         <NavLink href="stats">Roll stats</NavLink>
         <NavLink href="classes">Classes</NavLink>
         <NavLink href="spells">Spells</NavLink>
-        <NavLink href="canvases">Canvases</NavLink>
+        <NavLink href="scenes" class="@ActiveFor("scene/", "canvas/")">Scenes</NavLink>
     </nav>
 
     <div class="viewer">
-        <span class="live off" title="Connecting…"><i></i>Live</span>
+        <span class="live" title="Connecting…"><i class="live-dot off"></i>Live</span>
         @if (Viewer.SignedIn)
         {
             @if (!Viewer.IsDungeonMaster)
@@ -38,3 +39,9 @@
 <main>
     @Body
 </main>
+
+@code {
+    // A character or a scene belongs under its list's tab, though its address doesn't start with the list's
+    private string? ActiveFor(params string[] prefixes) =>
+        prefixes.Any(Nav.ToBaseRelativePath(Nav.Uri).StartsWith) ? "active" : null;
+}

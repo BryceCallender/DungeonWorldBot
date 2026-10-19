@@ -1,6 +1,30 @@
-@* A month grid for every month from the first session to the latest, newest first, with game nights marked. Clicking one pops up how it went. *@
+@* A month grid for each month from the first session to the latest, newest first, with game nights marked. The latest
+   few are open; older ones fold away so a long campaign isn't a wall of calendars. Clicking a night pops up how it went. *@
 <div class="calendar">
-    @foreach (var month in _months)
+    @foreach (var month in _months.Take(RecentMonths))
+    {
+        @Month(month)
+    }
+</div>
+
+@if (_months.Count > RecentMonths)
+{
+    var older = _months.Count - RecentMonths;
+    <details class="cal-older">
+        <summary class="tool">Show @older older month@(older == 1 ? "" : "s")</summary>
+        <div class="calendar">
+            @foreach (var month in _months.Skip(RecentMonths))
+            {
+                @Month(month)
+            }
+        </div>
+    </details>
+}
+
+@code {
+    private const int RecentMonths = 4;
+
+    private RenderFragment Month(DateTime month) => __builder =>
     {
         <section class="card cal-month">
             <h3>@month.ToString("MMMM yyyy")</h3>
@@ -41,10 +65,8 @@
                 }
             </div>
         </section>
-    }
-</div>
+    };
 
-@code {
     private static readonly string[] WeekDays = ["S", "M", "T", "W", "T", "F", "S"];
 
     [Parameter, EditorRequired]

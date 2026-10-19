@@ -25,7 +25,8 @@ builder.Configuration.AddUserSecrets<Program>(optional: true);
 // Find the build's compressed assets when run with `dotnet run` outside Development (as when sharing), or they're served empty
 builder.WebHost.UseStaticWebAssets();
 
-// The bot's database, opened read-only so the dashboard can never change the game. Set DatabasePath to read another copy.
+// The bot's database, opened read-only so the dashboard can never change the game; only CharacterJournal writes to it,
+// for players' backstories, notes and goals. Set DatabasePath to read another copy.
 var databasePath = Path.GetFullPath(
     builder.Configuration.GetValue<string?>("DatabasePath")
     ?? Path.Combine(builder.Environment.ContentRootPath, "..", "DungeonWorldBot", "SanaSolem.db"));
@@ -40,6 +41,9 @@ builder.Services.AddScoped<IRollStatsService, RollStatsService>();
 builder.Services.AddScoped<INpcService, NpcService>();
 builder.Services.AddScoped<PartyReader>();
 builder.Services.AddScoped<RollReader>();
+builder.Services.AddSingleton(new CharacterJournal(new DbContextOptionsBuilder<DungeonWorldContext>()
+    .UseSqlite($"Data Source={databasePath};Mode=ReadWrite")
+    .Options));
 
 var settings = DashboardSettings.From(builder.Configuration);
 builder.Services.AddSingleton(settings);
@@ -116,6 +120,7 @@ var pages = app.MapRazorComponents<App>();
 var live = app.MapLiveUpdates();
 var canvases = app.MapHub<CanvasHub>("/hubs/canvas");
 var canvasForms = app.MapCanvasEndpoints();
+var journal = app.MapCharacterJournalEndpoints();
 
 if (signInEnabled)
 {
@@ -124,6 +129,7 @@ if (signInEnabled)
     live.RequireAuthorization(DiscordSignIn.Policy);
     canvases.RequireAuthorization(DiscordSignIn.Policy);
     canvasForms.RequireAuthorization(DiscordSignIn.Policy);
+    journal.RequireAuthorization(DiscordSignIn.Policy);
 }
 
 app.Run();

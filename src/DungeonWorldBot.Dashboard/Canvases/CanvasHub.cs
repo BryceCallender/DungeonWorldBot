@@ -21,7 +21,7 @@ public sealed class CanvasHub(CanvasPresence presence, CanvasStore store, Dashbo
     public async Task<JoinResult> Join(string sqid)
     {
         if (!CanvasIds.TryDecode(sqid, out var canvas) || await store.FindAsync(canvas) is null)
-            throw new HubException("There's no such canvas.");
+            throw new HubException("There's no such scene.");
 
         var me = Me();
         var previous = presence.Join(Context.ConnectionId, canvas, me);
@@ -102,7 +102,7 @@ public sealed class CanvasHub(CanvasPresence presence, CanvasStore store, Dashbo
     }
 
     private (int Canvas, CanvasPerson Me) Current() =>
-        presence.Find(Context.ConnectionId) ?? throw new HubException("Join a canvas first.");
+        presence.Find(Context.ConnectionId) ?? throw new HubException("Join a scene first.");
 
     private static string CheckID(string id) =>
         !string.IsNullOrWhiteSpace(id) && id.Length <= CanvasStore.MaxItemIDLength

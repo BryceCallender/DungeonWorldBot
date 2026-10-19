@@ -22,10 +22,13 @@
 .board-title h1 { margin: 0; font-size: 1.05rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .board-meta { font-size: .8rem; color: var(--muted); }
 
-.board-status { margin-left: auto; font-size: .8rem; color: var(--muted); }
+.board-status { margin-left: auto; display: inline-flex; align-items: center; gap: .5rem; font-size: .8rem; color: var(--muted); }
 .board-status.live { color: var(--good); }
 .board-status.reconnecting { color: var(--low); }
 .board-status.offline { color: var(--critical); }
+/* The dot is still (.off) unless live, but keeps the warning color rather than going gray */
+.board-status.reconnecting .live-dot { --dot: var(--low); }
+.board-status.offline .live-dot { --dot: var(--critical); }
 
 .board-here { font-size: .8rem; color: var(--muted); }
 
@@ -188,14 +191,33 @@
 .token-list ::deep .dot { flex: none; width: 12px; height: 12px; border-radius: 50%; }
 .token-list ::deep .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
+/* The × beside each token: quiet until you're on its row, so the list stays calm */
+.token-list ::deep li { display: flex; align-items: center; border-radius: 6px; }
+.token-list ::deep li:hover { background: var(--surface-2); }
+.token-list ::deep li:hover button { background: none; }
+.token-list ::deep button[data-token] { flex: 1; min-width: 0; }
+.token-list ::deep button.remove {
+    flex: none;
+    width: auto;
+    padding: .2rem .5rem;
+    color: var(--muted);
+    font-size: 1rem;
+    line-height: 1;
+    opacity: 0;
+}
+.token-list ::deep li:hover .remove, .token-list ::deep .remove:focus-visible { opacity: 1; }
+.token-list ::deep button.remove:hover { color: var(--critical); }
+/* Touch screens have no hover, so it always shows there */
+@media (hover: none) { .token-list ::deep button.remove { opacity: 1; } }
+
 .token-empty { margin: 0; font-size: .8rem; color: var(--muted); }
 .token-add { margin-top: .25rem; }
 
 /* On a phone: tools in a row above the board, tokens below it */
 @media (max-width: 800px) {
     .board-body { grid-template-columns: minmax(0, 1fr); height: auto; min-height: 0; }
-    /* The board's own shape (BOARD_WIDTH by BOARD_HEIGHT in canvas.ts), so it fills the width with no bands */
-    #container { aspect-ratio: 16 / 10; }
+    /* Most of the screen, so there's room to draw: canvas.ts fits the board to whatever shape it's given */
+    #container { height: 65svh; min-height: 320px; }
     .board-rail { flex-direction: row; flex-wrap: wrap; justify-content: center; padding: .4rem; border-right: 0; border-bottom: 1px solid var(--border); }
     .board-rail hr { width: auto; height: 20px; margin: 0 .2rem; border-top: 0; border-left: 1px solid var(--border); }
     .swatches { grid-template-columns: repeat(6, 18px); }
@@ -203,4 +225,35 @@
     /* Below the button when the tools are a row */
     .shape-picker { top: calc(100% + 8px); left: 0; }
     .board-side { border-left: 0; border-top: 1px solid var(--border); }
+}
+
+/* Someone off the edge of the screen (canvas.ts adds these): their initial, with an arrow pointing their way */
+#container ::deep .offscreen-cursor {
+    position: absolute;
+    z-index: 1;
+    width: 24px;
+    height: 24px;
+    padding: 0;
+    border: 2px solid #fff;
+    border-radius: 50%;
+    background: var(--who);
+    color: #fff;
+    font-size: .7rem;
+    font-weight: 700;
+    line-height: 1;
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, .3);
+}
+
+#container ::deep .offscreen-cursor::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    border: 5px solid transparent;
+    border-left: 8px solid var(--who);
+    border-right-width: 0;
+    /* Swung round to point at them, just outside the circle */
+    transform: translate(-50%, -50%) rotate(var(--angle)) translateX(18px);
 }
