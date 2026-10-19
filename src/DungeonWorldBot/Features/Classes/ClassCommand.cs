@@ -171,7 +171,7 @@ public class ClassCommand : DungeonWorldCommandBase
         if (available.Count == 0)
         {
             return await ReplyAsync("Advanced Moves", character.Level < 2
-                ? "Advanced moves open up at level 2. Use /character level up when you get there."
+                ? "Advanced moves open up at level 2. The DM levels the party up."
                 : "There are no advanced moves left for you to pick at this level.");
         }
 

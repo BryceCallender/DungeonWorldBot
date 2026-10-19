@@ -121,10 +121,22 @@ public partial class DmCommand : CommandGroup
             [Description("The player whose character to change. Leave blank for your own.")]
             IUser? user = null,
             [Description("Set every character to this level")]
-            bool everyone = false)
+            bool everyone = false,
+            [Description("Stat points for reaching this level. Leave blank to use the amount from /dm level set-points")]
+            [MinValue(0)]
+            int? points = null)
         {
             if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
-                return await ReplyNotGameMasterAsync("Players can use /character level up when they level.");
+                return await ReplyNotGameMasterAsync("Only the DM can change levels.");
+
+            // Saved like /dm level set-points, so anyone who reaches this level later gets the same
+            if (points is { } levelPoints)
+            {
+                if (level < 2)
+                    return await ReplyWithErrorAsync("Level 1 doesn't give stat points.");
+
+                await _settings.SetStatPointsForLevelAsync(level, levelPoints);
+            }
 
             if (everyone)
             {

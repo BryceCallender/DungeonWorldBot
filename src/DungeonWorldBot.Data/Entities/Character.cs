@@ -34,6 +34,8 @@ public class Character
     public List<CharacterResource>? Resources { get; set; }
     public List<ArmorBonus>? ArmorBonuses { get; set; }
     public List<Transformation>? Transformations { get; set; }
+    public List<Goal>? Goals { get; set; }
+    public List<Note>? Notes { get; set; }
 
     public Status? Status { get; set; }
     public Alignment Alignment { get; set; }
@@ -41,4 +43,9 @@ public class Character
     public Location? Location { get; set; }
 
     public string? DamageModifier { get; set; }
+
+    /// <summary>
+    /// Where the character comes from, written by their player on the dashboard.
+    /// </summary>
+    public string? Backstory { get; set; }
 }

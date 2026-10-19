@@ -45,7 +45,6 @@ public class CommandTreeTests
     [InlineData("/subclass luna vow")]
     [InlineData("/subclass guardian read-the-room")]
     [InlineData("/character damage-dice")]
-    [InlineData("/character level up")]
     [InlineData("/character level allocate")]
     [InlineData("/character level points")]
     [InlineData("/dm stat set")]

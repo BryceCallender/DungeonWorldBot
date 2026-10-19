@@ -72,7 +72,7 @@ public class LevelingService : ILevelingService
     {
         var points = GetStatPoints(character);
         if (points <= 0)
-            return $"{character.Name} has no stat points to spend. You get one each time you level up.";
+            return $"{character.Name} has no stat points to spend. The DM hands them out when the party levels up.";
 
         var stat = character.Stats.FirstOrDefault(s => s.StatType == statType);
         if (stat is null)

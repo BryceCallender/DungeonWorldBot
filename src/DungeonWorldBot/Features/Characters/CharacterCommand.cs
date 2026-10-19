@@ -308,7 +308,7 @@ public class CharacterCommand : CharacterCommandBase
     }
 
     /// <summary>
-    /// Levelling up and spending the stat points it gives. The DM's versions are under /dm level and /dm stat.
+    /// Spending the stat points the DM gives out when the party levels up. Levels and points per level are set under /dm level.
     /// </summary>
     [Group("level")]
     public class LevelCommand : CharacterCommandBase
@@ -322,26 +322,6 @@ public class CharacterCommand : CharacterCommandBase
             IGameSettingsService settings)
             : base(context, feedbackService, characterService, gameMaster, leveling, settings)
         {
-        }
-
-        [Command("up")]
-        [Description("Increase your character's level by one (the DM can level up someone else)")]
-        public async Task<IResult> LevelUpAsync(
-            [Description("DM only: the player whose character to level up. Leave blank for your own.")]
-            IUser? user = null)
-        {
-            if (user is not null && _context.TryGetUserID(out var self) && user.ID != self && !await _gameMaster.IsGameMasterAsync(CancellationToken))
-                return await ReplyNotGameMasterAsync("You can only level up your own character.");
-
-            var character = await GetCharacterAsync(user);
-            if (character is null)
-            {
-                return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
-            }
-
-            await _leveling.ChangeLevelAsync(character, character.Level + 1);
-
-            return await ReplyWithLevelChangedAsync(character);
         }
 
         [Command("allocate")]
