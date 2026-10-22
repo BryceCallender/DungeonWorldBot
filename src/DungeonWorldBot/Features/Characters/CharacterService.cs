@@ -42,6 +42,16 @@ public class CharacterService : ICharacterService
         return CharactersWithDetails.ToListAsync();
     }
 
+    public async Task<List<(string Name, ClassType Class)>> GetCharacterNamesAsync()
+    {
+        // The full sheets join a dozen tables into tens of thousands of rows, which is too slow for autocomplete
+        var names = await _dungeonWorldContext.Characters
+            .Select(c => new { c.Name, c.Class.Type })
+            .ToListAsync();
+
+        return names.Select(n => (n.Name, n.Type)).ToList();
+    }
+
     public async Task AddCharacterAsync(Character character)
     {
         _dungeonWorldContext.Characters.Add(character);

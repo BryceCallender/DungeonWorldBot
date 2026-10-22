@@ -23,13 +23,13 @@ public sealed class CharacterAutocomplete(ICharacterService characterService) : 
     {
         var input = userInput.Trim();
 
-        return (await characterService.GetCharactersAsync())
+        return (await characterService.GetCharacterNamesAsync())
             .Where(c => c.Name.Contains(input, StringComparison.OrdinalIgnoreCase))
             .OrderBy(c => !c.Name.StartsWith(input, StringComparison.OrdinalIgnoreCase))
             .ThenBy(c => c.Name)
             .Take(MaxSuggestions)
             .Select(c => (IApplicationCommandOptionChoice)new ApplicationCommandOptionChoice(
-                $"{c.Name} ({c.Class.Type})", c.Name))
+                $"{c.Name} ({c.Class})", c.Name))
             .ToList();
     }
 }

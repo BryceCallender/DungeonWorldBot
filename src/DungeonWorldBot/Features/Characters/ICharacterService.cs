@@ -9,6 +9,11 @@ public interface ICharacterService
 
     Task<List<Character>> GetCharactersAsync();
 
+    /// <summary>
+    /// Every character's name and class, without the rest of the sheet, for suggestions that have to answer quickly.
+    /// </summary>
+    Task<List<(string Name, ClassType Class)>> GetCharacterNamesAsync();
+
     Task AddCharacterAsync(Character character);
 
     Task HealAsync(Character character, int amount);
