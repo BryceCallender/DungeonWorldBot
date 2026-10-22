@@ -234,8 +234,15 @@ markSection();
         indicator.title = on ? 'Live: updates as the bot changes things' : 'Reconnecting…';
     }
 
+    // Swapping the page would close an open dialog and lose what's typed in it, so wait until it's closed
+    let afterDialog = false;
+    document.addEventListener('close', e => {
+        if (e.target instanceof HTMLDialogElement && afterDialog) { afterDialog = false; refresh(); }
+    }, true);
+
     async function refresh() {
         if (signedOut) return;
+        if (document.querySelector('main dialog[open]')) { afterDialog = true; return; }
         if (refreshing) { again = true; return; }
         refreshing = true;
 
@@ -343,3 +350,75 @@ markSection();
 
     if (window.EventSource) connect();
 })();
+
+// The encounter panel beside a scene's board. The board page can't be swapped out like the others without losing the
+// board, so only the panel is fetched again when the bot changes something, keeping open enemies open.
+(() => {
+    const scene = document.querySelector('[data-encounter-panel]')?.dataset.encounterPanel;
+    if (!scene) return;
+
+    let fetching = false;
+    let again = false;
+
+    async function refresh() {
+        if (fetching) { again = true; return; }
+        fetching = true;
+        try {
+            const response = await fetch(`api/scenes/${scene}/encounter/panel`, { headers: { Accept: 'text/html' } });
+            const panel = document.querySelector('[data-encounter-panel]');
+            if (!response.ok || !panel) return;
+
+            const open = new Set([...panel.querySelectorAll('[data-enemy] details[open]')].map(d => d.closest('[data-enemy]').dataset.enemy));
+            const template = document.createElement('template');
+            template.innerHTML = (await response.text()).trim();
+            const fresh = template.content.querySelector('[data-encounter-panel]');
+            if (!fresh) return;
+
+            for (const enemy of fresh.querySelectorAll('[data-enemy]')) {
+                if (open.has(enemy.dataset.enemy)) enemy.querySelector('details')?.setAttribute('open', '');
+            }
+            panel.replaceWith(fresh);
+        } catch {
+            // Offline for a moment; the next change tries again
+        } finally {
+            fetching = false;
+            if (again) { again = false; refresh(); }
+        }
+    }
+
+    // The browser reconnects a dropped stream itself; anything missed meanwhile is caught on reconnecting
+    const source = new EventSource('live');
+    let connectedBefore = false;
+    source.onopen = () => {
+        if (connectedBefore) refresh();
+        connectedBefore = true;
+    };
+    source.onmessage = refresh;
+})();
+
+// Dialogs: buttons with data-open-dialog open the one with that ID, data-close-dialog closes its own, and clicking
+// the dimmed backdrop closes it too. Listened for on the document, since live updates replace the buttons.
+document.addEventListener('click', e => {
+    const opener = e.target.closest('[data-open-dialog]');
+    if (opener) {
+        document.getElementById(opener.dataset.openDialog)?.showModal();
+        return;
+    }
+    if (e.target.closest('[data-close-dialog]')) {
+        e.target.closest('dialog')?.close();
+        return;
+    }
+    // A click on the dialog itself, rather than anything in it, is on the backdrop
+    if (e.target instanceof HTMLDialogElement && e.target.open) {
+        const box = e.target.getBoundingClientRect();
+        if (e.clientX < box.left || e.clientX > box.right || e.clientY < box.top || e.clientY > box.bottom) e.target.close();
+    }
+});
+// A form sent back with a mistake reopens its dialog. The mistake comes in the address, so take it back out, or
+// reloading would show it again.
+if (document.querySelector('dialog[data-open-on-load]')) {
+    document.querySelectorAll('dialog[data-open-on-load]').forEach(d => d.showModal());
+    const url = new URL(location.href);
+    for (const key of ['error', 'fightError', 'dialog', 'from']) url.searchParams.delete(key);
+    history.replaceState(history.state, '', url);
+}

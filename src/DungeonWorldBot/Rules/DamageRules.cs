@@ -11,8 +11,28 @@ namespace DungeonWorldBot.Rules;
 /// <param name="Broken">Armor that only lasted until the character was hit, now gone.</param>
 public sealed record DamageTaken(int Damage, DamageType Type, int Armor, int Piercing, int Taken, IReadOnlyList<ArmorBonus> Broken);
 
+/// <summary>
+/// The result of an NPC or enemy taking a hit. They have one armor value, which only stops physical damage.
+/// </summary>
+/// <param name="Rolled">The damage before armor.</param>
+/// <param name="Blocked">How much their armor stopped.</param>
+public sealed record ArmoredHit(int Rolled, int Blocked, int Taken);
+
 public static class DamageRules
 {
+    /// <summary>
+    /// A hit on someone with a single armor value, like an NPC or enemy: armor (less piercing) stops physical damage,
+    /// and every other type goes straight through.
+    /// </summary>
+    public static ArmoredHit Hit(int amount, int armor, DamageType type, int piercing = 0)
+    {
+        // Modifiers can push a roll below zero ("1d4-3"), which shouldn't heal anyone
+        var rolled = Math.Max(0, amount);
+        var stops = type == DamageType.Physical ? Math.Max(0, armor - piercing) : 0;
+        var blocked = Math.Min(rolled, stops);
+        return new ArmoredHit(rolled, blocked, rolled - blocked);
+    }
+
     /// <summary>
     /// The armor that reduces this type of damage, or null for damage that ignores armor.
     /// </summary>

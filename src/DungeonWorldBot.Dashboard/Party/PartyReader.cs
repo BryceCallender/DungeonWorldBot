@@ -2,6 +2,7 @@ using DungeonWorldBot.Dashboard.Reference;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Features.Classes;
+using DungeonWorldBot.Features.Encounters;
 using DungeonWorldBot.Features.Gear;
 using DungeonWorldBot.Features.Leveling;
 using DungeonWorldBot.Features.Npcs;
@@ -23,13 +24,20 @@ public class PartyReader
     private readonly IResourceService _resourceService;
     private readonly ILevelingService _levelingService;
     private readonly INpcService _npcService;
+    private readonly IEncounterService _encounterService;
 
-    public PartyReader(ICharacterService characterService, IResourceService resourceService, ILevelingService levelingService, INpcService npcService)
+    public PartyReader(
+        ICharacterService characterService,
+        IResourceService resourceService,
+        ILevelingService levelingService,
+        INpcService npcService,
+        IEncounterService encounterService)
     {
         _characterService = characterService;
         _resourceService = resourceService;
         _levelingService = levelingService;
         _npcService = npcService;
+        _encounterService = encounterService;
     }
 
     public async Task<IReadOnlyList<CharacterView>> GetPartyAsync() =>
@@ -51,6 +59,22 @@ public class PartyReader
         {
             // The dashboard only reads, so it can't add the table; the bot's migration does
             return [];
+        }
+    }
+
+    /// <summary>
+    /// The fight going on now, or null between fights or when the database predates encounters (or a later change to
+    /// them, until the bot migrates it).
+    /// </summary>
+    public async Task<Encounter?> GetEncounterAsync()
+    {
+        try
+        {
+            return await _encounterService.GetActiveAsync();
+        }
+        catch (SqliteException e) when (e.Message.Contains("no such table") || e.Message.Contains("no such column"))
+        {
+            return null;
         }
     }
 

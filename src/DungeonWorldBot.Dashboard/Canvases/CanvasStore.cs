@@ -1,3 +1,4 @@
+using DungeonWorldBot.Dashboard.Encounters;
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -87,6 +88,13 @@ public sealed class CanvasStore(CanvasContext db)
         await TouchAsync(canvasID);
         return true;
     }
+
+    /// <summary>
+    /// Whether an item was put there by someone other than a person, like an enemy's token, which only the DM may take
+    /// away.
+    /// </summary>
+    public Task<bool> IsLockedAsync(int canvasID, string itemID) =>
+        db.CanvasItems.AnyAsync(i => i.CanvasID == canvasID && i.ID == itemID && i.AuthorID == EnemyTokens.AuthorID);
 
     public async Task RemoveItemAsync(int canvasID, string itemID)
     {

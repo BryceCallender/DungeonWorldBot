@@ -16,6 +16,12 @@ public class DungeonWorldContext : DbContext
 
     public DbSet<Npc> Npcs => Set<Npc>();
 
+    public DbSet<Encounter> Encounters => Set<Encounter>();
+
+    public DbSet<Enemy> Enemies => Set<Enemy>();
+
+    public DbSet<MonsterTemplate> MonsterTemplates => Set<MonsterTemplate>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -25,6 +31,27 @@ public class DungeonWorldContext : DbContext
             npc.HasIndex(n => n.Name).IsUnique();
             // Names are looked up however they're typed
             npc.Property(n => n.Name).UseCollation("NOCASE");
+        });
+
+        modelBuilder.Entity<Encounter>(encounter =>
+        {
+            encounter.HasMany(e => e.Enemies)
+                .WithOne(e => e.Encounter)
+                .HasForeignKey(e => e.EncounterID)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<Enemy>(enemy =>
+        {
+            // Two fights can each have a "Goblin", but one fight can't have two
+            enemy.HasIndex(e => new { e.EncounterID, e.Name }).IsUnique();
+            enemy.Property(e => e.Name).UseCollation("NOCASE");
+        });
+
+        modelBuilder.Entity<MonsterTemplate>(monster =>
+        {
+            monster.HasIndex(m => m.Name).IsUnique();
+            monster.Property(m => m.Name).UseCollation("NOCASE");
         });
 
         modelBuilder.Entity<RollRecord>(roll =>

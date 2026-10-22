@@ -1,0 +1,120 @@
+@using DungeonWorldBot.Dashboard.Encounters
+@using DungeonWorldBot.Features.Encounters
+@inject PartyReader PartyReader
+@inject Viewer Viewer
+
+@* The fight on an encounter scene, beside its board. The board page doesn't refresh itself, so app.js swaps in a fresh
+   copy of this from api/scenes/{id}/encounter/panel whenever the bot changes something. Players only see how hurt each
+   enemy looks; whoever runs the fight (the DM, or anyone with sign-in off) sees its numbers, and gets buttons for the
+   dialogs on the scene page that run it. A fight on another scene doesn't show here at all. *@
+@if (_encounter is { SceneID: { } elsewhere } && elsewhere != SceneID)
+{
+    @* Another scene's fight is none of this one's business. The empty panel stays so that, once that fight ends, the
+       live refresh can bring back the button to start one here. *@
+    <section class="encounter-panel" data-encounter-panel="@SceneID" hidden></section>
+    return;
+}
+
+<section class="encounter-panel" data-encounter-panel="@SceneID">
+    @if (_encounter is not { } encounter)
+    {
+        <h2>Fight</h2>
+        <p class="enemy-empty">No fight going on.</p>
+        @if (_canRun)
+        {
+            <button type="button" class="tool panel-action" data-open-dialog="start-fight">⚔️ Start a fight here</button>
+        }
+    }
+    else
+    {
+        <h2>⚔️ @encounter.Name</h2>
+        @if (encounter.Enemies.Count == 0)
+        {
+            <p class="enemy-empty">No enemies yet.</p>
+        }
+        else
+        {
+            <ol class="enemy-list">
+                @foreach (var enemy in EnemySheet.Ordered(encounter.Enemies))
+                {
+                    <li class="enemy @(enemy.Condition == EnemyCondition.Defeated ? "defeated" : null)" data-enemy="@enemy.Name">
+                        @if (_canRun)
+                        {
+                            <details>
+                                <summary>@Head(enemy)</summary>
+                                @Details(enemy)
+                            </details>
+                        }
+                        else
+                        {
+                            <div class="enemy-head">@Head(enemy)</div>
+                        }
+                    </li>
+                }
+            </ol>
+        }
+        @if (_canRun)
+        {
+            <div class="panel-actions">
+                <button type="button" class="tool panel-action" data-open-dialog="add-enemies">+ Add enemies</button>
+                <button type="button" class="tool panel-action" data-open-dialog="end-fight">End fight</button>
+            </div>
+        }
+    }
+</section>
+
+@code {
+    /// <summary>
+    /// The scene it's beside, by its short ID. Its own fight shows in full; a fight on another scene is only linked.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string SceneID { get; set; } = "";
+
+    private Encounter? _encounter;
+    private bool _canRun;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _encounter = await PartyReader.GetEncounterAsync();
+        _canRun = EncounterEndpoints.CanRun(Viewer);
+    }
+
+    private static RenderFragment Head(Enemy enemy) =>
+        @<span class="enemy-row">
+            <span class="name">@enemy.Name</span>
+            <span class="chip condition @enemy.Condition.ToString().ToLowerInvariant()">@EnemyConditions.Describe(enemy.Condition)</span>
+        </span>;
+
+    private static RenderFragment Details(Enemy enemy) =>
+        @<div class="enemy-details">
+            <HealthBar Current="enemy.CurrentHP" Max="enemy.MaxHP" />
+            <div class="enemy-stats">
+                <span title="Armor"><Icon Name="shield" />@enemy.Armor</span>
+                @if (enemy.Damage is not null)
+                {
+                    <span title="Damage"><Icon Name="sword" />@enemy.Damage</span>
+                }
+            </div>
+            @if (enemy.Tags is not null)
+            {
+                <div class="muted">@enemy.Tags</div>
+            }
+            @if (enemy.Instinct is not null)
+            {
+                <div><strong>Instinct</strong> @enemy.Instinct</div>
+            }
+            @if (enemy.Moves is not null)
+            {
+                <ul class="enemy-moves">
+                    @foreach (var move in EnemySheet.SplitMoves(enemy.Moves))
+                    {
+                        <li>@move</li>
+                    }
+                </ul>
+            }
+            @if (enemy.Notes is not null)
+            {
+                <div class="muted">@enemy.Notes</div>
+            }
+        </div>;
+}

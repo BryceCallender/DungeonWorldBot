@@ -228,7 +228,15 @@ function showPictures(node: Konva.Node) {
     }
 }
 
-function addItem(id: string, type: CanvasItemType, json: ItemJson) {
+// Tokens the fight put on the board for its enemies (made by EnemyTokens on the server, which signs them with this).
+// Only the DM can remove them, so a player's stray click can't take an enemy away; the server refuses it too.
+const FIGHT_AUTHOR = 'encounter';
+const runsFights = container.dataset.runsFights === 'true';
+const locked = new Set<string>();
+const isLocked = (node: Konva.Node) => !runsFights && locked.has(node.id());
+
+function addItem(id: string, type: CanvasItemType, json: ItemJson, author?: string) {
+    if (author === FIGHT_AUTHOR) locked.add(id);
     const wasSelected = selected()?.id() === id;
     stage.findOne('#' + id)?.destroy();                    // the same ID again replaces it
     let node = Konva.Node.create(json);
@@ -242,6 +250,7 @@ function addItem(id: string, type: CanvasItemType, json: ItemJson) {
 }
 
 function removeItem(node: Konva.Node) {
+    locked.delete(node.id());
     if (selected() === node) select(null);
     const wasToken = node.getLayer() === tokens;
     node.destroy();
@@ -251,7 +260,8 @@ function removeItem(node: Konva.Node) {
 function load(items: SavedItem[]) {
     drawing.destroyChildren();
     tokens.destroyChildren();
-    for (const item of items) addItem(item.id, item.type, item.item);
+    locked.clear();
+    for (const item of items) addItem(item.id, item.type, item.item, item.authorID);
     listTokens();
     mine.length = 0;
 }
@@ -279,14 +289,17 @@ function listTokens() {
         const picture = holder && srcOf(holder);
         if (picture) dot.style.background = `center / cover url("${picture}")`;
         button.append(dot, Object.assign(document.createElement('span'), { className: 'name', textContent: token.name() || 'Token' }));
+        const li = document.createElement('li');
+        li.append(button);
+        // An enemy's token stays until its fight is done with it
+        if (isLocked(token)) return li;
         // Beside the name rather than in it, since a button can't hold another button
         const remove = Object.assign(document.createElement('button'), {
             type: 'button', className: 'remove', textContent: '×', title: `Remove ${token.name() || 'token'}`,
         });
         remove.dataset.removeToken = token.id();
         remove.setAttribute('aria-label', remove.title);
-        const li = document.createElement('li');
-        li.append(button, remove);
+        li.append(remove);
         return li;
     }));
 }
@@ -296,7 +309,7 @@ function listTokens() {
 tokenList.addEventListener('click', e => {
     const removeId = (e.target as HTMLElement).closest<HTMLElement>('[data-remove-token]')?.dataset.removeToken;
     const removing = removeId && stage.findOne('#' + removeId);
-    if (removing) {
+    if (removing && !isLocked(removing)) {
         live?.removeItem(removing.id());
         removeItem(removing);
         return;
@@ -363,15 +376,15 @@ document.querySelector('.board-page')!.addEventListener('click', e => {
 
 const keys: Record<string, Tool> = { p: 'pen', e: 'erase', m: 'move', t: 'token', x: 'text', s: 'shape' };
 document.addEventListener('keydown', e => {
-    // Typing text on the board, or anywhere else, isn't a shortcut
-    if ((e.target as HTMLElement).closest('input, textarea, [contenteditable]')) return;
+    // Typing text on the board, or anywhere else, isn't a shortcut; nor is anything in an open dialog
+    if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable], dialog')) return;
     if ((e.ctrlKey || e.metaKey) && e.key === 'z') { e.preventDefault(); undo(); return; }
     if ((e.ctrlKey || e.metaKey) && (e.key === '=' || e.key === '+')) { e.preventDefault(); zoomAt({ x: stage.width() / 2, y: stage.height() / 2 }, 1.25); return; }
     if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); zoomAt({ x: stage.width() / 2, y: stage.height() / 2 }, 0.8); return; }
     if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); fitView(); return; }
     if (e.key === ' ' && !spaceHeld) { e.preventDefault(); spaceHeld = true; updatePanning(); return; }
     const chosen = selected();
-    if (chosen && (e.key === 'Delete' || e.key === 'Backspace')) { live?.removeItem(chosen.id()); removeItem(chosen); return; }
+    if (chosen && (e.key === 'Delete' || e.key === 'Backspace')) { if (!isLocked(chosen)) { live?.removeItem(chosen.id()); removeItem(chosen); } return; }
     if (!e.ctrlKey && !e.metaKey && !e.altKey && keys[e.key]) setTool(keys[e.key]);
 });
 document.addEventListener('keyup', e => {
@@ -487,7 +500,7 @@ function eraseHere() {
     const shape = stage.getIntersection(stage.getPointerPosition()!);
     const item = shape && itemOf(shape);
     // Sweeping the eraser over a map shouldn't take the whole map; pictures go with Move, then Delete
-    if (!item || item.getLayer() === pictures) return;
+    if (!item || item.getLayer() === pictures || isLocked(item)) return;
     live?.removeItem(item.id());
     removeItem(item);
 }
@@ -814,6 +827,26 @@ async function addPictureToken(file: File, at = viewCenter()) {
     placeToken(at.x, at.y, url, name);
 }
 
+// A picture for the enemies being added from the fight's dialog goes up the same way as an image token's. The form
+// then carries its address, and the server puts it on each enemy's token.
+document.querySelector<HTMLFormElement>('#add-enemies form')?.addEventListener('submit', async e => {
+    const form = e.currentTarget as HTMLFormElement;
+    const file = form.querySelector<HTMLInputElement>('[data-enemy-picture]')?.files?.[0];
+    if (!file) return;
+
+    e.preventDefault();
+    const add = form.querySelector<HTMLButtonElement>('.create');
+    if (add) { add.disabled = true; add.textContent = 'Uploading…'; }
+    try {
+        const { url } = await upload(file, TOKEN_PICTURE_SIZE);
+        form.querySelector<HTMLInputElement>('input[name="pictureUrl"]')!.value = url;
+        form.submit();                                     // doesn't fire submit again
+    } catch (err) {
+        window.alert(`Couldn't add that picture: ${err instanceof Error ? err.message : err}`);
+        if (add) { add.disabled = false; add.textContent = 'Add'; }
+    }
+});
+
 // A picture on the board, or a token's picture (only from the sidebar's "+ Image token")
 function addFile(file: File | undefined, asToken: boolean, at?: { x: number; y: number }) {
     if (!file?.type.startsWith('image/')) return;
@@ -843,7 +876,7 @@ container.addEventListener('drop', e => {
 
 // Pasting a picture (like a screenshot) puts it in the middle of what you can see
 document.addEventListener('paste', e => {
-    if ((e.target as HTMLElement).closest('input, textarea, [contenteditable]')) return;
+    if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable], dialog')) return;
     const file = [...e.clipboardData?.files ?? []].find(f => f.type.startsWith('image/'));
     if (file) { e.preventDefault(); addFile(file, false); }
 });
@@ -1069,7 +1102,7 @@ try {
             addItem(strokeId, 'stroke', json);
             pulse();
         },
-        itemAdded: (_, itemId, type, json) => { addItem(itemId, type, json); pulse(); },
+        itemAdded: (personId, itemId, type, json) => { addItem(itemId, type, json, personId); pulse(); },
         itemMoved: (_, itemId, x, y) => stage.findOne('#' + itemId)?.position({ x, y }),
         // Moves aren't flashed: a drag sends a dozen a second, which would keep it lit
         itemRemoved: (_, itemId) => { const node = stage.findOne('#' + itemId); if (node) removeItem(node); pulse(); },

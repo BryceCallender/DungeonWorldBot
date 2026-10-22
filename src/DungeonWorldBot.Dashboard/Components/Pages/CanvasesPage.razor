@@ -23,25 +23,47 @@
             }
         </nav>
 
-        @* <details> opens and closes on its own, and stays open to show a mistake in the name *@
-        <details class="new-canvas" open="@(Error is not null)">
-            <summary class="tool">+ New scene</summary>
+        <button type="button" class="tool new-canvas" data-open-dialog="new-scene">+ New scene</button>
+
+        @* Opened by app.js; it opens straight away when the server sent back a mistake in the name *@
+        <dialog id="new-scene" class="modal" aria-labelledby="new-scene-title" data-open-on-load="@(Error is not null ? "true" : null)">
             <form method="post" action="api/canvases">
                 <AntiforgeryToken />
-                <input class="filter" name="name" maxlength="@CanvasStore.MaxNameLength" placeholder="Goblin ambush at the ford" required autofocus />
-                <select class="filter" name="kind">
+                <div class="modal-head">
+                    <h2 id="new-scene-title">New scene</h2>
+                    <button type="button" class="modal-close" data-close-dialog aria-label="Close">×</button>
+                </div>
+
+                <label class="field">
+                    <span class="field-label">Name</span>
+                    <input class="filter" name="name" maxlength="@CanvasStore.MaxNameLength" placeholder="Goblin ambush at the ford" required autofocus />
+                    @if (Error == "name")
+                    {
+                        <span class="form-error">Give it a name, up to @CanvasStore.MaxNameLength letters.</span>
+                    }
+                </label>
+
+                <fieldset class="kind-options">
+                    <legend class="field-label">Kind</legend>
                     @foreach (var kind in Enum.GetValues<CanvasKind>())
                     {
-                        <option selected="@(kind == (_kind ?? CanvasKind.Encounter))">@kind</option>
+                        <label class="kind-option">
+                            <input type="radio" name="kind" value="@kind" checked="@(kind == (_kind ?? CanvasKind.Encounter))" />
+                            <span class="kind-icon @KindClass(kind)"><Icon Name="@KindIcon(kind)" /></span>
+                            <span class="kind-text">
+                                <strong>@kind</strong>
+                                <span class="small muted">@KindDescription(kind)</span>
+                            </span>
+                        </label>
                     }
-                </select>
-                <button class="tool create">Create</button>
-                @if (Error == "name")
-                {
-                    <span class="form-error">Give it a name, up to @CanvasStore.MaxNameLength letters.</span>
-                }
+                </fieldset>
+
+                <div class="modal-actions">
+                    <button type="button" class="tool" data-close-dialog>Cancel</button>
+                    <button class="tool create">Create</button>
+                </div>
             </form>
-        </details>
+        </dialog>
     }
     else
     {
@@ -138,6 +160,12 @@ else
     {
         CanvasKind.Encounter => "sword",
         _ => "map",
+    };
+
+    private static string KindDescription(CanvasKind kind) => kind switch
+    {
+        CanvasKind.Encounter => "A board for a fight. The fight going on in Discord shows beside it.",
+        _ => "A place to explore, or anything else worth drawing out.",
     };
 
     private static string KindClass(CanvasKind kind) => kind switch

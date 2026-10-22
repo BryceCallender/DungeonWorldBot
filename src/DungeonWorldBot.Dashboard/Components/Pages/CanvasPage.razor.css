@@ -257,3 +257,14 @@
     /* Swung round to point at them, just outside the circle */
     transform: translate(-50%, -50%) rotate(var(--angle)) translateX(18px);
 }
+
+/* Adding enemies: only the fields for where they come from show */
+.add-enemies:has(input[value=saved]:checked) .from-new,
+.add-enemies:has(input[value=new]:checked) .from-saved { display: none; }
+.from-saved, .from-new { display: flex; flex-direction: column; gap: .6rem; }
+.from-saved p { margin: 0; }
+.from-options { flex-direction: row; }
+.from-options .kind-option { flex: 1; }
+.kind-option:has(input:disabled) { opacity: .5; cursor: default; }
+.field.count { max-width: 7rem; }
+.modal p.small { margin: 0; }

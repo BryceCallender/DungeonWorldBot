@@ -17,7 +17,6 @@ public partial class DmCommand
     public class NpcCommands : DungeonWorldCommandBase
     {
         private const string NameDescription = "The NPC";
-        private const string ClearHint = "Type \"none\" to clear it.";
 
         private readonly INpcService _npcService;
         private readonly IGameMasterService _gameMaster;
@@ -222,15 +221,5 @@ public partial class DmCommand
 
         private async Task<Result> ReplyNotGameMasterAsync() =>
             await ReplyWithErrorAsync($"Only someone with the {_gameMaster.RoleName} role can do that.");
-
-        private static string? Text(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
-
-        /// <summary>
-        /// The new value of a text field: unchanged when left blank, cleared by "none".
-        /// </summary>
-        private static string? Change(string? current, string? value) =>
-            value is null ? current
-            : value.Trim().Equals("none", StringComparison.OrdinalIgnoreCase) ? null
-            : Text(value) ?? current;
     }
 }

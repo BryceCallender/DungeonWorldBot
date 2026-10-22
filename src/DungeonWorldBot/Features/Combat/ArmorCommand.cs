@@ -149,17 +149,8 @@ public class ArmorCommand : DungeonWorldCommandBase
     [Description("The fight is over: remove everyone's temporary armor that lasted for the fight or until hit")]
     public async Task<IResult> EndFightAsync()
     {
-        var cleared = new List<string>();
-        foreach (var character in await _characterService.GetCharactersAsync())
-        {
-            var removed = await _armorService.EndFightAsync(character);
-            if (removed.Count > 0)
-                cleared.Add($"**{character.Name}**: {string.Join(", ", removed.Select(b => b.Source))}");
-        }
-
-        return await ReplyAsync("Fight Over", cleared.Count > 0
-            ? $"Removed temporary armor:\n{string.Join('\n', cleared)}"
-            : "Nobody had temporary armor to remove.");
+        var cleared = await _armorService.EndFightForAllAsync();
+        return await ReplyAsync("Fight Over", DescribeCleared(cleared));
     }
 
     private async Task<Character?> GetCharacterAsync(IUser? user)
@@ -171,4 +162,12 @@ public class ArmorCommand : DungeonWorldCommandBase
 
         return await _characterService.GetCharacterFromUserAsync(userId);
     }
+
+    /// <summary>
+    /// What ending the fight took off everyone, for the reply.
+    /// </summary>
+    public static string DescribeCleared(IReadOnlyList<(string Name, IReadOnlyList<ArmorBonus> Removed)> cleared) =>
+        cleared.Count > 0
+            ? $"Removed temporary armor:\n{string.Join('\n', cleared.Select(c => $"**{c.Name}**: {string.Join(", ", c.Removed.Select(b => b.Source))}"))}"
+            : "Nobody had temporary armor to remove.";
 }

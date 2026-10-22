@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data;
+using DungeonWorldBot.Features.Encounters;
 using DungeonWorldBot.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -69,7 +70,8 @@ public class Program
                 services
                     .AddSqlite<DungeonWorldContext>(context.Configuration.GetConnectionString("DungeonWorldConnectionString"))
                     .AddAttributedServices(typeof(Program).Assembly)
-                    .AddRemoraServices();
+                    .AddRemoraServices()
+                    .AddHostedService<EncounterAnnouncer>();
             }
         )
         .ConfigureLogging

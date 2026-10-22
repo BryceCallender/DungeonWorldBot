@@ -15,7 +15,6 @@
         <PrivateAssets>all</PrivateAssets>
       </PackageReference>
       <!-- Short IDs for canvas links, like /canvas/Xb3kQ9 instead of /canvas/4 -->
-      <PackageReference Include="Sqids" Version="3.2.1" />
     </ItemGroup>
 
     <!-- TypeScript in Scripts/ is bundled by esbuild into wwwroot/canvas.js, which is built, not edited or committed -->

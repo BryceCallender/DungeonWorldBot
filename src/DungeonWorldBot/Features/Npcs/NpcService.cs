@@ -1,6 +1,7 @@
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Infrastructure;
+using DungeonWorldBot.Rules;
 using Microsoft.EntityFrameworkCore;
 
 namespace DungeonWorldBot.Features.Npcs;
@@ -42,18 +43,14 @@ public class NpcService : INpcService
         await _context.SaveChangesAsync();
     }
 
-    public async Task<NpcHit> DamageAsync(Npc npc, int amount, DamageType type = DamageType.Physical, int piercing = 0)
+    public async Task<ArmoredHit> DamageAsync(Npc npc, int amount, DamageType type = DamageType.Physical, int piercing = 0)
     {
-        // Modifiers can push a roll below zero ("1d4-3"), which shouldn't heal anyone
-        var rolled = Math.Max(0, amount);
-        var armor = type == DamageType.Physical ? Math.Max(0, npc.Armor - piercing) : 0;
-        var blocked = Math.Min(rolled, armor);
-        var taken = rolled - blocked;
+        var hit = DamageRules.Hit(amount, npc.Armor, type, piercing);
 
-        npc.CurrentHP = Math.Max(0, npc.CurrentHP - taken);
+        npc.CurrentHP = Math.Max(0, npc.CurrentHP - hit.Taken);
         await _context.SaveChangesAsync();
 
-        return new NpcHit(rolled, blocked, taken);
+        return hit;
     }
 
     public async Task HealAsync(Npc npc, int? amount = null)

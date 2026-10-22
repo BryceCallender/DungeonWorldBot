@@ -2,6 +2,7 @@ using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Infrastructure;
 using DungeonWorldBot.Rules;
+using Microsoft.EntityFrameworkCore;
 
 namespace DungeonWorldBot.Features.Combat;
 
@@ -66,6 +67,22 @@ public class ArmorService : IArmorService
         var removed = Remove(character, b => b.Duration != ArmorDuration.UntilRemoved);
         await _dungeonWorldContext.SaveChangesAsync();
         return removed;
+    }
+
+    public async Task<IReadOnlyList<(string Name, IReadOnlyList<ArmorBonus> Removed)>> EndFightForAllAsync()
+    {
+        var characters = await _dungeonWorldContext.Characters.Include(c => c.ArmorBonuses).ToListAsync();
+
+        var cleared = new List<(string Name, IReadOnlyList<ArmorBonus> Removed)>();
+        foreach (var character in characters)
+        {
+            var removed = Remove(character, b => b.Duration != ArmorDuration.UntilRemoved);
+            if (removed.Count > 0)
+                cleared.Add((character.Name, removed));
+        }
+
+        await _dungeonWorldContext.SaveChangesAsync();
+        return cleared;
     }
 
     private List<ArmorBonus> Remove(Character character, Func<ArmorBonus, bool> predicate)

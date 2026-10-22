@@ -13,28 +13,9 @@
 .canvas-filters .chip { text-decoration: none; color: var(--muted); }
 .canvas-filters .chip.on { background: var(--accent-soft); color: var(--accent); }
 
-/* "New canvas" sits at the right, and opens into a small form below the header */
+/* "New scene" sits at the right, and opens a modal */
 .new-canvas { margin-left: auto; }
-.new-canvas[open] { flex-basis: 100%; order: 1; margin-left: 0; }
-.new-canvas summary { list-style: none; display: inline-block; }
-.new-canvas summary::-webkit-details-marker { display: none; }
-.new-canvas[open] summary { margin-bottom: .6rem; }
 
-.new-canvas form {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: .5rem;
-    padding: .75rem;
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-}
-
-.new-canvas input { flex: 1; min-width: 12rem; width: auto; }
-.new-canvas .create { background: var(--accent); border-color: var(--accent); color: #fff; }
-.new-canvas .create:hover { color: #fff; opacity: .9; }
-.form-error { flex-basis: 100%; font-size: .85rem; color: var(--critical); }
 
 .canvas-grid {
     display: grid;

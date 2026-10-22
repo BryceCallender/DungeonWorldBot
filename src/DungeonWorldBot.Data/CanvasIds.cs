@@ -1,6 +1,6 @@
 using Sqids;
 
-namespace DungeonWorldBot.Dashboard.Canvases;
+namespace DungeonWorldBot.Data;
 
 /// <summary>
 /// The short IDs canvases go by in links and on the page, like Xb3kQ9. The database keeps plain numbers.

@@ -22,6 +22,18 @@ namespace DungeonWorldBot.Features.GameMaster;
 [DiscordDefaultMemberPermissions(DiscordPermission.ManageGuild)]
 public partial class DmCommand : CommandGroup
 {
+    private const string ClearHint = "Type \"none\" to clear it.";
+
+    private static string? Text(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
+    /// <summary>
+    /// The new value of a text field: unchanged when left blank, cleared by "none".
+    /// </summary>
+    private static string? Change(string? current, string? value) =>
+        value is null ? current
+        : value.Trim().Equals("none", StringComparison.OrdinalIgnoreCase) ? null
+        : Text(value) ?? current;
+
     [Group("stat")]
     public class StatCommand : CharacterCommandBase
     {

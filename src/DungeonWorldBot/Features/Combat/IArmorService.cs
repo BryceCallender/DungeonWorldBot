@@ -29,4 +29,10 @@ public interface IArmorService
     /// </summary>
     /// <returns>The armor removed.</returns>
     Task<IReadOnlyList<ArmorBonus>> EndFightAsync(Character character);
+
+    /// <summary>
+    /// Ends the fight for every character, as <see cref="EndFightAsync"/> does for one.
+    /// </summary>
+    /// <returns>Each character who lost temporary armor, with what they lost.</returns>
+    Task<IReadOnlyList<(string Name, IReadOnlyList<ArmorBonus> Removed)>> EndFightForAllAsync();
 }

@@ -1,0 +1,44 @@
+.encounter-panel {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    padding-bottom: .75rem;
+    margin-bottom: .25rem;
+    border-bottom: 1px solid var(--border);
+}
+
+/* Its own display would otherwise beat hidden's */
+.encounter-panel[hidden] { display: none; }
+
+.encounter-panel h2 { margin: 0; font-size: .8rem; font-weight: 600; color: var(--muted); }
+
+.enemy-empty { margin: 0; font-size: .8rem; color: var(--muted); }
+
+.enemy-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .15rem; }
+.enemy { border-radius: 6px; font-size: .85rem; }
+.enemy.defeated { opacity: .55; }
+
+/* A row like the token list's, with the condition on the right */
+.enemy-head, .enemy summary { padding: .3rem .5rem; border-radius: 6px; }
+.enemy summary { cursor: pointer; list-style: none; }
+.enemy summary::-webkit-details-marker { display: none; }
+.enemy summary:hover, .enemy details[open] summary { background: var(--surface-2); }
+
+.enemy-row { display: flex; align-items: center; justify-content: space-between; gap: .5rem; min-width: 0; }
+.enemy-row .name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.enemy-details { display: flex; flex-direction: column; gap: .4rem; padding: .4rem .5rem .6rem; font-size: .8rem; }
+.enemy-stats { display: flex; gap: .9rem; font-weight: 600; }
+.enemy-stats span { display: inline-flex; align-items: center; gap: .3rem; }
+.enemy-moves { margin: 0; padding-left: 1rem; display: flex; flex-direction: column; gap: .15rem; }
+
+.chip.condition { flex: none; font-size: .7rem; }
+.chip.condition.unhurt { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+.chip.condition.hurt { background: color-mix(in srgb, var(--low) 12%, transparent); color: var(--low); }
+.chip.condition.bloodied { background: color-mix(in srgb, var(--low) 24%, transparent); color: var(--low); }
+.chip.condition.neardeath { background: var(--warn-soft); color: var(--critical); }
+.chip.condition.defeated { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); }
+
+/* The DM's buttons, under the enemies */
+.panel-actions { display: flex; flex-direction: column; gap: .4rem; }
+.panel-action { flex: 1; font-size: .8rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: center; text-decoration: none; }

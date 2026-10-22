@@ -1,10 +1,7 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Rules;
 
 namespace DungeonWorldBot.Features.Npcs;
-
-/// <param name="Rolled">The damage before armor.</param>
-/// <param name="Blocked">How much their armor stopped.</param>
-public sealed record NpcHit(int Rolled, int Blocked, int Taken);
 
 public interface INpcService
 {
@@ -27,7 +24,7 @@ public interface INpcService
     /// <summary>
     /// Damages an NPC. Their armor reduces physical damage, less whatever the hit pierces; other types go straight through.
     /// </summary>
-    Task<NpcHit> DamageAsync(Npc npc, int amount, DamageType type = DamageType.Physical, int piercing = 0);
+    Task<ArmoredHit> DamageAsync(Npc npc, int amount, DamageType type = DamageType.Physical, int piercing = 0);
 
     /// <summary>
     /// Heals an NPC, up to their max HP. Leave the amount out to heal them fully.

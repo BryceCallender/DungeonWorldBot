@@ -1,3 +1,4 @@
+using DungeonWorldBot.Data;
 using System.Text.Json;
 using DungeonWorldBot.Dashboard.Auth;
 using DungeonWorldBot.Dashboard.Shared;
@@ -14,7 +15,10 @@ namespace DungeonWorldBot.Dashboard.Canvases;
 /// </remarks>
 public sealed class CanvasHub(CanvasPresence presence, CanvasStore store, DashboardSettings settings) : Hub<ICanvasClient>
 {
-    private static string Group(int canvas) => $"canvas:{canvas}";
+    /// <summary>
+    /// Everyone with this canvas open, for sending them something from outside the hub.
+    /// </summary>
+    public static string Group(int canvas) => $"canvas:{canvas}";
 
     /// <returns>Who they are, as the others see them, everyone on the canvas, and everything on it.</returns>
     /// <param name="sqid">The canvas's short ID, from <see cref="CanvasIds"/>.</param>
@@ -83,7 +87,12 @@ public sealed class CanvasHub(CanvasPresence presence, CanvasStore store, Dashbo
     public async Task RemoveItem(string itemID)
     {
         var (canvas, me) = Current();
-        await store.RemoveItemAsync(canvas, CheckID(itemID));
+        // Enemies' tokens stay put unless the DM takes them off. With sign-in on, only signed-in members get this far,
+        // so someone who isn't signed in means sign-in is off, when anyone runs fights.
+        var runsFights = me.IsDungeonMaster || Context.User?.Identity?.IsAuthenticated != true;
+        if (!runsFights && await store.IsLockedAsync(canvas, CheckID(itemID)))
+            throw new HubException("Only the DM can remove enemy tokens from the board.");
+        await store.RemoveItemAsync(canvas, itemID);
         await Clients.OthersInGroup(Group(canvas)).ItemRemoved(me.ID, itemID);
     }
 

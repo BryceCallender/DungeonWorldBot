@@ -1,3 +1,4 @@
+using DungeonWorldBot.Data;
 using DungeonWorldBot.Dashboard.Auth;
 using Microsoft.AspNetCore.Mvc;
 
