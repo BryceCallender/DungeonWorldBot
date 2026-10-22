@@ -54,7 +54,7 @@ else
     <div class="party">
         @foreach (var c in _party)
         {
-            <a class="card member @Lookup.ColorOf(c.Character.Class.Type)" href="@c.Url">
+            <a class="card member classed" style="@Lookup.ColorOf(c.Character.Class.Type)" href="@c.Url">
                 <div class="member-head">
                     <div>
                         <div class="member-name">
@@ -94,7 +94,7 @@ else
                 <StatGrid Stats="c.Stats" />
 
                 @* What only some characters have *@
-                @if (c.Subclass?.Status is not null || ActiveShapes(c).Count > 0 || c.Resources.Count > 0 || c.StatPoints > 0)
+                @if (c.Subclass?.Status is not null || ActiveShapes(c).Count > 0 || c.Picks.Count > 0 || c.Resources.Count > 0 || c.StatPoints > 0)
                 {
                     <div class="member-extra">
                         @if (c.Subclass?.Status is { } subclassStatus)
@@ -107,9 +107,13 @@ else
                             <div class="small">🐾 In the shape of <strong>@string.Join(" + ", shapes)</strong></div>
                         }
 
-                        @if (c.Resources.Count > 0 || c.StatPoints > 0)
+                        @if (c.Picks.Count > 0 || c.Resources.Count > 0 || c.StatPoints > 0)
                         {
                             <div class="resource-chips">
+                                @foreach (var pick in c.Picks)
+                                {
+                                    <span class="chip class" title="@pick.Feature">@pick.Choice</span>
+                                }
                                 @foreach (var r in c.Resources)
                                 {
                                     <span class="chip class" title="@r.Summary">@r.Name @r.Value@(r.Max is { } max ? $"/{max}" : "")</span>
@@ -137,18 +141,14 @@ else
                 </div>
             </a>
         }
-        @foreach (var npc in _partyNpcs)
-        {
-            @NpcCard(npc)
-        }
     </div>
 }
 
-@if (_companions.Count > 0)
+@if (_npcs.Count > 0)
 {
-    <h2 class="section-title">Companions</h2>
+    <h2 class="section-title">NPCs</h2>
     <div class="party">
-        @foreach (var npc in _companions)
+        @foreach (var npc in _npcs)
         {
             @NpcCard(npc)
         }
@@ -157,23 +157,12 @@ else
 
 @code {
     private IReadOnlyList<CharacterView> _party = [];
-    private IReadOnlyList<Npc> _partyNpcs = [];
-    private IReadOnlyList<Npc> _companions = [];
-
-    // NPCs who travel as full members of the party rather than hirelings or companions
-    private static readonly HashSet<string> PartyNpcNames = new(StringComparer.OrdinalIgnoreCase)
-    {
-        "Elden Notetaker",
-        "Serena",
-        "Jin",
-    };
+    private IReadOnlyList<Npc> _npcs = [];
 
     protected override async Task OnInitializedAsync()
     {
         _party = await PartyReader.GetPartyAsync();
-        var npcs = await PartyReader.GetNpcsAsync();
-        _partyNpcs = npcs.Where(n => PartyNpcNames.Contains(n.Name)).ToList();
-        _companions = npcs.Where(n => !PartyNpcNames.Contains(n.Name)).ToList();
+        _npcs = await PartyReader.GetNpcsAsync();
         _alerts = Alerts().Where(a => a.Who.Count > 0).ToList();
     }
 
@@ -194,7 +183,7 @@ else
         yield return new("critical", "Critical", "At 25% HP or less",
             critical.Select(Hp).ToList());
         yield return new("critical", "NPCs down", "At 0 HP",
-            _partyNpcs.Concat(_companions).Where(n => n.CurrentHP == 0).Select(n => new Who(n.Name)).ToList());
+            _npcs.Where(n => n.CurrentHP == 0).Select(n => new Who(n.Name)).ToList());
         yield return new("low", "Debilitated", "Rolling at −1 with these stats",
             _party.Where(c => c.Debilitated.Count > 0)
                 .Select(c => new Who($"{c.Name} · {string.Join(", ", c.Debilitated.Select(s => s.Debility))}", c.Url)).ToList());

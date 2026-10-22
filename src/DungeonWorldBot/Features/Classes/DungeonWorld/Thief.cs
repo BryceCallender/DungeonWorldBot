@@ -11,6 +11,7 @@ public static class Thief
     public static readonly ClassSheet Sheet = new(
         ClassType.Thief,
         "Dungeon World",
+        new ClassColor("#3d4a45", "#8fa89e"),
         startingMoves:
         [
             Rolled("Tricks of the Trade", StatType.Dex,

@@ -9,6 +9,7 @@ public static class Walker
     public static readonly ClassSheet Sheet = new(
         ClassType.Walker,
         "Inverse World",
+        new ClassColor("#3f5aa8", "#8aa0ec"),
         startingMoves:
         [
             new("Wall Walking", "Climb walls and ceilings of any texture as fast as you walk or run. While climbing you only have one hand free. You can carry one passenger, but then you can't use your hands at all."),

@@ -10,7 +10,7 @@
 .lookup-card h3 { margin: 0; font-size: 1.05rem; }
 
 /* A stripe along the top in the class color */
-.lookup-card[class*="cls-"] { box-shadow: inset 0 4px 0 var(--class); }
-.lookup-card[class*="cls-"]:hover { border-color: var(--class); }
+.lookup-card.classed { box-shadow: inset 0 4px 0 var(--class); }
+.lookup-card.classed:hover { border-color: var(--class); }
 
 .played-by { color: var(--class); }

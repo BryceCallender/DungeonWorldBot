@@ -10,6 +10,7 @@ public static class Collector
     public static readonly ClassSheet Sheet = new(
         ClassType.Collector,
         "Inverse World",
+        new ClassColor("#a33a86", "#e27cc2"),
         startingMoves:
         [
             new("Keeper of Curios",

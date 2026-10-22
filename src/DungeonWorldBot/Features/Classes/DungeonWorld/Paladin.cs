@@ -14,6 +14,7 @@ public static class Paladin
     public static readonly ClassSheet Sheet = new(
         ClassType.Paladin,
         "Dungeon World",
+        new ClassColor("#a87b0a", "#e6b84a"),
         startingMoves:
         [
             new("Human", "When you pray for guidance, even for a moment, and ask \"What here is evil?\", the GM tells you honestly."),

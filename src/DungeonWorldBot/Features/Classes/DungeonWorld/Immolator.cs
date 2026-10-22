@@ -11,6 +11,7 @@ public static class Immolator
     public static readonly ClassSheet Sheet = new(
         ClassType.Immolator,
         "Dungeon World",
+        new ClassColor("#d4480f", "#ff8a4c"),
         startingMoves:
         [
             new("Hand Crafted", "You can use your hands in place of tools and fire to craft metal objects: mundane weapons, armor and jewellery from their raw components. You can unmake them too, though without time and safety you may need to Defy Danger first."),

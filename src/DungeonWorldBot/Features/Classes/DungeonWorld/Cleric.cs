@@ -17,6 +17,7 @@ public static class Cleric
     public static readonly ClassSheet Sheet = new(
         ClassType.Cleric,
         "Dungeon World",
+        new ClassColor("#8c7a2b", "#d8c46a"),
         startingMoves:
         [
             new("Divine Guidance", "When you petition your deity according to the precept of your religion, you're granted some useful knowledge or boon related to your deity's domain. The GM tells you what."),

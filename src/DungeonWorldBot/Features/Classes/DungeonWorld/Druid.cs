@@ -14,6 +14,7 @@ public static class Druid
     public static readonly ClassSheet Sheet = new(
         ClassType.Druid,
         "Dungeon World",
+        new ClassColor("#5f9010", "#9bd040"),
         startingMoves:
         [
             new("Born of the Soil", "The spirits of your land have marked you as their own and let you take their shape wherever you go. Choose a tell (antlers, leopard's spots, hair like leaves...) that stays in every shape."),

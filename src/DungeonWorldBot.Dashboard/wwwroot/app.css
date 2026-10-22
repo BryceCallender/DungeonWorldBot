@@ -311,58 +311,13 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 .hero .muted a, .hero-main > .muted a { color: inherit; text-decoration-color: var(--accent); }
 .hero-main > .muted a.class-name { color: var(--class); text-decoration-color: color-mix(in srgb, var(--class) 50%, transparent); }
 
-/* Class colors: each class sets --class, which cards, headers, chips and bars pick up */
+/* Class colors: each class's sheet gives its two shades inline, and this picks one as --class, which cards, headers,
+   chips and bars pick up */
 
-.cls-ranger { --class: #2e7d4a; }
-.cls-paladin { --class: #a87b0a; }
-.cls-druid { --class: #5f9010; }
-.cls-battlemaster { --class: #4c6480; }
-.cls-channeler { --class: #0b8299; }
-.cls-necromancer { --class: #7d4bb5; }
-.cls-slayer { --class: #b3262e; }
-.cls-templar { --class: #c0620c; }
-.cls-shaman { --class: #16806e; }
-.cls-captain { --class: #1d3f73; }
-.cls-collector { --class: #a33a86; }
-.cls-lantern { --class: #c0365e; }
-.cls-mechanic { --class: #8a5a30; }
-.cls-skydancer { --class: #1f86c9; }
-.cls-survivor { --class: #5f6b2e; }
-.cls-walker { --class: #3f5aa8; }
-.cls-golem { --class: #66625b; }
-.cls-barbarian { --class: #9c3d1c; }
-.cls-bard { --class: #b0457a; }
-.cls-cleric { --class: #8c7a2b; }
-.cls-fighter { --class: #5a5f6b; }
-.cls-immolator { --class: #d4480f; }
-.cls-thief { --class: #3d4a45; }
-.cls-wizard { --class: #4a3fa8; }
+.classed { --class: var(--class-light); }
 
 @media (prefers-color-scheme: dark) {
-    .cls-ranger { --class: #5cc27e; }
-    .cls-paladin { --class: #e6b84a; }
-    .cls-druid { --class: #9bd040; }
-    .cls-battlemaster { --class: #9aafca; }
-    .cls-channeler { --class: #48c4dc; }
-    .cls-necromancer { --class: #b58ce8; }
-    .cls-slayer { --class: #f06b72; }
-    .cls-templar { --class: #f2a052; }
-    .cls-shaman { --class: #4ac6ae; }
-    .cls-captain { --class: #5f86c9; }
-    .cls-collector { --class: #e27cc2; }
-    .cls-lantern { --class: #f27a98; }
-    .cls-mechanic { --class: #c99a6a; }
-    .cls-skydancer { --class: #6cbcf2; }
-    .cls-survivor { --class: #a7b46a; }
-    .cls-walker { --class: #8aa0ec; }
-    .cls-golem { --class: #aca69c; }
-    .cls-barbarian { --class: #e07a52; }
-    .cls-bard { --class: #ec8ab8; }
-    .cls-cleric { --class: #d8c46a; }
-    .cls-fighter { --class: #a6adbd; }
-    .cls-immolator { --class: #ff8a4c; }
-    .cls-thief { --class: #8fa89e; }
-    .cls-wizard { --class: #9c92f0; }
+    .classed { --class: var(--class-dark); }
 }
 
 .class-name { color: var(--class); font-weight: 600; }
@@ -370,10 +325,10 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 .fill.class { background: var(--class); }
 
 /* A stripe along the top in the class color (party and class cards add their own) */
-.hero[class*="cls-"] { box-shadow: inset 0 4px 0 var(--class); }
+.hero.classed { box-shadow: inset 0 4px 0 var(--class); }
 
 /* A soft wash of the class color behind a character's or class's name */
-.hero[class*="cls-"] {
+.hero.classed {
     background:
         linear-gradient(120deg, color-mix(in srgb, var(--class) 15%, transparent), transparent 55%),
         var(--surface);

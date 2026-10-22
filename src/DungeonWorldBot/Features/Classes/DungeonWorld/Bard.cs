@@ -14,6 +14,7 @@ public static class Bard
     public static readonly ClassSheet Sheet = new(
         ClassType.Bard,
         "Dungeon World",
+        new ClassColor("#b0457a", "#ec8ab8"),
         startingMoves:
         [
             Rolled("Arcane Art", StatType.Cha,

@@ -15,6 +15,7 @@ public static class Captain
     public static readonly ClassSheet Sheet = new(
         ClassType.Captain,
         "Inverse World",
+        new ClassColor("#1d3f73", "#5f86c9"),
         startingMoves:
         [
             new("Sail the Skies",

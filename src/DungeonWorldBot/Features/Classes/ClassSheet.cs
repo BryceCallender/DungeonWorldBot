@@ -153,11 +153,27 @@ public sealed record ClassFeature(string Name, string Prompt, IReadOnlyList<Clas
     /// </summary>
     public bool LaterPicksAreAdvances { get; init; }
 
+    /// <summary>
+    /// Whether the pick is worth seeing at a glance on the dashboard's party card (the Channeler's Primary Element).
+    /// </summary>
+    public bool ShowOnCard { get; init; }
+
     public int AllowedPicks(IReadOnlyCollection<string> ownedMoves) =>
         Picks + ExtraPicks.Where(p => ownedMoves.Contains(p.Move, StringComparer.OrdinalIgnoreCase)).Sum(p => p.Count);
 
     public int TakenPicks(IReadOnlyCollection<string> ownedMoves) =>
         Options.Count(o => ownedMoves.Contains(o.Name, StringComparer.OrdinalIgnoreCase));
+}
+
+/// <summary>
+/// The class's color, as hex ("#0b8299"): a deeper shade for light backgrounds and a brighter one for dark.
+/// </summary>
+public sealed record ClassColor(string Light, string Dark)
+{
+    /// <summary>
+    /// The color for Discord embeds. Most people run Discord dark, where the light shades all but vanish.
+    /// </summary>
+    public System.Drawing.Color Discord => System.Drawing.Color.FromArgb(unchecked((int)0xFF000000) | Convert.ToInt32(Dark[1..], 16));
 }
 
 /// <summary>
@@ -254,6 +270,7 @@ public sealed class ClassSheet
     public ClassSheet(
         ClassType type,
         string source,
+        ClassColor color,
         IReadOnlyList<ClassMove> startingMoves,
         IReadOnlyList<ClassFeature> features,
         IReadOnlyList<ClassMove> level2To5,
@@ -266,6 +283,7 @@ public sealed class ClassSheet
         ClassStat = classStat;
         Type = type;
         Source = source;
+        Color = color;
         StartingMoves = startingMoves;
         Features = features;
         DeathMove = deathMove;
@@ -284,6 +302,8 @@ public sealed class ClassSheet
     /// Where the class comes from, e.g. "Grim World".
     /// </summary>
     public string Source { get; }
+
+    public ClassColor Color { get; }
 
     public IReadOnlyList<ClassMove> StartingMoves { get; }
     public IReadOnlyList<ClassFeature> Features { get; }

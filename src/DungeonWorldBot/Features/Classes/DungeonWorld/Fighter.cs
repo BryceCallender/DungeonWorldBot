@@ -11,6 +11,7 @@ public static class Fighter
     public static readonly ClassSheet Sheet = new(
         ClassType.Fighter,
         "Dungeon World",
+        new ClassColor("#5a5f6b", "#a6adbd"),
         startingMoves:
         [
             Rolled("Bend Bars, Lift Gates", StatType.Str,

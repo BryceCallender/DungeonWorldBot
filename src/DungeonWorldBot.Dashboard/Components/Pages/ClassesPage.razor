@@ -16,7 +16,7 @@
         {
             var (damage, hp) = Lookup.Basics(sheet.Type);
             var players = _party.Where(c => c.Character.Class.Type == sheet.Type).ToList();
-            <a class="card lookup-card @Lookup.ColorOf(sheet.Type)" href="@Lookup.ClassUrl(sheet.Type)">
+            <a class="card lookup-card classed" style="@Lookup.ColorOf(sheet.Type)" href="@Lookup.ClassUrl(sheet.Type)">
                 <div class="member-head">
                     <h3 class="class-name">@PartyReader.ClassName(sheet.Type)</h3>
                     <span class="chip class" title="Damage die">@damage</span>

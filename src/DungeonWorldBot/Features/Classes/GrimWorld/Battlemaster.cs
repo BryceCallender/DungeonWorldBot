@@ -12,6 +12,7 @@ public static class Battlemaster
     public static readonly ClassSheet Sheet = new(
         ClassType.Battlemaster,
         "Grim World",
+        new ClassColor("#4c6480", "#9aafca"),
         startingMoves:
         [
             new("Gambit",

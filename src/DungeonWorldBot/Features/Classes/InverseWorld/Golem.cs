@@ -16,6 +16,7 @@ public static class Golem
     public static readonly ClassSheet Sheet = new(
         ClassType.Golem,
         "Inverse World",
+        new ClassColor("#66625b", "#aca69c"),
         startingMoves:
         [
             new("Built for Battle", "You were built to fight: your body is a weapon with the hand and close tags. Choose two Built for Battle options."),

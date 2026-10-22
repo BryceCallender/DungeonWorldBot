@@ -14,6 +14,7 @@ public static class Wizard
     public static readonly ClassSheet Sheet = new(
         ClassType.Wizard,
         "Dungeon World",
+        new ClassColor("#4a3fa8", "#9c92f0"),
         startingMoves:
         [
             new("Spellbook", "You start with three first level spells and all your cantrips inscribed in your spellbook. Whenever you gain a level, inscribe a new spell of your level or lower. Your spellbook weighs 1."),

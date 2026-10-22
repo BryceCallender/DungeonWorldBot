@@ -9,6 +9,7 @@ public static class Survivor
     public static readonly ClassSheet Sheet = new(
         ClassType.Survivor,
         "Inverse World",
+        new ClassColor("#5f6b2e", "#a7b46a"),
         startingMoves:
         [
             new("Hold On to What's Precious",

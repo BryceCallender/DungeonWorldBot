@@ -128,6 +128,13 @@ public class PartyReader
                 .Where(a => !shownElsewhere.Contains(a.Name))
                 .OrderBy(a => a.ID)
                 .Select(a => new AbilityLine(a.Name, a.Description, a.Uses, a.MaxUses, spellGrants.TryGetValue(a.Name, out var list) ? list : null))
+                .ToList(),
+            (sheet?.Features ?? [])
+                .Where(f => f.ShowOnCard)
+                .SelectMany(f => f.Options
+                    .Where(o => known.Contains(o.Name, StringComparer.OrdinalIgnoreCase))
+                    // "Primary Element: Water" is just "Water"
+                    .Select(o => (f.Name, o.Name.StartsWith($"{f.Name}: ") ? o.Name[(f.Name.Length + 2)..] : o.Name)))
                 .ToList());
     }
 

@@ -20,6 +20,7 @@ public static class Mechanic
     public static readonly ClassSheet Sheet = new(
         ClassType.Mechanic,
         "Inverse World",
+        new ClassColor("#8a5a30", "#c99a6a"),
         startingMoves:
         [
             new("Mechanical Suit",

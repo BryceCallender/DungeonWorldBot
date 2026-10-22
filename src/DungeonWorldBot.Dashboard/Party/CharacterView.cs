@@ -17,7 +17,8 @@ public sealed record CharacterView(
     SubclassView? Subclass,
     IReadOnlyList<SpellBook> SpellBooks,
     IReadOnlyList<GearView> Gear,
-    IReadOnlyList<AbilityLine> Moves)
+    IReadOnlyList<AbilityLine> Moves,
+    IReadOnlyList<(string Feature, string Choice)> Picks)
 {
     public string ID => Character.ID.Value.ToString();
 

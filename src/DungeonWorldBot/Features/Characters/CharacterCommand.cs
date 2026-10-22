@@ -165,7 +165,7 @@ public class CharacterCommand : CharacterCommandBase
                 Thumbnail: ImageHelper.ClassThumbnail(character.Class.Type),
                 Description: $"{character.Class.Type}{(subclass is not null ? $" · {subclass.Name}" : string.Empty)}: Level {character.Level}",
                 Fields: embedFields,
-                Colour: _feedbackService.Theme.Primary
+                Colour: ClassSheetLibrary.For(character.Class.Type)?.Color.Discord ?? _feedbackService.Theme.Primary
             ),
             ct: CancellationToken
         );

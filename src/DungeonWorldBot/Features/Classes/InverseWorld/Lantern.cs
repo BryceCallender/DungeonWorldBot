@@ -8,6 +8,7 @@ public static class Lantern
     public static readonly ClassSheet Sheet = new(
         ClassType.Lantern,
         "Inverse World",
+        new ClassColor("#c0365e", "#f27a98"),
         startingMoves:
         [
             new("Your Little Light",

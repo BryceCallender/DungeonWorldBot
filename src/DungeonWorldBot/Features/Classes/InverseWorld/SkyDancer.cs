@@ -9,6 +9,7 @@ public static class SkyDancer
     public static readonly ClassSheet Sheet = new(
         ClassType.SkyDancer,
         "Inverse World",
+        new ClassColor("#1f86c9", "#6cbcf2"),
         startingMoves:
         [
             Rolled("Take to the Sky", StatType.Dex,

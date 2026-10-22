@@ -14,6 +14,7 @@ public static class Barbarian
     public static readonly ClassSheet Sheet = new(
         ClassType.Barbarian,
         "Dungeon World",
+        new ClassColor("#9c3d1c", "#e07a52"),
         startingMoves:
         [
             new("Outsider", "You and your people aren't from around here. At the start of each session, the GM asks about your homeland, why you left, or what you left behind. Answer and mark XP."),

@@ -24,7 +24,7 @@ else
     <a class="back" href="">← Party</a>
 }
 
-<header class="card hero @(subclass.Classes.Count == 1 ? Lookup.ColorOf(subclass.Classes[0]) : "")">
+<header class="card hero @(subclass.Classes.Count == 1 ? "classed" : "")" style="@(subclass.Classes.Count == 1 ? Lookup.ColorOf(subclass.Classes[0]) : null)">
     <div class="hero-main">
         <h1>@subclass.Name</h1>
         <div class="muted">@subclass.Title · @subclass.Source</div>
@@ -35,7 +35,7 @@ else
             }
             @foreach (var type in subclass.Classes)
             {
-                <a class="chip class @Lookup.ColorOf(type)" href="@Lookup.ClassUrl(type)">@PartyReader.ClassName(type)</a>
+                <a class="chip class classed" style="@Lookup.ColorOf(type)" href="@Lookup.ClassUrl(type)">@PartyReader.ClassName(type)</a>
             }
             @if (_character is { } who)
             {

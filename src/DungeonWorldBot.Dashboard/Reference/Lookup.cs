@@ -20,9 +20,10 @@ public static partial class Lookup
         "spells" + (forCharacter is null ? "" : $"?for={forCharacter}");
 
     /// <summary>
-    /// The CSS class that gives a class its color (as --class), e.g. "cls-skydancer".
+    /// The inline style that gives a class its color from its sheet, picked up as --class by anything marked "classed".
     /// </summary>
-    public static string ColorOf(ClassType type) => $"cls-{type.ToString().ToLowerInvariant()}";
+    public static string ColorOf(ClassType type) =>
+        ClassSheetLibrary.For(type)?.Color is { } color ? $"--class-light: {color.Light}; --class-dark: {color.Dark};" : "";
 
     public static ClassSheet? FindClass(string name) =>
         Enum.TryParse<ClassType>(name, ignoreCase: true, out var type) ? ClassSheetLibrary.For(type) : null;

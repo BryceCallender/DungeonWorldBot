@@ -9,6 +9,7 @@ public static class Necromancer
     public static readonly ClassSheet Sheet = new(
         ClassType.Necromancer,
         "Grim World",
+        new ClassColor("#7d4bb5", "#b58ce8"),
         startingMoves:
         [
             new("Replacement Parts", "Spend a few hours to stitch a body part (limb, eyeball, teeth) back on, using the original or a similar one. Apart from stitches and a slight odor, it's as good as new."),

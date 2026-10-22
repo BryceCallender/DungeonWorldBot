@@ -12,6 +12,7 @@ public static class Channeler
     public static readonly ClassSheet Sheet = new(
         ClassType.Channeler,
         "Grim World",
+        new ClassColor("#0b8299", "#48c4dc"),
         startingMoves:
         [
             new("Trickle", "Emit a little of your Primary Element for mundane tasks or to impress someone, without Channeling."),
@@ -52,7 +53,10 @@ public static class Channeler
         features:
         [
             new ClassFeature("Primary Element", "What is your Primary Element?",
-                [Element("Flame"), Element("Frost"), Element("Shock"), Element("Shadow"), Element("Wind"), Element("Water")]),
+                [Element("Flame"), Element("Frost"), Element("Shock"), Element("Shadow"), Element("Wind"), Element("Water")])
+            {
+                ShowOnCard = true,
+            },
             new ClassFeature("Emanation Point", "Where does magic leave your body?",
                 [Emanation("Forehead"), Emanation("Eyes"), Emanation("Mouth"), Emanation("Chest"), Emanation("Fingers"), Emanation("Palms")]),
         ],

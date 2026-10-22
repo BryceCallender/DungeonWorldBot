@@ -21,6 +21,7 @@ public static class Shaman
     public static readonly ClassSheet Sheet = new(
         ClassType.Shaman,
         "Grim World",
+        new ClassColor("#16806e", "#4ac6ae"),
         startingMoves:
         [
             new("Spirit Pact", "You can keep up to 3 Worldly Spirit Totems. Describe what your totems look like."),

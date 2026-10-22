@@ -8,6 +8,7 @@ public static class Templar
     public static readonly ClassSheet Sheet = new(
         ClassType.Templar,
         "Grim World",
+        new ClassColor("#c0620c", "#f2a052"),
         startingMoves:
         [
             new("Wrath Embodied", "You hold up to 3 Wrath. Spend an uninterrupted hour or so on your purification ritual to set your Wrath back to 3."),

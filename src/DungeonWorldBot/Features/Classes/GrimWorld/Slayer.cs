@@ -9,6 +9,7 @@ public static class Slayer
     public static readonly ClassSheet Sheet = new(
         ClassType.Slayer,
         "Grim World",
+        new ClassColor("#b3262e", "#f06b72"),
         startingMoves:
         [
             new("Bloodthirst", "When you roll a 6- on any move, gain 1 Thirst."),

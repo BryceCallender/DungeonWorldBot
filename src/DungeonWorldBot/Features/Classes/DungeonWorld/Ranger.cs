@@ -15,6 +15,7 @@ public static class Ranger
     public static readonly ClassSheet Sheet = new(
         ClassType.Ranger,
         "Dungeon World",
+        new ClassColor("#2e7d4a", "#5cc27e"),
         startingMoves:
         [
             Rolled("Hunt and Track", StatType.Wis,
