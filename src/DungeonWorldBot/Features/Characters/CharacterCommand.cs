@@ -96,18 +96,21 @@ public class CharacterCommand : CharacterCommandBase
     [Command("profile")]
     [Description("Show a character sheet")]
     public async Task<IResult> ShowCharacterSheetAsync(
-        [Description("The user to get profile of. Don't specify a user to see your own.")]
-        IUser? user = null)
+        [Description("The character to show. Leave it out to see your own.")]
+        [AutocompleteProvider(CharacterAutocomplete.ID)]
+        string? name = null)
     {
-        var character = user is not null
-            ? await _characterService.GetCharacterFromUserAsync(user.ID)
+        // Matched in full rather than by Contains, since people can send their own text instead of a suggestion
+        var character = name is not null
+            ? (await _characterService.GetCharactersAsync())
+                .FirstOrDefault(c => c.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase))
             : await GetOwnCharacterAsync();
 
         if (character is null)
         {
-            return await ReplyWithErrorAsync(user is null
+            return await ReplyWithErrorAsync(name is null
                 ? NoCharacterMessage
-                : $"{user.Username} does not have a character.");
+                : $"No character is named {name}.");
         }
 
         var embedFields = new List<IEmbedField>();
