@@ -20,7 +20,7 @@ public interface IDiceRoller
 }
 
 [Singleton<IDiceRoller>]
-public sealed partial class DiceRoller : IDiceRoller
+public partial class DiceRoller : IDiceRoller
 {
     // Keeps a single roll from asking for millions of dice or absurd dice sizes
     public const int MaxDice = 100;

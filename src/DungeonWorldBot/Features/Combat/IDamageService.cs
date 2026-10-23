@@ -10,7 +10,7 @@ namespace DungeonWorldBot.Features.Combat;
 /// </summary>
 /// <param name="Expression">What was rolled, e.g. "d8+6".</param>
 /// <param name="Total">The damage dealt, after gear like a Sapphire reroll.</param>
-public sealed record DamageRoll(string Expression, DiceResult Dice, int Total, IReadOnlyList<RollBonus> Bonuses, GearDamage Gear)
+public record DamageRoll(string Expression, DiceResult Dice, int Total, IReadOnlyList<RollBonus> Bonuses, GearDamage Gear)
 {
     /// <summary>
     /// Lines explaining the bonuses and gear effects, each starting with a newline, or empty.

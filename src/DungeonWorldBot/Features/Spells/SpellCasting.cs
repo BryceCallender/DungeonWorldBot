@@ -6,7 +6,7 @@ namespace DungeonWorldBot.Features.Spells;
 /// <summary>
 /// A spell list the character can cast from, with the resource that tracks their caster level for it.
 /// </summary>
-public sealed record CasterAccess(SpellList List, ClassResource LevelResource, string GrantedBy);
+public record CasterAccess(SpellList List, ClassResource LevelResource, string GrantedBy);
 
 /// <summary>
 /// The Commune / Prepare Spells rules: spells up to your caster level, with total levels up to caster level+1.

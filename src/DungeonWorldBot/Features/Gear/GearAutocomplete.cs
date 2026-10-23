@@ -6,7 +6,7 @@ namespace DungeonWorldBot.Features.Gear;
 /// <summary>
 /// Every piece of custom gear.
 /// </summary>
-public sealed class GearAutocomplete() : ClassSheetAutocomplete(null, null)
+public class GearAutocomplete() : ClassSheetAutocomplete(null, null)
 {
     public const string ID = "gear";
 
@@ -22,7 +22,7 @@ public sealed class GearAutocomplete() : ClassSheetAutocomplete(null, null)
 /// <summary>
 /// Every gear mode, like the Gem-Aspected Bow's gems.
 /// </summary>
-public sealed class GearModeAutocomplete() : ClassSheetAutocomplete(null, null)
+public class GearModeAutocomplete() : ClassSheetAutocomplete(null, null)
 {
     public const string ID = "gear-mode";
 
@@ -39,7 +39,7 @@ public sealed class GearModeAutocomplete() : ClassSheetAutocomplete(null, null)
 /// <summary>
 /// Every counter gear keeps, like Dodge.
 /// </summary>
-public sealed class GearCounterAutocomplete() : ClassSheetAutocomplete(null, null)
+public class GearCounterAutocomplete() : ClassSheetAutocomplete(null, null)
 {
     public const string ID = "gear-counter";
 

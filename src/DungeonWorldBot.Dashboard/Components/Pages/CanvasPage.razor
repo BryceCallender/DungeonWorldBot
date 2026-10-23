@@ -64,6 +64,11 @@
                             style="--swatch: @color" title="@color" aria-label="Color @color"></button>
                 }
             </span>
+            @* Any other color; canvas.ts picks it up as it changes *@
+            <label class="tool color-picker" title="Pick any color">
+                <Icon Name="palette" />
+                <input type="color" value="#ffffff" data-custom-color aria-label="Pick any color" />
+            </label>
             <hr />
 
             <button type="button" class="tool" data-undo title="Undo your last change (Ctrl+Z)" aria-label="Undo"><Icon Name="undo" /></button>
@@ -254,7 +259,11 @@
     private bool _hasThumbnail;
 
     // Ink that reads on the board in both light and dark mode
-    private static readonly string[] Colors = ["#7F77DD", "#D85A30", "#1D9E75", "#378ADD", "#BA7517", "#888780"];
+    private static readonly string[] Colors =
+    [
+        "#7F77DD", "#D85A30", "#1D9E75", "#378ADD", "#BA7517", "#888780",
+        "#E24B4A", "#D4537E", "#EF9F27", "#639922", "#1A9AA8", "#5F5E5A",
+    ];
 
     protected override async Task OnInitializedAsync()
     {

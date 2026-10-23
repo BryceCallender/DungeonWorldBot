@@ -10,7 +10,7 @@ namespace DungeonWorldBot.Dashboard.Live;
 /// catches every committed write in any journal mode, and only once it's committed, so a refresh never lands halfway
 /// through one. The file is checked too, in case it's swapped for another copy, which needs a fresh connection.
 /// </remarks>
-public sealed class DatabaseWatcher : BackgroundService
+public class DatabaseWatcher : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(1);
 

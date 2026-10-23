@@ -7,7 +7,7 @@ namespace DungeonWorldBot.Dashboard.Auth;
 /// Who's looking at the page. Without Discord sign-in, nobody in particular.
 /// </summary>
 /// <param name="ID">Their Discord ID, which is also their character's ID.</param>
-public sealed record Viewer(bool SignInEnabled, ulong? ID, string? Name, string? AvatarUrl, bool IsDungeonMaster)
+public record Viewer(bool SignInEnabled, ulong? ID, string? Name, string? AvatarUrl, bool IsDungeonMaster)
 {
     public bool SignedIn => ID is not null;
 

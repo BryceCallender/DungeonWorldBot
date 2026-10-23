@@ -17,7 +17,7 @@ public enum LunaBoon
 /// A Vow declared in Luna's name.
 /// </summary>
 /// <param name="Stat">The stat a Boon of Aptitude raises.</param>
-public sealed record LunaVow(LunaBoon Boon, StatType? Stat, string Objective)
+public record LunaVow(LunaBoon Boon, StatType? Stat, string Objective)
 {
     public string BoonName => $"Boon of {Boon}" + (Stat is { } stat ? $" ({stat.ToString().ToUpper()})" : string.Empty);
 }

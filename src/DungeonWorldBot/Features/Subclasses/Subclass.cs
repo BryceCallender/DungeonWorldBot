@@ -6,7 +6,7 @@ namespace DungeonWorldBot.Features.Subclasses;
 /// <summary>
 /// A move a subclass gives, unlocked when the character reaches its level.
 /// </summary>
-public sealed record SubclassMove(int Level, ClassMove Move)
+public record SubclassMove(int Level, ClassMove Move)
 {
     /// <summary>
     /// A move kept secret until the GM reveals it. It's shown as a teaser and never added to the character.
@@ -30,7 +30,7 @@ public enum RollKind
 /// <summary>
 /// A bonus to one roll, e.g. "Boon of Wrath +6".
 /// </summary>
-public sealed record RollBonus(string Source, int Amount);
+public record RollBonus(string Source, int Amount);
 
 /// <summary>
 /// Bonuses a subclass member (the owner) gives to a roll by anyone in the party, including themselves.
@@ -42,7 +42,7 @@ public delegate IEnumerable<RollBonus> RollBonusRule(Character owner, Character 
 /// A homebrew specialisation a character takes on top of their class, like the Ranger's Champion of Luna. Members are
 /// marked by an ability named after the subclass, and its moves are learned as abilities as they unlock.
 /// </summary>
-public sealed class Subclass
+public class Subclass
 {
     /// <param name="name">The subclass's name, also the name of the ability that marks a member.</param>
     /// <param name="title">A flavour line under the name, e.g. "Bearer of the Forgotten Moon".</param>

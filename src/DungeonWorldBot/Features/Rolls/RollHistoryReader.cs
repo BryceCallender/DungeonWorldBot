@@ -9,7 +9,7 @@ namespace DungeonWorldBot.Features.Rolls;
 /// Finds the 2d6 rolls in a channel's history by reading the bot's roll embeds and working out who rolled each one.
 /// Feed it messages oldest first; it remembers recent "." messages across batches to match them with older replies.
 /// </summary>
-public sealed partial class RollHistoryReader
+public partial class RollHistoryReader
 {
     // Old "." rolls weren't replies, so they're matched with the roll message that came soon after
     private static readonly TimeSpan DotRollWindow = TimeSpan.FromMinutes(2);

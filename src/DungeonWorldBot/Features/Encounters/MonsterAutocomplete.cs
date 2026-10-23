@@ -7,7 +7,7 @@ namespace DungeonWorldBot.Features.Encounters;
 /// <summary>
 /// The monsters the GM has saved.
 /// </summary>
-public sealed class MonsterAutocomplete(IEncounterService encounterService) : IAutocompleteProvider
+public class MonsterAutocomplete(IEncounterService encounterService) : IAutocompleteProvider
 {
     public const string ID = "monster";
 

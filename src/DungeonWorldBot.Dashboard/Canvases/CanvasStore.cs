@@ -9,7 +9,7 @@ namespace DungeonWorldBot.Dashboard.Canvases;
 /// <summary>
 /// Reads and saves canvases and what's drawn on them.
 /// </summary>
-public sealed class CanvasStore(CanvasContext db)
+public class CanvasStore(CanvasContext db)
 {
     public const int MaxNameLength = 80;
     public const int MaxItemIDLength = 64;

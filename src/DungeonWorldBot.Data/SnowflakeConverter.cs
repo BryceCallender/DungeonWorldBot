@@ -4,7 +4,7 @@ using Remora.Rest.Core;
 
 namespace DungeonWorldBot.Data;
 
-public sealed class SnowflakeConverter : ValueConverter<Snowflake, ulong>
+public class SnowflakeConverter : ValueConverter<Snowflake, ulong>
 {
     private static readonly ConverterMappingHints _defaultHints = new(precision: 20, scale: 0);
 
@@ -16,7 +16,7 @@ public sealed class SnowflakeConverter : ValueConverter<Snowflake, ulong>
     { }
 }
 
-public sealed class NullableSnowflakeConverter : ValueConverter<Snowflake?, ulong?>
+public class NullableSnowflakeConverter : ValueConverter<Snowflake?, ulong?>
 {
     private static readonly ConverterMappingHints _defaultHints = new(precision: 20, scale: 0);
 

@@ -26,7 +26,7 @@ public class GameSettingsService : IGameSettingsService
         _path = path ?? configuration?.GetValue<string?>("GameSettingsPath") ?? DefaultPath;
     }
 
-    private sealed class Settings
+    private class Settings
     {
         // Each level gives 1 stat point unless the DM says otherwise (the Dungeon World rule)
         public int StatPointsPerLevel { get; set; } = 1;
@@ -107,5 +107,5 @@ public class GameSettingsService : IGameSettingsService
     private Settings ReadFile() =>
         File.Exists(_path) ? JsonSerializer.Deserialize<Settings>(File.ReadAllText(_path)) ?? new Settings() : new Settings();
 
-    private sealed record CachedSettings(Settings Settings, DateTime WrittenAt);
+    private record CachedSettings(Settings Settings, DateTime WrittenAt);
 }

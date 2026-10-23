@@ -4,4 +4,4 @@ namespace DungeonWorldBot.Dashboard.Canvases;
 /// Someone on a canvas.
 /// </summary>
 /// <param name="ID">Their Discord ID as text, since JavaScript numbers can't hold a Discord ID exactly.</param>
-public sealed record CanvasPerson(string ID, string Name, string? AvatarUrl, bool IsDungeonMaster);
+public record CanvasPerson(string ID, string Name, string? AvatarUrl, bool IsDungeonMaster);

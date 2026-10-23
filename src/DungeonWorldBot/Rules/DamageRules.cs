@@ -9,14 +9,14 @@ namespace DungeonWorldBot.Rules;
 /// <param name="Armor">The character's armor against this type of damage.</param>
 /// <param name="Taken">The HP actually lost.</param>
 /// <param name="Broken">Armor that only lasted until the character was hit, now gone.</param>
-public sealed record DamageTaken(int Damage, DamageType Type, int Armor, int Piercing, int Taken, IReadOnlyList<ArmorBonus> Broken);
+public record DamageTaken(int Damage, DamageType Type, int Armor, int Piercing, int Taken, IReadOnlyList<ArmorBonus> Broken);
 
 /// <summary>
 /// The result of an NPC or enemy taking a hit. They have one armor value, which only stops physical damage.
 /// </summary>
 /// <param name="Rolled">The damage before armor.</param>
 /// <param name="Blocked">How much their armor stopped.</param>
-public sealed record ArmoredHit(int Rolled, int Blocked, int Taken);
+public record ArmoredHit(int Rolled, int Blocked, int Taken);
 
 public static class DamageRules
 {

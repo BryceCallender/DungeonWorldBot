@@ -12,7 +12,7 @@ namespace DungeonWorldBot.Features.Encounters;
 /// Tells game chat about fights started or ended on the dashboard. The dashboard can't reach Discord, so it only
 /// marks them in the database, and this notices them a moment later.
 /// </summary>
-public sealed class EncounterAnnouncer : BackgroundService
+public class EncounterAnnouncer : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(3);
 

@@ -10,7 +10,7 @@ namespace DungeonWorldBot.Features.Npcs;
 /// <param name="Name">What it's called, e.g. "STR", "Loyalty", "Protector" or "Damage".</param>
 /// <param name="Dice">What gets rolled, modifier included, e.g. "2d6+2" or "d6".</param>
 /// <param name="Modifier">What's added to 2d6, or null for a damage roll.</param>
-public sealed record NpcRollOption(string Name, string Dice, int? Modifier);
+public record NpcRollOption(string Name, string Dice, int? Modifier);
 
 public static partial class NpcRolls
 {

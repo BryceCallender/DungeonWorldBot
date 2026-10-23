@@ -106,7 +106,7 @@ public abstract class ClassSheetAutocomplete : IAutocompleteProvider
 /// <summary>
 /// Moves the player can learn: their own sheet's, plus other classes' when a move like Special Trick allows it.
 /// </summary>
-public sealed class ClassMoveAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
+public class ClassMoveAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
     : ClassSheetAutocomplete(contextInjection, characterService)
 {
     public const string ID = "class-move";
@@ -136,7 +136,7 @@ public sealed class ClassMoveAutocomplete(ContextInjectionService? contextInject
 /// <summary>
 /// Moves from every class sheet and subclass, for looking things up.
 /// </summary>
-public sealed class AnyClassMoveAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
+public class AnyClassMoveAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
     : ClassSheetAutocomplete(contextInjection, characterService)
 {
     public const string ID = "any-class-move";
@@ -171,7 +171,7 @@ public sealed class AnyClassMoveAutocomplete(ContextInjectionService? contextInj
 /// <summary>
 /// Rolled moves the player can make: their own class's, their subclass's, plus any rolled moves they learned from other classes.
 /// </summary>
-public sealed class RolledClassMoveAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
+public class RolledClassMoveAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
     : ClassSheetAutocomplete(contextInjection, characterService)
 {
     public const string ID = "rolled-class-move";
@@ -191,7 +191,7 @@ public sealed class RolledClassMoveAutocomplete(ContextInjectionService? context
         Labelled(ClassSheetLibrary.All, s => s.AllMoves.Where(m => m.Roll is not null).Select(m => m.Name));
 }
 
-public sealed class ClassResourceAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
+public class ClassResourceAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
     : ClassSheetAutocomplete(contextInjection, characterService)
 {
     public const string ID = "class-resource";

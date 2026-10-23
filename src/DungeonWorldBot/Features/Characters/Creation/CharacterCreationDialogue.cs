@@ -84,7 +84,7 @@ public class CharacterCreationDialogue
         }
     }
 
-    private sealed class Session(CharacterCreationDialogue dialogue, Snowflake channelId, Snowflake userId, CancellationToken ct)
+    private class Session(CharacterCreationDialogue dialogue, Snowflake channelId, Snowflake userId, CancellationToken ct)
     {
         private FeedbackService Feedback => dialogue._feedbackService;
 

@@ -1,3 +1,3 @@
 namespace DungeonWorldBot.Dashboard.Canvases;
 
-public sealed record JoinResult(CanvasPerson Me, IReadOnlyList<CanvasPerson> People, IReadOnlyList<SavedItem> Items);
+public record JoinResult(CanvasPerson Me, IReadOnlyList<CanvasPerson> People, IReadOnlyList<SavedItem> Items);

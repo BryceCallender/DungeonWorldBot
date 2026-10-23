@@ -100,6 +100,32 @@
 
 .swatch.on { outline: 2px solid var(--text); outline-offset: 1px; }
 
+/* A palette button with a strip under the icon: a rainbow until you've picked something, then that color */
+.color-picker { position: relative; }
+
+.color-picker::after {
+    content: "";
+    position: absolute;
+    left: 7px;
+    right: 7px;
+    bottom: 4px;
+    height: 4px;
+    border-radius: 2px;
+    background: var(--swatch, linear-gradient(90deg, #E24B4A, #EF9F27, #639922, #1A9AA8, #378ADD, #7F77DD, #D4537E));
+}
+
+/* The native picker is invisible but covers the button, so clicking it opens the browser's color dialog */
+.color-picker input {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    padding: 0;
+    border: 0;
+    cursor: pointer;
+}
+
 /* The board sizes its stage from this box, and an empty div has no height of its own */
 #container {
     position: relative;                                    /* for the text editor laid over the board */
@@ -220,7 +246,7 @@
     #container { height: 65svh; min-height: 320px; }
     .board-rail { flex-direction: row; flex-wrap: wrap; justify-content: center; padding: .4rem; border-right: 0; border-bottom: 1px solid var(--border); }
     .board-rail hr { width: auto; height: 20px; margin: 0 .2rem; border-top: 0; border-left: 1px solid var(--border); }
-    .swatches { grid-template-columns: repeat(6, 18px); }
+    .swatches { grid-template-columns: repeat(7, 18px); }
     .board-zoom { flex-direction: row; margin-top: 0; }
     /* Below the button when the tools are a row */
     .shape-picker { top: calc(100% + 8px); left: 0; }

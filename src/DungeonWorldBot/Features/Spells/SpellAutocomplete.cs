@@ -5,7 +5,7 @@ namespace DungeonWorldBot.Features.Spells;
 /// <summary>
 /// Every spell, labelled with its list. Names on more than one list (like Light) send "Name (List)".
 /// </summary>
-public sealed class SpellAutocomplete() : ClassSheetAutocomplete(null, null)
+public class SpellAutocomplete() : ClassSheetAutocomplete(null, null)
 {
     public const string ID = "spell";
 

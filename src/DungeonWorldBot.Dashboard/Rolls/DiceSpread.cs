@@ -3,7 +3,7 @@ using DungeonWorldBot.Features.Rolls;
 namespace DungeonWorldBot.Dashboard.Rolls;
 
 /// <param name="Sums">How many times each natural 2d6 sum came up, indexed 0–10 for sums 2–12.</param>
-public sealed record DiceSpread(int Rolls, double AverageNatural, double AverageTotal, IReadOnlyList<int> Sums)
+public record DiceSpread(int Rolls, double AverageNatural, double AverageTotal, IReadOnlyList<int> Sums)
 {
     public static DiceSpread Of(IReadOnlyCollection<MoveDice> dice)
     {

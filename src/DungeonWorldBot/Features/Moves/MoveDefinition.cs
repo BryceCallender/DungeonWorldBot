@@ -33,7 +33,7 @@ public enum OptionBands
 /// <param name="Options">Choices the player picks from on a hit, if the move has any.</param>
 /// <param name="RollsDamage">Whether a hit deals the character's damage.</param>
 /// <param name="OptionsOn">Which results the options apply on, e.g. only a 7-9 when they're costs (Volley).</param>
-public sealed record MoveDefinition(
+public record MoveDefinition(
     string Name,
     StatType? Stat,
     string Trigger,
@@ -61,7 +61,7 @@ public sealed record MoveDefinition(
     });
 }
 
-public sealed record MoveRoll(DiceResult Dice, MoveOutcome Outcome);
+public record MoveRoll(DiceResult Dice, MoveOutcome Outcome);
 
 public static partial class MoveRoller
 {

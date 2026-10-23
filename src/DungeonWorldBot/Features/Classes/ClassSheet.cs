@@ -19,7 +19,7 @@ public enum MoveTier
 /// <summary>
 /// One move from a class sheet. Learned moves are stored on the character as an <see cref="Ability"/> with the same name.
 /// </summary>
-public sealed record ClassMove(string Name, string Summary)
+public record ClassMove(string Name, string Summary)
 {
     public MoveTier Tier { get; init; } = MoveTier.Starting;
 
@@ -135,7 +135,7 @@ public sealed record ClassMove(string Name, string Summary)
 /// <summary>
 /// A choice on the sheet, like the Slayer's Manifestation. Each option is learned as its own move.
 /// </summary>
-public sealed record ClassFeature(string Name, string Prompt, IReadOnlyList<ClassMove> Options)
+public record ClassFeature(string Name, string Prompt, IReadOnlyList<ClassMove> Options)
 {
     /// <summary>
     /// How many options a new character picks.
@@ -168,7 +168,7 @@ public sealed record ClassFeature(string Name, string Prompt, IReadOnlyList<Clas
 /// <summary>
 /// The class's color, as hex ("#0b8299"): a deeper shade for light backgrounds and a brighter one for dark.
 /// </summary>
-public sealed record ClassColor(string Light, string Dark)
+public record ClassColor(string Light, string Dark)
 {
     /// <summary>
     /// The color for Discord embeds. Most people run Discord dark, where the light shades all but vanish.
@@ -179,12 +179,12 @@ public sealed record ClassColor(string Light, string Dark)
 /// <summary>
 /// Access to a spell list, at the caster level tracked by a class resource (like "Cleric Level").
 /// </summary>
-public sealed record SpellAccess(SpellList List, string LevelResource);
+public record SpellAccess(SpellList List, string LevelResource);
 
 /// <summary>
 /// Permission to take one move from another class's sheet.
 /// </summary>
-public sealed record MulticlassGrant
+public record MulticlassGrant
 {
     /// <summary>
     /// The classes the move can come from, or null for any class but the character's own.
@@ -212,20 +212,20 @@ public sealed record MulticlassGrant
 /// A stat a class rolls that stands in for one of the six, chosen on the sheet (the Collector's Lore, the Golem's Force).
 /// </summary>
 /// <param name="Feature">The choice whose first pick decides which stat this is.</param>
-public sealed record ClassStat(string Name, string Feature);
+public record ClassStat(string Name, string Feature);
 
 /// <summary>
 /// A change to a resource's starting value, max or reset value from having a move.
 /// </summary>
 /// <param name="Reset">Extra kept when the resource resets, on top of what it would reset to (Playing the Long Game keeps 1 Gambit).</param>
-public sealed record ResourceBonus(string Move, int Start = 0, int Max = 0, int Reset = 0);
+public record ResourceBonus(string Move, int Start = 0, int Max = 0, int Reset = 0);
 
 /// <summary>
 /// A pool of points a class tracks, like the Battlemaster's Gambits.
 /// </summary>
 /// <param name="Start">What the resource starts at.</param>
 /// <param name="GrantedBy">A move the character needs before they have this resource.</param>
-public sealed record ClassResource(string Name, string Summary, int Start = 0, int? Max = null, string? GrantedBy = null)
+public record ClassResource(string Name, string Summary, int Start = 0, int? Max = null, string? GrantedBy = null)
 {
     /// <summary>
     /// What resetting the resource sets it to, if not its starting value (a Captain starts with 1 Map but loses it all).
@@ -265,7 +265,7 @@ public sealed record ClassResource(string Name, string Summary, int Start = 0, i
         Bonuses.Where(b => ownedMoves.Contains(b.Move, StringComparer.OrdinalIgnoreCase));
 }
 
-public sealed class ClassSheet
+public class ClassSheet
 {
     public ClassSheet(
         ClassType type,

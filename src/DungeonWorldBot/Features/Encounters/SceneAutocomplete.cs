@@ -7,7 +7,7 @@ namespace DungeonWorldBot.Features.Encounters;
 /// <summary>
 /// The dashboard's encounter scenes, most recently drawn on first.
 /// </summary>
-public sealed class SceneAutocomplete(SceneDirectory scenes) : IAutocompleteProvider
+public class SceneAutocomplete(SceneDirectory scenes) : IAutocompleteProvider
 {
     public const string ID = "scene";
 

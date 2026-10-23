@@ -13,7 +13,7 @@ namespace DungeonWorldBot.Dashboard.Canvases;
 /// Finished strokes, tokens and text are saved, so someone who opens the canvas later sees them. Cursors and strokes
 /// still being drawn are only passed on.
 /// </remarks>
-public sealed class CanvasHub(CanvasPresence presence, CanvasStore store, DashboardSettings settings) : Hub<ICanvasClient>
+public class CanvasHub(CanvasPresence presence, CanvasStore store, DashboardSettings settings) : Hub<ICanvasClient>
 {
     /// <summary>
     /// Everyone with this canvas open, for sending them something from outside the hub.

@@ -13,11 +13,11 @@ public abstract class ServiceAttribute(ServiceLifetime lifetime, Type? serviceTy
     public Type? ServiceType { get; } = serviceType;
 }
 
-public sealed class ScopedAttribute() : ServiceAttribute(ServiceLifetime.Scoped);
-public sealed class ScopedAttribute<TService>() : ServiceAttribute(ServiceLifetime.Scoped, typeof(TService));
+public class ScopedAttribute() : ServiceAttribute(ServiceLifetime.Scoped);
+public class ScopedAttribute<TService>() : ServiceAttribute(ServiceLifetime.Scoped, typeof(TService));
 
-public sealed class SingletonAttribute() : ServiceAttribute(ServiceLifetime.Singleton);
-public sealed class SingletonAttribute<TService>() : ServiceAttribute(ServiceLifetime.Singleton, typeof(TService));
+public class SingletonAttribute() : ServiceAttribute(ServiceLifetime.Singleton);
+public class SingletonAttribute<TService>() : ServiceAttribute(ServiceLifetime.Singleton, typeof(TService));
 
-public sealed class TransientAttribute() : ServiceAttribute(ServiceLifetime.Transient);
-public sealed class TransientAttribute<TService>() : ServiceAttribute(ServiceLifetime.Transient, typeof(TService));
+public class TransientAttribute() : ServiceAttribute(ServiceLifetime.Transient);
+public class TransientAttribute<TService>() : ServiceAttribute(ServiceLifetime.Transient, typeof(TService));

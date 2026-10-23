@@ -6,7 +6,7 @@ namespace DungeonWorldBot.Features.Characters.Creation;
 /// <summary>
 /// Creates a fresh inventory item. Most items are fixed, but some (coins, trophies) roll dice when granted.
 /// </summary>
-public sealed record ItemGrant(Func<IDiceRoller, Item> Create)
+public record ItemGrant(Func<IDiceRoller, Item> Create)
 {
     public static ItemGrant Of(string name, int amount, int weight) =>
         new(_ => new Item { Name = name, Amount = amount, Weight = weight });
@@ -14,12 +14,12 @@ public sealed record ItemGrant(Func<IDiceRoller, Item> Create)
 
 /// <param name="Armor">Armor added to the character when chosen.</param>
 /// <param name="Damage">Damage rating added to the character when chosen.</param>
-public sealed record KitChoice(string Label, IReadOnlyList<ItemGrant> Items, int Armor = 0, int Damage = 0);
+public record KitChoice(string Label, IReadOnlyList<ItemGrant> Items, int Armor = 0, int Damage = 0);
 
 /// <param name="Picks">How many different choices the player takes, e.g. "choose two".</param>
-public sealed record KitQuestion(string Prompt, IReadOnlyList<KitChoice> Choices, int Picks = 1);
+public record KitQuestion(string Prompt, IReadOnlyList<KitChoice> Choices, int Picks = 1);
 
-public sealed record ClassKit(
+public record ClassKit(
     ClassType Type,
     string DisplayName,
     IReadOnlyList<ItemGrant> BaseItems,

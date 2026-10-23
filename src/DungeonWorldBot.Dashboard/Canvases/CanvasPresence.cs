@@ -5,7 +5,7 @@ namespace DungeonWorldBot.Dashboard.Canvases;
 /// <summary>
 /// Who has which canvas open, by connection. One person can have the same canvas open in several tabs.
 /// </summary>
-public sealed class CanvasPresence
+public class CanvasPresence
 {
     private readonly ConcurrentDictionary<string, (int Canvas, CanvasPerson Person)> connections = new();
 

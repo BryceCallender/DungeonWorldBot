@@ -5,7 +5,7 @@ namespace DungeonWorldBot.Dashboard.Canvases;
 /// <summary>
 /// Something already on the canvas, sent to a page as it opens.
 /// </summary>
-public sealed record SavedItem(string ID, CanvasItemType Type, string AuthorID, JsonElement Item)
+public record SavedItem(string ID, CanvasItemType Type, string AuthorID, JsonElement Item)
 {
     public static SavedItem From(CanvasItem item)
     {

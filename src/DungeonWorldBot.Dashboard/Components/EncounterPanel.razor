@@ -1,6 +1,7 @@
 @using DungeonWorldBot.Dashboard.Encounters
 @using DungeonWorldBot.Features.Encounters
 @inject PartyReader PartyReader
+@inject RollReader RollReader
 @inject Viewer Viewer
 
 @* The fight on an encounter scene, beside its board. The board page doesn't refresh itself, so app.js swaps in a fresh
@@ -53,6 +54,26 @@
                 }
             </ol>
         }
+        @if (_spotlight is { Party.Count: > 0 } spotlight)
+        {
+            @* Dungeon World has no turns, so this is who's been quiet rather than whose go it is *@
+            <h2 class="spotlight-head">
+                <span>Spotlight</span>
+                @if (spotlight.Misses > 0)
+                {
+                    <span class="chip warn" title="Misses this fight: each is a chance for a DM move">@spotlight.Misses 6-</span>
+                }
+            </h2>
+            <ol class="spotlight-list">
+                @foreach (var line in spotlight.Party)
+                {
+                    <li class="spotlight @(line.Quiet ? "quiet" : null)">
+                        <a class="name" href="@line.Character.Url">@line.Character.Name</a>
+                        <span class="muted" title="@LastTitle(line)">@Summary(line)</span>
+                    </li>
+                }
+            </ol>
+        }
         @if (_canRun)
         {
             <div class="panel-actions">
@@ -72,12 +93,27 @@
 
     private Encounter? _encounter;
     private bool _canRun;
+    private Spotlight? _spotlight;
 
     protected override async Task OnInitializedAsync()
     {
         _encounter = await PartyReader.GetEncounterAsync();
         _canRun = EncounterEndpoints.CanRun(Viewer);
+
+        // Only whoever runs the fight needs reminding who's been left out
+        if (_canRun && _encounter is { } encounter && (encounter.SceneID is null || encounter.SceneID == SceneID))
+            _spotlight = await RollReader.GetSpotlightAsync(encounter.StartedAt, await PartyReader.GetPartyAsync());
     }
+
+    private static string Summary(SpotlightLine line) => line switch
+    {
+        { Rolls: 0, Quiet: true } => "hasn't acted",
+        { Rolls: 0 } => "—",
+        _ => $"{line.Rolls} roll{(line.Rolls == 1 ? "" : "s")}{(line.LastMove is { } move ? $" · {move}" : "")}",
+    };
+
+    private static string? LastTitle(SpotlightLine line) =>
+        line.LastRolled is { } last ? $"Last rolled {last.ToLocalTime():t}" : null;
 
     private static RenderFragment Head(Enemy enemy) =>
         @<span class="enemy-row">

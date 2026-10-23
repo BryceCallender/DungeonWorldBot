@@ -6,7 +6,7 @@ namespace DungeonWorldBot.Features.Subclasses;
 /// <summary>
 /// Every subclass, labelled with the classes that can take it.
 /// </summary>
-public sealed class SubclassAutocomplete() : ClassSheetAutocomplete(null, null)
+public class SubclassAutocomplete() : ClassSheetAutocomplete(null, null)
 {
     public const string ID = "subclass";
 

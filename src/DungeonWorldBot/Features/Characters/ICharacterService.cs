@@ -12,7 +12,7 @@ public interface ICharacterService
     /// <summary>
     /// Every character's name and class, without the rest of the sheet, for suggestions that have to answer quickly.
     /// </summary>
-    Task<List<(string Name, ClassType Class)>> GetCharacterNamesAsync();
+    Task<List<CharacterName>> GetCharacterNamesAsync();
 
     Task AddCharacterAsync(Character character);
 

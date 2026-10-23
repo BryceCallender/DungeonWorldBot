@@ -7,7 +7,7 @@ namespace DungeonWorldBot.Features.Npcs;
 /// <summary>
 /// The NPCs travelling with the party.
 /// </summary>
-public sealed class NpcAutocomplete(INpcService npcService) : IAutocompleteProvider
+public class NpcAutocomplete(INpcService npcService) : IAutocompleteProvider
 {
     public const string ID = "npc";
 

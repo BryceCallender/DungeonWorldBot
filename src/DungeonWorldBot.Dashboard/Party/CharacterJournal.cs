@@ -9,7 +9,7 @@ namespace DungeonWorldBot.Dashboard.Party;
 /// The one part of the bot's database the dashboard writes: a character's backstory, notes and goals, which players
 /// keep here rather than in Discord. Everything else stays read-only.
 /// </summary>
-public sealed class CharacterJournal
+public class CharacterJournal
 {
     public const int MaxTextLength = 4000;
 

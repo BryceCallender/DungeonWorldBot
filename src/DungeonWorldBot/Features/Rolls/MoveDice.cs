@@ -7,7 +7,7 @@ namespace DungeonWorldBot.Features.Rolls;
 /// <summary>
 /// The two d6 of a move roll and its total with modifiers, which is all the roll stats need.
 /// </summary>
-public sealed partial record MoveDice(int First, int Second, int Total)
+public partial record MoveDice(int First, int Second, int Total)
 {
     public bool IsNatural2 => First == 1 && Second == 1;
     public bool IsNatural12 => First == 6 && Second == 6;

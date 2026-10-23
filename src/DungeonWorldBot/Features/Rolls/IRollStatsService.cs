@@ -7,7 +7,7 @@ namespace DungeonWorldBot.Features.Rolls;
 /// <summary>
 /// How someone's 2d6 rolls have gone.
 /// </summary>
-public sealed record PlayerRollStats(Snowflake UserID, int Rolls, int StrongHits, int WeakHits, int Misses, int Natural12s, int Natural2s);
+public record PlayerRollStats(Snowflake UserID, int Rolls, int StrongHits, int WeakHits, int Misses, int Natural12s, int Natural2s);
 
 public interface IRollStatsService
 {

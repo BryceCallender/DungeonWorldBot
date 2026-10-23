@@ -8,7 +8,7 @@ namespace DungeonWorldBot.Features.Shapeshifting;
 /// <summary>
 /// The forms the player's character knows.
 /// </summary>
-public sealed class TransformationAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
+public class TransformationAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
     : ClassSheetAutocomplete(contextInjection, characterService)
 {
     public const string ID = "transformation";

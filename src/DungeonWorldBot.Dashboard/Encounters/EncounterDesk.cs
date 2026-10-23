@@ -12,12 +12,12 @@ namespace DungeonWorldBot.Dashboard.Encounters;
 /// </summary>
 /// <param name="Error">Why it couldn't, or null once it has.</param>
 /// <param name="Added">The names of the enemies added.</param>
-public sealed record Added(string? Error, IReadOnlyList<string> Names)
+public record Added(string? Error, IReadOnlyList<string> Names)
 {
     public static Added Failed(string error) => new(error, []);
 }
 
-public sealed class EncounterDesk
+public class EncounterDesk
 {
     public const int MaxNameLength = 80;
     public const int MaxTextLength = 1000;

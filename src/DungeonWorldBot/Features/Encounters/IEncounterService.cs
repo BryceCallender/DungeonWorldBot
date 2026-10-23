@@ -8,7 +8,7 @@ namespace DungeonWorldBot.Features.Encounters;
 /// </summary>
 /// <param name="ID">Its short ID, as in its address.</param>
 /// <param name="Url">Its full address, for links in Discord.</param>
-public sealed record SceneLink(string ID, string Name, string? Url);
+public record SceneLink(string ID, string Name, string? Url);
 
 public interface IEncounterService
 {

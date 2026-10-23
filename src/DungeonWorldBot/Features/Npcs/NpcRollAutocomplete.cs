@@ -7,7 +7,7 @@ namespace DungeonWorldBot.Features.Npcs;
 /// <summary>
 /// What the NPC picked in the command's "name" option can roll with: stats, loyalty, skills and damage.
 /// </summary>
-public sealed class NpcRollAutocomplete(INpcService npcService) : IAutocompleteProvider
+public class NpcRollAutocomplete(INpcService npcService) : IAutocompleteProvider
 {
     public const string ID = "npc-roll";
 

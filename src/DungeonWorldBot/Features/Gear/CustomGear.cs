@@ -8,7 +8,7 @@ namespace DungeonWorldBot.Features.Gear;
 /// </summary>
 /// <param name="Max">The most the character can hold, or null for no limit.</param>
 /// <param name="GainOnDamage">Whether dealing damage with the gear adds one.</param>
-public sealed record GearCounter(string Name, string Summary, int? Max = null, bool GainOnDamage = false)
+public record GearCounter(string Name, string Summary, int? Max = null, bool GainOnDamage = false)
 {
     /// <summary>
     /// Whether ending combat clears it, like Emerald Marks.
@@ -22,12 +22,12 @@ public sealed record GearCounter(string Name, string Summary, int? Max = null, b
 /// An extra attack a gear mode allows, like the Topaz's Opportunist's Volley.
 /// </summary>
 /// <param name="HalfDamage">Whether the target takes half the damage rolled, rounded up.</param>
-public sealed record GearAction(string Name, string Trigger, bool HalfDamage = false);
+public record GearAction(string Name, string Trigger, bool HalfDamage = false);
 
 /// <summary>
 /// One setting a piece of gear can be in, like a gem socketed in the Gem-Aspected Bow. Only one is active at a time.
 /// </summary>
-public sealed record GearMode(string Name, string Title, string Effect, string Visual)
+public record GearMode(string Name, string Title, string Effect, string Visual)
 {
     /// <summary>
     /// A reminder shown with every damage roll made with the gear, like the Diamond ignoring armor.
@@ -50,7 +50,7 @@ public sealed record GearMode(string Name, string Title, string Effect, string V
 /// </summary>
 /// <param name="ModeKind">What a mode is called on this item, e.g. "Gem".</param>
 /// <param name="UsedFor">The moves whose damage the gear applies to, e.g. Volley for a bow. Empty for every damage roll.</param>
-public sealed record CustomGear(
+public record CustomGear(
     string Name,
     string Summary,
     string ModeKind,
@@ -71,12 +71,12 @@ public sealed record CustomGear(
 /// <summary>
 /// A piece of custom gear a character has, and the mode it's in (null if none is set).
 /// </summary>
-public sealed record OwnedGear(CustomGear Gear, GearMode? Mode);
+public record OwnedGear(CustomGear Gear, GearMode? Mode);
 
 /// <summary>
 /// A damage die that was rerolled.
 /// </summary>
-public sealed record Reroll(int Sides, int Before, int Rolled)
+public record Reroll(int Sides, int Before, int Rolled)
 {
     /// <summary>
     /// The result kept: whichever was higher.

@@ -8,7 +8,7 @@ namespace DungeonWorldBot.Features.Encounters;
 /// <summary>
 /// The enemies in the current fight, still standing first.
 /// </summary>
-public sealed class EnemyAutocomplete(IEncounterService encounterService) : IAutocompleteProvider
+public class EnemyAutocomplete(IEncounterService encounterService) : IAutocompleteProvider
 {
     public const string ID = "enemy";
 

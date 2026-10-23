@@ -7,7 +7,7 @@ namespace DungeonWorldBot.Features.Gear;
 /// </summary>
 /// <param name="Bonus">Damage added, e.g. from a Sapphire reroll.</param>
 /// <param name="Notes">Reminders and changes to show with the damage, one per line.</param>
-public sealed record GearDamage(int Bonus, IReadOnlyList<string> Notes)
+public record GearDamage(int Bonus, IReadOnlyList<string> Notes)
 {
     public static readonly GearDamage None = new(0, []);
 }

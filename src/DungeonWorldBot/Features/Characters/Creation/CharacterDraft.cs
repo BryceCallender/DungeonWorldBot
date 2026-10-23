@@ -8,7 +8,7 @@ namespace DungeonWorldBot.Features.Characters.Creation;
 /// <summary>
 /// Everything a player has picked so far during character creation.
 /// </summary>
-public sealed class CharacterDraft
+public class CharacterDraft
 {
     public static readonly IReadOnlyList<int> StatArray = [8, 9, 12, 13, 15, 16];
 

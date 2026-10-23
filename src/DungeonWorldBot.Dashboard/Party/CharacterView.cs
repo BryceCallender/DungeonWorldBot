@@ -6,7 +6,7 @@ namespace DungeonWorldBot.Dashboard.Party;
 /// <summary>
 /// Everything about a character worth showing, worked out with the bot's own rules.
 /// </summary>
-public sealed record CharacterView(
+public record CharacterView(
     Character Character,
     string ClassName,
     string Damage,

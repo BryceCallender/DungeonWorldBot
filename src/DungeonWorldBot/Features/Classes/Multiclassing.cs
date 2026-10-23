@@ -6,7 +6,7 @@ namespace DungeonWorldBot.Features.Classes;
 /// <summary>
 /// A move from another class's sheet.
 /// </summary>
-public sealed record ForeignMove(ClassSheet Sheet, ClassMove Move);
+public record ForeignMove(ClassSheet Sheet, ClassMove Move);
 
 /// <summary>
 /// Taking moves from other classes' sheets through moves like the Ranger's Special Trick.

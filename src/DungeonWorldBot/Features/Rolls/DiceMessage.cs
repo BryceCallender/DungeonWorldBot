@@ -13,7 +13,7 @@ namespace DungeonWorldBot.Features.Rolls;
 /// <param name="Options">
 /// A numbered list sent alongside the roll, e.g. "1 hatter 2 ziedrich 3 zephyr" above ".1d3", so the roll picks one.
 /// </param>
-public sealed partial record DiceMessage(
+public partial record DiceMessage(
     string? Expression,
     StatType? Stat,
     int Bonus,

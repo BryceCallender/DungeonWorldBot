@@ -347,6 +347,26 @@ function setTool(next: Tool) {
     updatePanning();
 }
 
+function pickColor(next: string, swatch: Element) {
+    color = next;
+    document.querySelectorAll('.swatch, .color-picker').forEach(b => b.classList.toggle('on', b === swatch));
+    // Picking a color means you want to draw with it, unless you're placing tokens, text or shapes in it
+    if (tool !== 'token' && tool !== 'text' && tool !== 'shape') setTool('pen');
+}
+
+// The palette button: the browser's own color picker, which fires as you drag around in it
+const customColor = document.querySelector<HTMLInputElement>('[data-custom-color]')!;
+customColor.addEventListener('input', () => {
+    const swatch = customColor.closest<HTMLElement>('.color-picker')!;
+    swatch.style.setProperty('--swatch', customColor.value);
+    pickColor(customColor.value, swatch);
+});
+// Clicking it again once it has a color uses that color, as well as opening the picker
+customColor.addEventListener('click', () => {
+    const swatch = customColor.closest<HTMLElement>('.color-picker')!;
+    if (swatch.style.getPropertyValue('--swatch')) pickColor(customColor.value, swatch);
+});
+
 // The tool rail, and the sidebar's "Add token"
 document.querySelector('.board-page')!.addEventListener('click', e => {
     const button = (e.target as HTMLElement).closest('button');
@@ -354,12 +374,7 @@ document.querySelector('.board-page')!.addEventListener('click', e => {
     // The Shape button opens its strip; clicking it again while it's open closes it
     if (button.dataset.tool === 'shape') showShapes(!(tool === 'shape' && shapeTool.classList.contains('open')));
     if (button.dataset.tool) setTool(button.dataset.tool as Tool);
-    if (button.dataset.color) {
-        color = button.dataset.color;
-        document.querySelectorAll('[data-color]').forEach(b => b.classList.toggle('on', b === button));
-        // Picking a color means you want to draw with it, unless you're placing tokens, text or shapes in it
-        if (tool !== 'token' && tool !== 'text' && tool !== 'shape') setTool('pen');
-    }
+    if (button.dataset.color) pickColor(button.dataset.color, button);
     if (button.hasAttribute('data-undo')) undo();
     if (button.dataset.shape) {
         shapeKind = button.dataset.shape as ShapeKind;

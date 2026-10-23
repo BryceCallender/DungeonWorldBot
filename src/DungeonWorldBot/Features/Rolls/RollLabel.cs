@@ -12,7 +12,7 @@ namespace DungeonWorldBot.Features.Rolls;
 /// </summary>
 /// <param name="Move">The move rolled, when the title names one, e.g. "🎲 Zephyr: Volley" or ".dex volley".</param>
 /// <param name="Stat">The stat the roll went with, from the start of "Rolled with", e.g. "DEX +2, Bonus +1".</param>
-public sealed record RollLabel(string? Move, StatType? Stat)
+public record RollLabel(string? Move, StatType? Stat)
 {
     public const string RolledWith = "Rolled with";
 

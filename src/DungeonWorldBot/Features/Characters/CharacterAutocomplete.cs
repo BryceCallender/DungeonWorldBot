@@ -7,7 +7,7 @@ namespace DungeonWorldBot.Features.Characters;
 /// <summary>
 /// The party's characters, by name.
 /// </summary>
-public sealed class CharacterAutocomplete(ICharacterService characterService) : IAutocompleteProvider
+public class CharacterAutocomplete(ICharacterService characterService) : IAutocompleteProvider
 {
     public const string ID = "character";
 
