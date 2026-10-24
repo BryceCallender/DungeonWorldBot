@@ -57,11 +57,6 @@ builder.Services.AddSingleton(new NpcDesk(writableDatabase));
 var settings = DashboardSettings.From(builder.Configuration);
 builder.Services.AddSingleton(settings);
 
-// Pages refresh themselves when the bot writes to the database
-builder.Services.AddSingleton(services =>
-    new DatabaseWatcher(databasePath, services.GetRequiredService<ILogger<DatabaseWatcher>>()));
-builder.Services.AddHostedService(services => services.GetRequiredService<DatabaseWatcher>());
-
 var signInEnabled = builder.AddDiscordSignIn();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped(services =>
@@ -75,6 +70,12 @@ var canvasDatabasePath = Path.GetFullPath(
     ?? Path.Combine(builder.Environment.ContentRootPath, "canvases.db"));
 builder.Services.AddSqlite<CanvasContext>($"Data Source={canvasDatabasePath}");
 builder.Services.AddScoped<CanvasStore>();
+
+// Pages refresh themselves when the bot writes to its database, or anyone changes a canvas
+builder.Services.AddSingleton(services =>
+    new DatabaseWatcher([databasePath, canvasDatabasePath], services.GetRequiredService<ILogger<DatabaseWatcher>>()));
+builder.Services.AddHostedService(services => services.GetRequiredService<DatabaseWatcher>());
+
 builder.Services.AddScoped<PortraitStore>();
 
 // Canvases are shared live between everyone who has one open
