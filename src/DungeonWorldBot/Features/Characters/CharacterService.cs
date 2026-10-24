@@ -16,8 +16,10 @@ public class CharacterService : ICharacterService
         _dungeonWorldContext = dungeonWorldContext;
     }
 
+    // One query per table: joining them all at once multiplies every list by every other (tens of thousands of rows)
     private IQueryable<Character> CharactersWithDetails =>
         _dungeonWorldContext.Characters
+            .AsSplitQuery()
             .Include(c => c.Class)
             .Include(c => c.Health)
             .Include(c => c.Stats)
