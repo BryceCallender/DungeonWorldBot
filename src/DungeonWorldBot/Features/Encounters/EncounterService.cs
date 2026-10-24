@@ -38,14 +38,18 @@ public class EncounterService : IEncounterService
         return (await GetRunningAsync()).FirstOrDefault(e => e.Name.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
     }
 
-    public async Task<Encounter?> GetForAsync(Snowflake? characterID = null, int? npcID = null)
-    {
-        var running = await GetRunningAsync();
-        return running.LastOrDefault(e => e.Participants.Any(p =>
-                   (characterID is not null && p.CharacterID == characterID) || (npcID is not null && p.NpcID == npcID)))
-               ?? running.LastOrDefault(e => e.Participants.Count == 0)
-               ?? (running.Count == 1 ? running[0] : null);
-    }
+    public async Task<Encounter?> GetForAsync(Snowflake? characterID = null, int? npcID = null) =>
+        FightFor(await GetRunningAsync(), characterID, npcID);
+
+    /// <summary>
+    /// <see cref="GetForAsync"/>, among fights already looked up.
+    /// </summary>
+    /// <param name="running">The fights going on, oldest first.</param>
+    public static Encounter? FightFor(IReadOnlyList<Encounter> running, Snowflake? characterID = null, int? npcID = null) =>
+        running.LastOrDefault(e => e.Participants.Any(p =>
+            (characterID is not null && p.CharacterID == characterID) || (npcID is not null && p.NpcID == npcID)))
+        ?? running.LastOrDefault(e => e.Participants.Count == 0)
+        ?? (running.Count == 1 ? running[0] : null);
 
     public async Task<EncounterRoster> GetTakenAsync()
     {

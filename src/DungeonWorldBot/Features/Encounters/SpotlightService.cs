@@ -43,6 +43,20 @@ public class SpotlightService : ISpotlightService
 
         // A move logged in the fight is also a roll kept for stats; the log says more about it
         var logged = log.Where(a => a.MessageID is not null).ToDictionary(a => a.MessageID!.Value);
+
+        // With several fights going, a roll is only this fight's if it was logged here, or, for a plain roll nobody
+        // logged, if the player is in this fight rather than another
+        var loggedElsewhere = (await _context.EncounterActions.AsNoTracking()
+                .Where(a => a.EncounterID != encounter.ID && a.MessageID != null)
+                .Select(a => a.MessageID)
+                .ToListAsync())
+            .Select(id => id!.Value)
+            .ToHashSet();
+        var running = await _encounterService.GetRunningAsync();
+        rolls = rolls
+            .Where(r => logged.ContainsKey(r.MessageID)
+                        || (!loggedElsewhere.Contains(r.MessageID) && EncounterService.FightFor(running, r.UserID)?.ID == encounter.ID))
+            .ToList();
         var rolled = rolls.Select(r => r.MessageID).ToHashSet();
 
         var players = party

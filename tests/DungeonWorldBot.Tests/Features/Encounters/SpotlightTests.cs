@@ -133,6 +133,35 @@ public sealed class SpotlightTests : IDisposable
     }
 
     [Fact]
+    public async Task SeveralFights_EachOnlyCountTheirOwnRolls()
+    {
+        await using var context = _db.CreateContext();
+        var encounters = new EncounterService(context);
+        var aria = Hero(1, "Aria");
+        var bram = Hero(2, "Bram");
+        var ambush = (await encounters.StartAsync("Ambush", roster: new EncounterRoster([aria.ID], [])))!;
+        var raid = (await encounters.StartAsync("Raid", roster: new EncounterRoster([bram.ID], [])))!;
+
+        // Aria's move is logged in the ambush; Bram's plain roll isn't logged anywhere, but he's in the raid
+        var logged = Snowflake.CreateTimestampSnowflake(DateTimeOffset.UtcNow.AddSeconds(1), Constants.DiscordEpoch);
+        var plain = Snowflake.CreateTimestampSnowflake(DateTimeOffset.UtcNow.AddSeconds(2), Constants.DiscordEpoch);
+        context.Rolls.Add(new RollRecord { MessageID = logged, ChannelID = GameChat, UserID = aria.ID, First = 4, Second = 4, Total = 9, Move = "Hack and Slash" });
+        context.Rolls.Add(new RollRecord { MessageID = plain, ChannelID = GameChat, UserID = bram.ID, First = 1, Second = 2, Total = 3, Move = "Defy Danger" });
+        await context.SaveChangesAsync();
+        await encounters.LogAsync(new EncounterAction { Actor = aria.Name, CharacterID = aria.ID, MessageID = logged, Action = "Hack and Slash" });
+
+        var inAmbush = await Spotlight(context, encounters).GetAsync(ambush, [aria, bram]);
+        var inRaid = await Spotlight(context, encounters).GetAsync(raid, [aria, bram]);
+
+        Assert.Equal(1, inAmbush.Rolls);
+        Assert.Equal(0, inAmbush.Misses);
+        Assert.Equal(["Aria"], inAmbush.Party.Select(p => p.Name));
+        Assert.Equal(1, inRaid.Rolls);
+        Assert.Equal(1, inRaid.Misses);
+        Assert.Equal(["Bram"], inRaid.Party.Select(p => p.Name));
+    }
+
+    [Fact]
     public async Task UnpickedFight_ShowsEveryone()
     {
         await using var context = _db.CreateContext();
