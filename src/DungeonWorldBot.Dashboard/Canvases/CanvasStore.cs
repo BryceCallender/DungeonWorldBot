@@ -87,6 +87,9 @@ public class CanvasStore(CanvasContext db)
             return false;
 
         var position = root["attrs"] as JsonObject ?? root;
+        // A picture locked in place (from its right-click menu) has to be unlocked before it moves
+        if (IsLocked(position))
+            return false;
         position["x"] = x;
         position["y"] = y;
         item.Json = root.ToJsonString();
@@ -102,6 +105,22 @@ public class CanvasStore(CanvasContext db)
     /// </summary>
     public Task<bool> IsLockedAsync(int canvasID, string itemID) =>
         db.CanvasItems.AnyAsync(i => i.CanvasID == canvasID && i.ID == itemID && i.AuthorID == EnemyTokens.AuthorID);
+
+    /// <summary>
+    /// Whether an item is a picture locked in place from its right-click menu, which has to be unlocked before it's
+    /// removed.
+    /// </summary>
+    public async Task<bool> IsLockedInPlaceAsync(int canvasID, string itemID)
+    {
+        var json = await db.CanvasItems
+            .Where(i => i.CanvasID == canvasID && i.ID == itemID && i.Type == CanvasItemType.Image)
+            .Select(i => i.Json)
+            .FirstOrDefaultAsync();
+        return json is not null && JsonNode.Parse(json) is JsonObject root && IsLocked(root["attrs"] as JsonObject ?? root);
+    }
+
+    private static bool IsLocked(JsonObject attrs) =>
+        attrs["locked"] is JsonValue locked && locked.TryGetValue(out bool value) && value;
 
     public async Task RemoveItemAsync(int canvasID, string itemID)
     {

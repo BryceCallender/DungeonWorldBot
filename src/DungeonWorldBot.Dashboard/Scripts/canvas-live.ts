@@ -4,6 +4,7 @@
 //       load: items => ...,                           // everything saved, again after reconnecting in case something was missed
 //       presence: people => ...,                      // everyone here, including you
 //       cursor: (personId, x, y) => ...,
+//       view: (personId, x, y, width, height) => ...,   // the part of the board they're looking at, for following
 //       strokeProgress: (personId, strokeId, points) => ...,
 //       strokeEnd: (personId, strokeId, stroke) => ...,
 //       itemAdded: (personId, itemId, type, item) => ...,
@@ -45,6 +46,7 @@ export interface CanvasHandlers {
     load?: (items: SavedItem[]) => void;
     presence?: (people: CanvasPerson[]) => void;
     cursor?: (personId: string, x: number, y: number) => void;
+    view?: (personId: string, x: number, y: number, width: number, height: number) => void;
     /** The points added since last time: [x, y, x, y...]. */
     strokeProgress?: (personId: string, strokeId: string, points: number[]) => void;
     strokeEnd?: (personId: string, strokeId: string, stroke: ItemJson) => void;
@@ -61,6 +63,8 @@ export interface CanvasLive {
     me: CanvasPerson;
     connection: signalR.HubConnection;
     cursor(x: number, y: number): void;
+    /** The part of the board you're looking at, in board units. */
+    view(x: number, y: number, width: number, height: number): void;
     strokeProgress(strokeId: string, points: number[]): void;
     strokeEnd(strokeId: string, stroke: ItemJson): void;
     addItem(itemId: string, type: CanvasItemType, item: ItemJson): void;
@@ -81,6 +85,7 @@ interface JoinResult {
 const hubEvents = {
     PresenceChanged: 'presence',
     Cursor: 'cursor',
+    View: 'view',
     StrokeProgress: 'strokeProgress',
     StrokeEnd: 'strokeEnd',
     ItemAdded: 'itemAdded',
@@ -116,6 +121,8 @@ export async function connect(canvasId: string, on: CanvasHandlers = {}): Promis
 
         // Cursors move far more often than anyone needs to see, so send at most ~30 a second, and always the latest
         cursor: throttle((x: number, y: number) => send('Cursor', x, y), 33),
+        // Panning and zooming change it every frame; anyone following is smooth enough at ~20 a second
+        view: throttle((x: number, y: number, width: number, height: number) => send('View', x, y, width, height), 50),
         strokeProgress: (strokeId, points) => send('StrokeProgress', strokeId, points),
         strokeEnd: (strokeId, stroke) => save('StrokeEnd', strokeId, stroke),
         addItem: (itemId, type, item) => save('AddItem', itemId, type, item),

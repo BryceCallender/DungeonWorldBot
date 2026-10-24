@@ -180,7 +180,7 @@ function itemOf(shape: Konva.Node): Konva.Node | null {
 function prepare(node: Konva.Node, type: CanvasItemType) {
     if (node instanceof Konva.Line) node.hitStrokeWidth(20);
     if (type === 'shape' && node instanceof Konva.Shape) node.hitStrokeWidth(20);
-    if (type === 'token' || type === 'image' || type === 'shape' || node instanceof Konva.Text) node.draggable(tool === 'move' && !viewOnly);
+    if (type === 'token' || type === 'image' || type === 'shape' || node instanceof Konva.Text) node.draggable(canDrag(node));
     showPictures(node);
 }
 
@@ -205,6 +205,11 @@ function loadPicture(src: string) {
 
 // The picture URL a node keeps, if it has one
 const srcOf = (node: Konva.Node): string | undefined => node.getAttr('src');
+
+// A map locked from its right-click menu stays put: it can't be dragged, scaled or deleted until it's unlocked, so
+// dragging on it pans the board instead. The `locked` attribute is saved with it, so it's locked for everyone.
+const lockedInPlace = (node: Konva.Node) => node.getAttr('locked') === true;
+const canDrag = (node: Konva.Node) => tool === 'move' && !viewOnly && !lockedInPlace(node);
 
 // The node, and anything in it, with a picture to show: a board image, or the circle of an image token
 function showPictures(node: Konva.Node) {
@@ -319,10 +324,24 @@ tokenList.addEventListener('click', e => {
     const id = (e.target as HTMLElement).closest<HTMLElement>('[data-token]')?.dataset.token;
     const token = id && stage.findOne('#' + id);
     if (!token) return;
-    // From whatever size it's been made, and back to it
-    const size = token.scaleX();
-    token.to({ scaleX: size * 1.6, scaleY: size * 1.6, duration: 0.15, onFinish: () => token.to({ scaleX: size, scaleY: size, duration: 0.15 }) });
+    // From whatever size it's been made, and back to it. Clicking again mid-pulse starts over from that size, not from
+    // however big the pulse had got, or quick clicks would leave it bigger each time.
+    // (A tween that's replaced still runs out and calls its onFinish, so the one before is stopped outright.)
+    const before = pulsing.get(token);
+    before?.tween.destroy();
+    const size = before?.size ?? token.scaleX();
+    const tween = (scale: number, then: () => void) => {
+        const t: Konva.Tween = new Konva.Tween({
+            node: token, scaleX: scale, scaleY: scale, duration: 0.15, onFinish: () => { t.destroy(); then(); },
+        });
+        pulsing.set(token, { size, tween: t });
+        t.play();
+    };
+    tween(size * 1.6, () => tween(size, () => pulsing.delete(token)));
 });
+
+// Tokens partway through a pulse, the size each goes back to, and the tween running now
+const pulsing = new Map<Konva.Node, { size: number; tween: Konva.Tween }>();
 
 // ---- Tools ---------------------------------------------------------------------------------------------------------
 
@@ -345,10 +364,9 @@ function setTool(next: Tool) {
     tool = next;
     container.dataset.tool = next;                         // for the cursor, in CanvasPage.razor.css
     document.querySelectorAll<HTMLElement>('.board-rail [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === next));
-    const dragging = next === 'move' && !viewOnly;
-    tokens.getChildren().forEach(t => t.draggable(dragging));
-    drawing.find('Text, .shape').forEach(t => t.draggable(dragging));
-    pictures.getChildren().forEach(p => p.draggable(dragging));
+    tokens.getChildren().forEach(t => t.draggable(canDrag(t)));
+    drawing.find('Text, .shape').forEach(t => t.draggable(canDrag(t)));
+    pictures.getChildren().forEach(p => p.draggable(canDrag(p)));
     if (next !== 'move') select(null);
     updatePanning();
 }
@@ -484,6 +502,7 @@ let erasing = false;
 
 stage.on('pointerdown', e => {
     if (spaceHeld || viewOnly) return;                     // the stage drag pans instead
+    if (e.evt.button !== 0) return;                        // a right-click is for the picture menu, not drawing
     const { x, y } = pointer();
     if (tool === 'pen') {
         const line = new Konva.Line({
@@ -505,7 +524,7 @@ stage.on('pointerdown', e => {
         const onDrawing = e.target.getLayer() === drawing;
         const text = e.target instanceof Konva.Text && onDrawing;
         const shape = e.target.hasName('shape') && onDrawing;
-        const picture = e.target instanceof Konva.Image && e.target.getLayer() === pictures;
+        const picture = e.target instanceof Konva.Image && e.target.getLayer() === pictures && !lockedInPlace(e.target);
         // A token is a group, so whichever part was clicked (its circle or initials), the whole token is selected
         const token = e.target.getLayer() === tokens ? itemOf(e.target) : null;
         select(token ?? (text || shape || picture ? e.target : null));
@@ -706,6 +725,63 @@ drawing.on('dblclick dbltap', e => {
         editText(e.target, e.target.position());
     }
 });
+
+// ---- Right-click menu on pictures ----------------------------------------------------------------------------------
+
+// Right-clicking a picture, even under strokes or tokens drawn on it, offers to lock it in place or unlock it.
+// Anywhere else, the browser's own menu shows as usual.
+const pictureMenu = document.createElement('div');
+pictureMenu.className = 'board-menu';
+pictureMenu.hidden = true;
+pictureMenu.setAttribute('role', 'menu');
+const lockButton = Object.assign(document.createElement('button'), { type: 'button' });
+lockButton.setAttribute('role', 'menuitem');
+pictureMenu.append(lockButton);
+container.append(pictureMenu);
+
+let menuFor: Konva.Node | null = null;
+
+function showPictureMenu(picture: Konva.Node, at: { x: number; y: number }) {
+    menuFor = picture;
+    lockButton.textContent = lockedInPlace(picture) ? 'Unlock picture' : 'Lock picture';
+    pictureMenu.hidden = false;
+    // Kept inside the board, so one opened near the edge isn't cut off
+    const box = container.getBoundingClientRect();
+    pictureMenu.style.left = `${Math.min(at.x - box.left, box.width - pictureMenu.offsetWidth - 4)}px`;
+    pictureMenu.style.top = `${Math.min(at.y - box.top, box.height - pictureMenu.offsetHeight - 4)}px`;
+    lockButton.focus();
+}
+
+function hidePictureMenu() {
+    pictureMenu.hidden = true;
+    menuFor = null;
+}
+
+stage.on('contextmenu', e => {
+    hidePictureMenu();
+    if (viewOnly) return;
+    const picture = pictures.getIntersection(stage.getPointerPosition()!);
+    if (!picture) return;
+    e.evt.preventDefault();
+    showPictureMenu(picture, { x: e.evt.clientX, y: e.evt.clientY });
+});
+
+lockButton.addEventListener('click', () => {
+    const picture = menuFor;
+    hidePictureMenu();
+    if (!picture || viewOnly) return;
+    remember('changed', picture);
+    if (lockedInPlace(picture)) picture.setAttr('locked', undefined);
+    else picture.setAttr('locked', true);
+    picture.draggable(canDrag(picture));
+    if (selected() === picture) select(null);
+    live?.addItem(picture.id(), 'image', picture.toObject());   // the same ID replaces it for everyone
+});
+
+// Like any menu: pressing anywhere else, Escape, or moving the board closes it
+document.addEventListener('pointerdown', e => { if (!pictureMenu.contains(e.target as Node)) hidePictureMenu(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') hidePictureMenu(); });
+stage.on('wheel dragstart', hidePictureMenu);
 
 // ---- Text ----------------------------------------------------------------------------------------------------------
 
@@ -1120,20 +1196,95 @@ function showPeople(list: CanvasPerson[]) {
     people.clear();
     for (const person of list) people.set(person.id, person);
 
-    // Their cursors go when they leave
+    // Their cursors go when they leave, and so does following them
     for (const [id, cursor] of cursors)
         if (!people.has(id)) { cursor.group.destroy(); cursors.delete(id); }
+    for (const id of views.keys()) if (!people.has(id)) views.delete(id);
+    if (following && !people.has(following)) follow(null);
     showPointers();
+
+    // Someone new doesn't know where you're looking yet, for following you
+    sendView();
 
     document.querySelector('[data-here]')!.textContent = `${list.length} here`;
     const box = document.querySelector('[data-people]')!;
     box.replaceChildren(...list.map(person => {
         const el = person.avatarUrl ? Object.assign(document.createElement('img'), { src: person.avatarUrl, alt: '' })
             : Object.assign(document.createElement('span'), { className: 'initial', textContent: person.name[0] });
-        el.title = person.id === live?.me.id ? `${person.name} (you)` : person.name;
-        return el;
+        if (person.id === live?.me.id) {
+            el.title = `${person.name} (you)`;
+            return el;
+        }
+        // Anyone else can be followed
+        const button = Object.assign(document.createElement('button'), { type: 'button', title: `Follow ${person.name}` });
+        button.dataset.follow = person.id;
+        button.style.setProperty('--who', colorOf(person.id));
+        button.setAttribute('aria-pressed', String(person.id === following));
+        button.append(el);
+        return button;
     }));
 }
+
+// ---- Following someone ---------------------------------------------------------------------------------------------
+
+// Clicking someone's face at the top follows them, like in Figma: your view goes wherever they pan and zoom, with a
+// border in their color around the board, until you pan or zoom yourself, press Escape, or click them again.
+const views = new Map<string, { x: number; y: number; width: number; height: number }>();
+let following: string | null = null;
+let showingTheirs = false;                                 // their view going on yours, which isn't you moving
+
+const followBadge = Object.assign(document.createElement('button'), { type: 'button', className: 'follow-badge', hidden: true });
+followBadge.addEventListener('click', () => follow(null));
+container.append(followBadge);
+
+function follow(personId: string | null) {
+    following = personId && people.has(personId) ? personId : null;
+    container.classList.toggle('following', !!following);
+    followBadge.hidden = !following;
+    document.querySelectorAll<HTMLElement>('[data-follow]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.follow === following)));
+    if (!following) return;
+    container.style.setProperty('--who', colorOf(following));
+    followBadge.textContent = `Following ${people.get(following)!.name}`;
+    followBadge.title = 'Stop following';
+    showTheirView();
+}
+
+// Fits what they can see into your board, around the same middle, however different the two windows are
+function showTheirView() {
+    const area = following && views.get(following);
+    if (!area) return;
+    const scale = clampZoom(Math.min(stage.width() / area.width, stage.height() / area.height));
+    showingTheirs = true;
+    stage.scale({ x: scale, y: scale });
+    stage.position({
+        x: stage.width() / 2 - (area.x + area.width / 2) * scale,
+        y: stage.height() / 2 - (area.y + area.height / 2) * scale,
+    });
+    showingTheirs = false;
+    viewMoved = true;                                      // so a resize or reload doesn't fit the view over theirs
+}
+
+function sendView() {
+    const { x, y, width, height } = visibleArea();
+    const round = (n: number) => Math.round(n * 10) / 10;
+    live?.view(round(x), round(y), round(width), round(height));
+}
+
+stage.on('xChange yChange scaleXChange', () => {
+    // Panning or zooming yourself stops following
+    if (following && !showingTheirs) follow(null);
+    sendView();
+});
+stage.on('widthChange heightChange', () => {
+    if (following) showTheirView();
+    sendView();
+});
+
+document.querySelector('[data-people]')!.addEventListener('click', e => {
+    const id = (e.target as HTMLElement).closest<HTMLElement>('[data-follow]')?.dataset.follow;
+    if (id) follow(id === following ? null : id);
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && following) follow(null); });
 
 const status = document.querySelector<HTMLElement>('[data-status]')!;
 const statusDot = status.querySelector<HTMLElement>('.live-dot')!;
@@ -1185,6 +1336,10 @@ try {
         presence: showPeople,
         status: showStatus,
         cursor: showCursor,
+        view: (personId, x, y, width, height) => {
+            views.set(personId, { x, y, width, height });
+            if (personId === following) showTheirView();
+        },
         strokeProgress: (personId, strokeId, points) => {
             let line = drafts.get(strokeId);
             if (!line) {
@@ -1205,6 +1360,8 @@ try {
         // Moves aren't flashed: a drag sends a dozen a second, which would keep it lit
         itemRemoved: (_, itemId) => { const node = stage.findOne('#' + itemId); if (node) removeItem(node); pulse(); },
     });
+    // Joining showed everyone before `live` was set, so it couldn't tell which face is yours, or send your view
+    showPeople([...people.values()]);
 } catch {
     // You can still draw, but nothing is saved or shared
     showStatus('offline', "Couldn't connect. Drawings won't be saved.");

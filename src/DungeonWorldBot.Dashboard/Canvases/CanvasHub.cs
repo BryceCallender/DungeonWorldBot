@@ -56,6 +56,16 @@ public class CanvasHub(CanvasPresence presence, CanvasStore store, DashboardSett
         await Clients.OthersInGroup(Group(canvas)).Cursor(me.ID, x, y);
     }
 
+    /// <summary>
+    /// The part of the board they're looking at, in board units, for anyone following them. Only passed on, like
+    /// cursors, so those watching a fight can be followed too.
+    /// </summary>
+    public async Task View(double x, double y, double width, double height)
+    {
+        var (canvas, me) = Current();
+        await Clients.OthersInGroup(Group(canvas)).View(me.ID, x, y, width, height);
+    }
+
     /// <param name="points">The points added since the last call, as x, y, x, y...</param>
     public async Task StrokeProgress(string strokeID, double[] points)
     {
@@ -96,6 +106,8 @@ public class CanvasHub(CanvasPresence presence, CanvasStore store, DashboardSett
         var runsFights = me.IsDungeonMaster || Context.User?.Identity?.IsAuthenticated != true;
         if (!runsFights && await store.IsLockedAsync(canvas, CheckID(itemID)))
             throw new HubException("Only the DM can remove enemy tokens from the board.");
+        if (await store.IsLockedInPlaceAsync(canvas, itemID))
+            throw new HubException("That picture is locked. Right-click it to unlock it first.");
         await store.RemoveItemAsync(canvas, itemID);
         await Clients.OthersInGroup(Group(canvas)).ItemRemoved(me.ID, itemID);
     }
