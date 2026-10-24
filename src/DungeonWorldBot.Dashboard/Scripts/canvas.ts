@@ -330,6 +330,8 @@ type ShapeKind = 'rect' | 'ellipse' | 'line' | 'arrow';
 let shapeKind: ShapeKind = 'rect';
 let tool: Tool = 'move';
 let color = (document.querySelector<HTMLElement>('[data-color].on')?.dataset.color) ?? '#7F77DD';
+const widthSlider = document.querySelector<HTMLInputElement>('[data-width]')!;
+let penWidth = Number(widthSlider.value);
 
 // The strip of shape kinds beside the Shape button, which opens like a menu and closes once you've picked
 const shapeTool = document.querySelector<HTMLElement>('.shape-tool')!;
@@ -353,6 +355,14 @@ function pickColor(next: string, swatch: Element) {
     // Picking a color means you want to draw with it, unless you're placing tokens, text or shapes in it
     if (tool !== 'token' && tool !== 'text' && tool !== 'shape') setTool('pen');
 }
+
+// The thickness slider, and the dot above it that shows how thick
+widthSlider.addEventListener('input', () => {
+    penWidth = Number(widthSlider.value);
+    document.querySelector<HTMLElement>('[data-width-dot]')!.style.setProperty('--dot', penWidth + 'px');
+    // Like a color: you want to draw with it, unless you're about to drag out a shape
+    if (tool !== 'shape') setTool('pen');
+});
 
 // The palette button: the browser's own color picker, which fires as you drag around in it
 const customColor = document.querySelector<HTMLInputElement>('[data-custom-color]')!;
@@ -439,7 +449,7 @@ stage.on('pointerdown', e => {
             id: crypto.randomUUID(),
             points: [x, y],
             stroke: color,
-            strokeWidth: 4,
+            strokeWidth: penWidth,
             lineCap: 'round',
             lineJoin: 'round',
             tension: 0.5,
@@ -531,16 +541,16 @@ document.addEventListener('keydown', e => { if (e.key === 'Shift') shiftHeld = t
 document.addEventListener('keyup', e => { if (e.key === 'Shift') shiftHeld = false; });
 
 function newShape(kind: ShapeKind, x: number, y: number): Konva.Shape {
-    // Named 'shape' so Move can tell them from freehand strokes. Lines stay 4 wide however they're resized.
+    // Named 'shape' so Move can tell them from freehand strokes. Lines keep their width however they're resized.
     const look = {
-        id: crypto.randomUUID(), name: 'shape', x, y, stroke: color, strokeWidth: 4,
+        id: crypto.randomUUID(), name: 'shape', x, y, stroke: color, strokeWidth: penWidth,
         strokeScaleEnabled: false, hitStrokeWidth: 20, lineCap: 'round' as const, lineJoin: 'round' as const,
     };
     switch (kind) {
         case 'rect': return new Konva.Rect({ ...look, width: 0, height: 0, cornerRadius: 4 });
         case 'ellipse': return new Konva.Ellipse({ ...look, radiusX: 0, radiusY: 0 });
         case 'line': return new Konva.Line({ ...look, points: [0, 0, 0, 0] });
-        case 'arrow': return new Konva.Arrow({ ...look, points: [0, 0, 0, 0], fill: color, pointerLength: 14, pointerWidth: 14 });
+        case 'arrow': return new Konva.Arrow({ ...look, points: [0, 0, 0, 0], fill: color, pointerLength: Math.max(14, penWidth * 3), pointerWidth: Math.max(14, penWidth * 3) });
     }
 }
 

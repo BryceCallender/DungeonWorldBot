@@ -56,14 +56,14 @@ public class MoveCommand : DungeonWorldCommandBase
     [Description("Attack an enemy in melee (+STR)")]
     public Task<IResult> HackAndSlashAsync(
         [Description(BonusDescription)] int bonus = 0,
-        [Description(TargetDescription)] [AutocompleteProvider(EnemyAutocomplete.ID)] string? target = null)
+        [Description(TargetDescription)] [AutocompleteProvider(LivingEnemyAutocomplete.ID)] string? target = null)
         => MakeStatMoveAsync(BasicMoves.HackAndSlash, StatType.Str, bonus, target);
 
     [Command("volley")]
     [Description("Take aim and shoot at an enemy at range (+DEX)")]
     public Task<IResult> VolleyAsync(
         [Description(BonusDescription)] int bonus = 0,
-        [Description(TargetDescription)] [AutocompleteProvider(EnemyAutocomplete.ID)] string? target = null)
+        [Description(TargetDescription)] [AutocompleteProvider(LivingEnemyAutocomplete.ID)] string? target = null)
         => MakeStatMoveAsync(BasicMoves.Volley, StatType.Dex, bonus, target);
 
     [Command("defy-danger")]
@@ -212,10 +212,16 @@ public class MoveCommand : DungeonWorldCommandBase
         RollKind? kind = null,
         string? target = null)
     {
+        if (TacticRules.WhyCannotMake(character, move.Name) is { } forbidden)
+            return await ReplyWithErrorAsync(forbidden);
+
         var debility = stat is { } rolled ? DebilityRules.RollPenalty(character, rolled) : null;
         kind ??= stat is not null ? RollKind.Stat : null;
         var subclassBonuses = kind is { } rollKind ? await _damageService.BonusesAsync(character, rollKind, stat) : [];
+        if (TacticRules.RollBonus(character, move.Name) is not 0 and var tacticBonus)
+            subclassBonuses = subclassBonuses.Append(new RollBonus($"{TacticRules.Current(character)!.Name} Tactics", tacticBonus)).ToList();
         var roll = MoveRoller.Roll(_diceRoller, modifier + bonus + (debility?.Penalty ?? 0) + subclassBonuses.Sum(b => b.Amount));
+        var outcome = TacticRules.Outcome(character, move.Name, roll.Outcome);
 
         var fields = new List<IEmbedField>();
 
@@ -233,20 +239,30 @@ public class MoveCommand : DungeonWorldCommandBase
             fields.Add(new EmbedField("Rolled with", string.Join(", ", parts), IsInline: true));
         }
 
-        fields.Add(new EmbedField(MoveRoller.Describe(roll.Outcome), move.Describe(roll.Outcome)));
+        if (outcome != roll.Outcome)
+            fields.Add(new EmbedField($"{TacticRules.Current(character)!.Name} Tactics", $"Your {MoveRoller.Describe(roll.Outcome)} counts as a {MoveRoller.Describe(outcome)}."));
 
-        var isHit = roll.Outcome != MoveOutcome.Miss;
-        if (move.ShowsOptions(roll.Outcome))
+        fields.Add(new EmbedField(MoveRoller.Describe(outcome), move.Describe(outcome)));
+
+        var isHit = outcome != MoveOutcome.Miss;
+        if (move.ShowsOptions(outcome))
         {
             fields.Add(new EmbedField("Options", string.Join('\n', move.Options!.Select(o => $"• {o}"))));
         }
 
-        if (isHit && move.RollsDamage)
+        if (move.RollsDamage && (isHit || TacticRules.DamagesOnMiss(character, move.Name)))
         {
+            if (!isHit)
+                fields.Add(new EmbedField($"{TacticRules.Current(character)!.Name} Tactics", "Your damage lands even on a miss."));
             fields.AddRange(await RollDamageAsync(character, move.Name, target));
         }
 
-        var colour = MoveRoller.ColourFor(roll.Outcome);
+        if (isHit && move.Name == TacticRules.ChangeTactics)
+        {
+            fields.Add(new EmbedField("New Tactic", $"Now in {TacticRules.Current(character)?.Name ?? "no"} Tactics. Switch with /class tactic change"));
+        }
+
+        var colour = MoveRoller.ColourFor(outcome);
 
         var embed = new Embed(
             Title: $"🎲 {character.Name}: {move.Name}",

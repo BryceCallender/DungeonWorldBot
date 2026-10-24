@@ -4,6 +4,7 @@ using DungeonWorldBot.Features.Gear;
 using DungeonWorldBot.Features.Rolls;
 using DungeonWorldBot.Features.Subclasses;
 using DungeonWorldBot.Infrastructure;
+using DungeonWorldBot.Rules;
 using d20Tek.DiceNotation.Results;
 
 namespace DungeonWorldBot.Features.Combat;
@@ -25,11 +26,15 @@ public class DamageService : IDamageService
     public async Task<DamageRoll?> RollAsync(Character character, string move)
     {
         var bonuses = await DamageBonusesAsync(character);
-        var expression = DiceHelper.AddModifier(character.DamageModifier ?? character.Class.Damage, bonuses.Sum(b => b.Amount));
+        var baseDice = character.DamageModifier ?? character.Class.Damage;
+        var extra = TacticRules.ExtraDamage(character);
+        var expression = DiceHelper.AddModifier(extra is not null ? $"{baseDice}+{extra}" : baseDice, bonuses.Sum(b => b.Amount));
         if (!_diceRoller.TryRoll(expression, out var dice))
             return null;
 
         var gear = await ApplyGearAsync(character, move, DamageDice(dice));
+        if (extra is not null)
+            gear = gear with { Notes = gear.Notes.Prepend($"{TacticRules.Current(character)!.Name} Tactics: +{extra} damage").ToList() };
         return new DamageRoll(expression, dice, dice.Value + gear.Bonus, bonuses, gear);
     }
 

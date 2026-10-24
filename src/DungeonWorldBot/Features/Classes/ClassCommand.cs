@@ -17,7 +17,7 @@ using Remora.Results;
 namespace DungeonWorldBot.Features.Classes;
 
 [Group("class")]
-public class ClassCommand : DungeonWorldCommandBase
+public partial class ClassCommand : DungeonWorldCommandBase
 {
     // Move summaries are long, so keep pages small enough to stay under Discord's embed size limit
     private const int MovesPerPage = 6;

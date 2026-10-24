@@ -12,10 +12,12 @@ public class EnemyAutocomplete(IEncounterService encounterService) : IAutocomple
 {
     public const string ID = "enemy";
 
+    protected virtual bool IncludeDead => true;
+
     // Discord shows at most 25 suggestions
     private const int MaxSuggestions = 25;
 
-    public string Identity => ID;
+    public virtual string Identity => ID;
 
     public async ValueTask<IReadOnlyList<IApplicationCommandOptionChoice>> GetSuggestionsAsync(
         IReadOnlyList<IApplicationCommandInteractionDataOption> options,
@@ -28,6 +30,7 @@ public class EnemyAutocomplete(IEncounterService encounterService) : IAutocomple
         var input = userInput.Trim();
 
         return encounter.Enemies
+            .Where(e => IncludeDead || e.CurrentHP > 0)
             .Where(e => e.Name.Contains(input, StringComparison.OrdinalIgnoreCase))
             .OrderBy(e => e.CurrentHP == 0)
             .ThenBy(e => !e.Name.StartsWith(input, StringComparison.OrdinalIgnoreCase))
@@ -37,4 +40,16 @@ public class EnemyAutocomplete(IEncounterService encounterService) : IAutocomple
                 $"{e.Name} · {EnemyConditions.Describe(e.Condition)}", e.Name))
             .ToList();
     }
+}
+
+/// <summary>
+/// The enemies in the current fight that are still standing, for players picking a target.
+/// </summary>
+public class LivingEnemyAutocomplete(IEncounterService encounterService) : EnemyAutocomplete(encounterService)
+{
+    public new const string ID = "living-enemy";
+
+    protected override bool IncludeDead => false;
+
+    public override string Identity => ID;
 }

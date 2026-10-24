@@ -100,6 +100,31 @@
 
 .swatch.on { outline: 2px solid var(--text); outline-offset: 1px; }
 
+/* Thickness: a dot as wide as the line, over a slider that runs down the rail */
+.width-slider { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 4px 0; }
+.width-dot {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+}
+.width-dot::after {
+    content: "";
+    width: min(var(--dot), 24px);
+    height: min(var(--dot), 24px);
+    border-radius: 50%;
+    background: var(--text);
+}
+.width-slider input {
+    writing-mode: vertical-lr;
+    direction: rtl;                                        /* thicker at the top */
+    width: 20px;
+    height: 90px;
+    margin: 0;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
 /* A palette button with a strip under the icon: a rainbow until you've picked something, then that color */
 .color-picker { position: relative; }
 
@@ -247,6 +272,8 @@
     .board-rail { flex-direction: row; flex-wrap: wrap; justify-content: center; padding: .4rem; border-right: 0; border-bottom: 1px solid var(--border); }
     .board-rail hr { width: auto; height: 20px; margin: 0 .2rem; border-top: 0; border-left: 1px solid var(--border); }
     .swatches { grid-template-columns: repeat(7, 18px); }
+    .width-slider { flex-direction: row; padding: 0 4px; }
+    .width-slider input { writing-mode: horizontal-tb; direction: ltr; width: 90px; height: 20px; }
     .board-zoom { flex-direction: row; margin-top: 0; }
     /* Below the button when the tools are a row */
     .shape-picker { top: calc(100% + 8px); left: 0; }

@@ -69,6 +69,11 @@
                 <Icon Name="palette" />
                 <input type="color" value="#ffffff" data-custom-color aria-label="Pick any color" />
             </label>
+            @* How thick the pen and shapes draw, in board units; the dot shows it at that size *@
+            <label class="width-slider" title="Thickness">
+                <span class="width-dot" data-width-dot style="--dot: 4px"></span>
+                <input type="range" min="1" max="24" step="1" value="4" data-width aria-label="Thickness" />
+            </label>
             <hr />
 
             <button type="button" class="tool" data-undo title="Undo your last change (Ctrl+Z)" aria-label="Undo"><Icon Name="undo" /></button>
