@@ -51,22 +51,17 @@ public class CharacterCreationDialogue
         _trackWeight = configuration.GetValue("TrackWeight", false);
     }
 
-    /// <param name="userId">The player filling it in.</param>
-    /// <param name="characterId">The new character's ID, if it isn't the player's own character.</param>
-    /// <param name="name">The character's name, if they already have one, so the player isn't asked for it first.</param>
     /// <returns>The finished (unsaved) character, or null if the player cancelled or stopped responding.</returns>
-    public async Task<Character?> RunAsync(Snowflake userId, CancellationToken ct = default, Snowflake? characterId = null, string? name = null)
+    public async Task<Character?> RunAsync(Snowflake userId, CancellationToken ct = default)
     {
         var getDM = await _userAPI.CreateDMAsync(userId, ct);
         if (!getDM.IsSuccess)
             return null;
 
         var session = new Session(this, getDM.Entity.ID, userId, ct);
-        var draft = new CharacterDraft { TrackWeight = _trackWeight, Name = name ?? string.Empty };
+        var draft = new CharacterDraft { TrackWeight = _trackWeight };
 
-        Section[] firstPass = name is null
-            ? [Section.Name, Section.Race, Section.Class, Section.Stats, Section.Alignment]
-            : [Section.Race, Section.Class, Section.Stats, Section.Alignment];
+        Section[] firstPass = [Section.Name, Section.Race, Section.Class, Section.Stats, Section.Alignment];
         foreach (var section in firstPass)
         {
             if (!await session.AskAsync(section, draft))
@@ -75,7 +70,7 @@ public class CharacterCreationDialogue
 
         while (true)
         {
-            var preview = draft.Build(characterId ?? userId);
+            var preview = draft.Build(userId);
             var review = await session.RunAsync(new ReviewStep(_feedbackService, preview, EditOptions.Select(o => o.Label).ToList()));
             if (review.IsCancelled)
                 return null;

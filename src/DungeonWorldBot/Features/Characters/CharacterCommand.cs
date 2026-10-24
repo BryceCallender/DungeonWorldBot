@@ -7,7 +7,6 @@ using DungeonWorldBot.Features.Combat;
 using DungeonWorldBot.Features.GameMaster;
 using DungeonWorldBot.Features.Gear;
 using DungeonWorldBot.Features.Leveling;
-using DungeonWorldBot.Features.Npcs;
 using DungeonWorldBot.Features.Resources;
 using DungeonWorldBot.Features.Rolls;
 using DungeonWorldBot.Features.Subclasses;
@@ -21,7 +20,6 @@ using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Feedback.Messages;
 using Remora.Discord.Commands.Feedback.Services;
-using Remora.Rest.Core;
 using Remora.Results;
 
 namespace DungeonWorldBot.Features.Characters;
@@ -33,7 +31,6 @@ public class CharacterCommand : CharacterCommandBase
     private readonly IDiceRoller _diceRoller;
     private readonly IResourceService _resourceService;
     private readonly IDamageService _damageService;
-    private readonly INpcService _npcService;
 
     public CharacterCommand(
         ICommandContext context,
@@ -45,11 +42,9 @@ public class CharacterCommand : CharacterCommandBase
         IGameMasterService gameMaster,
         ILevelingService leveling,
         IGameSettingsService settings,
-        IDamageService damageService,
-        INpcService npcService)
+        IDamageService damageService)
         : base(context, feedbackService, characterService, gameMaster, leveling, settings)
     {
-        _npcService = npcService;
         _creationDialogue = creationDialogue;
         _diceRoller = diceRoller;
         _resourceService = resourceService;
@@ -57,26 +52,12 @@ public class CharacterCommand : CharacterCommandBase
     }
 
     [Command("create")]
-    [Description("Create your character for the campaign, or a full sheet for an NPC who follows you")]
-    public async Task<IResult> CreateCharacterAsync(
-        [Description("An NPC who follows you, to play like a character alongside your own. The DM picks who they follow")]
-        [AutocompleteProvider(NpcAutocomplete.ID)]
-        string? npc = null)
+    [Description("Create your character for the campaign")]
+    public async Task<IResult> CreateCharacterAsync()
     {
         var userId = GetUserId();
 
-        Npc? handedOver = null;
-        if (!string.IsNullOrWhiteSpace(npc))
-        {
-            handedOver = await _npcService.FindAsync(npc);
-            if (handedOver is null)
-                return await ReplyWithErrorAsync(NpcCommand.NotFound(npc));
-            if (handedOver.FollowsID != userId)
-                return await ReplyWithErrorAsync($"{handedOver.Name} doesn't follow you. The DM can hand them to you with /dm npc edit follows.");
-            if ((await _characterService.GetCharacterNamesAsync()).Any(c => c.Name.Equals(handedOver.Name, StringComparison.OrdinalIgnoreCase)))
-                return await ReplyWithErrorAsync($"A character is already called {handedOver.Name}.");
-        }
-        else if (await _characterService.GetCharacterAsync(userId) is not null)
+        if (await _characterService.GetCharacterFromUserAsync(userId) is not null)
         {
             return await ReplyWithErrorAsync("You already have a character. Check your character sheet using /character profile");
         }
@@ -84,27 +65,14 @@ public class CharacterCommand : CharacterCommandBase
         await _feedbackService.SendContextualNeutralAsync("Check your DMs to create your character!", ct: CancellationToken);
         await _feedbackService.SendPrivateMessageAsync(userId, new FeedbackMessage("No character exists, starting character creation.", Color.Green), ct: CancellationToken);
 
-        // Someone else's character needs an ID of their own; a new snowflake can't be anyone's Discord ID
-        var character = handedOver is null
-            ? await _creationDialogue.RunAsync(userId, CancellationToken)
-            : await _creationDialogue.RunAsync(userId, CancellationToken, Snowflake.CreateTimestampSnowflake(), handedOver.Name);
+        var character = await _creationDialogue.RunAsync(userId, CancellationToken);
         if (character is null)
         {
             await _feedbackService.SendPrivateMessageAsync(userId, new FeedbackMessage("Character creation was cancelled.", Color.Orange), ct: CancellationToken);
             return Result.FromSuccess();
         }
 
-        if (handedOver is not null)
-        {
-            character.ControllerID = userId;
-            character.Notes = handedOver.Notes is null ? null : [new Note { Text = handedOver.Notes, CreatedAt = DateTime.UtcNow }];
-        }
-
         await _characterService.AddCharacterAsync(character);
-
-        // They're a character now, so they'd be in the party twice
-        if (handedOver is not null)
-            await _npcService.RemoveAsync(handedOver);
 
         await _feedbackService.SendPrivateEmbedAsync(userId, new Embed
         {
@@ -118,44 +86,11 @@ public class CharacterCommand : CharacterCommandBase
         await _feedbackService.SendPrivateEmbedAsync(userId, new Embed
         {
             Title = "Character Creation",
-            Description = handedOver is null
-                ? "Your Character has been successfully saved. Try typing /character profile to see your character sheet."
-                : $"{character.Name} has been saved. Play as them with /character play {character.Name}, and go back to your own with /character play.",
+            Description = "Your Character has been successfully saved. Try typing /character profile to see your character sheet.",
             Colour = Color.Green
         }, ct: CancellationToken);
 
         return Result.FromSuccess();
-    }
-
-    [Command("play")]
-    [Description("Switch to a character you run alongside your own, or back to your own")]
-    public async Task<IResult> PlayAsync(
-        [Description("The character to play as. Leave it out to go back to your own")]
-        [AutocompleteProvider(ControlledCharacterAutocomplete.ID)]
-        string? name = null)
-    {
-        var userId = GetUserId();
-        var controlled = await _characterService.GetControlledCharacterNamesAsync(userId);
-
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            await _characterService.PlayAsAsync(userId, null);
-            var own = await _characterService.GetCharacterAsync(userId);
-            return await ReplyAsync("Back to Your Character", own is null
-                ? "You're not playing anyone else now."
-                : $"You're playing {own.Name} again.");
-        }
-
-        var chosen = controlled.FirstOrDefault(c => c.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase));
-        if (chosen is null)
-        {
-            return await ReplyWithErrorAsync(controlled.Count == 0
-                ? "You don't run anyone besides your own character. The DM can hand you an NPC with /dm npc edit follows, then make their sheet with /character create npc."
-                : $"You don't run anyone called {name}. Try one of: {string.Join(", ", controlled.Select(c => c.Name))}.");
-        }
-
-        await _characterService.PlayAsAsync(userId, chosen.Name);
-        return await ReplyAsync($"Playing as {chosen.Name}", $"Your commands now act on {chosen.Name} ({chosen.Class}). Go back to your own character with /character play.");
     }
 
     [Command("profile")]
