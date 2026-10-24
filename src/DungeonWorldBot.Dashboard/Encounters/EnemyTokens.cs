@@ -5,8 +5,8 @@ using Microsoft.AspNetCore.SignalR;
 namespace DungeonWorldBot.Dashboard.Encounters;
 
 /// <summary>
-/// Tokens for enemies added to a fight from its scene, put on the board in open spots near the middle and sent to
-/// everyone looking at it.
+/// Tokens for enemies added to a fight from its scene, and for the party when it starts, put on the board in open spots
+/// near the middle and sent to everyone looking at it.
 /// </summary>
 /// <remarks>
 /// Built the way the board builds a token: a group holding a colored circle, named for who it is. With a picture the
@@ -18,6 +18,10 @@ public static class EnemyTokens
     // The same as the board's: TOKEN_RADIUS in canvas.ts, and the red from its swatches
     private const double Radius = 36;
     private const string Colour = "#D85A30";
+
+    // The board's blue and green, so the party and their NPCs stand apart from the enemies
+    private const string PartyColour = "#378ADD";
+    private const string NpcColour = "#1D9E75";
 
     // A token and a little room around it
     private const double Spacing = Radius * 2 + 12;
@@ -37,7 +41,36 @@ public static class EnemyTokens
         IReadOnlyList<string> names,
         CanvasStore store,
         IHubContext<CanvasHub, ICanvasClient> hub,
-        string? pictureUrl = null)
+        string? pictureUrl = null) =>
+        await PlaceAsync(canvasID, names, Colour, pictureUrl, store, hub);
+
+    /// <summary>
+    /// A token for each character and NPC joining the fight, leaving out any already on the board from an earlier one.
+    /// </summary>
+    public static async Task PlacePartyAsync(
+        int canvasID,
+        IReadOnlyList<string> characters,
+        IReadOnlyList<string> npcs,
+        CanvasStore store,
+        IHubContext<CanvasHub, ICanvasClient> hub)
+    {
+        var onBoard = (await store.ItemsAsync(canvasID))
+            .Where(i => i.Type == CanvasItemType.Token)
+            .Select(i => NameOf(i.Json))
+            .OfType<string>()
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+        await PlaceAsync(canvasID, characters.Where(n => !onBoard.Contains(n)).ToList(), PartyColour, null, store, hub);
+        await PlaceAsync(canvasID, npcs.Where(n => !onBoard.Contains(n)).ToList(), NpcColour, null, store, hub);
+    }
+
+    private static async Task PlaceAsync(
+        int canvasID,
+        IReadOnlyList<string> names,
+        string colour,
+        string? pictureUrl,
+        CanvasStore store,
+        IHubContext<CanvasHub, ICanvasClient> hub)
     {
         if (names.Count == 0)
             return;
@@ -63,8 +96,8 @@ public static class EnemyTokens
                     {
                         // The board puts the picture from src into the circle, as it does for its image tokens
                         attrs = pictureUrl is null
-                            ? (object)new { radius = Radius, fill = Colour, stroke = "#ffffff", strokeWidth = 2 }
-                            : new { radius = Radius, fill = Colour, stroke = "#ffffff", strokeWidth = 2, src = pictureUrl },
+                            ? (object)new { radius = Radius, fill = colour, stroke = "#ffffff", strokeWidth = 2 }
+                            : new { radius = Radius, fill = colour, stroke = "#ffffff", strokeWidth = 2, src = pictureUrl },
                         className = "Circle",
                     },
                 },
@@ -107,5 +140,16 @@ public static class EnemyTokens
         var x = attrs.TryGetProperty("x", out var xValue) && xValue.TryGetDouble(out var px) ? px : 0;
         var y = attrs.TryGetProperty("y", out var yValue) && yValue.TryGetDouble(out var py) ? py : 0;
         return (x, y);
+    }
+
+    // Tokens are named for who they are; ones without a name have none to match
+    private static string? NameOf(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        return document.RootElement.TryGetProperty("attrs", out var attrs)
+               && attrs.TryGetProperty("name", out var name)
+               && name.ValueKind == JsonValueKind.String
+            ? name.GetString()
+            : null;
     }
 }

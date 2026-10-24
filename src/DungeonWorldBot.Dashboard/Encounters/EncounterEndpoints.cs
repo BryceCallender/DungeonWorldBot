@@ -1,8 +1,10 @@
 using DungeonWorldBot.Dashboard.Auth;
 using DungeonWorldBot.Dashboard.Canvases;
 using DungeonWorldBot.Dashboard.Components;
+using DungeonWorldBot.Dashboard.Party;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Features.Encounters;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -23,15 +25,45 @@ public static class EncounterEndpoints
         group.MapGet("/panel", (string id) =>
             new RazorComponentResult<EncounterPanel>(new { SceneID = id }));
 
-        group.MapPost("/start", async (string id, [FromForm] string? name, HttpRequest request, CanvasStore store, Viewer viewer, EncounterDesk desk) =>
+        group.MapPost("/start", async (
+            string id,
+            IFormCollection form,
+            HttpRequest request,
+            CanvasStore store,
+            Viewer viewer,
+            EncounterDesk desk,
+            ICharacterService characters,
+            PartyReader party,
+            IHubContext<CanvasHub, ICanvasClient> hub) =>
         {
             if (!CanRun(viewer))
                 return Results.Forbid();
             if (await EncounterSceneAsync(id, store) is not { } scene)
                 return Results.NotFound();
 
+            // Each saved monster's count follows its name in the form
+            var monsters = form["monster"].Zip(form["count"], (monster, count) => new MonsterCount(monster ?? "", Number(count) ?? 0)).ToList();
+
+            // Only real names are taken, so the form can't put anyone else in the fight
+            var picked = form["party"].ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var pickedNpcs = form["npc"].ToHashSet(StringComparer.OrdinalIgnoreCase);
+            var fighters = (await characters.GetCharactersAsync()).Where(c => picked.Contains(c.Name)).OrderBy(c => c.Name).ToList();
+            var npcs = (await party.GetNpcsAsync()).Where(n => pickedNpcs.Contains(n.Name)).ToList();
+
             var url = $"{request.Scheme}://{request.Host}{request.PathBase}/scene/{id}";
-            return Back(id, "start-fight", await desk.StartAsync(name, new SceneLink(id, scene.Name, url)));
+            var started = await desk.StartAsync(
+                form["name"],
+                new SceneLink(id, scene.Name, url),
+                new EncounterRoster(fighters.Select(c => c.ID).ToList(), npcs.Select(n => n.ID).ToList()),
+                monsters);
+            if (started.Error is not null)
+                return Back(id, "start-fight", started.Error);
+
+            // Everyone in it gets a token on the board, for everyone looking at it
+            await EnemyTokens.PlacePartyAsync(scene.ID, fighters.Select(c => c.Name).ToList(), npcs.Select(n => n.Name).ToList(), store, hub);
+            await EnemyTokens.PlaceAsync(scene.ID, started.Names, store, hub);
+
+            return Back(id, "start-fight", null);
         });
 
         group.MapPost("/enemies", async (

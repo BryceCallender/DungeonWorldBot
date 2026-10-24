@@ -1,5 +1,6 @@
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Rules;
+using Remora.Rest.Core;
 
 namespace DungeonWorldBot.Features.Encounters;
 
@@ -9,6 +10,13 @@ namespace DungeonWorldBot.Features.Encounters;
 /// <param name="ID">Its short ID, as in its address.</param>
 /// <param name="Url">Its full address, for links in Discord.</param>
 public record SceneLink(string ID, string Name, string? Url);
+
+/// <summary>
+/// Who the DM picked to be in a fight.
+/// </summary>
+/// <param name="Characters">The players' characters, by their players' Discord IDs.</param>
+/// <param name="Npcs">The NPCs, by ID.</param>
+public record EncounterRoster(IReadOnlyList<Snowflake> Characters, IReadOnlyList<int> Npcs);
 
 public interface IEncounterService
 {
@@ -23,8 +31,9 @@ public interface IEncounterService
     /// <param name="scene">The dashboard scene it's on, if any.</param>
     /// <param name="announced">Whether game chat has been told already, as by a command's reply. Otherwise the bot
     /// announces it when it notices.</param>
+    /// <param name="roster">Who's in it. Everyone, if not given.</param>
     /// <returns>The new fight, or null if one is already going.</returns>
-    Task<Encounter?> StartAsync(string name, SceneLink? scene = null, bool announced = false);
+    Task<Encounter?> StartAsync(string name, SceneLink? scene = null, bool announced = false, EncounterRoster? roster = null);
 
     /// <summary>
     /// Ends the fight going on now.

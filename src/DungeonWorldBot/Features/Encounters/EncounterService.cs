@@ -19,9 +19,10 @@ public class EncounterService : IEncounterService
     public Task<Encounter?> GetActiveAsync() =>
         _context.Encounters
             .Include(e => e.Enemies)
+            .Include(e => e.Participants)
             .FirstOrDefaultAsync(e => e.EndedAt == null);
 
-    public async Task<Encounter?> StartAsync(string name, SceneLink? scene = null, bool announced = false)
+    public async Task<Encounter?> StartAsync(string name, SceneLink? scene = null, bool announced = false, EncounterRoster? roster = null)
     {
         if (await GetActiveAsync() is not null)
             return null;
@@ -35,6 +36,11 @@ public class EncounterService : IEncounterService
             SceneName = scene?.Name,
             SceneUrl = scene?.Url,
             AnnouncedAt = announced ? now : null,
+            Participants = roster is null
+                ? []
+                : roster.Characters.Select(id => new EncounterParticipant { CharacterID = id })
+                    .Concat(roster.Npcs.Select(id => new EncounterParticipant { NpcID = id }))
+                    .ToList(),
         };
         _context.Encounters.Add(encounter);
         await _context.SaveChangesAsync();

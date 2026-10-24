@@ -109,6 +109,44 @@ public sealed class SpotlightTests : IDisposable
     }
 
     [Fact]
+    public async Task PickedFight_ShowsOnlyWhoWasPicked_AndAnyoneWhoJoinedIn()
+    {
+        await using var context = _db.CreateContext();
+        var encounters = new EncounterService(context);
+        var npcs = new NpcService(context);
+        var grub = new Npc { Name = "Grub", CurrentHP = 6, MaxHP = 6 };
+        var pip = new Npc { Name = "Pip", CurrentHP = 4, MaxHP = 4 };
+        await npcs.AddAsync(grub);
+        await npcs.AddAsync(pip);
+        var aria = Hero(1, "Aria");
+        var bram = Hero(2, "Bram");
+        var cass = Hero(3, "Cass");
+
+        var encounter = (await encounters.StartAsync("Ambush", roster: new EncounterRoster([aria.ID], [grub.ID])))!;
+        // Cass wasn't picked, but rolled in the fight anyway
+        await encounters.LogAsync(new EncounterAction { Actor = cass.Name, CharacterID = cass.ID, Action = "Volley" });
+
+        var spotlight = await Spotlight(context, encounters).GetAsync((await encounters.GetActiveAsync())!, [aria, bram, cass]);
+
+        Assert.Equal(["Aria", "Cass"], spotlight.Party.Select(p => p.Name).Order());
+        Assert.Equal(["Grub"], spotlight.Allies.Select(a => a.Name));
+    }
+
+    [Fact]
+    public async Task UnpickedFight_ShowsEveryone()
+    {
+        await using var context = _db.CreateContext();
+        var encounters = new EncounterService(context);
+        await new NpcService(context).AddAsync(new Npc { Name = "Grub", CurrentHP = 6, MaxHP = 6 });
+        var encounter = (await encounters.StartAsync("Ambush"))!;
+
+        var spotlight = await Spotlight(context, encounters).GetAsync(encounter, [Hero(1, "Aria"), Hero(2, "Bram")]);
+
+        Assert.Equal(["Aria", "Bram"], spotlight.Party.Select(p => p.Name).Order());
+        Assert.Equal(["Grub"], spotlight.Allies.Select(a => a.Name));
+    }
+
+    [Fact]
     public async Task Logging_DoesNothingBetweenFights()
     {
         await using var context = _db.CreateContext();

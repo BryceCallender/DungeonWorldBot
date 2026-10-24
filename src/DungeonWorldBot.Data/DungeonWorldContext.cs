@@ -22,6 +22,8 @@ public class DungeonWorldContext : DbContext
 
     public DbSet<EncounterAction> EncounterActions => Set<EncounterAction>();
 
+    public DbSet<EncounterParticipant> EncounterParticipants => Set<EncounterParticipant>();
+
     public DbSet<MonsterTemplate> MonsterTemplates => Set<MonsterTemplate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -44,6 +46,19 @@ public class DungeonWorldContext : DbContext
             encounter.HasMany(e => e.Actions)
                 .WithOne(a => a.Encounter)
                 .HasForeignKey(a => a.EncounterID)
+                .OnDelete(DeleteBehavior.Cascade);
+            encounter.HasMany(e => e.Participants)
+                .WithOne(p => p.Encounter)
+                .HasForeignKey(p => p.EncounterID)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<EncounterParticipant>(participant =>
+        {
+            // An NPC who leaves the party leaves the fight too
+            participant.HasOne<Npc>()
+                .WithMany()
+                .HasForeignKey(p => p.NpcID)
                 .OnDelete(DeleteBehavior.Cascade);
         });
 

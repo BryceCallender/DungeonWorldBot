@@ -320,4 +320,10 @@
 .from-options .kind-option { flex: 1; }
 .kind-option:has(input:disabled) { opacity: .5; cursor: default; }
 .field.count { max-width: 7rem; }
+
+/* Starting a fight: who's in it, and how many of each saved monster */
+.pick-list { display: flex; flex-direction: column; gap: .4rem; margin: 0; padding: 0; border: 0; }
+.pick-list legend { margin-bottom: .35rem; padding: 0; }
+.pick-count { display: flex; align-items: center; justify-content: space-between; gap: .75rem; font-size: .9rem; }
+.pick-count input { width: 4.5rem; flex: none; }
 .modal p.small { margin: 0; }

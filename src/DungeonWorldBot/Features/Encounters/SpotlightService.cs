@@ -61,11 +61,14 @@ public class SpotlightService : ISpotlightService
                     .ToList();
                 return new Actor(c.Name, c.ID, actions);
             })
+            // Whoever the DM picked, and anyone who joined in anyway
+            .Where(a => InFight(encounter, a))
             .ToList();
 
         var allies = (await _npcService.GetAllAsync())
             .Where(n => n.CurrentHP > 0)
-            .Select(n => new Actor(n.Name, null, log.Where(a => a.NpcID == n.ID).Select(a => FromLog(a, a.At, missed: false)).ToList()))
+            .Select(n => new Actor(n.Name, null, log.Where(a => a.NpcID == n.ID).Select(a => FromLog(a, a.At, missed: false)).ToList(), n.ID))
+            .Where(a => InFight(encounter, a))
             .ToList();
 
         var enemies = encounter.Enemies
@@ -78,9 +81,18 @@ public class SpotlightService : ISpotlightService
     }
 
     /// <summary>
+    /// Whether they're in the fight: picked by the DM (everyone is, in one the DM didn't pick for), or joined in anyway.
+    /// </summary>
+    private static bool InFight(Encounter encounter, Actor actor) =>
+        encounter.Participants.Count == 0
+        || actor.Actions.Count > 0
+        || encounter.Participants.Any(p =>
+            (actor.CharacterID is not null && p.CharacterID == actor.CharacterID) || (actor.NpcID is not null && p.NpcID == actor.NpcID));
+
+    /// <summary>
     /// Someone in the fight with everything they've done in it, oldest first.
     /// </summary>
-    private record Actor(string Name, Snowflake? CharacterID, IReadOnlyList<SpotlightAction> Actions)
+    private record Actor(string Name, Snowflake? CharacterID, IReadOnlyList<SpotlightAction> Actions, int? NpcID = null)
     {
         public DateTimeOffset? LastAt => Actions is [.., var last] ? last.At : null;
     }

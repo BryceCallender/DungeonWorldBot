@@ -17,6 +17,10 @@ public record Added(string? Error, IReadOnlyList<string> Names)
     public static Added Failed(string error) => new(error, []);
 }
 
+/// <param name="Name">A saved monster's name.</param>
+/// <param name="Count">How many of it.</param>
+public record MonsterCount(string Name, int Count);
+
 public class EncounterDesk
 {
     public const int MaxNameLength = 80;
@@ -31,17 +35,37 @@ public class EncounterDesk
         _options = options;
     }
 
-    /// <returns>Why it couldn't, or null once it has.</returns>
-    public async Task<string?> StartAsync(string? name, SceneLink scene)
+    /// <summary>
+    /// Starts a fight on the scene with who the DM picked, and copies of saved monsters already in it.
+    /// </summary>
+    /// <param name="monsters">How many of each saved monster to start with, by name.</param>
+    public async Task<Added> StartAsync(string? name, SceneLink scene, EncounterRoster roster, IReadOnlyList<MonsterCount> monsters)
     {
         if (Name(name) is not { } fightName)
-            return $"Give the fight a name, up to {MaxNameLength} letters.";
+            return Added.Failed($"Give the fight a name, up to {MaxNameLength} letters.");
+        if (monsters.FirstOrDefault(m => m.Count is < 0 or > MaxCount) is { } tooMany)
+            return Added.Failed($"Start with between 0 and {MaxCount} of {tooMany.Name}.");
 
         await using var context = new DungeonWorldContext(_options);
         var service = new EncounterService(context);
-        return await service.StartAsync(fightName, scene) is null
-            ? $"{(await service.GetActiveAsync())?.Name ?? "Another fight"} is still going. End it first."
-            : null;
+
+        // Every monster checked before the fight starts, so a mistake doesn't leave it half set up
+        var templates = new Dictionary<MonsterTemplate, int>();
+        foreach (var monster in monsters.Where(m => m.Count > 0))
+        {
+            if (await service.FindMonsterAsync(monster.Name) is not { } template)
+                return Added.Failed($"There's no saved monster called {monster.Name.Trim()}.");
+            templates[template] = monster.Count;
+        }
+
+        if (await service.StartAsync(fightName, scene, roster: roster) is not { } encounter)
+            return Added.Failed($"{(await service.GetActiveAsync())?.Name ?? "Another fight"} is still going. End it first.");
+
+        var spawned = new List<string>();
+        foreach (var (template, count) in templates)
+            spawned.AddRange((await service.SpawnAsync(encounter, template, count)).Select(e => e.Name));
+
+        return new Added(null, spawned);
     }
 
     /// <summary>

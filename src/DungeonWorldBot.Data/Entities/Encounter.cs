@@ -40,6 +40,11 @@ public class Encounter
     public List<Enemy> Enemies { get; set; } = new();
 
     /// <summary>
+    /// The characters and NPCs the DM picked to be in it. None means everyone, as with fights started in Discord.
+    /// </summary>
+    public List<EncounterParticipant> Participants { get; set; } = new();
+
+    /// <summary>
     /// What everyone did in the fight, oldest first by ID.
     /// </summary>
     public List<EncounterAction> Actions { get; set; } = new();

@@ -7,7 +7,10 @@
 @inject CanvasPresence Presence
 @inject Viewer Viewer
 @inject IEncounterService Encounters
+@inject ICharacterService Characters
+@inject PartyReader PartyReader
 @using DungeonWorldBot.Dashboard.Encounters
+@using DungeonWorldBot.Features.Characters
 @using DungeonWorldBot.Features.Encounters
 
 @if (_canvas is not { } c)
@@ -122,7 +125,58 @@
                 <span class="field-label">Name</span>
                 <input class="filter" name="name" value="@c.Name" maxlength="@EncounterDesk.MaxNameLength" required autofocus />
             </label>
-            <p class="small muted">The bot announces it in game chat with a link to this scene. Add enemies once it's started.</p>
+
+            @* Everyone ticked gets a token on the board; anyone already on it keeps theirs *@
+            @if (_characters.Count > 0)
+            {
+                <fieldset class="pick-list">
+                    <legend class="field-label">Party</legend>
+                    @foreach (var character in _characters)
+                    {
+                        <label class="check">
+                            <input type="checkbox" name="party" value="@character.Name" checked="@(character.Status != Status.Dead)" />
+                            @character.Name
+                            @if (character.Status == Status.Dead)
+                            {
+                                <span class="small muted">dead</span>
+                            }
+                        </label>
+                    }
+                </fieldset>
+            }
+            @if (_npcs.Count > 0)
+            {
+                <fieldset class="pick-list">
+                    <legend class="field-label">NPCs</legend>
+                    @foreach (var npc in _npcs)
+                    {
+                        <label class="check">
+                            <input type="checkbox" name="npc" value="@npc.Name" checked="@(npc.CurrentHP > 0)" />
+                            @npc.Name
+                            @if (npc.Role is not null)
+                            {
+                                <span class="small muted">@npc.Role</span>
+                            }
+                        </label>
+                    }
+                </fieldset>
+            }
+            <fieldset class="pick-list">
+                <legend class="field-label">Enemies</legend>
+                @foreach (var monster in _monsters)
+                {
+                    <label class="pick-count">
+                        <span>@monster.Name <span class="small muted">@monster.MaxHP HP</span></span>
+                        <input type="hidden" name="monster" value="@monster.Name" />
+                        <input class="filter" type="number" name="count" value="0" min="0" max="@EncounterDesk.MaxCount" aria-label="How many @monster.Name" />
+                    </label>
+                }
+                @if (_monsters.Count == 0)
+                {
+                    <p class="small muted">No saved monsters yet.</p>
+                }
+            </fieldset>
+            <p class="small muted">The bot announces it in game chat with a link to this scene. You can write up new monsters once it's started.</p>
             @ErrorFor("start-fight")
             <div class="modal-actions">
                 <button type="button" class="tool" data-close-dialog>Cancel</button>
@@ -259,7 +313,9 @@
 
     private bool _runsFights;
     private IReadOnlyList<MonsterTemplate> _monsters = [];
-    
+    private IReadOnlyList<Character> _characters = [];
+    private IReadOnlyList<Npc> _npcs = [];
+
     private Canvas? _canvas;
     private bool _hasThumbnail;
 
@@ -281,6 +337,8 @@
         _runsFights = _canvas is { Kind: CanvasKind.Encounter, ArchivedAt: null } && EncounterEndpoints.CanRun(Viewer);
         if (_runsFights)
         {
+            _characters = (await Characters.GetCharactersAsync()).OrderBy(ch => ch.Name).ToList();
+            _npcs = await PartyReader.GetNpcsAsync();
             try
             {
                 _monsters = await Encounters.GetMonstersAsync();
