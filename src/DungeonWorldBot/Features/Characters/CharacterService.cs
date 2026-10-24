@@ -52,6 +52,22 @@ public class CharacterService : ICharacterService
             .ToListAsync();
     }
 
+    public Task<string?> GetCharacterNameAsync(Snowflake userId)
+    {
+        return _dungeonWorldContext.Characters
+            .Where(c => c.ID == userId)
+            .Select(c => c.Name)
+            .FirstOrDefaultAsync();
+    }
+
+    public Task<List<Character>> GetCharacterAbilitiesAsync()
+    {
+        return _dungeonWorldContext.Characters
+            .AsNoTracking()
+            .Include(c => c.Abilities)
+            .ToListAsync();
+    }
+
     public async Task AddCharacterAsync(Character character)
     {
         _dungeonWorldContext.Characters.Add(character);

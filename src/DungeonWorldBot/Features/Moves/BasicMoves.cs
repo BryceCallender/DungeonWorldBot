@@ -103,4 +103,12 @@ public static class BasicMoves
         StrongHit: "You've cheated death—you're no longer dying but you're still in bad shape.",
         WeakHit: "Death will offer you a bargain. Take it and stabilize or refuse and pass beyond the Black Gates into whatever fate awaits you.",
         Miss: "Your time has come. You pass beyond the Black Gates of Death's Kingdom.");
+
+    /// <summary>
+    /// Every basic move, in the order the rules list them. Static fields set up in order, so this comes after them.
+    /// </summary>
+    public static readonly IReadOnlyList<MoveDefinition> All =
+    [
+        HackAndSlash, Volley, DefyDanger, Defend, SpoutLore, DiscernRealities, Parley, AidOrInterfere, LastBreath,
+    ];
 }

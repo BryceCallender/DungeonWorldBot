@@ -14,6 +14,17 @@ public interface ICharacterService
     /// </summary>
     Task<List<CharacterName>> GetCharacterNamesAsync();
 
+    /// <summary>
+    /// The name of the user's character, without loading the rest of the sheet.
+    /// </summary>
+    Task<string?> GetCharacterNameAsync(Snowflake userId);
+
+    /// <summary>
+    /// Every character with only their abilities loaded, which is all subclass roll bonuses read. Not tracked, so
+    /// changes to them aren't saved.
+    /// </summary>
+    Task<List<Character>> GetCharacterAbilitiesAsync();
+
     Task AddCharacterAsync(Character character);
 
     Task HealAsync(Character character, int amount);

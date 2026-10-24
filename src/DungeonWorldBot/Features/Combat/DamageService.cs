@@ -48,7 +48,7 @@ public class DamageService : IDamageService
         _gearService.ApplyToDamageAsync(character, move, dice);
 
     public async Task<IReadOnlyList<RollBonus>> BonusesAsync(Character character, RollKind kind, StatType? stat = null) =>
-        SubclassLibrary.Bonuses(character, await _characterService.GetCharactersAsync(), kind, stat);
+        SubclassLibrary.Bonuses(character, await _characterService.GetCharacterAbilitiesAsync(), kind, stat);
 
     public async Task<IReadOnlyList<RollBonus>> DamageBonusesAsync(Character character, int extra = 0)
     {

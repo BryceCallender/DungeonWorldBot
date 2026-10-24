@@ -108,7 +108,7 @@ public class MoveCommand : DungeonWorldCommandBase
             return await ReplyWithErrorAsync("You must have a character to make moves. Try using /character create");
 
         var bonds = character.Bonds?.Count(b => b.TargetID == user.ID) ?? 0;
-        var ally = (await _characterService.GetCharacterFromUserAsync(user.ID))?.Name ?? user.Username;
+        var ally = await _characterService.GetCharacterNameAsync(user.ID) ?? user.Username;
         return await ReplyWithMoveAsync(character, BasicMoves.AidOrInterfere, $"Bond with {user.Username}", bonds, bonus, ally: ally);
     }
 

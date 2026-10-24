@@ -1,4 +1,5 @@
 @page "/"
+@using DungeonWorldBot.Rules
 @inject PartyReader PartyReader
 @inject DashboardSettings Settings
 @inject Viewer Viewer
@@ -94,9 +95,14 @@ else
                 <StatGrid Stats="c.Stats" />
 
                 @* What only some characters have *@
-                @if (c.Subclass?.Status is not null || ActiveShapes(c).Count > 0 || c.Picks.Count > 0 || c.Resources.Count > 0 || c.StatPoints > 0)
+                @if (Tactic(c) is not null || c.Subclass?.Status is not null || ActiveShapes(c).Count > 0 || c.Picks.Count > 0 || c.Resources.Count > 0 || c.StatPoints > 0)
                 {
                     <div class="member-extra">
+                        @if (Tactic(c) is { } tactic)
+                        {
+                            <div class="small">@ToHtml(tactic)</div>
+                        }
+
                         @if (c.Subclass?.Status is { } subclassStatus)
                         {
                             <div class="small">@ToHtml(subclassStatus)</div>
@@ -144,25 +150,12 @@ else
     </div>
 }
 
-@if (_npcs.Count > 0)
-{
-    <h2 class="section-title">NPCs</h2>
-    <div class="party">
-        @foreach (var npc in _npcs)
-        {
-            @NpcCard(npc)
-        }
-    </div>
-}
-
 @code {
     private IReadOnlyList<CharacterView> _party = [];
-    private IReadOnlyList<Npc> _npcs = [];
 
     protected override async Task OnInitializedAsync()
     {
         _party = await PartyReader.GetPartyAsync();
-        _npcs = await PartyReader.GetNpcsAsync();
         _alerts = Alerts().Where(a => a.Who.Count > 0).ToList();
     }
 
@@ -182,8 +175,6 @@ else
             _party.Where(c => c.Character.Status == Status.Dead).Select(c => new Who(c.Name, c.Url)).ToList());
         yield return new("critical", "Critical", "At 25% HP or less",
             critical.Select(Hp).ToList());
-        yield return new("critical", "NPCs down", "At 0 HP",
-            _npcs.Where(n => n.CurrentHP == 0).Select(n => new Who(n.Name)).ToList());
         yield return new("low", "Debilitated", "Rolling at −1 with these stats",
             _party.Where(c => c.Debilitated.Count > 0)
                 .Select(c => new Who($"{c.Name} · {string.Join(", ", c.Debilitated.Select(s => s.Debility))}", c.Url)).ToList());
@@ -197,69 +188,9 @@ else
 
     private static Who Hp(CharacterView c) => new($"{c.Name} {c.CurrentHP}/{c.MaxHP}", c.Url);
 
-    private RenderFragment NpcCard(Npc npc) =>
-    @<div class="card member npc">
-        <div class="member-head">
-            <div>
-                <h2>@npc.Name</h2>
-                <div class="muted class-line">
-                    <span>@(npc.Role ?? "NPC")</span>
-                    @if (Follows(npc) is { } leader)
-                    {
-                        <span class="chip accent">follows @leader</span>
-                    }
-                </div>
-            </div>
-            @if (npc.CurrentHP == 0)
-            {
-                <span class="chip warn">Down</span>
-            }
-        </div>
-
-        <HealthBar Current="npc.CurrentHP" Max="npc.MaxHP" />
-
-        <div class="armor-row">
-            <span title="Armor"><Icon Name="shield" />@npc.Armor</span>
-            @if (npc.Damage is not null)
-            {
-                <span title="Damage"><Icon Name="sword" />@npc.Damage</span>
-            }
-            <span title="Loyalty">Loyalty @Signed(npc.Loyalty)</span>
-        </div>
-
-        @* Modifiers only: NPCs don't have scores *@
-        <div class="stats">
-            @foreach (var stat in Enum.GetValues<StatType>())
-            {
-                <div class="stat">
-                    <span class="stat-name">@stat.ToString().ToUpper()</span>
-                    <span class="stat-mod">@Signed(npc.Modifier(stat))</span>
-                </div>
-            }
-        </div>
-
-        @if (npc.Skills is not null || npc.Cost is not null || npc.Notes is not null)
-        {
-            <div class="member-extra small">
-                @if (npc.Skills is not null)
-                {
-                    <div><strong>Skills</strong> @npc.Skills</div>
-                }
-                @if (npc.Cost is not null)
-                {
-                    <div><strong>Cost</strong> @npc.Cost</div>
-                }
-                @if (npc.Notes is not null)
-                {
-                    <div class="muted">@npc.Notes</div>
-                }
-            </div>
-        }
-    </div>;
-
-    // The name of the character they follow, if that player has one
-    private string? Follows(Npc npc) =>
-        npc.FollowsID is { } id ? PartyReader.Match(_party, id.Value.ToString())?.Name : null;
+    // Battlemasters only, e.g. "⚔️ **Cautious** (default): +1 to Defy Danger."
+    private static string? Tactic(CharacterView c) =>
+        TacticRules.Current(c.Character) is not null ? TacticRules.Status(c.Character) : null;
 
     private static List<string> ActiveShapes(CharacterView c) =>
         (c.Character.Transformations ?? []).Where(f => f.IsActive).Select(f => f.Name).ToList();
