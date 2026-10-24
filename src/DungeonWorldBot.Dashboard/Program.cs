@@ -3,6 +3,7 @@ using DungeonWorldBot.Dashboard.Canvases;
 using DungeonWorldBot.Dashboard.Components;
 using DungeonWorldBot.Dashboard.Encounters;
 using DungeonWorldBot.Dashboard.Live;
+using DungeonWorldBot.Dashboard.Npcs;
 using DungeonWorldBot.Dashboard.Party;
 using DungeonWorldBot.Dashboard.Rolls;
 using DungeonWorldBot.Dashboard.Shared;
@@ -27,9 +28,9 @@ builder.Configuration.AddUserSecrets<Program>(optional: true);
 // Find the build's compressed assets when run with `dotnet run` outside Development (as when sharing), or they're served empty
 builder.WebHost.UseStaticWebAssets();
 
-// The bot's database, opened read-only so the dashboard can't change the game by accident. Only two things write to it:
-// CharacterJournal, for players' backstories, notes and goals, and EncounterDesk, for the DM running a fight from its
-// scene. Set DatabasePath to read another copy.
+// The bot's database, opened read-only so the dashboard can't change the game by accident. Only three things write to
+// it: CharacterJournal, for players' backstories, notes and goals, EncounterDesk, for the DM running fights and keeping
+// enemies and saved monsters, and NpcDesk, for the DM looking after the party's NPCs. Set DatabasePath to read another copy.
 var databasePath = Path.GetFullPath(
     builder.Configuration.GetValue<string?>("DatabasePath")
     ?? Path.Combine(builder.Environment.ContentRootPath, "..", "DungeonWorldBot", "SanaSolem.db"));
@@ -51,6 +52,7 @@ var writableDatabase = new DbContextOptionsBuilder<DungeonWorldContext>()
     .Options;
 builder.Services.AddSingleton(new CharacterJournal(writableDatabase));
 builder.Services.AddSingleton(new EncounterDesk(writableDatabase));
+builder.Services.AddSingleton(new NpcDesk(writableDatabase));
 
 var settings = DashboardSettings.From(builder.Configuration);
 builder.Services.AddSingleton(settings);
@@ -127,6 +129,8 @@ var canvasForms = app.MapCanvasEndpoints();
 var journal = app.MapCharacterJournalEndpoints();
 var portraits = app.MapPortraitEndpoints();
 var encounters = app.MapEncounterEndpoints();
+var enemies = app.MapEnemyEndpoints();
+var npcs = app.MapNpcEndpoints();
 
 if (signInEnabled)
 {
@@ -138,6 +142,8 @@ if (signInEnabled)
     journal.RequireAuthorization(DiscordSignIn.Policy);
     portraits.RequireAuthorization(DiscordSignIn.Policy);
     encounters.RequireAuthorization(DiscordSignIn.Policy);
+    enemies.RequireAuthorization(DiscordSignIn.Policy);
+    npcs.RequireAuthorization(DiscordSignIn.Policy);
 }
 
 app.Run();

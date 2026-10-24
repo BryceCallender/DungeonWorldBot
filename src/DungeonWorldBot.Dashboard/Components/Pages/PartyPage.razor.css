@@ -33,10 +33,6 @@
 .member-extra { display: flex; flex-direction: column; gap: .5rem; padding-top: .75rem; border-top: 1px solid var(--border); }
 .member-foot { display: flex; flex-wrap: wrap; gap: .9rem; margin-top: auto; padding-top: .5rem; border-top: 1px solid var(--border); }
 
-/* NPCs aren't links, so their cards stay put */
-.member.npc { box-shadow: inset 0 4px 0 var(--muted); }
-.member.npc:hover { border-color: var(--border); transform: none; }
-.member.npc .member-extra { gap: .35rem; }
 
 /* Callouts at the top: each one names who needs attention, striped by how urgent it is */
 .alerts {

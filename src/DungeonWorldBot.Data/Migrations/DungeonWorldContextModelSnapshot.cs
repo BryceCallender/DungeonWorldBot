@@ -46,7 +46,7 @@ namespace DungeonWorldBot.Data.Migrations
 
                     b.HasIndex("CharacterID");
 
-                    b.ToTable("Ability");
+                    b.ToTable("Ability", (string)null);
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.ArmorBonus", b =>
@@ -75,7 +75,7 @@ namespace DungeonWorldBot.Data.Migrations
 
                     b.HasIndex("CharacterID");
 
-                    b.ToTable("ArmorBonus");
+                    b.ToTable("ArmorBonus", (string)null);
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Bond", b =>
@@ -98,7 +98,7 @@ namespace DungeonWorldBot.Data.Migrations
 
                     b.HasIndex("CharacterID");
 
-                    b.ToTable("Bond");
+                    b.ToTable("Bond", (string)null);
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Character", b =>
@@ -147,7 +147,7 @@ namespace DungeonWorldBot.Data.Migrations
 
                     b.HasIndex("LocationID");
 
-                    b.ToTable("Characters");
+                    b.ToTable("Characters", (string)null);
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.CharacterResource", b =>
@@ -170,7 +170,7 @@ namespace DungeonWorldBot.Data.Migrations
 
                     b.HasIndex("CharacterID");
 
-                    b.ToTable("CharacterResource");
+                    b.ToTable("CharacterResource", (string)null);
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Class", b =>
@@ -190,7 +190,7 @@ namespace DungeonWorldBot.Data.Migrations
                     b.HasIndex("CharacterID")
                         .IsUnique();
 
-                    b.ToTable("Class");
+                    b.ToTable("Class", (string)null);
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Debility", b =>
@@ -212,7 +212,165 @@ namespace DungeonWorldBot.Data.Migrations
 
                     b.HasIndex("CharacterID");
 
-                    b.ToTable("Debility");
+                    b.ToTable("Debility", (string)null);
+                });
+
+            modelBuilder.Entity("DungeonWorldBot.Data.Entities.Encounter", b =>
+                {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset?>("AnnouncedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("EndAnnouncedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SceneID")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SceneName")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SceneUrl")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("StartedAt")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ID");
+
+                    b.ToTable("Encounters", (string)null);
+                });
+
+            modelBuilder.Entity("DungeonWorldBot.Data.Entities.EncounterAction", b =>
+                {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Action")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Actor")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("TEXT");
+
+                    b.Property<ulong?>("CharacterID")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("EncounterID")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("EnemyID")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong?>("MessageID")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("NpcID")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Result")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Roll")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Target")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ID");
+
+                    b.HasIndex("EncounterID");
+
+                    b.HasIndex("EnemyID");
+
+                    b.HasIndex("NpcID");
+
+                    b.ToTable("EncounterActions", (string)null);
+                });
+
+            modelBuilder.Entity("DungeonWorldBot.Data.Entities.EncounterParticipant", b =>
+                {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<ulong?>("CharacterID")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("EncounterID")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("NpcID")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("ID");
+
+                    b.HasIndex("EncounterID");
+
+                    b.HasIndex("NpcID");
+
+                    b.ToTable("EncounterParticipants", (string)null);
+                });
+
+            modelBuilder.Entity("DungeonWorldBot.Data.Entities.Enemy", b =>
+                {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Armor")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("CurrentHP")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Damage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("EncounterID")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Instinct")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MaxHP")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Moves")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Tags")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ID");
+
+                    b.HasIndex("EncounterID", "Name")
+                        .IsUnique();
+
+                    b.ToTable("Enemies", (string)null);
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Goal", b =>
@@ -235,7 +393,7 @@ namespace DungeonWorldBot.Data.Migrations
 
                     b.HasIndex("CharacterID");
 
-                    b.ToTable("Goal");
+                    b.ToTable("Goal", (string)null);
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Health", b =>
@@ -258,7 +416,7 @@ namespace DungeonWorldBot.Data.Migrations
                     b.HasIndex("CharacterID")
                         .IsUnique();
 
-                    b.ToTable("Health");
+                    b.ToTable("Health", (string)null);
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Inventory", b =>
@@ -281,7 +439,7 @@ namespace DungeonWorldBot.Data.Migrations
                     b.HasIndex("CharacterID")
                         .IsUnique();
 
-                    b.ToTable("Inventory");
+                    b.ToTable("Inventory", (string)null);
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Item", b =>
@@ -307,7 +465,7 @@ namespace DungeonWorldBot.Data.Migrations
 
                     b.HasIndex("InventoryID");
 
-                    b.ToTable("Item");
+                    b.ToTable("Item", (string)null);
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Location", b =>
@@ -324,7 +482,47 @@ namespace DungeonWorldBot.Data.Migrations
 
                     b.HasKey("ID");
 
-                    b.ToTable("Location");
+                    b.ToTable("Location", (string)null);
+                });
+
+            modelBuilder.Entity("DungeonWorldBot.Data.Entities.MonsterTemplate", b =>
+                {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Armor")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Damage")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Instinct")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("MaxHP")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Moves")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.Property<string>("Notes")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Tags")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("ID");
+
+                    b.HasIndex("Name")
+                        .IsUnique();
+
+                    b.ToTable("MonsterTemplates", (string)null);
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Note", b =>
@@ -347,7 +545,7 @@ namespace DungeonWorldBot.Data.Migrations
 
                     b.HasIndex("CharacterID");
 
-                    b.ToTable("Note");
+                    b.ToTable("Note", (string)null);
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Npc", b =>
@@ -414,7 +612,7 @@ namespace DungeonWorldBot.Data.Migrations
                     b.HasIndex("Name")
                         .IsUnique();
 
-                    b.ToTable("Npcs");
+                    b.ToTable("Npcs", (string)null);
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.RollRecord", b =>
@@ -447,7 +645,7 @@ namespace DungeonWorldBot.Data.Migrations
 
                     b.HasIndex("UserID");
 
-                    b.ToTable("Rolls");
+                    b.ToTable("Rolls", (string)null);
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Stat", b =>
@@ -469,7 +667,7 @@ namespace DungeonWorldBot.Data.Migrations
 
                     b.HasIndex("CharacterID");
 
-                    b.ToTable("Stat");
+                    b.ToTable("Stat", (string)null);
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Transformation", b =>
@@ -501,7 +699,7 @@ namespace DungeonWorldBot.Data.Migrations
 
                     b.HasIndex("CharacterID");
 
-                    b.ToTable("Transformation");
+                    b.ToTable("Transformation", (string)null);
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Ability", b =>
@@ -565,6 +763,54 @@ namespace DungeonWorldBot.Data.Migrations
                     b.HasOne("DungeonWorldBot.Data.Entities.Character", null)
                         .WithMany("Debilities")
                         .HasForeignKey("CharacterID");
+                });
+
+            modelBuilder.Entity("DungeonWorldBot.Data.Entities.EncounterAction", b =>
+                {
+                    b.HasOne("DungeonWorldBot.Data.Entities.Encounter", "Encounter")
+                        .WithMany("Actions")
+                        .HasForeignKey("EncounterID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DungeonWorldBot.Data.Entities.Enemy", null)
+                        .WithMany()
+                        .HasForeignKey("EnemyID")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.HasOne("DungeonWorldBot.Data.Entities.Npc", null)
+                        .WithMany()
+                        .HasForeignKey("NpcID")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Encounter");
+                });
+
+            modelBuilder.Entity("DungeonWorldBot.Data.Entities.EncounterParticipant", b =>
+                {
+                    b.HasOne("DungeonWorldBot.Data.Entities.Encounter", "Encounter")
+                        .WithMany("Participants")
+                        .HasForeignKey("EncounterID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("DungeonWorldBot.Data.Entities.Npc", null)
+                        .WithMany()
+                        .HasForeignKey("NpcID")
+                        .OnDelete(DeleteBehavior.Cascade);
+
+                    b.Navigation("Encounter");
+                });
+
+            modelBuilder.Entity("DungeonWorldBot.Data.Entities.Enemy", b =>
+                {
+                    b.HasOne("DungeonWorldBot.Data.Entities.Encounter", "Encounter")
+                        .WithMany("Enemies")
+                        .HasForeignKey("EncounterID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Encounter");
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Goal", b =>
@@ -660,6 +906,15 @@ namespace DungeonWorldBot.Data.Migrations
                     b.Navigation("Stats");
 
                     b.Navigation("Transformations");
+                });
+
+            modelBuilder.Entity("DungeonWorldBot.Data.Entities.Encounter", b =>
+                {
+                    b.Navigation("Actions");
+
+                    b.Navigation("Enemies");
+
+                    b.Navigation("Participants");
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Inventory", b =>

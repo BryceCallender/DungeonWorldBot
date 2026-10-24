@@ -1,3 +1,4 @@
+using DungeonWorldBot.Dashboard.Shared;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Encounters;
@@ -6,8 +7,9 @@ using Microsoft.EntityFrameworkCore;
 namespace DungeonWorldBot.Dashboard.Encounters;
 
 /// <summary>
-/// The other part of the bot's database the dashboard writes, besides <see cref="Party.CharacterJournal"/>: the DM
-/// starting, filling and ending a fight from its scene. The bot's own rules do the work, and the bot announces the
+/// The other part of the bot's database the dashboard writes, besides <see cref="Party.CharacterJournal"/> and
+/// <see cref="Npcs.NpcDesk"/>: the DM starting, filling and ending a fight from its scene, looking after the enemies in
+/// fights going on, and keeping the saved monsters. The bot's own rules do the work, and the bot announces the
 /// start and end in game chat when it notices them.
 /// </summary>
 /// <param name="Error">Why it couldn't, or null once it has.</param>
@@ -23,8 +25,8 @@ public record MonsterCount(string Name, int Count);
 
 public class EncounterDesk
 {
-    public const int MaxNameLength = 80;
-    public const int MaxTextLength = 1000;
+    public const int MaxNameLength = FormText.MaxNameLength;
+    public const int MaxTextLength = FormText.MaxTextLength;
     public const int MaxCount = 20;
 
     private readonly DbContextOptions<DungeonWorldContext> _options;
@@ -41,7 +43,7 @@ public class EncounterDesk
     /// <param name="monsters">How many of each saved monster to start with, by name.</param>
     public async Task<Added> StartAsync(string? name, SceneLink scene, EncounterRoster roster, IReadOnlyList<MonsterCount> monsters)
     {
-        if (Name(name) is not { } fightName)
+        if (FormText.Name(name) is not { } fightName)
             return Added.Failed($"Give the fight a name, up to {MaxNameLength} letters.");
         if (monsters.FirstOrDefault(m => m.Count is < 0 or > MaxCount) is { } tooMany)
             return Added.Failed($"Start with between 0 and {MaxCount} of {tooMany.Name}.");
@@ -98,12 +100,10 @@ public class EncounterDesk
     /// </summary>
     public async Task<Added> AddCustomAsync(string sceneID, MonsterTemplate details, bool save)
     {
-        if (Name(details.Name) is not { } name)
+        if (FormText.Name(details.Name) is not { } name)
             return Added.Failed($"Give it a name, up to {MaxNameLength} letters.");
-        if (details.MaxHP < 1)
-            return Added.Failed("Give it at least 1 HP.");
-        if (details.Armor < 0)
-            return Added.Failed("Armor can't be negative.");
+        if (Problem(details.MaxHP, details.Armor) is { } problem)
+            return Added.Failed(problem);
 
         await using var context = new DungeonWorldContext(_options);
         var service = new EncounterService(context);
@@ -114,11 +114,11 @@ public class EncounterDesk
         if (save && await service.FindMonsterAsync(name) is { } existing)
             return Added.Failed($"A monster called {existing.Name} is already saved. Add it from the saved monsters, or untick saving.");
 
-        var damage = Clean(details.Damage, MaxNameLength);
-        var tags = Clean(details.Tags, MaxTextLength);
-        var instinct = Clean(details.Instinct, MaxTextLength);
-        var moves = Clean(details.Moves, MaxTextLength);
-        var notes = Clean(details.Notes, MaxTextLength);
+        var damage = FormText.Clean(details.Damage, MaxNameLength);
+        var tags = FormText.Clean(details.Tags);
+        var instinct = FormText.Clean(details.Instinct);
+        var moves = FormText.Clean(details.Moves);
+        var notes = FormText.Clean(details.Notes);
 
         await service.AddEnemyAsync(encounter, new Enemy
         {
@@ -165,29 +165,132 @@ public class EncounterDesk
         return null;
     }
 
+    /// <summary>
+    /// Hurts or heals an enemy in a fight going on. Damage is reduced by its armor.
+    /// </summary>
+    public async Task<string?> ChangeEnemyHpAsync(int enemyID, HpChange change, int amount)
+    {
+        if (amount < 1)
+            return "Give an amount of at least 1.";
+
+        await using var context = new DungeonWorldContext(_options);
+        var service = new EncounterService(context);
+        if (await FightingAsync(context, enemyID) is not { } enemy)
+            return NoEnemy;
+
+        if (change == HpChange.Damage)
+            await service.DamageAsync(enemy, amount);
+        else
+            await service.HealAsync(enemy, amount);
+        return null;
+    }
+
+    /// <summary>
+    /// Changes an enemy in a fight going on. Its name stays, since its tokens on the board go by it.
+    /// </summary>
+    public async Task<string?> EditEnemyAsync(int enemyID, Enemy details)
+    {
+        if (Problem(details.MaxHP, details.Armor) is { } problem)
+            return problem;
+
+        await using var context = new DungeonWorldContext(_options);
+        var service = new EncounterService(context);
+        if (await FightingAsync(context, enemyID) is not { } enemy)
+            return NoEnemy;
+
+        enemy.MaxHP = details.MaxHP;
+        enemy.CurrentHP = details.CurrentHP;
+        enemy.Armor = details.Armor;
+        enemy.Damage = FormText.Clean(details.Damage, MaxNameLength);
+        enemy.Tags = FormText.Clean(details.Tags);
+        enemy.Instinct = FormText.Clean(details.Instinct);
+        enemy.Moves = FormText.Clean(details.Moves);
+        enemy.Notes = FormText.Clean(details.Notes);
+        // Keeps current HP between 0 and the max
+        await service.SaveAsync(enemy);
+        return null;
+    }
+
+    /// <summary>
+    /// Takes an enemy out of its fight. What it did stays in the fight's spotlight, under its name.
+    /// </summary>
+    public async Task<string?> RemoveEnemyAsync(int enemyID)
+    {
+        await using var context = new DungeonWorldContext(_options);
+        if (await FightingAsync(context, enemyID) is not { } enemy)
+            return NoEnemy;
+
+        await new EncounterService(context).RemoveAsync(enemy);
+        return null;
+    }
+
+    /// <summary>
+    /// Saves a new monster for later fights, or changes one already saved. Enemies already spawned from it stay as they are.
+    /// </summary>
+    /// <param name="monsterID">The monster to change, or null for a new one.</param>
+    public async Task<string?> SaveMonsterAsync(int? monsterID, MonsterTemplate details)
+    {
+        if (FormText.Name(details.Name) is not { } name)
+            return $"Give it a name, up to {MaxNameLength} letters.";
+        if (Problem(details.MaxHP, details.Armor) is { } problem)
+            return problem;
+
+        await using var context = new DungeonWorldContext(_options);
+        var service = new EncounterService(context);
+
+        MonsterTemplate monster;
+        if (monsterID is null)
+            monster = new MonsterTemplate();
+        else if (await context.MonsterTemplates.FirstOrDefaultAsync(m => m.ID == monsterID) is { } found)
+            monster = found;
+        else
+            return NoMonster;
+
+        if (await service.FindMonsterAsync(name) is { } taken && taken.ID != monster.ID)
+            return $"A monster called {taken.Name} is already saved.";
+
+        monster.Name = name;
+        monster.MaxHP = details.MaxHP;
+        monster.Armor = details.Armor;
+        monster.Damage = FormText.Clean(details.Damage, MaxNameLength);
+        monster.Tags = FormText.Clean(details.Tags);
+        monster.Instinct = FormText.Clean(details.Instinct);
+        monster.Moves = FormText.Clean(details.Moves);
+        monster.Notes = FormText.Clean(details.Notes);
+        await service.SaveMonsterAsync(monster);
+        return null;
+    }
+
+    public async Task<string?> RemoveMonsterAsync(int monsterID)
+    {
+        await using var context = new DungeonWorldContext(_options);
+        if (await context.MonsterTemplates.FirstOrDefaultAsync(m => m.ID == monsterID) is not { } monster)
+            return NoMonster;
+
+        await new EncounterService(context).RemoveMonsterAsync(monster);
+        return null;
+    }
+
     private const string NoFight = "There's no fight going on here.";
+    private const string NoEnemy = "That enemy isn't in a fight going on any more.";
+    private const string NoMonster = "That monster isn't saved any more.";
+
+    /// <summary>
+    /// What's wrong with an enemy's or monster's numbers, if anything.
+    /// </summary>
+    private static string? Problem(int maxHP, int armor) =>
+        maxHP < 1 ? "Give it at least 1 HP."
+        : armor < 0 ? "Armor can't be negative."
+        : null;
+
+    /// <summary>
+    /// An enemy by ID, if it's in a fight still going on. Ended fights are history, so they're left alone.
+    /// </summary>
+    private static Task<Enemy?> FightingAsync(DungeonWorldContext context, int enemyID) =>
+        context.Enemies.FirstOrDefaultAsync(e => e.ID == enemyID && e.Encounter.EndedAt == null);
 
     /// <summary>
     /// The fight going on on this scene.
     /// </summary>
     private static Task<Encounter?> FightOnAsync(EncounterService service, string sceneID) => service.GetOnSceneAsync(sceneID);
-
-    /// <summary>
-    /// A name: trimmed, or null when it's blank or too long to use.
-    /// </summary>
-    private static string? Name(string? value)
-    {
-        var trimmed = value?.Trim();
-        return string.IsNullOrEmpty(trimmed) || trimmed.Length > MaxNameLength ? null : trimmed;
-    }
-
-    /// <summary>
-    /// Optional text: trimmed, null when blank, and cut to length (the form already stops longer).
-    /// </summary>
-    private static string? Clean(string? value, int maxLength)
-    {
-        // Text boxes send Windows line endings
-        var trimmed = value?.Replace("\r\n", "\n").Trim();
-        return string.IsNullOrEmpty(trimmed) ? null : trimmed.Length <= maxLength ? trimmed : trimmed[..maxLength];
-    }
 }
