@@ -35,6 +35,7 @@ public static class EncounterEndpoints
             ICharacterService characters,
             PartyReader party,
             IEncounterService encounters,
+            PortraitStore portraitStore,
             IHubContext<CanvasHub, ICanvasClient> hub) =>
         {
             if (!CanRun(viewer))
@@ -68,8 +69,14 @@ public static class EncounterEndpoints
             if (started.Error is not null)
                 return Back(id, "start-fight", started.Error);
 
-            // Everyone in it gets a token on the board, for everyone looking at it
-            await EnemyTokens.PlacePartyAsync(scene.ID, fighters.Select(c => c.Name).ToList(), npcs.Select(n => n.Name).ToList(), store, hub);
+            // Everyone in it gets a token on the board, for everyone looking at it, with their picture if they have one
+            var portraits = await portraitStore.UrlsAsync();
+            await EnemyTokens.PlacePartyAsync(
+                scene.ID,
+                fighters.Select(c => new NewToken(c.Name, portraits.GetValueOrDefault(c.ID.Value))).ToList(),
+                npcs.Select(n => n.Name).ToList(),
+                store,
+                hub);
             await EnemyTokens.PlaceAsync(scene.ID, started.Names, store, hub);
 
             return Back(id, "start-fight", null);

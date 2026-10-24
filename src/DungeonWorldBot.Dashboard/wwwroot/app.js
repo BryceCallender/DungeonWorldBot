@@ -422,3 +422,27 @@ if (document.querySelector('dialog[data-open-on-load]')) {
     for (const key of ['error', 'fightError', 'dialog', 'from']) url.searchParams.delete(key);
     history.replaceState(history.state, '', url);
 }
+
+// A character's picture, sent as soon as one's picked. Shrunk first, as the board does with its pictures, since it shows
+// small (on the character's page and their tokens) and every board with their token loads it.
+document.addEventListener('change', async e => {
+    const input = e.target.closest?.('[data-portrait]');
+    const file = input?.files?.[0];
+    if (!file) return;
+
+    try {
+        const bitmap = await createImageBitmap(file);
+        const scale = Math.min(1, 512 / Math.max(bitmap.width, bitmap.height));
+        const canvas = new OffscreenCanvas(Math.round(bitmap.width * scale), Math.round(bitmap.height * scale));
+        canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+        bitmap.close();
+        // WebP where the browser can make it (Safari can't, and gives PNG instead)
+        const blob = await canvas.convertToBlob({ type: 'image/webp', quality: 0.85 });
+        const files = new DataTransfer();
+        files.items.add(new File([blob], 'portrait', { type: blob.type }));
+        input.files = files.files;
+    } catch {
+        // Not something the browser can draw: send it as it is, and the server says what's wrong with it
+    }
+    input.form.submit();
+});

@@ -112,11 +112,11 @@ public static class CanvasEndpoints
         return group;
     }
 
-    private const int MaxImageBytes = 5 * 1024 * 1024;
+    internal const int MaxImageBytes = 5 * 1024 * 1024;
     private const int MaxThumbnailBytes = 512 * 1024;
 
     // What the file's first bytes say it is. SVG isn't allowed: it can carry scripts.
-    private static string? ImageType(ReadOnlySpan<byte> data) =>
+    internal static string? ImageType(ReadOnlySpan<byte> data) =>
         data.StartsWith((ReadOnlySpan<byte>)[0x89, (byte)'P', (byte)'N', (byte)'G', 0x0D, 0x0A, 0x1A, 0x0A]) ? "image/png"
         : data.StartsWith((ReadOnlySpan<byte>)[0xFF, 0xD8, 0xFF]) ? "image/jpeg"
         : data.StartsWith("GIF87a"u8) || data.StartsWith("GIF89a"u8) ? "image/gif"

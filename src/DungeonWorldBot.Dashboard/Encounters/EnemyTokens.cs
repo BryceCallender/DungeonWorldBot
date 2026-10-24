@@ -5,6 +5,12 @@ using Microsoft.AspNetCore.SignalR;
 namespace DungeonWorldBot.Dashboard.Encounters;
 
 /// <summary>
+/// A token to put on the board.
+/// </summary>
+/// <param name="Picture">The address of a picture to fill its circle with instead of initials.</param>
+public record NewToken(string Name, string? Picture = null);
+
+/// <summary>
 /// Tokens for enemies added to a fight from its scene, and for the party when it starts, put on the board in open spots
 /// near the middle and sent to everyone looking at it.
 /// </summary>
@@ -42,14 +48,15 @@ public static class EnemyTokens
         CanvasStore store,
         IHubContext<CanvasHub, ICanvasClient> hub,
         string? pictureUrl = null) =>
-        await PlaceAsync(canvasID, names, Colour, pictureUrl, store, hub);
+        await PlaceAsync(canvasID, names.Select(n => new NewToken(n, pictureUrl)).ToList(), Colour, store, hub);
 
     /// <summary>
     /// A token for each character and NPC joining the fight, leaving out any already on the board from an earlier one.
     /// </summary>
+    /// <param name="characters">Each with their picture, if they have one (see <see cref="Party.PortraitStore"/>).</param>
     public static async Task PlacePartyAsync(
         int canvasID,
-        IReadOnlyList<string> characters,
+        IReadOnlyList<NewToken> characters,
         IReadOnlyList<string> npcs,
         CanvasStore store,
         IHubContext<CanvasHub, ICanvasClient> hub)
@@ -60,19 +67,18 @@ public static class EnemyTokens
             .OfType<string>()
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        await PlaceAsync(canvasID, characters.Where(n => !onBoard.Contains(n)).ToList(), PartyColour, null, store, hub);
-        await PlaceAsync(canvasID, npcs.Where(n => !onBoard.Contains(n)).ToList(), NpcColour, null, store, hub);
+        await PlaceAsync(canvasID, characters.Where(c => !onBoard.Contains(c.Name)).ToList(), PartyColour, store, hub);
+        await PlaceAsync(canvasID, npcs.Where(n => !onBoard.Contains(n)).Select(n => new NewToken(n)).ToList(), NpcColour, store, hub);
     }
 
     private static async Task PlaceAsync(
         int canvasID,
-        IReadOnlyList<string> names,
+        IReadOnlyList<NewToken> newTokens,
         string colour,
-        string? pictureUrl,
         CanvasStore store,
         IHubContext<CanvasHub, ICanvasClient> hub)
     {
-        if (names.Count == 0)
+        if (newTokens.Count == 0)
             return;
 
         var taken = (await store.ItemsAsync(canvasID))
@@ -80,7 +86,7 @@ public static class EnemyTokens
             .Select(i => PositionOf(i.Json))
             .ToList();
 
-        foreach (var name in names)
+        foreach (var (name, pictureUrl) in newTokens)
         {
             var spot = FreeSpot(taken);
             taken.Add(spot);

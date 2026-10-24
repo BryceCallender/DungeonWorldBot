@@ -4,6 +4,8 @@
 @inject DashboardSettings Settings
 @using DungeonWorldBot.Features.Subclasses
 @inject Viewer Viewer
+@inject PortraitStore Portraits
+@using Microsoft.AspNetCore.Components.Forms
 
 @if (_view is not { } c)
 {
@@ -20,9 +22,33 @@
     <div class="hero-main">
         @* Backstory, goals and notes have their own page; the link sits with the name, since it's about who they are *@
         <div class="hero-title">
+            @if (_portrait is not null)
+            {
+                <img class="portrait" src="@_portrait" alt="" width="56" height="56" />
+            }
             <h1>@c.Name</h1>
             <a class="story-link" href="@c.Url/story"><Icon Name="notes" />Story →</a>
         </div>
+        @* Their tokens on the board show it. app.js shrinks the picture and sends it as soon as one's picked. *@
+        @if (PortraitEndpoints.CanChange(c.Character.ID.Value, Viewer))
+        {
+            <div class="portrait-actions">
+                <form method="post" enctype="multipart/form-data" action="api/characters/@c.ID/portrait">
+                    <AntiforgeryToken />
+                    <label class="portrait-button">
+                        @(_portrait is null ? "Add a picture" : "Change picture")
+                        <input type="file" name="picture" accept="image/png,image/jpeg,image/webp,image/gif" hidden data-portrait />
+                    </label>
+                </form>
+                @if (_portrait is not null)
+                {
+                    <form method="post" action="api/characters/@c.ID/portrait/remove">
+                        <AntiforgeryToken />
+                        <button class="portrait-button">Remove picture</button>
+                    </form>
+                }
+            </div>
+        }
         <div class="muted">
             Level @c.Level <a href="@Lookup.ClassUrl(c.Character.Class.Type, c.Slug)" title="See the @c.ClassName class" class="class-name">@c.ClassName</a> · @c.Character.Race · @PartyReader.Spaced(c.Character.Alignment.ToString())
         </div>
@@ -461,10 +487,12 @@
     public string Id { get; set; } = string.Empty;
 
     private CharacterView? _view;
+    private string? _portrait;
 
     protected override async Task OnParametersSetAsync()
     {
         _view = await PartyReader.GetCharacterAsync(Id);
+        _portrait = _view is null ? null : (await Portraits.UrlsAsync()).GetValueOrDefault(_view.Character.ID.Value);
 
         // Older links use the Discord ID; send them to the address with the character's name
         if (_view is not null && Id != _view.Slug)

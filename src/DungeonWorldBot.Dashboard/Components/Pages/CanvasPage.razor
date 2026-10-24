@@ -9,6 +9,7 @@
 @inject IEncounterService Encounters
 @inject ICharacterService Characters
 @inject PartyReader PartyReader
+@inject PortraitStore Portraits
 @using DungeonWorldBot.Dashboard.Encounters
 @using DungeonWorldBot.Features.Characters
 @using DungeonWorldBot.Features.Encounters
@@ -90,7 +91,7 @@
             </span>
         </div>
 
-        <div id="container" data-no-live data-canvas-id="@Id" data-has-thumbnail="@(_hasThumbnail ? "true" : null)" data-runs-fights="@(EncounterEndpoints.CanRun(Viewer) ? "true" : null)"></div>
+        <div id="container" data-no-live data-canvas-id="@Id" data-has-thumbnail="@(_hasThumbnail ? "true" : null)" data-runs-fights="@(EncounterEndpoints.CanRun(Viewer) ? "true" : null)" data-portraits="@_portraits"></div>
 
         @* For the picture buttons, and the token the uploads send back so the server knows they came from this page *@
         <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden data-file />
@@ -320,6 +321,7 @@
 
     private Canvas? _canvas;
     private bool _hasThumbnail;
+    private string _portraits = "{}";
 
     // Ink that reads on the board in both light and dark mode
     private static readonly string[] Colors =
@@ -334,6 +336,16 @@
         {
             _canvas = await CanvasStore.FindAsync(id);
             _hasThumbnail = await CanvasStore.HasThumbnailAsync(id);
+        }
+
+        // Characters' pictures by name, for tokens placed with a character's name (see placeToken in canvas.ts)
+        if (_canvas is not null)
+        {
+            var urls = await Portraits.UrlsAsync();
+            _portraits = System.Text.Json.JsonSerializer.Serialize((await Characters.GetCharactersAsync())
+                .Where(ch => urls.ContainsKey(ch.ID.Value))
+                .GroupBy(ch => ch.Name.ToLowerInvariant())
+                .ToDictionary(g => g.Key, g => urls[g.First().ID.Value]));
         }
 
         _runsFights = _canvas is { Kind: CanvasKind.Encounter, ArchivedAt: null } && EncounterEndpoints.CanRun(Viewer);

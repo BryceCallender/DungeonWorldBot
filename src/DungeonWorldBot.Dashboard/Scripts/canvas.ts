@@ -888,8 +888,12 @@ function withInitials(token: Konva.Node): Konva.Node {
 const TOKEN_RADIUS = 36;
 
 // A colored circle with their initials, or with a picture in it if there's one
+// Characters' pictures by their names in lowercase, from the page: a token named for a character shows their picture
+const portraits: Record<string, string> = JSON.parse(container.dataset.portraits || '{}');
+
 function placeToken(x: number, y: number, picture?: string, name = window.prompt('Token name')?.trim()) {
     if (!name) return;
+    picture ??= portraits[name.toLowerCase()];
 
     const token = new Konva.Group({ id: crypto.randomUUID(), x, y, name });
     const circle = new Konva.Circle({ radius: TOKEN_RADIUS, fill: color, stroke: '#ffffff', strokeWidth: 2 });

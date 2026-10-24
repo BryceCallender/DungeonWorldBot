@@ -73,6 +73,7 @@ var canvasDatabasePath = Path.GetFullPath(
     ?? Path.Combine(builder.Environment.ContentRootPath, "canvases.db"));
 builder.Services.AddSqlite<CanvasContext>($"Data Source={canvasDatabasePath}");
 builder.Services.AddScoped<CanvasStore>();
+builder.Services.AddScoped<PortraitStore>();
 
 // Canvases are shared live between everyone who has one open
 // The default 32 KB is less than one long freehand stroke; CanvasStore.MaxItemLength sets the real limit per item
@@ -124,6 +125,7 @@ var live = app.MapLiveUpdates();
 var canvases = app.MapHub<CanvasHub>("/hubs/canvas");
 var canvasForms = app.MapCanvasEndpoints();
 var journal = app.MapCharacterJournalEndpoints();
+var portraits = app.MapPortraitEndpoints();
 var encounters = app.MapEncounterEndpoints();
 
 if (signInEnabled)
@@ -134,6 +136,7 @@ if (signInEnabled)
     canvases.RequireAuthorization(DiscordSignIn.Policy);
     canvasForms.RequireAuthorization(DiscordSignIn.Policy);
     journal.RequireAuthorization(DiscordSignIn.Policy);
+    portraits.RequireAuthorization(DiscordSignIn.Policy);
     encounters.RequireAuthorization(DiscordSignIn.Policy);
 }
 
