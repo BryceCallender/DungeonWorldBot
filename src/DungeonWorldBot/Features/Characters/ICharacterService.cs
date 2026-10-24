@@ -5,7 +5,26 @@ namespace DungeonWorldBot.Features.Characters;
 
 public interface ICharacterService
 {
+    /// <summary>
+    /// The character the player is playing: their own, or one they run for someone else while it's in play.
+    /// </summary>
     Task<Character?> GetCharacterFromUserAsync(Snowflake userId);
+
+    /// <summary>
+    /// A character by their own ID, whoever is playing them.
+    /// </summary>
+    Task<Character?> GetCharacterAsync(Snowflake characterId);
+
+    /// <summary>
+    /// The characters the player runs alongside their own.
+    /// </summary>
+    Task<List<CharacterName>> GetControlledCharacterNamesAsync(Snowflake userId);
+
+    /// <summary>
+    /// Puts one of the characters the player runs in play, or with no name, takes them all out so the player is back
+    /// to their own.
+    /// </summary>
+    Task PlayAsAsync(Snowflake userId, string? name);
 
     Task<List<Character>> GetCharactersAsync();
 

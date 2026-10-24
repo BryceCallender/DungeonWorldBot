@@ -4,7 +4,21 @@ namespace DungeonWorldBot.Data.Entities;
 
 public class Character
 {
+    /// <summary>
+    /// The player's Discord ID, or a made-up one for a character run by someone else (see <see cref="ControllerID"/>).
+    /// </summary>
     public Snowflake ID { get; set; }
+
+    /// <summary>
+    /// The player who runs this character alongside their own, like an NPC the DM handed to them.
+    /// </summary>
+    public Snowflake? ControllerID { get; set; }
+
+    /// <summary>
+    /// Whether their controller is playing them right now, so the controller's commands act on them instead of on
+    /// their own character.
+    /// </summary>
+    public bool InPlay { get; set; }
 
     public string Name { get; set; } = null!;
     public Class Class { get; set; } = null!;

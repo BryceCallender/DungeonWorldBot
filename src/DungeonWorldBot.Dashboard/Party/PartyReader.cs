@@ -91,7 +91,7 @@ public class PartyReader
             : party.FirstOrDefault(c => c.ID == nameOrId || c.Slug == Lookup.Slug(nameOrId));
 
     public async Task<CharacterView?> GetCharacterAsync(ulong id) =>
-        await _characterService.GetCharacterFromUserAsync(new Snowflake(id)) is { } character ? Describe(character) : null;
+        await _characterService.GetCharacterAsync(new Snowflake(id)) is { } character ? Describe(character) : null;
 
     private CharacterView Describe(Character character)
     {

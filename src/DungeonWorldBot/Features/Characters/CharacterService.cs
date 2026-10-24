@@ -36,7 +36,38 @@ public class CharacterService : ICharacterService
 
     public Task<Character?> GetCharacterFromUserAsync(Snowflake userId)
     {
-        return CharactersWithDetails.FirstOrDefaultAsync(c => c.ID == userId);
+        // A character they're running for someone else wins over their own while it's in play
+        Snowflake? controller = userId;
+        return CharactersWithDetails
+            .Where(c => c.ID == userId || (c.ControllerID == controller && c.InPlay))
+            .OrderBy(c => c.ID == userId)
+            .FirstOrDefaultAsync();
+    }
+
+    public Task<Character?> GetCharacterAsync(Snowflake characterId)
+    {
+        return CharactersWithDetails.FirstOrDefaultAsync(c => c.ID == characterId);
+    }
+
+    public Task<List<CharacterName>> GetControlledCharacterNamesAsync(Snowflake userId)
+    {
+        Snowflake? controller = userId;
+        return _dungeonWorldContext.Characters
+            .Where(c => c.ControllerID == controller)
+            .Select(c => new CharacterName(c.Name, c.Class.Type))
+            .ToListAsync();
+    }
+
+    public async Task PlayAsAsync(Snowflake userId, string? name)
+    {
+        Snowflake? controller = userId;
+        var controlled = await _dungeonWorldContext.Characters.Where(c => c.ControllerID == controller).ToListAsync();
+
+        // Only one at a time, and none means they're back to their own
+        foreach (var character in controlled)
+            character.InPlay = name is not null && character.Name.Equals(name, StringComparison.OrdinalIgnoreCase);
+
+        await _dungeonWorldContext.SaveChangesAsync();
     }
 
     public Task<List<Character>> GetCharactersAsync()
