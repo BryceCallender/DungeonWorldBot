@@ -6,8 +6,8 @@
 @inject ICharacterService Characters
 @inject Viewer Viewer
 
-@* The DM's tab for the NPCs travelling with the party: everything /dm npc does in Discord, as plain forms. A mistake
-   comes back in the address and reopens its dialog, or shows at the top for the quick HP buttons. *@
+@* The NPCs travelling with the party. Players can look; the DM gets everything /dm npc does in Discord, as plain forms.
+   A mistake comes back in the address and reopens its dialog, or shows at the top for the quick HP buttons. *@
 <PageTitle>NPCs · Sana Solem</PageTitle>
 
 <div class="desk-head">
@@ -18,31 +18,27 @@
     }
 </div>
 
-@if (!_canRun)
+@if (_canRun && Error is { } error && Dialog is null)
 {
-    <p class="empty">Only the DM looks after NPCs here. You can see the party's on the <a href="">Party</a> page.</p>
+    <p class="form-error desk-error">@error</p>
+}
+
+@if (_npcs.Count == 0)
+{
+    <p class="empty">No NPCs are with the party yet.</p>
 }
 else
 {
-    @if (Error is { } error && Dialog is null)
-    {
-        <p class="form-error desk-error">@error</p>
-    }
+    <div class="desk-grid">
+        @foreach (var npc in _npcs)
+        {
+            @NpcCard(npc)
+        }
+    </div>
+}
 
-    @if (_npcs.Count == 0)
-    {
-        <p class="empty">No NPCs are with the party yet.</p>
-    }
-    else
-    {
-        <div class="desk-grid">
-            @foreach (var npc in _npcs)
-            {
-                @NpcCard(npc)
-            }
-        </div>
-    }
-
+@if (_canRun)
+{
     <dialog id="npc-new" class="modal" aria-labelledby="npc-new-title" data-open-on-load="@OpenOnLoad("npc-new")">
         <form method="post" action="api/npcs">
             <AntiforgeryToken />
@@ -106,9 +102,6 @@ else
     protected override async Task OnInitializedAsync()
     {
         _canRun = EncounterEndpoints.CanRun(Viewer);
-        if (!_canRun)
-            return;
-
         _npcs = await PartyReader.GetNpcsAsync();
         _characters = (await Characters.GetCharactersAsync()).OrderBy(c => c.Name).ToList();
     }
@@ -138,7 +131,10 @@ else
         </div>
 
         <HealthBar Current="npc.CurrentHP" Max="npc.MaxHP" />
-        <HpChangeForm Action="@($"api/npcs/{npc.ID}/hp")" Name="@npc.Name" />
+        @if (_canRun)
+        {
+            <HpChangeForm Action="@($"api/npcs/{npc.ID}/hp")" Name="@npc.Name" />
+        }
 
         <div class="desk-stats">
             <span title="Armor"><Icon Name="shield" />@npc.Armor</span>
@@ -177,10 +173,13 @@ else
             </div>
         }
 
-        <div class="desk-actions">
-            <button type="button" class="tool" data-open-dialog="npc-edit-@npc.ID">Edit</button>
-            <button type="button" class="tool" data-open-dialog="npc-remove-@npc.ID">Send away</button>
-        </div>
+        @if (_canRun)
+        {
+            <div class="desk-actions">
+                <button type="button" class="tool" data-open-dialog="npc-edit-@npc.ID">Edit</button>
+                <button type="button" class="tool" data-open-dialog="npc-remove-@npc.ID">Send away</button>
+            </div>
+        }
     </div>;
 
     /// <summary>

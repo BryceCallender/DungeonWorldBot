@@ -7,10 +7,10 @@
     <a class="brand" href=""><span aria-hidden="true">🎲</span>Sana Solem</a>
     <nav>
         <NavLink href="" Match="NavLinkMatch.All" class="@ActiveFor("character/")">Party</NavLink>
-        @* The DM's own tabs, for looking after who the party meets *@
+        <NavLink href="npcs">NPCs</NavLink>
+        @* The DM's own tab, for looking after who the party fights *@
         @if (EncounterEndpoints.CanRun(Viewer))
         {
-            <NavLink href="npcs">NPCs</NavLink>
             <NavLink href="enemies">Enemies</NavLink>
         }
         <NavLink href="stats">Roll stats</NavLink>
