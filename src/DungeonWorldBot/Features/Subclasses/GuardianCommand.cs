@@ -180,7 +180,8 @@ public partial class SubclassCommand
         public async Task<IResult> ReleaseAsync(
             [Description("The damage your attack already rolled. Leave blank to roll your damage now.")]
             [MinValue(0)]
-            int? damage = null)
+            int? damage = null,
+            [Option(DamageService.ExtraOption)] [Description(DamageService.ExtraDescription)] int extraDamage = 0)
         {
             var (character, error) = await GetGuardianAsync(TacticalGuardian.ShieldedPursuit);
             if (character is null)
@@ -193,11 +194,14 @@ public partial class SubclassCommand
             string damageText;
             if (damage is { } dealt)
             {
-                damageText = $"{dealt} + {stored} stored → **{dealt + stored}**";
+                var total = Math.Max(0, dealt + extraDamage) + stored;
+                damageText = extraDamage != 0
+                    ? $"{dealt} {FormatSigned(extraDamage)} extra + {stored} stored → **{total}**"
+                    : $"{dealt} + {stored} stored → **{total}**";
             }
             else
             {
-                if (await _damageService.RollAsync(character, TacticalGuardian.ShieldedPursuit) is not { } rolled)
+                if (await _damageService.RollAsync(character, TacticalGuardian.ShieldedPursuit, extraDamage) is not { } rolled)
                     return await ReplyWithErrorAsync("Couldn't roll your damage. Fix it with /character damage-dice");
 
                 damageText = $"{rolled.Expression} → {rolled.Total} + {stored} stored → **{rolled.Total + stored}**" + rolled.Details;

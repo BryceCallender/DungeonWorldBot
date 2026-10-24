@@ -93,11 +93,10 @@ public class DiceRollCommand : DungeonWorldCommandBase
         var damageDice = character.DamageModifier ?? character.Class.Damage;
         var bonuses = await _damageService.DamageBonusesAsync(character);
 
-        var rollString = DiceHelper.AddModifier(damageDice, bonuses.Sum(b => b.Amount));
-        if (modifiers.Length > 0)
-        {
-            rollString += $"+{modifiers}";
-        } 
+        // "2", "+2", "-1" or "d4": anything without a sign is added
+        modifiers = modifiers.Trim();
+        var extra = modifiers.Length > 0 && modifiers[0] is not ('+' or '-') ? $"+{modifiers}" : modifiers;
+        var rollString = DiceHelper.AddModifier(damageDice, bonuses.Sum(b => b.Amount)) + extra;
         
         if (!_diceRoller.TryRoll(rollString, out var result))
             return await ReplyWithErrorAsync($"`{rollString}` is not a valid dice roll.");
@@ -108,7 +107,7 @@ public class DiceRollCommand : DungeonWorldCommandBase
 
         var parts = bonuses.Select(b => $"{b.Source} {FormatSigned(b.Amount)}").Prepend(damageDice).ToList();
         if (modifiers.Length > 0)
-            parts.Add($"Extra +{modifiers}");
+            parts.Add($"Extra {extra}");
 
         var details = (gear.Bonus != 0 ? $"\n**{result.Value + gear.Bonus}** damage" : string.Empty)
                       + string.Concat(gear.Notes.Select(n => $"\n{n}"));

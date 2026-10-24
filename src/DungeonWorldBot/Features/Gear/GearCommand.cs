@@ -227,7 +227,8 @@ public class GearCommand : DungeonWorldCommandBase
 
     [Command("action")]
     [Description("Use your gear's special attack, like the Topaz's Opportunist's Volley")]
-    public async Task<IResult> ActionAsync()
+    public async Task<IResult> ActionAsync(
+        [Option(DamageService.ExtraOption)] [Description(DamageService.ExtraDescription)] int extraDamage = 0)
     {
         var character = await GetCharacterAsync(null);
         if (character is null)
@@ -237,7 +238,7 @@ public class GearCommand : DungeonWorldCommandBase
         if (owned?.Mode?.Action is not { } action)
             return await ReplyWithErrorAsync($"Nothing {character.Name} has socketed gives a special attack. Topaz gives the bow Opportunist's Volley.");
 
-        if (await _damageService.RollAsync(character, action.Name) is not { } damage)
+        if (await _damageService.RollAsync(character, action.Name, extraDamage) is not { } damage)
             return await ReplyWithErrorAsync("Couldn't roll your damage. Fix it with /character damage-dice");
 
         var dealt = action.HalfDamage ? GearRules.Half(damage.Total) : damage.Total;

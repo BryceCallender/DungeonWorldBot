@@ -134,7 +134,8 @@ public partial class SubclassCommand
             [Description("How much HP the ally sacrifices")]
             [MinValue(0)]
             int allySacrifice = 0,
-            [Description(BonusDescription)] int bonus = 0)
+            [Description(BonusDescription)] int bonus = 0,
+            [Option(DamageService.ExtraOption)] [Description(DamageService.ExtraDescription)] int extraDamage = 0)
         {
             var (character, error) = await GetChampionAsync(ChampionOfLuna.BloodMoon);
             if (character is null)
@@ -171,11 +172,14 @@ public partial class SubclassCommand
             string damageText;
             if (damage is { } dealt)
             {
-                damageText = $"{dealt} + {totalSacrificed} sacrificed → **{dealt + totalSacrificed}**";
+                var total = Math.Max(0, dealt + extraDamage) + totalSacrificed;
+                damageText = extraDamage != 0
+                    ? $"{dealt} {FormatSigned(extraDamage)} extra + {totalSacrificed} sacrificed → **{total}**"
+                    : $"{dealt} + {totalSacrificed} sacrificed → **{total}**";
             }
             else
             {
-                if (await _damageService.RollAsync(character, ChampionOfLuna.BloodMoon) is not { } rolled)
+                if (await _damageService.RollAsync(character, ChampionOfLuna.BloodMoon, extraDamage) is not { } rolled)
                     return await ReplyWithErrorAsync("Couldn't roll your damage. Fix it with /character damage-dice");
 
                 damageText = $"{rolled.Expression} → {rolled.Total} + {totalSacrificed} sacrificed → **{rolled.Total + totalSacrificed}**" + rolled.Details;
@@ -216,7 +220,9 @@ public partial class SubclassCommand
 
         [Command("lunar-barrage")]
         [Description("Channel Luna into your bow: exploding d10 damage to up to 3 enemies (+DEX)")]
-        public async Task<IResult> LunarBarrageAsync([Description(BonusDescription)] int bonus = 0)
+        public async Task<IResult> LunarBarrageAsync(
+            [Description(BonusDescription)] int bonus = 0,
+            [Option(DamageService.ExtraOption)] [Description(DamageService.ExtraDescription)] int extraDamage = 0)
         {
             var (character, error) = await GetChampionAsync(ChampionOfLuna.LunarBarrage);
             if (character is null)
@@ -224,7 +230,7 @@ public partial class SubclassCommand
 
             // The damage builds before the arrow is released
             var dice = ChampionOfLuna.RollBarrage(() => _diceRoller.Roll("1d10").Value);
-            var damageBonuses = await _damageService.DamageBonusesAsync(character);
+            var damageBonuses = await _damageService.DamageBonusesAsync(character, extraDamage);
             var gear = await _damageService.ApplyGearAsync(character, ChampionOfLuna.LunarBarrage, dice.Select(d => (10, d)).ToList());
             var flat = damageBonuses.Sum(b => b.Amount) + gear.Bonus;
             var total = Math.Max(0, dice.Sum() + flat);
