@@ -463,3 +463,47 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 .field-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr)); gap: .6rem; }
 .field textarea { width: 100%; min-height: 4.5rem; resize: vertical; font: inherit; }
 .check { display: flex; align-items: center; gap: .5rem; font-size: .9rem; }
+
+/* How hurt an enemy looks, all the players see: beside the board and on the DM's enemies page */
+.chip.condition { flex: none; font-size: .7rem; }
+.chip.condition.unhurt { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+.chip.condition.hurt { background: color-mix(in srgb, var(--low) 12%, transparent); color: var(--low); }
+.chip.condition.bloodied { background: color-mix(in srgb, var(--low) 24%, transparent); color: var(--low); }
+.chip.condition.neardeath { background: var(--warn-soft); color: var(--critical); }
+.chip.condition.defeated { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); }
+
+/* The DM's NPCs and enemies pages: a header with its "New" button at the right, then a grid of cards to look after */
+.desk-head { display: flex; align-items: center; flex-wrap: wrap; gap: .6rem 1rem; margin-bottom: 1rem; }
+.desk-head h1, .desk-head h2 { margin: 0; }
+.desk-new { margin-left: auto; }
+.desk-section { margin-bottom: 2rem; }
+.desk-error { margin: 0 0 1rem; }
+
+.desk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 1rem; }
+.desk-card { display: flex; flex-direction: column; gap: .75rem; box-shadow: inset 0 4px 0 var(--muted); }
+.desk-card.defeated { opacity: .6; }
+.desk-card .member-head { gap: .5rem; }
+.desk-card .member-head h2 { min-width: 0; overflow-wrap: anywhere; }
+.desk-line { display: flex; align-items: center; flex-wrap: wrap; gap: .45rem; }
+.desk-stats { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; font-weight: 600; }
+.desk-stats span { display: inline-flex; align-items: center; gap: .3rem; }
+.desk-extra { display: flex; flex-direction: column; gap: .4rem; }
+.desk-notes { white-space: pre-line; }
+.desk-moves { margin: 0; padding-left: 1.1rem; display: flex; flex-direction: column; gap: .15rem; }
+.desk-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: auto; padding-top: .6rem; border-top: 1px solid var(--border); }
+
+/* Quick damage and healing, under the health bar */
+.hp-change { display: flex; gap: .4rem; align-items: center; }
+.hp-change .filter { width: 4.5rem; }
+
+/* The longer forms: an NPC's whole sheet scrolls inside its dialog rather than off the screen */
+.desk-fields { display: flex; flex-direction: column; gap: .8rem; max-height: min(60vh, 34rem); overflow-y: auto; padding: .1rem; }
+.desk-fields select { width: 100%; }
+.desk-modifiers { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: .4rem; margin: 0; padding: 0; border: 0; }
+.desk-modifiers legend { margin-bottom: .35rem; padding: 0; }
+.desk-modifiers .filter { padding-inline: .35rem; }
+@media (max-width: 600px) {
+    .desk-modifiers { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.modal .create.danger { background: var(--critical); border-color: var(--critical); }

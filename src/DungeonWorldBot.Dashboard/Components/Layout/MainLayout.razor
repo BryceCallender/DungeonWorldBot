@@ -1,14 +1,22 @@
 @inherits LayoutComponentBase
 @inject Viewer Viewer
 @inject NavigationManager Nav
+@using DungeonWorldBot.Dashboard.Encounters
 
 <header class="topbar">
     <a class="brand" href=""><span aria-hidden="true">🎲</span>Sana Solem</a>
     <nav>
         <NavLink href="" Match="NavLinkMatch.All" class="@ActiveFor("character/")">Party</NavLink>
+        @* The DM's own tabs, for looking after who the party meets *@
+        @if (EncounterEndpoints.CanRun(Viewer))
+        {
+            <NavLink href="npcs">NPCs</NavLink>
+            <NavLink href="enemies">Enemies</NavLink>
+        }
         <NavLink href="stats">Roll stats</NavLink>
         <NavLink href="classes">Classes</NavLink>
         <NavLink href="spells">Spells</NavLink>
+        <NavLink href="moves">Moves</NavLink>
         <NavLink href="scenes" class="@ActiveFor("scene/", "canvas/")">Scenes</NavLink>
     </nav>
 

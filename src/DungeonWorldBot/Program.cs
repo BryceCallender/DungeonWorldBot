@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data;
+using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Features.Encounters;
 using DungeonWorldBot.Infrastructure;
 using Microsoft.EntityFrameworkCore;
@@ -30,6 +31,10 @@ public class Program
         {
             var db = scope.ServiceProvider.GetRequiredService<DungeonWorldContext>();
             await db.Database.ExecuteSqlRawAsync("PRAGMA journal_mode=WAL;");
+
+            // EF builds its model and compiles each query shape on first use, which would otherwise slow down
+            // whichever command runs first
+            await scope.ServiceProvider.GetRequiredService<ICharacterService>().GetCharactersAsync();
         }
 
         var slashService = services.GetRequiredService<SlashService>();
@@ -80,5 +85,6 @@ public class Program
                 .AddConsole()
                 .AddFilter("System.Net.Http.HttpClient.*.LogicalHandler", LogLevel.Warning)
                 .AddFilter("System.Net.Http.HttpClient.*.ClientHandler", LogLevel.Warning)
+                .AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning)
         );
 }

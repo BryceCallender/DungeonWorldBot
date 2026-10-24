@@ -32,12 +32,7 @@
 .enemy-stats span { display: inline-flex; align-items: center; gap: .3rem; }
 .enemy-moves { margin: 0; padding-left: 1rem; display: flex; flex-direction: column; gap: .15rem; }
 
-.chip.condition { flex: none; font-size: .7rem; }
-.chip.condition.unhurt { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
-.chip.condition.hurt { background: color-mix(in srgb, var(--low) 12%, transparent); color: var(--low); }
-.chip.condition.bloodied { background: color-mix(in srgb, var(--low) 24%, transparent); color: var(--low); }
-.chip.condition.neardeath { background: var(--warn-soft); color: var(--critical); }
-.chip.condition.defeated { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); }
+/* How hurt an enemy looks (.chip.condition) is in app.css, shared with the enemies page */
 
 /* The DM's buttons, under the enemies */
 .panel-actions { display: flex; flex-direction: column; gap: .4rem; }
