@@ -21,27 +21,48 @@ public record EncounterRoster(IReadOnlyList<Snowflake> Characters, IReadOnlyList
 public interface IEncounterService
 {
     /// <summary>
-    /// The fight going on now, with its enemies, or null between fights.
+    /// The fights going on now, with their enemies and who's in them, oldest first.
     /// </summary>
-    Task<Encounter?> GetActiveAsync();
+    Task<List<Encounter>> GetRunningAsync();
 
     /// <summary>
-    /// Starts a fight, unless one is already going.
+    /// The fight going on on a dashboard scene, by the scene's short ID, or null if there isn't one.
+    /// </summary>
+    Task<Encounter?> GetOnSceneAsync(string sceneID);
+
+    /// <summary>
+    /// A fight going on now by name, whatever its capitalization.
+    /// </summary>
+    Task<Encounter?> FindRunningAsync(string name);
+
+    /// <summary>
+    /// The fight a player's character or an NPC is in: the newest the DM picked them for, else the newest open to
+    /// everyone, else the only fight going on.
+    /// </summary>
+    Task<Encounter?> GetForAsync(Snowflake? characterID = null, int? npcID = null);
+
+    /// <summary>
+    /// Starts a fight. Several can go at once, each with its own name, and one at a time on a scene.
     /// </summary>
     /// <param name="scene">The dashboard scene it's on, if any.</param>
     /// <param name="announced">Whether game chat has been told already, as by a command's reply. Otherwise the bot
     /// announces it when it notices.</param>
     /// <param name="roster">Who's in it. Everyone, if not given.</param>
-    /// <returns>The new fight, or null if one is already going.</returns>
+    /// <returns>The new fight, or null if one by that name or on that scene is already going.</returns>
     Task<Encounter?> StartAsync(string name, SceneLink? scene = null, bool announced = false, EncounterRoster? roster = null);
 
     /// <summary>
-    /// Ends the fight going on now.
+    /// Ends a fight.
     /// </summary>
     /// <param name="announced">Whether game chat has been told already and temporary armor cleared, as by
     /// /dm encounter end. Otherwise the bot does both when it notices.</param>
-    /// <returns>The fight that ended, or null if there wasn't one.</returns>
-    Task<Encounter?> EndAsync(bool announced = false);
+    Task EndAsync(Encounter encounter, bool announced = false);
+
+    /// <summary>
+    /// The characters whose temporary armor goes when a fight ends: those the DM picked for it, or for a fight open to
+    /// everyone, everyone not picked for another fight still going.
+    /// </summary>
+    Task<IReadOnlyList<Snowflake>> LeavingAsync(Encounter ended);
 
     /// <summary>
     /// Fights whose start or end game chat hasn't heard about yet, oldest first.
@@ -54,18 +75,18 @@ public interface IEncounterService
     Task SaveAsync(Encounter encounter);
 
     /// <summary>
-    /// An enemy in the current fight by name, whatever its capitalization.
+    /// An enemy in a fight going on by name, whatever its capitalization. Names are unique across the fights going on.
     /// </summary>
     Task<Enemy?> FindEnemyAsync(string name);
 
     /// <summary>
-    /// Adds an enemy to the current fight.
+    /// Adds an enemy to a fight.
     /// </summary>
     Task AddEnemyAsync(Encounter encounter, Enemy enemy);
 
     /// <summary>
-    /// Adds copies of a monster to the current fight, numbered after any already there ("Goblin 1", "Goblin 2"). One
-    /// copy in a fight without any keeps the plain name.
+    /// Adds copies of a monster to a fight, numbered after any already in the fights going on ("Goblin 1", "Goblin 2"),
+    /// so each name is unique across them. One copy when there's none anywhere keeps the plain name.
     /// </summary>
     Task<IReadOnlyList<Enemy>> SpawnAsync(Encounter encounter, MonsterTemplate monster, int count = 1);
 
@@ -87,7 +108,9 @@ public interface IEncounterService
     Task HealAsync(Enemy enemy, int? amount = null);
 
     /// <summary>
-    /// Notes something done in the current fight, for the spotlight. Does nothing between fights.
+    /// Notes something done in a fight, for the spotlight: an enemy's in its own fight, and anyone else's in the fight
+    /// of the enemy they aimed at, or else the one they're in (see <see cref="GetForAsync"/>). Does nothing when
+    /// there's no such fight.
     /// </summary>
     Task LogAsync(EncounterAction action);
 

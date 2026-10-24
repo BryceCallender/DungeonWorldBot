@@ -7,14 +7,7 @@
 @* The fight on an encounter scene, beside its board. The board page doesn't refresh itself, so app.js swaps in a fresh
    copy of this from api/scenes/{id}/encounter/panel whenever the bot changes something. Players only see how hurt each
    enemy looks; whoever runs the fight (the DM, or anyone with sign-in off) sees its numbers, and gets buttons for the
-   dialogs on the scene page that run it. Everyone sees the spotlight. A fight on another scene doesn't show here at all. *@
-@if (_encounter is { SceneID: { } elsewhere } && elsewhere != SceneID)
-{
-    @* Another scene's fight is none of this one's business. The empty panel stays so that, once that fight ends, the
-       live refresh can bring back the button to start one here. *@
-    <section class="encounter-panel" data-encounter-panel="@SceneID" hidden></section>
-    return;
-}
+   dialogs on the scene page that run it. Everyone sees the spotlight. Fights on other scenes don't show here. *@
 
 <section class="encounter-panel" data-encounter-panel="@SceneID">
     @if (_encounter is not { } encounter)
@@ -89,7 +82,7 @@
 
 @code {
     /// <summary>
-    /// The scene it's beside, by its short ID. Its own fight shows in full; a fight on another scene is only linked.
+    /// The scene it's beside, by its short ID.
     /// </summary>
     [Parameter, EditorRequired]
     public string SceneID { get; set; } = "";
@@ -101,10 +94,10 @@
 
     protected override async Task OnInitializedAsync()
     {
-        _encounter = await PartyReader.GetEncounterAsync();
+        _encounter = await PartyReader.GetEncounterAsync(SceneID);
         _canRun = EncounterEndpoints.CanRun(Viewer);
 
-        if (_encounter is { } encounter && (encounter.SceneID is null || encounter.SceneID == SceneID))
+        if (_encounter is { } encounter)
         {
             var party = await PartyReader.GetPartyAsync();
             _characterUrls = party.ToDictionary(c => c.Character.ID.Value, c => c.Url);

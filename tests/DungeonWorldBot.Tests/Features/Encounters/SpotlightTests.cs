@@ -126,7 +126,7 @@ public sealed class SpotlightTests : IDisposable
         // Cass wasn't picked, but rolled in the fight anyway
         await encounters.LogAsync(new EncounterAction { Actor = cass.Name, CharacterID = cass.ID, Action = "Volley" });
 
-        var spotlight = await Spotlight(context, encounters).GetAsync((await encounters.GetActiveAsync())!, [aria, bram, cass]);
+        var spotlight = await Spotlight(context, encounters).GetAsync((await encounters.FindRunningAsync("Ambush"))!, [aria, bram, cass]);
 
         Assert.Equal(["Aria", "Cass"], spotlight.Party.Select(p => p.Name).Order());
         Assert.Equal(["Grub"], spotlight.Allies.Select(a => a.Name));

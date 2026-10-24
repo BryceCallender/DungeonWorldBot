@@ -6,7 +6,7 @@ using Remora.Discord.Commands.Autocomplete;
 namespace DungeonWorldBot.Features.Encounters;
 
 /// <summary>
-/// The enemies in the current fight, still standing first.
+/// The enemies in the fights going on, still standing first. With more than one fight, each says which it's in.
 /// </summary>
 public class EnemyAutocomplete(IEncounterService encounterService) : IAutocompleteProvider
 {
@@ -24,12 +24,11 @@ public class EnemyAutocomplete(IEncounterService encounterService) : IAutocomple
         string userInput,
         CancellationToken ct = default)
     {
-        if (await encounterService.GetActiveAsync() is not { } encounter)
-            return [];
-
+        var running = await encounterService.GetRunningAsync();
         var input = userInput.Trim();
 
-        return encounter.Enemies
+        return running
+            .SelectMany(e => e.Enemies)
             .Where(e => IncludeDead || e.CurrentHP > 0)
             .Where(e => e.Name.Contains(input, StringComparison.OrdinalIgnoreCase))
             .OrderBy(e => e.CurrentHP == 0)
@@ -37,13 +36,19 @@ public class EnemyAutocomplete(IEncounterService encounterService) : IAutocomple
             .ThenBy(e => e.Name, EnemySheet.NameOrder)
             .Take(MaxSuggestions)
             .Select(e => (IApplicationCommandOptionChoice)new ApplicationCommandOptionChoice(
-                $"{e.Name} · {EnemyConditions.Describe(e.Condition)}", e.Name))
+                Shorten(running.Count > 1
+                    ? $"{e.Name} · {EnemyConditions.Describe(e.Condition)} · {running.First(f => f.ID == e.EncounterID).Name}"
+                    : $"{e.Name} · {EnemyConditions.Describe(e.Condition)}"),
+                e.Name))
             .ToList();
     }
+
+    // Discord takes names up to 100 characters
+    private static string Shorten(string name) => name.Length <= 100 ? name : name[..99] + "…";
 }
 
 /// <summary>
-/// The enemies in the current fight that are still standing, for players picking a target.
+/// The enemies in the fights going on that are still standing, for players picking a target.
 /// </summary>
 public class LivingEnemyAutocomplete(IEncounterService encounterService) : EnemyAutocomplete(encounterService)
 {

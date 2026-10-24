@@ -58,8 +58,12 @@ public class EncounterDesk
             templates[template] = monster.Count;
         }
 
+        if (await service.GetOnSceneAsync(scene.ID) is { } onScene)
+            return Added.Failed($"{onScene.Name} is still going on here. End it first.");
+        if (await service.FindRunningAsync(fightName) is { } sameName)
+            return Added.Failed($"{sameName.Name} is already going on. Give this fight another name.");
         if (await service.StartAsync(fightName, scene, roster: roster) is not { } encounter)
-            return Added.Failed($"{(await service.GetActiveAsync())?.Name ?? "Another fight"} is still going. End it first.");
+            return Added.Failed("Couldn't start the fight. Try again.");
 
         var spawned = new List<string>();
         foreach (var (template, count) in templates)
@@ -106,7 +110,7 @@ public class EncounterDesk
         if (await FightOnAsync(service, sceneID) is not { } encounter)
             return Added.Failed(NoFight);
         if (await service.FindEnemyAsync(name) is { } taken)
-            return Added.Failed($"{taken.Name} is already in the fight.");
+            return Added.Failed($"{taken.Name} is already in a fight.");
         if (save && await service.FindMonsterAsync(name) is { } existing)
             return Added.Failed($"A monster called {existing.Name} is already saved. Add it from the saved monsters, or untick saving.");
 
@@ -154,22 +158,19 @@ public class EncounterDesk
     {
         await using var context = new DungeonWorldContext(_options);
         var service = new EncounterService(context);
-        if (await FightOnAsync(service, sceneID) is null)
+        if (await FightOnAsync(service, sceneID) is not { } encounter)
             return NoFight;
 
-        await service.EndAsync();
+        await service.EndAsync(encounter);
         return null;
     }
 
     private const string NoFight = "There's no fight going on here.";
 
     /// <summary>
-    /// The fight going on, if it's on this scene or on no scene in particular.
+    /// The fight going on on this scene.
     /// </summary>
-    private static async Task<Encounter?> FightOnAsync(EncounterService service, string sceneID) =>
-        await service.GetActiveAsync() is { } encounter && (encounter.SceneID is null || encounter.SceneID == sceneID)
-            ? encounter
-            : null;
+    private static Task<Encounter?> FightOnAsync(EncounterService service, string sceneID) => service.GetOnSceneAsync(sceneID);
 
     /// <summary>
     /// A name: trimmed, or null when it's blank or too long to use.

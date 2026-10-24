@@ -3,6 +3,7 @@ using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Infrastructure;
 using DungeonWorldBot.Rules;
 using Microsoft.EntityFrameworkCore;
+using Remora.Rest.Core;
 
 namespace DungeonWorldBot.Features.Combat;
 
@@ -69,9 +70,19 @@ public class ArmorService : IArmorService
         return removed;
     }
 
-    public async Task<IReadOnlyList<(string Name, IReadOnlyList<ArmorBonus> Removed)>> EndFightForAllAsync()
+    public async Task<IReadOnlyList<(string Name, IReadOnlyList<ArmorBonus> Removed)>> EndFightForAllAsync() =>
+        await EndFightForAsync(await _dungeonWorldContext.Characters.Include(c => c.ArmorBonuses).ToListAsync());
+
+    public async Task<IReadOnlyList<(string Name, IReadOnlyList<ArmorBonus> Removed)>> EndFightForAsync(IReadOnlyCollection<Snowflake> characters)
     {
-        var characters = await _dungeonWorldContext.Characters.Include(c => c.ArmorBonuses).ToListAsync();
+        var ids = characters.ToHashSet();
+        // Few enough to sort out here, which saves teaching SQLite to compare Discord IDs
+        var all = await _dungeonWorldContext.Characters.Include(c => c.ArmorBonuses).ToListAsync();
+        return await EndFightForAsync(all.Where(c => ids.Contains(c.ID)).ToList());
+    }
+
+    private async Task<IReadOnlyList<(string Name, IReadOnlyList<ArmorBonus> Removed)>> EndFightForAsync(List<Character> characters)
+    {
 
         var cleared = new List<(string Name, IReadOnlyList<ArmorBonus> Removed)>();
         foreach (var character in characters)

@@ -1,7 +1,7 @@
 namespace DungeonWorldBot.Data.Entities;
 
 /// <summary>
-/// A fight. Only one runs at a time: the one that hasn't ended.
+/// A fight. Several can go on at once, each until it's ended.
 /// </summary>
 public class Encounter
 {
@@ -14,8 +14,8 @@ public class Encounter
     public DateTimeOffset? EndedAt { get; set; }
 
     /// <summary>
-    /// The dashboard scene it's fought on, by its short ID (see <see cref="CanvasIds"/>). Null when it isn't on one,
-    /// and then every encounter scene shows it.
+    /// The dashboard scene it's fought on, by its short ID (see <see cref="CanvasIds"/>). Null when it isn't on one.
+    /// A scene has one fight going on at a time.
     /// </summary>
     public string? SceneID { get; set; }
 

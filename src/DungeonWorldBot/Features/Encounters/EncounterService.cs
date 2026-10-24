@@ -3,6 +3,7 @@ using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Infrastructure;
 using DungeonWorldBot.Rules;
 using Microsoft.EntityFrameworkCore;
+using Remora.Rest.Core;
 
 namespace DungeonWorldBot.Features.Encounters;
 
@@ -16,15 +17,41 @@ public class EncounterService : IEncounterService
         _context = context;
     }
 
-    public Task<Encounter?> GetActiveAsync() =>
+    public Task<List<Encounter>> GetRunningAsync() =>
         _context.Encounters
             .Include(e => e.Enemies)
             .Include(e => e.Participants)
-            .FirstOrDefaultAsync(e => e.EndedAt == null);
+            .Where(e => e.EndedAt == null)
+            .OrderBy(e => e.ID)
+            .ToListAsync();
+
+    public Task<Encounter?> GetOnSceneAsync(string sceneID) =>
+        _context.Encounters
+            .Include(e => e.Enemies)
+            .Include(e => e.Participants)
+            .FirstOrDefaultAsync(e => e.EndedAt == null && e.SceneID == sceneID);
+
+    public async Task<Encounter?> FindRunningAsync(string name)
+    {
+        var trimmed = name.Trim();
+        // Only a few go at once, and the name column compares with case
+        return (await GetRunningAsync()).FirstOrDefault(e => e.Name.Equals(trimmed, StringComparison.OrdinalIgnoreCase));
+    }
+
+    public async Task<Encounter?> GetForAsync(Snowflake? characterID = null, int? npcID = null)
+    {
+        var running = await GetRunningAsync();
+        return running.LastOrDefault(e => e.Participants.Any(p =>
+                   (characterID is not null && p.CharacterID == characterID) || (npcID is not null && p.NpcID == npcID)))
+               ?? running.LastOrDefault(e => e.Participants.Count == 0)
+               ?? (running.Count == 1 ? running[0] : null);
+    }
 
     public async Task<Encounter?> StartAsync(string name, SceneLink? scene = null, bool announced = false, EncounterRoster? roster = null)
     {
-        if (await GetActiveAsync() is not null)
+        if (await FindRunningAsync(name) is not null)
+            return null;
+        if (scene is not null && await GetOnSceneAsync(scene.ID) is not null)
             return null;
 
         var now = DateTimeOffset.UtcNow;
@@ -47,11 +74,8 @@ public class EncounterService : IEncounterService
         return encounter;
     }
 
-    public async Task<Encounter?> EndAsync(bool announced = false)
+    public async Task EndAsync(Encounter encounter, bool announced = false)
     {
-        if (await GetActiveAsync() is not { } encounter)
-            return null;
-
         encounter.EndedAt = DateTimeOffset.UtcNow;
         if (announced)
         {
@@ -61,7 +85,26 @@ public class EncounterService : IEncounterService
         }
 
         await _context.SaveChangesAsync();
-        return encounter;
+    }
+
+    public async Task<IReadOnlyList<Snowflake>> LeavingAsync(Encounter ended)
+    {
+        var picked = (await _context.EncounterParticipants
+                .Where(p => p.EncounterID == ended.ID && p.CharacterID != null)
+                .Select(p => p.CharacterID)
+                .ToListAsync())
+            .Select(id => id!.Value)
+            .ToList();
+        if (picked.Count > 0)
+            return picked;
+
+        var elsewhere = (await _context.EncounterParticipants
+                .Where(p => p.EncounterID != ended.ID && p.Encounter.EndedAt == null && p.CharacterID != null)
+                .Select(p => p.CharacterID)
+                .ToListAsync())
+            .Select(id => id!.Value)
+            .ToHashSet();
+        return (await _context.Characters.Select(c => c.ID).ToListAsync()).Where(id => !elsewhere.Contains(id)).ToList();
     }
 
     public async Task<List<Encounter>> GetUnannouncedAsync()
@@ -92,7 +135,9 @@ public class EncounterService : IEncounterService
 
     public async Task<IReadOnlyList<Enemy>> SpawnAsync(Encounter encounter, MonsterTemplate monster, int count = 1)
     {
-        var names = SpawnNames(encounter.Enemies.Select(e => e.Name), monster.Name, count);
+        // Numbered across every fight going on, so a name only ever means one enemy
+        var taken = await _context.Enemies.Where(e => e.Encounter.EndedAt == null).Select(e => e.Name).ToListAsync();
+        var names = SpawnNames(taken.Concat(encounter.Enemies.Select(e => e.Name)), monster.Name, count);
         var spawned = names.Select(name => new Enemy
         {
             Name = name,
@@ -166,8 +211,7 @@ public class EncounterService : IEncounterService
 
     public async Task LogAsync(EncounterAction action)
     {
-        var encounterID = await _context.Encounters.Where(e => e.EndedAt == null).Select(e => (int?)e.ID).FirstOrDefaultAsync();
-        if (encounterID is not { } id)
+        if (await FightOfAsync(action) is not { } id)
             return;
 
         action.EncounterID = id;
@@ -175,6 +219,18 @@ public class EncounterService : IEncounterService
             action.At = DateTimeOffset.UtcNow;
         _context.EncounterActions.Add(action);
         await _context.SaveChangesAsync();
+    }
+
+    /// <summary>
+    /// The fight something was done in, by its ID: see <see cref="IEncounterService.LogAsync"/>.
+    /// </summary>
+    private async Task<int?> FightOfAsync(EncounterAction action)
+    {
+        if (action.EnemyID is { } enemyID)
+            return await _context.Enemies.Where(e => e.ID == enemyID && e.Encounter.EndedAt == null).Select(e => (int?)e.EncounterID).FirstOrDefaultAsync();
+        if (action.Target is { } target && await FindEnemyAsync(target) is { } aimedAt)
+            return aimedAt.EncounterID;
+        return (await GetForAsync(action.CharacterID, action.NpcID))?.ID;
     }
 
     // SQLite can't sort by DateTimeOffset, but IDs go up in the order things happened

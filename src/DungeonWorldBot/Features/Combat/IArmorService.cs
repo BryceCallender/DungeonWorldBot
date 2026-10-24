@@ -1,5 +1,6 @@
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Rules;
+using Remora.Rest.Core;
 
 namespace DungeonWorldBot.Features.Combat;
 
@@ -35,4 +36,11 @@ public interface IArmorService
     /// </summary>
     /// <returns>Each character who lost temporary armor, with what they lost.</returns>
     Task<IReadOnlyList<(string Name, IReadOnlyList<ArmorBonus> Removed)>> EndFightForAllAsync();
+
+    /// <summary>
+    /// Ends the fight for some characters, as <see cref="EndFightAsync"/> does for one.
+    /// </summary>
+    /// <param name="characters">Their players' Discord IDs.</param>
+    /// <returns>Each character who lost temporary armor, with what they lost.</returns>
+    Task<IReadOnlyList<(string Name, IReadOnlyList<ArmorBonus> Removed)>> EndFightForAsync(IReadOnlyCollection<Snowflake> characters);
 }

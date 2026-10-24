@@ -2,6 +2,7 @@ using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Encounters;
 using Microsoft.EntityFrameworkCore;
+using Remora.Discord.API;
 
 namespace DungeonWorldBot.Tests.Features.Encounters;
 
@@ -32,21 +33,84 @@ public sealed class EncounterTests : IDisposable
     }
 
     [Fact]
-    public async Task OnlyOneFight_GoesAtATime()
+    public async Task SeveralFights_GoAtOnce_EachWithItsOwnNameAndScene()
     {
         await using var context = CreateContext();
         var service = new EncounterService(context);
+        var ford = new SceneLink("dEsXAr", "The ford", null);
 
-        Assert.Null(await service.GetActiveAsync());
-        Assert.NotNull(await service.StartAsync("Ambush"));
-        Assert.Null(await service.StartAsync("Second fight"));
-
-        var ended = await service.EndAsync();
-        Assert.Equal("Ambush", ended?.Name);
-        Assert.Null(await service.GetActiveAsync());
-        Assert.Null(await service.EndAsync());
-
+        Assert.Empty(await service.GetRunningAsync());
+        var ambush = (await service.StartAsync("Ambush", ford))!;
         Assert.NotNull(await service.StartAsync("Second fight"));
+
+        // Names are unique among the fights going on, and a scene has one at a time
+        Assert.Null(await service.StartAsync("AMBUSH"));
+        Assert.Null(await service.StartAsync("Third fight", ford));
+        Assert.Equal(["Ambush", "Second fight"], (await service.GetRunningAsync()).Select(e => e.Name));
+        Assert.Equal("Ambush", (await service.GetOnSceneAsync("dEsXAr"))?.Name);
+        Assert.Equal("Second fight", (await service.FindRunningAsync(" second FIGHT "))?.Name);
+
+        await service.EndAsync(ambush);
+        Assert.Equal("Second fight", Assert.Single(await service.GetRunningAsync()).Name);
+        Assert.Null(await service.GetOnSceneAsync("dEsXAr"));
+        Assert.NotNull(await service.StartAsync("Ambush", ford));
+    }
+
+    [Fact]
+    public async Task EnemyNames_AreNumberedAcrossTheFightsGoingOn()
+    {
+        await using var context = CreateContext();
+        var service = new EncounterService(context);
+        var first = (await service.StartAsync("Ambush"))!;
+        var second = (await service.StartAsync("Raid"))!;
+
+        await service.SpawnAsync(first, Goblin(), 2);
+        var more = await service.SpawnAsync(second, Goblin());
+
+        Assert.Equal(["Goblin 3"], more.Select(e => e.Name));
+        Assert.Equal(second.ID, (await service.FindEnemyAsync("goblin 3"))?.EncounterID);
+    }
+
+    [Fact]
+    public async Task Actions_GoToTheFightTheyBelongTo()
+    {
+        await using var context = CreateContext();
+        var service = new EncounterService(context);
+        var aria = DiscordSnowflake.New(1);
+        var bram = DiscordSnowflake.New(2);
+        var ambush = (await service.StartAsync("Ambush", roster: new EncounterRoster([aria], [])))!;
+        var raid = (await service.StartAsync("Raid", roster: new EncounterRoster([bram], [])))!;
+        var ogre = new Enemy { Name = "Ogre", MaxHP = 10, CurrentHP = 10 };
+        await service.AddEnemyAsync(raid, ogre);
+
+        // Their own fight, their target's fight, and an enemy's own fight
+        await service.LogAsync(new EncounterAction { Actor = "Aria", CharacterID = aria, Action = "Defy Danger" });
+        await service.LogAsync(new EncounterAction { Actor = "Aria", CharacterID = aria, Action = "Volley", Target = "ogre" });
+        await service.LogAsync(new EncounterAction { Actor = "Ogre", EnemyID = ogre.ID, Action = "Smash" });
+
+        Assert.Equal(["Defy Danger"], (await service.GetActionsAsync(ambush)).Select(a => a.Action));
+        Assert.Equal(["Volley", "Smash"], (await service.GetActionsAsync(raid)).Select(a => a.Action));
+    }
+
+    [Fact]
+    public async Task EndingAFight_OnlyTakesArmorFromWhoWasInIt()
+    {
+        await using var context = CreateContext();
+        var service = new EncounterService(context);
+        var aria = DiscordSnowflake.New(1);
+        var bram = DiscordSnowflake.New(2);
+        var cass = DiscordSnowflake.New(3);
+        context.Characters.Add(new Character { ID = aria, Name = "Aria", Stats = [] });
+        context.Characters.Add(new Character { ID = bram, Name = "Bram", Stats = [] });
+        context.Characters.Add(new Character { ID = cass, Name = "Cass", Stats = [] });
+        await context.SaveChangesAsync();
+
+        var picked = (await service.StartAsync("Ambush", roster: new EncounterRoster([aria], [])))!;
+        var open = (await service.StartAsync("Brawl"))!;
+
+        Assert.Equal([aria], await service.LeavingAsync(picked));
+        // Open to everyone, so everyone but those picked for a fight still going
+        Assert.Equal([bram, cass], (await service.LeavingAsync(open)).OrderBy(id => id.Value));
     }
 
     [Fact]
@@ -142,7 +206,7 @@ public sealed class EncounterTests : IDisposable
             var service = new EncounterService(context);
             Assert.Equal("Goblin 2", (await service.FindEnemyAsync("  gOBLIN 2 "))?.Name);
 
-            await service.EndAsync();
+            await service.EndAsync((await service.FindRunningAsync("Ambush"))!);
             Assert.Null(await service.FindEnemyAsync("Goblin 2"));
         }
     }
@@ -158,7 +222,7 @@ public sealed class EncounterTests : IDisposable
             service.AddEnemyAsync(encounter, new Enemy { Name = "ogre", MaxHP = 10, CurrentHP = 10 }));
         context.ChangeTracker.Clear();
 
-        await service.EndAsync();
+        await service.EndAsync(encounter);
         var next = (await service.StartAsync("Rematch"))!;
         await service.AddEnemyAsync(next, new Enemy { Name = "Ogre", MaxHP = 10, CurrentHP = 10 });
         Assert.Equal(2, await context.Enemies.CountAsync());
@@ -204,12 +268,12 @@ public sealed class EncounterTests : IDisposable
         Assert.Empty(await service.GetUnannouncedAsync());
 
         // Ended on the dashboard: waits for its own announcement
-        await service.EndAsync();
+        await service.EndAsync(fight);
         Assert.Equal(fight.ID, Assert.Single(await service.GetUnannouncedAsync()).ID);
 
         // Started and ended by commands, whose replies are the announcements
-        await service.StartAsync("Rematch", announced: true);
-        await service.EndAsync(announced: true);
+        var rematch = (await service.StartAsync("Rematch", announced: true))!;
+        await service.EndAsync(rematch, announced: true);
         Assert.DoesNotContain(await service.GetUnannouncedAsync(), e => e.Name == "Rematch");
     }
 
@@ -218,9 +282,9 @@ public sealed class EncounterTests : IDisposable
     {
         await using var context = CreateContext();
         var service = new EncounterService(context);
-        await service.StartAsync("Ambush");
+        var fight = (await service.StartAsync("Ambush"))!;
 
-        await service.EndAsync(announced: true);
+        await service.EndAsync(fight, announced: true);
 
         Assert.Empty(await service.GetUnannouncedAsync());
     }

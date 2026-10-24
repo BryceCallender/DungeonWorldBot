@@ -63,14 +63,14 @@ public class PartyReader
     }
 
     /// <summary>
-    /// The fight going on now, or null between fights or when the database predates encounters (or a later change to
-    /// them, until the bot migrates it).
+    /// The fight going on on a scene, by its short ID, or null if there isn't one or the database predates encounters
+    /// (or a later change to them, until the bot migrates it).
     /// </summary>
-    public async Task<Encounter?> GetEncounterAsync()
+    public async Task<Encounter?> GetEncounterAsync(string sceneID)
     {
         try
         {
-            return await _encounterService.GetActiveAsync();
+            return await _encounterService.GetOnSceneAsync(sceneID);
         }
         catch (SqliteException e) when (e.Message.Contains("no such table") || e.Message.Contains("no such column"))
         {

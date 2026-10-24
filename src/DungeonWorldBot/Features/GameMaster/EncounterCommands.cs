@@ -81,27 +81,34 @@ public partial class DmCommand
             if (Text(scene) is { } wanted && (link = await _scenes.FindAsync(wanted)) is null)
                 return await ReplyWithErrorAsync($"There's no encounter scene called {wanted} on the dashboard.");
 
+            if (await _encounterService.FindRunningAsync(trimmed) is { } sameName)
+                return await ReplyWithErrorAsync($"{sameName.Name} is already going on. Give this fight another name.");
+            if (link is not null && await _encounterService.GetOnSceneAsync(link.ID) is { } onScene)
+                return await ReplyWithErrorAsync($"{onScene.Name} is still going on {link.Name}. End it with /dm encounter end first.");
+
             // This reply is the announcement, so the bot doesn't make another
             if (await _encounterService.StartAsync(trimmed, link, announced: true) is not { } encounter)
-            {
-                var current = await _encounterService.GetActiveAsync();
-                return await ReplyWithErrorAsync($"{current?.Name ?? "A fight"} is still going. End it with /dm encounter end first.");
-            }
+                return await ReplyWithErrorAsync("Couldn't start the fight. Try again.");
 
             return await _feedbackService.SendContextualEmbedAsync(EncounterAnnouncements.Started(encounter), ct: CancellationToken);
         }
 
         [Command("end")]
-        [Description("End the fight, and remove everyone's temporary armor that lasted for it")]
-        public async Task<IResult> EndAsync()
+        [Description("End a fight, and remove the temporary armor that lasted for it from everyone in it")]
+        public async Task<IResult> EndAsync(
+            [Description("Which fight, when there's more than one going on")]
+            [AutocompleteProvider(FightAutocomplete.ID)]
+            string? fight = null)
         {
             if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
-            if (await _encounterService.EndAsync(announced: true) is not { } encounter)
-                return await ReplyWithErrorAsync(NoFight);
+            var picked = await PickAsync(fight);
+            if (picked.Encounter is not { } encounter)
+                return await ReplyWithErrorAsync(picked.Error!);
 
-            var cleared = await _armorService.EndFightForAllAsync();
+            await _encounterService.EndAsync(encounter, announced: true);
+            var cleared = await _armorService.EndFightForAsync(await _encounterService.LeavingAsync(encounter));
 
             return await _feedbackService.SendContextualEmbedAsync(
                 EncounterAnnouncements.Ended(encounter, ArmorCommand.DescribeCleared(cleared)), ct: CancellationToken);
@@ -116,13 +123,17 @@ public partial class DmCommand
             [Description("How many")]
             [MinValue(1)]
             [MaxValue(20)]
-            int count = 1)
+            int count = 1,
+            [Description("Which fight, when there's more than one going on")]
+            [AutocompleteProvider(FightAutocomplete.ID)]
+            string? fight = null)
         {
             if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
-            if (await _encounterService.GetActiveAsync() is not { } encounter)
-                return await ReplyWithErrorAsync(NoFight);
+            var picked = await PickAsync(fight);
+            if (picked.Encounter is not { } encounter)
+                return await ReplyWithErrorAsync(picked.Error!);
 
             if (await _encounterService.FindMonsterAsync(monster) is not { } template)
                 return await ReplyWithErrorAsync($"There's no saved monster called {monster}. See /dm monster list");
@@ -154,18 +165,22 @@ public partial class DmCommand
             [Description("Its moves, separated by semicolons")]
             string? moves = null,
             [Description("Anything else worth remembering")]
-            string? notes = null)
+            string? notes = null,
+            [Description("Which fight, when there's more than one going on")]
+            [AutocompleteProvider(FightAutocomplete.ID)]
+            string? fight = null)
         {
             if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
-            if (await _encounterService.GetActiveAsync() is not { } encounter)
-                return await ReplyWithErrorAsync(NoFight);
+            var picked = await PickAsync(fight);
+            if (picked.Encounter is not { } encounter)
+                return await ReplyWithErrorAsync(picked.Error!);
 
             if (Text(name) is not { } trimmed)
                 return await ReplyWithErrorAsync("Give the enemy a name.");
             if (await _encounterService.FindEnemyAsync(trimmed) is { } existing)
-                return await ReplyWithErrorAsync($"{existing.Name} is already in the fight.");
+                return await ReplyWithErrorAsync($"{existing.Name} is already in a fight.");
 
             var enemy = new Enemy
             {
@@ -362,7 +377,7 @@ public partial class DmCommand
             if (Text(rename) is { } newName && !newName.Equals(target.Name, StringComparison.OrdinalIgnoreCase))
             {
                 if (await _encounterService.FindEnemyAsync(newName) is { } taken)
-                    return await ReplyWithErrorAsync($"{taken.Name} is already in the fight.");
+                    return await ReplyWithErrorAsync($"{taken.Name} is already in a fight.");
             }
 
             if (Text(rename) is { } name)
@@ -405,13 +420,17 @@ public partial class DmCommand
 
         [Command("show")]
         [Description("See every enemy's HP, instinct and moves. Only you see the reply")]
-        public async Task<IResult> ShowAsync()
+        public async Task<IResult> ShowAsync(
+            [Description("Which fight, when there's more than one going on")]
+            [AutocompleteProvider(FightAutocomplete.ID)]
+            string? fight = null)
         {
             if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
-            if (await _encounterService.GetActiveAsync() is not { } encounter)
-                return await ReplyWithErrorAsync(NoFight);
+            var picked = await PickAsync(fight);
+            if (picked.Encounter is not { } encounter)
+                return await ReplyWithErrorAsync(picked.Error!);
 
             var embed = new Embed(
                 Title: $"⚔️ {encounter.Name}",
@@ -434,7 +453,9 @@ public partial class DmCommand
             return description;
         }
 
-        public static string NotFound(string name) => $"There's no enemy called {name} in the fight. See /dm encounter show";
+        public static string NotFound(string name) => $"There's no enemy called {name} in a fight. See /dm encounter show";
+
+        private Task<FightChoice> PickAsync(string? fight) => FightChoice.PickAsync(_encounterService, fight, NoFight);
 
         private async Task<Result> ReplyNotGameMasterAsync() =>
             await ReplyWithErrorAsync($"Only someone with the {_gameMaster.RoleName} role can do that.");

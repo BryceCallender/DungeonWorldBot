@@ -4,6 +4,7 @@ using DungeonWorldBot.Infrastructure;
 using Remora.Commands.Attributes;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Objects;
+using Remora.Discord.Commands.Attributes;
 using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
@@ -33,22 +34,33 @@ public class EncounterCommand : DungeonWorldCommandBase
         _characterService = characterService;
     }
 
+    private const string NoFight = "No fight is going on.";
+    private const string FightDescription = "Which fight, when there's more than one going on. Yours, if you leave it blank";
+
     [Command("show")]
     [Description("See who you're fighting and how hurt they look")]
-    public async Task<IResult> ShowAsync()
+    public async Task<IResult> ShowAsync(
+        [Description(FightDescription)]
+        [AutocompleteProvider(FightAutocomplete.ID)]
+        string? fight = null)
     {
-        if (await _encounterService.GetActiveAsync() is not { } encounter)
-            return await ReplyWithErrorAsync("No fight is going on.");
+        var picked = await PickAsync(fight);
+        if (picked.Encounter is not { } encounter)
+            return await ReplyWithErrorAsync(picked.Error!);
 
         return await ReplyAsync($"⚔️ {encounter.Name}", EnemySheet.PlayerList(encounter));
     }
 
     [Command("spotlight")]
     [Description("See who's had the spotlight in the fight, what they did last, and who's due a turn")]
-    public async Task<IResult> SpotlightAsync()
+    public async Task<IResult> SpotlightAsync(
+        [Description(FightDescription)]
+        [AutocompleteProvider(FightAutocomplete.ID)]
+        string? fight = null)
     {
-        if (await _encounterService.GetActiveAsync() is not { } encounter)
-            return await ReplyWithErrorAsync("No fight is going on.");
+        var picked = await PickAsync(fight);
+        if (picked.Encounter is not { } encounter)
+            return await ReplyWithErrorAsync(picked.Error!);
 
         var spotlight = await _spotlightService.GetAsync(encounter, await _characterService.GetCharactersAsync());
 
@@ -64,6 +76,17 @@ public class EncounterCommand : DungeonWorldCommandBase
             ? $"{spotlight.Rolls} rolls, {spotlight.Misses} misses · 💤 is due the spotlight"
             : "💤 is due the spotlight";
         return await ReplyAsync($"🔦 {encounter.Name}", fields.Count > 0 ? description : "Nobody's in the fight yet.", fields);
+    }
+
+    /// <summary>
+    /// The fight named, or else the one the player's character is in, or else the only one going on.
+    /// </summary>
+    private async Task<FightChoice> PickAsync(string? fight)
+    {
+        var yours = string.IsNullOrWhiteSpace(fight) && await _characterService.GetCharacterFromUserAsync(GetUserId()) is { } character
+            ? await _encounterService.GetForAsync(character.ID)
+            : null;
+        return await FightChoice.PickAsync(_encounterService, fight, NoFight, yours);
     }
 
     /// <summary>

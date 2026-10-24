@@ -84,7 +84,7 @@ public class EncounterAnnouncer : BackgroundService
             if (encounter.EndedAt is not null && encounter.EndAnnouncedAt is null)
             {
                 // Clearing again on a retry finds nothing left, so a refused message is simply sent again later
-                var cleared = await armor.EndFightForAllAsync();
+                var cleared = await armor.EndFightForAsync(await encounters.LeavingAsync(encounter));
                 if (!await SendAsync(channels, gameChat, EncounterAnnouncements.Ended(encounter, ArmorCommand.DescribeCleared(cleared)), ct))
                     return false;
 
