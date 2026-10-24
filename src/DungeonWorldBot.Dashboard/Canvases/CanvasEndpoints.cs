@@ -31,6 +31,21 @@ public static class CanvasEndpoints
         group.MapPost("/{id}/archive", (string id, CanvasStore store, Viewer viewer) => Archive(id, true, store, viewer));
         group.MapPost("/{id}/restore", (string id, CanvasStore store, Viewer viewer) => Archive(id, false, store, viewer));
 
+        // For good. Only archived canvases, so nothing in use goes by mistake
+        group.MapPost("/{id}/delete", async (string id, CanvasStore store, Viewer viewer) =>
+        {
+            if (!CanvasIds.TryDecode(id, out var canvasID) || await store.FindAsync(canvasID) is not { } canvas)
+                return Results.NotFound();
+
+            if (!CanPutAway(canvas, viewer))
+                return Results.Forbid();
+            if (canvas.ArchivedAt is null)
+                return Results.BadRequest("Archive it before deleting it.");
+
+            await store.DeleteAsync(canvasID);
+            return Results.LocalRedirect("/scenes?archived=true");
+        });
+
         // A picture for the board or a token. The page shrinks it first; this only checks it's really a picture and
         // not too big, and never decodes it.
         group.MapPost("/{id}/images", async (string id, IFormFile file, CanvasStore store, Viewer viewer) =>
@@ -110,10 +125,13 @@ public static class CanvasEndpoints
         if (!CanvasIds.TryDecode(sqid, out var id) || await store.FindAsync(id) is not { } canvas)
             return Results.NotFound();
 
-        if (viewer.SignedIn && !viewer.IsDungeonMaster && !viewer.Is(canvas.CreatedBy ?? ""))
+        if (!CanPutAway(canvas, viewer))
             return Results.Forbid();
 
         await store.SetArchivedAsync(id, archived);
         return Results.LocalRedirect("/scenes");
     }
+
+    private static bool CanPutAway(Canvas canvas, Viewer viewer) =>
+        !viewer.SignedIn || viewer.IsDungeonMaster || viewer.Is(canvas.CreatedBy ?? "");
 }

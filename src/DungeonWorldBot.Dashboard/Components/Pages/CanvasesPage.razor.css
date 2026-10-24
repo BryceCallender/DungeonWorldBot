@@ -109,6 +109,11 @@
 .canvas-card:hover .link-button,
 .link-button:focus-visible { opacity: 1; }
 .link-button:hover { color: var(--accent); text-decoration: underline; }
+.link-button.delete:hover { color: var(--critical); }
+
+.modal p { margin: 0; }
+.modal .destroy { background: var(--critical); border-color: var(--critical); color: #fff; }
+.modal .destroy:hover { color: #fff; opacity: .9; }
 
 /* No hovering on a touch screen, so it's always there */
 @media (hover: none) { .link-button { opacity: 1; } }

@@ -40,6 +40,13 @@ public class CanvasStore(CanvasContext db)
         await db.Canvases.Where(c => c.ID == id)
             .ExecuteUpdateAsync(c => c.SetProperty(x => x.ArchivedAt, archived ? DateTime.UtcNow : null)) > 0;
 
+    /// <summary>
+    /// Deletes a canvas for good, with everything drawn on it, its pictures and its thumbnail.
+    /// </summary>
+    /// <returns>Whether there was such a canvas.</returns>
+    public async Task<bool> DeleteAsync(int id) =>
+        await db.Canvases.Where(c => c.ID == id).ExecuteDeleteAsync() > 0;
+
     /// <returns>Everything on the canvas, oldest first, so later strokes draw over earlier ones.</returns>
     public Task<List<CanvasItem>> ItemsAsync(int canvasID) =>
         db.CanvasItems.AsNoTracking()

@@ -118,6 +118,28 @@ else
                             <AntiforgeryToken />
                             <button class="link-button" title="@(Archived ? "Bring it back to the list" : "Hide it from the list; it's kept")">@(Archived ? "Restore" : "Archive")</button>
                         </form>
+
+                        @if (Archived)
+                        {
+                            <button type="button" class="link-button delete" data-open-dialog="delete-@sqid" title="Delete it for good">Delete</button>
+
+                            <dialog id="delete-@sqid" class="modal" aria-labelledby="delete-@sqid-title">
+                                <form method="post" action="api/canvases/@sqid/delete">
+                                    <AntiforgeryToken />
+                                    <div class="modal-head">
+                                        <h2 id="delete-@sqid-title">Delete @c.Name?</h2>
+                                        <button type="button" class="modal-close" data-close-dialog aria-label="Close">×</button>
+                                    </div>
+
+                                    <p class="muted">Everything drawn on it and every picture added to it goes too. This can't be undone.</p>
+
+                                    <div class="modal-actions">
+                                        <button type="button" class="tool" data-close-dialog>Cancel</button>
+                                        <button class="tool destroy">Delete</button>
+                                    </div>
+                                </form>
+                            </dialog>
+                        }
                     }
                 </div>
             </article>
