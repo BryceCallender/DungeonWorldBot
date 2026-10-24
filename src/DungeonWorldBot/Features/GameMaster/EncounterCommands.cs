@@ -1,7 +1,9 @@
 using System.ComponentModel;
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Features.Combat;
 using DungeonWorldBot.Features.Encounters;
+using DungeonWorldBot.Features.Npcs;
 using DungeonWorldBot.Features.Rolls;
 using DungeonWorldBot.Infrastructure;
 using DungeonWorldBot.Rules;
@@ -26,12 +28,16 @@ public partial class DmCommand
     {
         private const string EnemyDescription = "The enemy";
         private const string NoFight = "No fight is going on. Start one with /dm encounter start.";
+        private const string AttackAction = "Attack";
 
         private readonly IEncounterService _encounterService;
         private readonly IArmorService _armorService;
         private readonly IDiceRoller _diceRoller;
         private readonly IGameMasterService _gameMaster;
         private readonly SceneDirectory _scenes;
+        private readonly ICharacterService _characterService;
+        private readonly IDamageService _damageService;
+        private readonly INpcService _npcService;
 
         public EncounterCommands(
             ICommandContext context,
@@ -40,7 +46,10 @@ public partial class DmCommand
             IArmorService armorService,
             IDiceRoller diceRoller,
             IGameMasterService gameMaster,
-            SceneDirectory scenes)
+            SceneDirectory scenes,
+            ICharacterService characterService,
+            IDamageService damageService,
+            INpcService npcService)
             : base(context, feedbackService)
         {
             _encounterService = encounterService;
@@ -48,6 +57,9 @@ public partial class DmCommand
             _diceRoller = diceRoller;
             _gameMaster = gameMaster;
             _scenes = scenes;
+            _characterService = characterService;
+            _damageService = damageService;
+            _npcService = npcService;
         }
 
         [Command("start")]
@@ -199,6 +211,88 @@ public partial class DmCommand
 
             return await ReplyAsync("Hit!", DescribeHit(target, hit));
         }
+
+        [Command("attack")]
+        [Description("Have an enemy attack a player's character or an NPC, rolling its damage against their armor")]
+        public async Task<IResult> AttackAsync(
+            [Description("The enemy attacking")]
+            [AutocompleteProvider(LivingEnemyAutocomplete.ID)]
+            string enemy,
+            [Description("The player whose character it attacks. Leave blank to attack an NPC")]
+            IUser? user = null,
+            [Description("The NPC it attacks, instead of a player's character")]
+            [AutocompleteProvider(NpcAutocomplete.ID)]
+            string? npc = null,
+            [Description("What it does, e.g. Bite or Hurl a spear. Leave blank for a plain attack")]
+            string? move = null,
+            [Description("Dice to roll instead of the enemy's own damage, e.g. d10+2 for a big hit")]
+            string? damage = null,
+            [Description("Physical, Magical or Divine (divine weapons), each stopped by its own armor, or True (ignores armor)")]
+            DamageType type = DamageType.Physical,
+            [Description("How much of their armor the hit ignores")]
+            [MinValue(0)]
+            int piercing = 0)
+        {
+            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+                return await ReplyNotGameMasterAsync();
+
+            if ((user is null) == (Text(npc) is null))
+                return await ReplyWithErrorAsync("Pick who it attacks: a player with user, or an NPC with npc.");
+
+            if (await _encounterService.FindEnemyAsync(enemy) is not { } attacker)
+                return await ReplyWithErrorAsync(NotFound(enemy));
+
+            if (attacker.CurrentHP == 0)
+                return await ReplyWithErrorAsync($"{attacker.Name} is defeated, so it can't attack.");
+
+            Character? character = null;
+            Npc? ally = null;
+            if (user is not null && (character = await _characterService.GetCharacterFromUserAsync(user.ID)) is null)
+                return await ReplyWithErrorAsync($"{user.Username} does not have a character.");
+            if (Text(npc) is { } npcName && (ally = await _npcService.FindAsync(npcName)) is null)
+                return await ReplyWithErrorAsync(NpcCommand.NotFound(npcName));
+
+            var dice = Text(damage) ?? attacker.Damage;
+            if (dice is null)
+                return await ReplyWithErrorAsync($"{attacker.Name} has no damage dice. Give it some with /dm encounter edit, or fill in damage.");
+
+            if (!_diceRoller.TryRoll(dice, out var roll))
+                return await ReplyWithErrorAsync($"`{dice}` is not a valid amount or dice roll.");
+
+            AttackLanded landed;
+            if (character is not null)
+            {
+                var hit = await _damageService.TakeAsync(character, roll.Value, type, piercing);
+                landed = new AttackLanded(character.Name, $"took {hit.Taken.Taken}", hit.Describe(character));
+            }
+            else
+            {
+                var hit = await _npcService.DamageAsync(ally!, roll.Value, type, piercing);
+                landed = new AttackLanded(ally!.Name, $"took {hit.Taken}", NpcSheet.DescribeHit(ally, hit));
+            }
+
+            var action = Text(move) ?? AttackAction;
+            await _encounterService.LogAsync(new EncounterAction
+            {
+                Actor = attacker.Name,
+                EnemyID = attacker.ID,
+                Action = action,
+                Roll = $"{dice} = {roll.Value}",
+                Target = landed.Target,
+                Result = landed.Result,
+            });
+
+            return await ReplyAsync(
+                $"⚔️ {attacker.Name}: {action}",
+                $"**{attacker.Name}** attacks **{landed.Target}**! `{dice}` → **{roll.Value}**\n\n{landed.Description}");
+        }
+
+        /// <summary>
+        /// Who an enemy's attack hit, and what it did to them.
+        /// </summary>
+        /// <param name="Result">For the spotlight, e.g. "took 3".</param>
+        /// <param name="Description">For the reply: their HP after, and what their armor stopped.</param>
+        private record AttackLanded(string Target, string Result, string Description);
 
         [Command("heal")]
         [Description("Heal an enemy")]

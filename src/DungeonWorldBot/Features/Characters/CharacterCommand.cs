@@ -30,7 +30,7 @@ public class CharacterCommand : CharacterCommandBase
     private readonly CharacterCreationDialogue _creationDialogue;
     private readonly IDiceRoller _diceRoller;
     private readonly IResourceService _resourceService;
-    private readonly IArmorService _armorService;
+    private readonly IDamageService _damageService;
 
     public CharacterCommand(
         ICommandContext context,
@@ -42,13 +42,13 @@ public class CharacterCommand : CharacterCommandBase
         IGameMasterService gameMaster,
         ILevelingService leveling,
         IGameSettingsService settings,
-        IArmorService armorService)
+        IDamageService damageService)
         : base(context, feedbackService, characterService, gameMaster, leveling, settings)
     {
         _creationDialogue = creationDialogue;
         _diceRoller = diceRoller;
         _resourceService = resourceService;
-        _armorService = armorService;
+        _damageService = damageService;
     }
 
     [Command("create")]
@@ -225,28 +225,12 @@ public class CharacterCommand : CharacterCommandBase
             return await ReplyWithErrorAsync($"`{damage}` is not a valid amount or dice roll.");
         }
 
-        // Reckless Tactics: the Battlemaster takes +1d4 from every hit
-        var amount = roll.Value;
-        var reckless = string.Empty;
-        if (amount > 0 && TacticRules.ExtraDamage(character) is { } extra && _diceRoller.TryRoll(extra, out var extraRoll))
-        {
-            amount += extraRoll.Value;
-            reckless = $"\n*{TacticRules.Current(character)!.Name} Tactics: +{extraRoll.Value} ({extra}) damage taken*";
-        }
-
-        // Modifiers can push a roll below zero ("1d4-3"), which shouldn't heal anyone
-        var hit = await _armorService.TakeDamageAsync(character, amount, type, piercing);
-
-        var description = $"{character.Name} took {hit.Taken} damage! ({character.Health.CurrentHP}/{character.Health.MaxHP} HP)" +
-                          (character.Health.CurrentHP == 0 ? " · at 0 HP, roll /move last-breath" : string.Empty) +
-                          $"\n{DamageRules.Describe(hit)}" + reckless;
-        if (hit.Broken.Count > 0)
-            description += $"\n*Broken: {string.Join(", ", hit.Broken.Select(b => b.Source))}*";
+        var hit = await _damageService.TakeAsync(character, roll.Value, type, piercing);
 
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: "Damaged!",
-                Description: description,
+                Description: hit.Describe(character),
                 Colour: _feedbackService.Theme.Primary
             ),
             ct: CancellationToken

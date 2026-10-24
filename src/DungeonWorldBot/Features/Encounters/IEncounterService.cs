@@ -77,6 +77,16 @@ public interface IEncounterService
     /// </summary>
     Task HealAsync(Enemy enemy, int? amount = null);
 
+    /// <summary>
+    /// Notes something done in the current fight, for the spotlight. Does nothing between fights.
+    /// </summary>
+    Task LogAsync(EncounterAction action);
+
+    /// <summary>
+    /// Everything done in a fight, oldest first.
+    /// </summary>
+    Task<List<EncounterAction>> GetActionsAsync(Encounter encounter);
+
     Task<List<MonsterTemplate>> GetMonstersAsync();
 
     /// <summary>

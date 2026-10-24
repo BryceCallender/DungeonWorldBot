@@ -12,29 +12,35 @@ namespace DungeonWorldBot.Features.Combat;
 [Scoped<IDamageService>]
 public class DamageService : IDamageService
 {
+    public const string ExtraOption = "extra-damage";
+    public const string ExtraDescription = "Extra damage the bot isn't tracking, added to the roll (e.g. 2, or -1)";
+    public const string ExtraSource = "Extra";
+
     private readonly ICharacterService _characterService;
     private readonly IDiceRoller _diceRoller;
     private readonly IGearService _gearService;
+    private readonly IArmorService _armorService;
 
-    public DamageService(ICharacterService characterService, IDiceRoller diceRoller, IGearService gearService)
+    public DamageService(ICharacterService characterService, IDiceRoller diceRoller, IGearService gearService, IArmorService armorService)
     {
         _characterService = characterService;
         _diceRoller = diceRoller;
         _gearService = gearService;
+        _armorService = armorService;
     }
 
-    public async Task<DamageRoll?> RollAsync(Character character, string move)
+    public async Task<DamageRoll?> RollAsync(Character character, string move, int extra = 0)
     {
-        var bonuses = await DamageBonusesAsync(character);
+        var bonuses = await DamageBonusesAsync(character, extra);
         var baseDice = character.DamageModifier ?? character.Class.Damage;
-        var extra = TacticRules.ExtraDamage(character);
-        var expression = DiceHelper.AddModifier(extra is not null ? $"{baseDice}+{extra}" : baseDice, bonuses.Sum(b => b.Amount));
+        var tactic = TacticRules.ExtraDamage(character);
+        var expression = DiceHelper.AddModifier(tactic is not null ? $"{baseDice}+{tactic}" : baseDice, bonuses.Sum(b => b.Amount));
         if (!_diceRoller.TryRoll(expression, out var dice))
             return null;
 
         var gear = await ApplyGearAsync(character, move, DamageDice(dice));
-        if (extra is not null)
-            gear = gear with { Notes = gear.Notes.Prepend($"{TacticRules.Current(character)!.Name} Tactics: +{extra} damage").ToList() };
+        if (tactic is not null)
+            gear = gear with { Notes = gear.Notes.Prepend($"{TacticRules.Current(character)!.Name} Tactics: +{tactic} damage").ToList() };
         return new DamageRoll(expression, dice, dice.Value + gear.Bonus, bonuses, gear);
     }
 
@@ -44,12 +50,28 @@ public class DamageService : IDamageService
     public async Task<IReadOnlyList<RollBonus>> BonusesAsync(Character character, RollKind kind, StatType? stat = null) =>
         SubclassLibrary.Bonuses(character, await _characterService.GetCharactersAsync(), kind, stat);
 
-    public async Task<IReadOnlyList<RollBonus>> DamageBonusesAsync(Character character)
+    public async Task<IReadOnlyList<RollBonus>> DamageBonusesAsync(Character character, int extra = 0)
     {
-        var bonuses = await BonusesAsync(character, RollKind.Damage);
-        return character.DamageRating != 0
-            ? bonuses.Prepend(new RollBonus("Gear damage", character.DamageRating)).ToList()
-            : bonuses;
+        var bonuses = (await BonusesAsync(character, RollKind.Damage)).ToList();
+        if (character.DamageRating != 0)
+            bonuses.Insert(0, new RollBonus("Gear damage", character.DamageRating));
+        if (extra != 0)
+            bonuses.Add(new RollBonus(ExtraSource, extra));
+        return bonuses;
+    }
+
+    public async Task<PlayerHit> TakeAsync(Character character, int amount, DamageType type, int piercing = 0)
+    {
+        // Reckless Tactics: the Battlemaster takes +1d4 from every hit
+        string? reckless = null;
+        if (amount > 0 && TacticRules.ExtraDamage(character) is { } extra && _diceRoller.TryRoll(extra, out var extraRoll))
+        {
+            amount += extraRoll.Value;
+            reckless = $"{TacticRules.Current(character)!.Name} Tactics: +{extraRoll.Value} ({extra}) damage taken";
+        }
+
+        // Modifiers can push a roll below zero ("1d4-3"), which shouldn't heal anyone
+        return new PlayerHit(await _armorService.TakeDamageAsync(character, amount, type, piercing), reckless);
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Rules;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Objects;
 
@@ -9,6 +10,18 @@ namespace DungeonWorldBot.Features.Npcs;
 /// </summary>
 public static class NpcSheet
 {
+    /// <summary>
+    /// e.g. "Grub took 3 damage! (5/8 HP)" with the armor's share under it.
+    /// </summary>
+    public static string DescribeHit(Npc npc, ArmoredHit hit)
+    {
+        var description = $"{npc.Name} took {hit.Taken} damage! ({npc.CurrentHP}/{npc.MaxHP} HP)" +
+                          (npc.CurrentHP == 0 ? " · they're down" : string.Empty);
+        if (hit.Blocked > 0)
+            description += $"\nRolled {hit.Rolled}, armor stopped {hit.Blocked}";
+        return description;
+    }
+
     public static string Title(Npc npc) => npc.Role is null ? npc.Name : $"{npc.Name} · {npc.Role}";
 
     /// <summary>

@@ -56,15 +56,17 @@ public class MoveCommand : DungeonWorldCommandBase
     [Description("Attack an enemy in melee (+STR)")]
     public Task<IResult> HackAndSlashAsync(
         [Description(BonusDescription)] int bonus = 0,
-        [Description(TargetDescription)] [AutocompleteProvider(LivingEnemyAutocomplete.ID)] string? target = null)
-        => MakeStatMoveAsync(BasicMoves.HackAndSlash, StatType.Str, bonus, target);
+        [Description(TargetDescription)] [AutocompleteProvider(LivingEnemyAutocomplete.ID)] string? target = null,
+        [Option(DamageService.ExtraOption)] [Description(DamageService.ExtraDescription)] int extraDamage = 0)
+        => MakeStatMoveAsync(BasicMoves.HackAndSlash, StatType.Str, bonus, target, extraDamage);
 
     [Command("volley")]
     [Description("Take aim and shoot at an enemy at range (+DEX)")]
     public Task<IResult> VolleyAsync(
         [Description(BonusDescription)] int bonus = 0,
-        [Description(TargetDescription)] [AutocompleteProvider(LivingEnemyAutocomplete.ID)] string? target = null)
-        => MakeStatMoveAsync(BasicMoves.Volley, StatType.Dex, bonus, target);
+        [Description(TargetDescription)] [AutocompleteProvider(LivingEnemyAutocomplete.ID)] string? target = null,
+        [Option(DamageService.ExtraOption)] [Description(DamageService.ExtraDescription)] int extraDamage = 0)
+        => MakeStatMoveAsync(BasicMoves.Volley, StatType.Dex, bonus, target, extraDamage);
 
     [Command("defy-danger")]
     [Description("Act despite an imminent threat (+the stat that fits how you do it)")]
@@ -106,7 +108,8 @@ public class MoveCommand : DungeonWorldCommandBase
             return await ReplyWithErrorAsync("You must have a character to make moves. Try using /character create");
 
         var bonds = character.Bonds?.Count(b => b.TargetID == user.ID) ?? 0;
-        return await ReplyWithMoveAsync(character, BasicMoves.AidOrInterfere, $"Bond with {user.Username}", bonds, bonus);
+        var ally = (await _characterService.GetCharacterFromUserAsync(user.ID))?.Name ?? user.Username;
+        return await ReplyWithMoveAsync(character, BasicMoves.AidOrInterfere, $"Bond with {user.Username}", bonds, bonus, ally: ally);
     }
 
     [Command("last-breath")]
@@ -128,7 +131,9 @@ public class MoveCommand : DungeonWorldCommandBase
         string move,
         [Description(BonusDescription)] int bonus = 0,
         [Description("Roll with a different stat than usual, if a move lets you")]
-        StatType? stat = null)
+        StatType? stat = null,
+        [Option(DamageService.ExtraOption)] [Description(DamageService.ExtraDescription + ", if the move deals damage")]
+        int extraDamage = 0)
     {
         var character = await GetOwnCharacterAsync();
         if (character is null)
@@ -160,7 +165,7 @@ public class MoveCommand : DungeonWorldCommandBase
             if (rollsFrom.FindResource(rollsWith) is { } resource)
             {
                 var value = _resourceService.GetValue(character, resource);
-                return await ReplyWithMoveAsync(character, definition, resource.Name, value, bonus);
+                return await ReplyWithMoveAsync(character, definition, resource.Name, value, bonus, extraDamage: extraDamage);
             }
 
             if (rollsFrom.ClassStat?.Name.Equals(rollsWith, StringComparison.OrdinalIgnoreCase) == true)
@@ -176,17 +181,18 @@ public class MoveCommand : DungeonWorldCommandBase
         }
 
         if ((stat ?? definition.Stat) is not { } statType)
-            return await ReplyWithMoveAsync(character, definition, modifierLabel: null, modifier: 0, bonus);
+            return await ReplyWithMoveAsync(character, definition, modifierLabel: null, modifier: 0, bonus, extraDamage: extraDamage);
 
         var characterStat = character.Stats.FirstOrDefault(s => s.StatType == statType);
         if (characterStat is null)
             return await ReplyWithErrorAsync($"Your character has no {statType} stat.");
 
-        return await ReplyWithMoveAsync(character, definition, statType.ToString().ToUpper(), characterStat.Modifier, bonus, statType);
+        return await ReplyWithMoveAsync(character, definition, statType.ToString().ToUpper(), characterStat.Modifier, bonus, statType, extraDamage: extraDamage);
     }
 
     /// <param name="target">The enemy to take the damage off, for moves that roll it.</param>
-    private async Task<IResult> MakeStatMoveAsync(MoveDefinition move, StatType statType, int bonus, string? target = null)
+    /// <param name="extraDamage">Flat damage added to the damage roll, for something the bot doesn't track.</param>
+    private async Task<IResult> MakeStatMoveAsync(MoveDefinition move, StatType statType, int bonus, string? target = null, int extraDamage = 0)
     {
         var character = await GetOwnCharacterAsync();
         if (character is null)
@@ -196,12 +202,14 @@ public class MoveCommand : DungeonWorldCommandBase
         if (stat is null)
             return await ReplyWithErrorAsync($"Your character has no {statType} stat.");
 
-        return await ReplyWithMoveAsync(character, move, statType.ToString().ToUpper(), stat.Modifier, bonus, statType, target: target);
+        return await ReplyWithMoveAsync(character, move, statType.ToString().ToUpper(), stat.Modifier, bonus, statType, target: target, extraDamage: extraDamage);
     }
 
     /// <param name="target">The enemy to take the damage off, if the move rolls damage and hits.</param>
     /// <param name="stat">The stat being rolled, so its debility (if any) applies.</param>
     /// <param name="kind">What the roll is for, when subclass bonuses (like a Boon of Luna) could apply to it.</param>
+    /// <param name="extraDamage">Flat damage added to the damage roll, if the move rolls damage.</param>
+    /// <param name="ally">The player's character being helped or hindered, for the spotlight.</param>
     private async Task<IResult> ReplyWithMoveAsync(
         Character character,
         MoveDefinition move,
@@ -210,7 +218,9 @@ public class MoveCommand : DungeonWorldCommandBase
         int bonus,
         StatType? stat = null,
         RollKind? kind = null,
-        string? target = null)
+        string? target = null,
+        int extraDamage = 0,
+        string? ally = null)
     {
         if (TacticRules.WhyCannotMake(character, move.Name) is { } forbidden)
             return await ReplyWithErrorAsync(forbidden);
@@ -250,11 +260,13 @@ public class MoveCommand : DungeonWorldCommandBase
             fields.Add(new EmbedField("Options", string.Join('\n', move.Options!.Select(o => $"• {o}"))));
         }
 
+        DamageDealt? dealt = null;
         if (move.RollsDamage && (isHit || TacticRules.DamagesOnMiss(character, move.Name)))
         {
             if (!isHit)
                 fields.Add(new EmbedField($"{TacticRules.Current(character)!.Name} Tactics", "Your damage lands even on a miss."));
-            fields.AddRange(await RollDamageAsync(character, move.Name, target));
+            dealt = await RollDamageAsync(character, move.Name, target, extraDamage);
+            fields.AddRange(dealt.Fields);
         }
 
         if (isHit && move.Name == TacticRules.ChangeTactics)
@@ -273,38 +285,46 @@ public class MoveCommand : DungeonWorldCommandBase
 
         var reply = await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);
 
-        if (reply.IsSuccess && _context.TryGetChannelID(out var channelID))
+        if (!reply.IsSuccess)
+            return reply;
+
+        if (_context.TryGetChannelID(out var channelID))
             await _rollStatsService.RecordAsync(reply.Entity.ID, channelID, character.ID, roll.Dice, RollLabel.Of(embed));
+
+        // Does nothing between fights
+        await _encounterService.LogAsync(new EncounterAction
+        {
+            Actor = character.Name,
+            CharacterID = character.ID,
+            MessageID = reply.Entity.ID,
+            Action = move.Name,
+            Roll = $"{roll.Dice.Value} · {MoveRoller.Describe(outcome)}",
+            Target = dealt?.Target ?? ally,
+            Result = dealt?.Result,
+        });
 
         return reply;
     }
 
-    private async Task<IReadOnlyList<IEmbedField>> RollDamageAsync(Character character, string move, string? target)
+    /// <summary>
+    /// A move's damage, and what it did to the enemy it was aimed at.
+    /// </summary>
+    /// <param name="Target">The enemy it hit, if there was one in the fight.</param>
+    /// <param name="Result">What the damage came to, e.g. "took 4" for an enemy or "6 damage" with none.</param>
+    private record DamageDealt(IReadOnlyList<IEmbedField> Fields, string? Target = null, string? Result = null);
+
+    private async Task<DamageDealt> RollDamageAsync(Character character, string move, string? target, int extra)
     {
-        if (await _damageService.RollAsync(character, move) is not { } damage)
-            return [new EmbedField("Damage", $"Couldn't roll `{character.DamageModifier ?? character.Class.Damage}`. Fix it with /character damage-dice")];
+        if (await _damageService.RollAsync(character, move, extra) is not { } damage)
+            return new DamageDealt([new EmbedField("Damage", $"Couldn't roll `{character.DamageModifier ?? character.Class.Damage}`. Fix it with /character damage-dice")]);
 
         var fields = new List<IEmbedField> { new EmbedField("Damage", $"{damage.Expression} → **{damage.Total}**{damage.Details}") };
-        if (!string.IsNullOrWhiteSpace(target))
-            fields.Add(await HitTargetAsync(target, damage.Total));
-        return fields;
-    }
+        if (string.IsNullOrWhiteSpace(target))
+            return new DamageDealt(fields, Result: $"{damage.Total} damage");
 
-    /// <summary>
-    /// Takes the damage off the enemy. The roll stands either way; if there's no such enemy, the DM can apply it by hand.
-    /// </summary>
-    private async Task<IEmbedField> HitTargetAsync(string target, int damage)
-    {
-        if (await _encounterService.FindEnemyAsync(target) is not { } enemy)
-            return new EmbedField("Target", $"No enemy called {target.Trim()} is in the fight, so the damage wasn't applied.");
-
-        if (enemy.CurrentHP == 0)
-            return new EmbedField("Target", $"{enemy.Name} is already defeated, so the damage wasn't applied.");
-
-        var hit = await _encounterService.DamageAsync(enemy, damage);
-        // Players only see how hurt it looks, not its HP
-        var armor = hit.Blocked > 0 ? $" (armor stopped {hit.Blocked})" : string.Empty;
-        return new EmbedField($"🎯 {enemy.Name}", $"Took **{hit.Taken}**{armor} · {EnemySheet.Condition(enemy)}");
+        var hit = await EnemyHit.ApplyAsync(_encounterService, target, damage.Total);
+        fields.Add(hit.Field);
+        return new DamageDealt(fields, hit.Target, hit.Result ?? $"{damage.Total} damage");
     }
 
     private static string FormatSigned(int value) => value >= 0 ? $"+{value}" : value.ToString();

@@ -38,4 +38,9 @@ public class Encounter
     public DateTimeOffset? EndAnnouncedAt { get; set; }
 
     public List<Enemy> Enemies { get; set; } = new();
+
+    /// <summary>
+    /// What everyone did in the fight, oldest first by ID.
+    /// </summary>
+    public List<EncounterAction> Actions { get; set; } = new();
 }

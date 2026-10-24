@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Features.Encounters;
 using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Rolls;
 using DungeonWorldBot.Infrastructure;
@@ -23,12 +24,19 @@ public class NpcCommand : DungeonWorldCommandBase
 
     private readonly INpcService _npcService;
     private readonly IDiceRoller _diceRoller;
+    private readonly IEncounterService _encounterService;
 
-    public NpcCommand(ICommandContext context, FeedbackService feedbackService, INpcService npcService, IDiceRoller diceRoller)
+    public NpcCommand(
+        ICommandContext context,
+        FeedbackService feedbackService,
+        INpcService npcService,
+        IDiceRoller diceRoller,
+        IEncounterService encounterService)
         : base(context, feedbackService)
     {
         _npcService = npcService;
         _diceRoller = diceRoller;
+        _encounterService = encounterService;
     }
 
     [Command("list")]
@@ -84,12 +92,7 @@ public class NpcCommand : DungeonWorldCommandBase
 
         var hit = await _npcService.DamageAsync(npc, roll.Value, type, piercing);
 
-        var description = $"{npc.Name} took {hit.Taken} damage! ({npc.CurrentHP}/{npc.MaxHP} HP)" +
-                          (npc.CurrentHP == 0 ? " · they're down" : string.Empty);
-        if (hit.Blocked > 0)
-            description += $"\nRolled {hit.Rolled}, armor stopped {hit.Blocked}";
-
-        return await ReplyAsync("Damaged!", description);
+        return await ReplyAsync("Damaged!", NpcSheet.DescribeHit(npc, hit));
     }
 
     [Command("heal")]
@@ -134,7 +137,10 @@ public class NpcCommand : DungeonWorldCommandBase
         [AutocompleteProvider(NpcRollAutocomplete.ID)]
         string with,
         [Description("Anything else added to the roll, like +1 from aid or -1 forward")]
-        int bonus = 0)
+        int bonus = 0,
+        [Description("The enemy they're attacking. A damage roll is taken off it")]
+        [AutocompleteProvider(LivingEnemyAutocomplete.ID)]
+        string? target = null)
     {
         var npc = await _npcService.FindAsync(name);
         if (npc is null)
@@ -147,7 +153,8 @@ public class NpcCommand : DungeonWorldCommandBase
             return await ReplyWithErrorAsync($"{npc.Name} can't roll with {with}. Try one of: {choices}.");
         }
 
-        if (!_diceRoller.TryRoll(DiceHelper.AddModifier(option.Dice, bonus), out var roll))
+        var dice = DiceHelper.AddModifier(option.Dice, bonus);
+        if (!_diceRoller.TryRoll(dice, out var roll))
             return await ReplyWithErrorAsync($"{npc.Name}'s {option.Name} dice (`{option.Dice}`) can't be rolled. The DM can fix them with /dm npc edit.");
 
         var rolledWith = option.Modifier is { } mod ? $"{option.Name} {NpcSheet.Signed(mod)}" : option.Dice;
@@ -160,8 +167,27 @@ public class NpcCommand : DungeonWorldCommandBase
         if (outcome is { } band)
             fields.Add(new EmbedField(MoveRoller.Describe(band), MoveRoller.GeneralMeaning(band)));
 
+        // Only a damage roll hurts the target; a 2d6 roll is just aimed at it
+        string? aimedAt = null;
+        string? result = null;
+        if (!string.IsNullOrWhiteSpace(target))
+        {
+            if (outcome is null)
+            {
+                var hit = await EnemyHit.ApplyAsync(_encounterService, target, roll.Value);
+                fields.Add(hit.Field);
+                aimedAt = hit.Target;
+                result = hit.Result;
+            }
+            else
+            {
+                aimedAt = (await _encounterService.FindEnemyAsync(target))?.Name ?? target.Trim();
+                fields.Add(new EmbedField("🎯 Target", aimedAt));
+            }
+        }
+
         // Not recorded in roll stats, which belong to the player who rolled
-        return await _feedbackService.SendContextualEmbedAsync(
+        var reply = await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: $"🎲 {npc.Name}: {option.Name}",
                 Description: DiceHelper.BuildDiceResult(roll),
@@ -170,6 +196,22 @@ public class NpcCommand : DungeonWorldCommandBase
             ),
             ct: CancellationToken
         );
+
+        // Does nothing between fights
+        if (reply.IsSuccess)
+        {
+            await _encounterService.LogAsync(new EncounterAction
+            {
+                Actor = npc.Name,
+                NpcID = npc.ID,
+                Action = option.Name,
+                Roll = outcome is { } rolled ? $"{roll.Value} · {MoveRoller.Describe(rolled)}" : $"{dice} = {roll.Value}",
+                Target = aimedAt,
+                Result = result,
+            });
+        }
+
+        return reply;
     }
 
     public static string NotFound(string name) => $"No NPC called {name} is with the party. See them all with /npc list.";

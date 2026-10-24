@@ -43,6 +43,7 @@ builder.Services.AddScoped<ILevelingService, LevelingService>();
 builder.Services.AddScoped<IRollStatsService, RollStatsService>();
 builder.Services.AddScoped<INpcService, NpcService>();
 builder.Services.AddScoped<IEncounterService, EncounterService>();
+builder.Services.AddScoped<ISpotlightService, SpotlightService>();
 builder.Services.AddScoped<PartyReader>();
 builder.Services.AddScoped<RollReader>();
 var writableDatabase = new DbContextOptionsBuilder<DungeonWorldContext>()

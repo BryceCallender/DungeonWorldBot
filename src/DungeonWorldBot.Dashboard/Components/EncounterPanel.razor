@@ -1,13 +1,13 @@
 @using DungeonWorldBot.Dashboard.Encounters
 @using DungeonWorldBot.Features.Encounters
 @inject PartyReader PartyReader
-@inject RollReader RollReader
+@inject ISpotlightService SpotlightService
 @inject Viewer Viewer
 
 @* The fight on an encounter scene, beside its board. The board page doesn't refresh itself, so app.js swaps in a fresh
    copy of this from api/scenes/{id}/encounter/panel whenever the bot changes something. Players only see how hurt each
    enemy looks; whoever runs the fight (the DM, or anyone with sign-in off) sees its numbers, and gets buttons for the
-   dialogs on the scene page that run it. A fight on another scene doesn't show here at all. *@
+   dialogs on the scene page that run it. Everyone sees the spotlight. A fight on another scene doesn't show here at all. *@
 @if (_encounter is { SceneID: { } elsewhere } && elsewhere != SceneID)
 {
     @* Another scene's fight is none of this one's business. The empty panel stays so that, once that fight ends, the
@@ -54,7 +54,7 @@
                 }
             </ol>
         }
-        @if (_spotlight is { Party.Count: > 0 } spotlight)
+        @if (_spotlight is { } spotlight && (spotlight.Party.Count > 0 || spotlight.Allies.Count > 0 || spotlight.Enemies.Count > 0))
         {
             @* Dungeon World has no turns, so this is who's been quiet rather than whose go it is *@
             <h2 class="spotlight-head">
@@ -64,15 +64,18 @@
                     <span class="chip warn" title="Misses this fight: each is a chance for a DM move">@spotlight.Misses 6-</span>
                 }
             </h2>
-            <ol class="spotlight-list">
-                @foreach (var line in spotlight.Party)
-                {
-                    <li class="spotlight @(line.Quiet ? "quiet" : null)">
-                        <a class="name" href="@line.Character.Url">@line.Character.Name</a>
-                        <span class="muted" title="@LastTitle(line)">@Summary(line)</span>
-                    </li>
-                }
-            </ol>
+            @if (spotlight.Party.Count > 0)
+            {
+                @Lines("Party", spotlight.Party)
+            }
+            @if (spotlight.Allies.Count > 0)
+            {
+                @Lines("Allies", spotlight.Allies)
+            }
+            @if (spotlight.Enemies.Count > 0)
+            {
+                @Lines("Enemies", spotlight.Enemies)
+            }
         }
         @if (_canRun)
         {
@@ -94,26 +97,68 @@
     private Encounter? _encounter;
     private bool _canRun;
     private Spotlight? _spotlight;
+    private Dictionary<ulong, string> _characterUrls = new();
 
     protected override async Task OnInitializedAsync()
     {
         _encounter = await PartyReader.GetEncounterAsync();
         _canRun = EncounterEndpoints.CanRun(Viewer);
 
-        // Only whoever runs the fight needs reminding who's been left out
-        if (_canRun && _encounter is { } encounter && (encounter.SceneID is null || encounter.SceneID == SceneID))
-            _spotlight = await RollReader.GetSpotlightAsync(encounter.StartedAt, await PartyReader.GetPartyAsync());
+        if (_encounter is { } encounter && (encounter.SceneID is null || encounter.SceneID == SceneID))
+        {
+            var party = await PartyReader.GetPartyAsync();
+            _characterUrls = party.ToDictionary(c => c.Character.ID.Value, c => c.Url);
+            _spotlight = await SpotlightService.GetAsync(encounter, party.Select(c => c.Character));
+        }
     }
 
-    private static string Summary(SpotlightLine line) => line switch
+    private static string Count(SpotlightLine line) => line switch
     {
-        { Rolls: 0, Quiet: true } => "hasn't acted",
-        { Rolls: 0 } => "—",
-        _ => $"{line.Rolls} roll{(line.Rolls == 1 ? "" : "s")}{(line.LastMove is { } move ? $" · {move}" : "")}",
+        { Actions: 0, Quiet: true } => "hasn't acted",
+        { Actions: 0 } => "—",
+        _ => $"{line.Actions} action{(line.Actions == 1 ? "" : "s")}",
     };
 
-    private static string? LastTitle(SpotlightLine line) =>
-        line.LastRolled is { } last ? $"Last rolled {last.ToLocalTime():t}" : null;
+    private RenderFragment Lines(string side, IReadOnlyList<SpotlightLine> lines) =>
+        @<div class="spotlight-side">
+            <h3>@side</h3>
+            <ol class="spotlight-list">
+                @foreach (var line in lines)
+                {
+                    <li class="spotlight @(line.Quiet ? "quiet" : null)">
+                        <div class="spotlight-row">
+                            @if (line.CharacterID is { } id && _characterUrls.TryGetValue(id.Value, out var url))
+                            {
+                                <a class="name" href="@url">@line.Name</a>
+                            }
+                            else
+                            {
+                                <span class="name">@line.Name</span>
+                            }
+                            <span class="muted">@Count(line)</span>
+                        </div>
+                        @if (line.Last is { } last)
+                        {
+                            <div class="spotlight-last" title="@($"{last.At.ToLocalTime():t}: {last.Summary}")">
+                                <span class="action">@last.Action</span>
+                                @if (last.Roll is not null)
+                                {
+                                    <span class="roll @(last.Missed ? "miss" : null)">🎲 @last.Roll</span>
+                                }
+                                @if (last.Target is not null)
+                                {
+                                    <span class="target">🎯 @last.Target</span>
+                                }
+                                @if (last.Result is not null)
+                                {
+                                    <span class="result">@last.Result</span>
+                                }
+                            </div>
+                        }
+                    </li>
+                }
+            </ol>
+        </div>;
 
     private static RenderFragment Head(Enemy enemy) =>
         @<span class="enemy-row">

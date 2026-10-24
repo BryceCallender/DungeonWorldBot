@@ -2,6 +2,7 @@ using d20Tek.DiceNotation.Results;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Gear;
 using DungeonWorldBot.Features.Subclasses;
+using DungeonWorldBot.Rules;
 
 namespace DungeonWorldBot.Features.Combat;
 
@@ -25,8 +26,9 @@ public interface IDamageService
     /// <summary>
     /// Rolls the character's damage for a move, with subclass bonuses (like a Boon of Wrath) and their gear's effects.
     /// </summary>
+    /// <param name="extra">Flat damage the player adds for something the bot doesn't track.</param>
     /// <returns>The roll, or null if the character's damage dice can't be rolled.</returns>
-    Task<DamageRoll?> RollAsync(Character character, string move);
+    Task<DamageRoll?> RollAsync(Character character, string move, int extra = 0);
 
     /// <summary>
     /// The character's gear's effects on damage they rolled some other way, like Lunar Barrage's d10s.
@@ -40,7 +42,12 @@ public interface IDamageService
 
     /// <summary>
     /// Everything added to the character's damage, each with where it came from: their gear's damage rating and subclass
-    /// bonuses from them and the party.
+    /// bonuses from them and the party, plus any extra damage the player adds for something the bot doesn't track.
     /// </summary>
-    Task<IReadOnlyList<RollBonus>> DamageBonusesAsync(Character character);
+    Task<IReadOnlyList<RollBonus>> DamageBonusesAsync(Character character, int extra = 0);
+
+    /// <summary>
+    /// Hits the character, after their armor against its type. A Battlemaster in Reckless Tactics takes +1d4.
+    /// </summary>
+    Task<PlayerHit> TakeAsync(Character character, int amount, DamageType type, int piercing = 0);
 }

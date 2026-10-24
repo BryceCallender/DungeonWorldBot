@@ -20,6 +20,8 @@ public class DungeonWorldContext : DbContext
 
     public DbSet<Enemy> Enemies => Set<Enemy>();
 
+    public DbSet<EncounterAction> EncounterActions => Set<EncounterAction>();
+
     public DbSet<MonsterTemplate> MonsterTemplates => Set<MonsterTemplate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -39,6 +41,23 @@ public class DungeonWorldContext : DbContext
                 .WithOne(e => e.Encounter)
                 .HasForeignKey(e => e.EncounterID)
                 .OnDelete(DeleteBehavior.Cascade);
+            encounter.HasMany(e => e.Actions)
+                .WithOne(a => a.Encounter)
+                .HasForeignKey(a => a.EncounterID)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<EncounterAction>(action =>
+        {
+            // An enemy taken out of the fight keeps its past actions, under the name it had
+            action.HasOne<Enemy>()
+                .WithMany()
+                .HasForeignKey(a => a.EnemyID)
+                .OnDelete(DeleteBehavior.SetNull);
+            action.HasOne<Npc>()
+                .WithMany()
+                .HasForeignKey(a => a.NpcID)
+                .OnDelete(DeleteBehavior.SetNull);
         });
 
         modelBuilder.Entity<Enemy>(enemy =>

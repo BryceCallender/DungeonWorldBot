@@ -158,6 +158,23 @@ public class EncounterService : IEncounterService
         await _context.SaveChangesAsync();
     }
 
+    public async Task LogAsync(EncounterAction action)
+    {
+        var encounterID = await _context.Encounters.Where(e => e.EndedAt == null).Select(e => (int?)e.ID).FirstOrDefaultAsync();
+        if (encounterID is not { } id)
+            return;
+
+        action.EncounterID = id;
+        if (action.At == default)
+            action.At = DateTimeOffset.UtcNow;
+        _context.EncounterActions.Add(action);
+        await _context.SaveChangesAsync();
+    }
+
+    // SQLite can't sort by DateTimeOffset, but IDs go up in the order things happened
+    public Task<List<EncounterAction>> GetActionsAsync(Encounter encounter) =>
+        _context.EncounterActions.AsNoTracking().Where(a => a.EncounterID == encounter.ID).OrderBy(a => a.ID).ToListAsync();
+
     public Task<List<MonsterTemplate>> GetMonstersAsync() => _context.MonsterTemplates.OrderBy(m => m.Name).ToListAsync();
 
     public Task<MonsterTemplate?> FindMonsterAsync(string name)

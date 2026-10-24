@@ -69,43 +69,6 @@ public class RollReader
         return new RollBreakdown(moves, stats, Sessions(rolls), rolls.Count(r => r.Move is null));
     }
 
-    /// <summary>
-    /// Who in the party has rolled since a fight started, and who's been left out. Only the characters' own rolls
-    /// count, so the DM's don't.
-    /// </summary>
-    public async Task<Spotlight> GetSpotlightAsync(DateTimeOffset since, IEnumerable<CharacterView> party)
-    {
-        var living = party.Where(c => c.Character.Status != Status.Dead).ToList();
-        var rolls = _rollStats.GameChatChannelID is { } gameChat
-            ? (await GameChatRollsAsync(gameChat)).Where(r => r.MessageID.Timestamp >= since).OrderBy(r => r.MessageID.Value).ToList()
-            : [];
-
-        var byPlayer = living.ToDictionary(c => c, c => rolls.Where(r => r.UserID == c.Character.ID).ToList());
-        var partyRolls = byPlayer.Values.SelectMany(r => r).ToList();
-        DateTimeOffset? Last(CharacterView c) => byPlayer[c] is [.., var last] ? last.MessageID.Timestamp : null;
-
-        var lines = living
-            .Select(c =>
-            {
-                var own = byPlayer[c];
-                var last = Last(c);
-                var others = living.Where(o => o != c).ToList();
-                // Before anyone rolls, nobody's been left out yet
-                var quiet = last is null
-                    ? partyRolls.Count > 0
-                    : others.Count > 0 && others.All(o => Last(o) > last);
-
-                return new SpotlightLine(c, own.Count, own.Count(IsMiss), last, own.LastOrDefault()?.Move, quiet);
-            })
-            .OrderBy(l => l.LastRolled ?? DateTimeOffset.MinValue)
-            .ThenBy(l => l.Character.Name)
-            .ToList();
-
-        return new Spotlight(lines, partyRolls.Count, partyRolls.Count(IsMiss));
-    }
-
-    private static bool IsMiss(RollRecord roll) => new MoveDice(roll.First, roll.Second, roll.Total).Outcome == MoveOutcome.Miss;
-
     // Newest first
     private static List<SessionRolls> Sessions(IEnumerable<RollRecord> rolls)
     {
