@@ -42,12 +42,17 @@ public interface IEncounterService
     Task<Encounter?> GetForAsync(Snowflake? characterID = null, int? npcID = null);
 
     /// <summary>
+    /// The characters and NPCs the DM picked for fights going on. They can only be in one at a time.
+    /// </summary>
+    Task<EncounterRoster> GetTakenAsync();
+
+    /// <summary>
     /// Starts a fight. Several can go at once, each with its own name, and one at a time on a scene.
     /// </summary>
     /// <param name="scene">The dashboard scene it's on, if any.</param>
     /// <param name="announced">Whether game chat has been told already, as by a command's reply. Otherwise the bot
     /// announces it when it notices.</param>
-    /// <param name="roster">Who's in it. Everyone, if not given.</param>
+    /// <param name="roster">Who's in it. Everyone, if not given. Anyone already picked for another fight is left out.</param>
     /// <returns>The new fight, or null if one by that name or on that scene is already going.</returns>
     Task<Encounter?> StartAsync(string name, SceneLink? scene = null, bool announced = false, EncounterRoster? roster = null);
 

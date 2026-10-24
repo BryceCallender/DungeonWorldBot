@@ -30,8 +30,11 @@ public class NpcRollAutocomplete(INpcService npcService) : IAutocompleteProvider
             .ToList();
     }
 
-    // Subcommands nest their options, so look all the way down
-    private static string? ChosenName(IEnumerable<IApplicationCommandInteractionDataOption> options)
+    /// <summary>
+    /// The NPC picked in the command's "name" option, as typed. Subcommands nest their options, so this looks all the
+    /// way down.
+    /// </summary>
+    public static string? ChosenName(IEnumerable<IApplicationCommandInteractionDataOption> options)
     {
         foreach (var option in options)
         {

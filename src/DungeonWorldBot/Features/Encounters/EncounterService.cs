@@ -47,6 +47,14 @@ public class EncounterService : IEncounterService
                ?? (running.Count == 1 ? running[0] : null);
     }
 
+    public async Task<EncounterRoster> GetTakenAsync()
+    {
+        var picked = await _context.EncounterParticipants.Where(p => p.Encounter.EndedAt == null).ToListAsync();
+        return new EncounterRoster(
+            picked.Where(p => p.CharacterID is not null).Select(p => p.CharacterID!.Value).ToList(),
+            picked.Where(p => p.NpcID is not null).Select(p => p.NpcID!.Value).ToList());
+    }
+
     public async Task<Encounter?> StartAsync(string name, SceneLink? scene = null, bool announced = false, EncounterRoster? roster = null)
     {
         if (await FindRunningAsync(name) is not null)
@@ -54,6 +62,7 @@ public class EncounterService : IEncounterService
         if (scene is not null && await GetOnSceneAsync(scene.ID) is not null)
             return null;
 
+        var taken = await GetTakenAsync();
         var now = DateTimeOffset.UtcNow;
         var encounter = new Encounter
         {
@@ -65,8 +74,8 @@ public class EncounterService : IEncounterService
             AnnouncedAt = announced ? now : null,
             Participants = roster is null
                 ? []
-                : roster.Characters.Select(id => new EncounterParticipant { CharacterID = id })
-                    .Concat(roster.Npcs.Select(id => new EncounterParticipant { NpcID = id }))
+                : roster.Characters.Except(taken.Characters).Select(id => new EncounterParticipant { CharacterID = id })
+                    .Concat(roster.Npcs.Except(taken.Npcs).Select(id => new EncounterParticipant { NpcID = id }))
                     .ToList(),
         };
         _context.Encounters.Add(encounter);

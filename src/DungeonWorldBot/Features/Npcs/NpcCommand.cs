@@ -139,7 +139,7 @@ public class NpcCommand : DungeonWorldCommandBase
         [Description("Anything else added to the roll, like +1 from aid or -1 forward")]
         int bonus = 0,
         [Description("The enemy they're attacking. A damage roll is taken off it")]
-        [AutocompleteProvider(LivingEnemyAutocomplete.ID)]
+        [AutocompleteProvider(TargetAutocomplete.ID)]
         string? target = null)
     {
         var npc = await _npcService.FindAsync(name);

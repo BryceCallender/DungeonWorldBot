@@ -1,7 +1,9 @@
 using DungeonWorldBot.Data;
 using System.Text.Json;
 using DungeonWorldBot.Dashboard.Auth;
+using DungeonWorldBot.Dashboard.Encounters;
 using DungeonWorldBot.Dashboard.Shared;
+using DungeonWorldBot.Features.Encounters;
 using Microsoft.AspNetCore.SignalR;
 
 namespace DungeonWorldBot.Dashboard.Canvases;
@@ -11,9 +13,11 @@ namespace DungeonWorldBot.Dashboard.Canvases;
 /// </summary>
 /// <remarks>
 /// Finished strokes, tokens and text are saved, so someone who opens the canvas later sees them. Cursors and strokes
-/// still being drawn are only passed on.
+/// still being drawn are only passed on. While a fight is on an encounter scene, only those who can change its board
+/// (see <see cref="FightBoard"/>) can do anything but look.
 /// </remarks>
-public class CanvasHub(CanvasPresence presence, CanvasStore store, DashboardSettings settings) : Hub<ICanvasClient>
+public class CanvasHub(CanvasPresence presence, CanvasStore store, DashboardSettings settings, IEncounterService encounters)
+    : Hub<ICanvasClient>
 {
     /// <summary>
     /// Everyone with this canvas open, for sending them something from outside the hub.
@@ -55,14 +59,14 @@ public class CanvasHub(CanvasPresence presence, CanvasStore store, DashboardSett
     /// <param name="points">The points added since the last call, as x, y, x, y...</param>
     public async Task StrokeProgress(string strokeID, double[] points)
     {
-        var (canvas, me) = Current();
+        var (canvas, me) = await ChangerAsync();
         await Clients.OthersInGroup(Group(canvas)).StrokeProgress(me.ID, strokeID, points);
     }
 
     /// <param name="stroke">The finished stroke, as the page draws it (like a Konva node's toObject()).</param>
     public async Task StrokeEnd(string strokeID, JsonElement stroke)
     {
-        var (canvas, me) = Current();
+        var (canvas, me) = await ChangerAsync();
         await store.SaveItemAsync(canvas, CheckID(strokeID), CanvasItemType.Stroke, Check(stroke), me.ID);
         await Clients.OthersInGroup(Group(canvas)).StrokeEnd(me.ID, strokeID, stroke);
     }
@@ -72,21 +76,21 @@ public class CanvasHub(CanvasPresence presence, CanvasStore store, DashboardSett
     /// </summary>
     public async Task AddItem(string itemID, CanvasItemType type, JsonElement item)
     {
-        var (canvas, me) = Current();
+        var (canvas, me) = await ChangerAsync();
         await store.SaveItemAsync(canvas, CheckID(itemID), type, Check(item), me.ID);
         await Clients.OthersInGroup(Group(canvas)).ItemAdded(me.ID, itemID, type, item);
     }
 
     public async Task MoveItem(string itemID, double x, double y)
     {
-        var (canvas, me) = Current();
+        var (canvas, me) = await ChangerAsync();
         if (await store.MoveItemAsync(canvas, CheckID(itemID), x, y))
             await Clients.OthersInGroup(Group(canvas)).ItemMoved(me.ID, itemID, x, y);
     }
 
     public async Task RemoveItem(string itemID)
     {
-        var (canvas, me) = Current();
+        var (canvas, me) = await ChangerAsync();
         // Enemies' tokens stay put unless the DM takes them off. With sign-in on, only signed-in members get this far,
         // so someone who isn't signed in means sign-in is off, when anyone runs fights.
         var runsFights = me.IsDungeonMaster || Context.User?.Identity?.IsAuthenticated != true;
@@ -113,6 +117,36 @@ public class CanvasHub(CanvasPresence presence, CanvasStore store, DashboardSett
     private (int Canvas, CanvasPerson Me) Current() =>
         presence.Find(Context.ConnectionId) ?? throw new HubException("Join a scene first.");
 
+    // A drag sends a dozen moves a second, so whether they can change the board is worked out at most this often
+    private static readonly TimeSpan RecheckAfter = TimeSpan.FromSeconds(3);
+
+    /// <summary>
+    /// Whether this connection could change its board, and when that was worked out.
+    /// </summary>
+    private record ChangeCheck(int Canvas, bool Allowed, DateTimeOffset At);
+
+    /// <summary>
+    /// <see cref="Current"/>, for changing the board: refused for anyone kept out of it while a fight's on.
+    /// </summary>
+    private async Task<(int Canvas, CanvasPerson Me)> ChangerAsync()
+    {
+        var current = Current();
+        var now = DateTimeOffset.UtcNow;
+        if (Context.Items.TryGetValue(nameof(ChangeCheck), out var cached)
+            && cached is ChangeCheck check && check.Canvas == current.Canvas && now - check.At < RecheckAfter)
+        {
+            return check.Allowed ? current : throw new HubException(FightBoard.ViewOnlyMessage);
+        }
+
+        var allowed = await store.FindAsync(current.Canvas) is not { } scene
+                      || await FightBoard.CanChangeAsync(scene, ViewerOf(), encounters);
+        Context.Items[nameof(ChangeCheck)] = new ChangeCheck(current.Canvas, allowed, now);
+        return allowed ? current : throw new HubException(FightBoard.ViewOnlyMessage);
+    }
+
+    // With sign-in on, only signed-in members get this far, so being signed in says whether sign-in is on
+    private Viewer ViewerOf() => Viewer.From(Context.User, Context.User?.Identity?.IsAuthenticated == true, settings);
+
     private static string CheckID(string id) =>
         !string.IsNullOrWhiteSpace(id) && id.Length <= CanvasStore.MaxItemIDLength
             ? id
@@ -125,8 +159,7 @@ public class CanvasHub(CanvasPresence presence, CanvasStore store, DashboardSett
 
     private CanvasPerson Me()
     {
-        // With sign-in on, only signed-in members get this far, so being signed in says whether sign-in is on
-        var viewer = Viewer.From(Context.User, Context.User?.Identity?.IsAuthenticated == true, settings);
+        var viewer = ViewerOf();
         return viewer.ID is { } id
             ? new CanvasPerson(id.ToString(), viewer.Name ?? "Someone", viewer.AvatarUrl, viewer.IsDungeonMaster)
             : new CanvasPerson($"guest-{Context.ConnectionId}", "Guest", null, false);

@@ -1,0 +1,34 @@
+.side-page { display: flex; flex-direction: column; gap: .75rem; }
+
+.side-head { display: flex; align-items: center; flex-wrap: wrap; gap: .5rem .75rem; }
+.side-head h1 { margin: 0; font-size: 1.2rem; }
+.side-back { display: inline-flex; padding: .45rem; }
+.side-back ::deep .icon { width: 16px; height: 16px; }
+
+.side-shown { display: flex; flex-wrap: wrap; gap: .4rem; margin: 0; padding: 0; list-style: none; }
+.side-shown .chip { display: inline-flex; align-items: center; gap: .4rem; }
+.side-shown a { color: inherit; text-decoration: none; }
+.side-shown a:hover { color: var(--accent); }
+.side-remove { color: var(--muted); font-size: 1rem; line-height: 1; }
+.side-shown .side-remove:hover { color: var(--critical); }
+
+.side-add { display: flex; gap: .5rem; margin-left: auto; }
+
+/* One scene fills the width; more go two to a row. Each board needs room for its tools, so with two rows the page
+   scrolls rather than squash them. */
+.side-grid { display: grid; grid-template-columns: repeat(var(--columns), minmax(0, 1fr)); gap: .75rem; }
+.side-grid iframe {
+    width: 100%;
+    /* The board's tools need about 680px even in two columns */
+    height: max(680px, calc((100dvh - 9rem) / var(--rows)));
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface);
+}
+
+/* On a phone: one under another */
+@media (max-width: 800px) {
+    .side-grid { grid-template-columns: minmax(0, 1fr); }
+    .side-grid iframe { height: 80dvh; }
+    .side-add { margin-left: 0; }
+}

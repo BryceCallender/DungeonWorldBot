@@ -180,7 +180,7 @@ function itemOf(shape: Konva.Node): Konva.Node | null {
 function prepare(node: Konva.Node, type: CanvasItemType) {
     if (node instanceof Konva.Line) node.hitStrokeWidth(20);
     if (type === 'shape' && node instanceof Konva.Shape) node.hitStrokeWidth(20);
-    if (type === 'token' || type === 'image' || type === 'shape' || node instanceof Konva.Text) node.draggable(tool === 'move');
+    if (type === 'token' || type === 'image' || type === 'shape' || node instanceof Konva.Text) node.draggable(tool === 'move' && !viewOnly);
     showPictures(node);
 }
 
@@ -235,6 +235,9 @@ const runsFights = container.dataset.runsFights === 'true';
 const locked = new Set<string>();
 const isLocked = (node: Konva.Node) => !runsFights && locked.has(node.id());
 
+// Whether you can only look at the board, not change it: someone watching a fight they're not in (see checkViewOnly)
+let viewOnly = false;
+
 function addItem(id: string, type: CanvasItemType, json: ItemJson, author?: string) {
     if (author === FIGHT_AUTHOR) locked.add(id);
     const wasSelected = selected()?.id() === id;
@@ -263,7 +266,6 @@ function load(items: SavedItem[]) {
     locked.clear();
     for (const item of items) addItem(item.id, item.type, item.item, item.authorID);
     listTokens();
-    mine.length = 0;
 }
 
 // ---- The token list beside the board -------------------------------------------------------------------------------
@@ -291,8 +293,8 @@ function listTokens() {
         button.append(dot, Object.assign(document.createElement('span'), { className: 'name', textContent: token.name() || 'Token' }));
         const li = document.createElement('li');
         li.append(button);
-        // An enemy's token stays until its fight is done with it
-        if (isLocked(token)) return li;
+        // An enemy's token stays until its fight is done with it, and nothing's yours to remove while you only watch
+        if (isLocked(token) || viewOnly) return li;
         // Beside the name rather than in it, since a button can't hold another button
         const remove = Object.assign(document.createElement('button'), {
             type: 'button', className: 'remove', textContent: '×', title: `Remove ${token.name() || 'token'}`,
@@ -309,9 +311,8 @@ function listTokens() {
 tokenList.addEventListener('click', e => {
     const removeId = (e.target as HTMLElement).closest<HTMLElement>('[data-remove-token]')?.dataset.removeToken;
     const removing = removeId && stage.findOne('#' + removeId);
-    if (removing && !isLocked(removing)) {
-        live?.removeItem(removing.id());
-        removeItem(removing);
+    if (removing && !isLocked(removing) && !viewOnly) {
+        removeMine(removing);
         return;
     }
 
@@ -338,13 +339,16 @@ const shapeTool = document.querySelector<HTMLElement>('.shape-tool')!;
 const showShapes = (open: boolean) => shapeTool.classList.toggle('open', open);
 
 function setTool(next: Tool) {
+    // Watching, Move is the only tool, for panning
+    if (viewOnly && next !== 'move') return;
     if (next !== 'shape') showShapes(false);
     tool = next;
     container.dataset.tool = next;                         // for the cursor, in CanvasPage.razor.css
     document.querySelectorAll<HTMLElement>('.board-rail [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === next));
-    tokens.getChildren().forEach(t => t.draggable(next === 'move'));
-    drawing.find('Text, .shape').forEach(t => t.draggable(next === 'move'));
-    pictures.getChildren().forEach(p => p.draggable(next === 'move'));
+    const dragging = next === 'move' && !viewOnly;
+    tokens.getChildren().forEach(t => t.draggable(dragging));
+    drawing.find('Text, .shape').forEach(t => t.draggable(dragging));
+    pictures.getChildren().forEach(p => p.draggable(dragging));
     if (next !== 'move') select(null);
     updatePanning();
 }
@@ -409,7 +413,7 @@ document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); fitView(); return; }
     if (e.key === ' ' && !spaceHeld) { e.preventDefault(); spaceHeld = true; updatePanning(); return; }
     const chosen = selected();
-    if (chosen && (e.key === 'Delete' || e.key === 'Backspace')) { if (!isLocked(chosen)) { live?.removeItem(chosen.id()); removeItem(chosen); } return; }
+    if (chosen && (e.key === 'Delete' || e.key === 'Backspace')) { if (!isLocked(chosen) && !viewOnly) removeMine(chosen); return; }
     if (!e.ctrlKey && !e.metaKey && !e.altKey && keys[e.key]) setTool(keys[e.key]);
 });
 document.addEventListener('keyup', e => {
@@ -422,15 +426,52 @@ document.addEventListener('pointerdown', e => {
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') showShapes(false); });
 
-// What you've added, newest last, for undo
-const mine: string[] = [];
+// What you've changed, newest last, for undo: each item as it was before, so undoing puts it back that way. Something
+// you added has no before, so undoing takes it away.
+interface Change {
+    kind: 'added' | 'changed' | 'removed';
+    id: string;
+    type: CanvasItemType;
+    before: ItemJson | null;
+    locked: boolean;
+}
+const history: Change[] = [];
+
+const typeOf = (node: Konva.Node): CanvasItemType =>
+    node.getLayer() === tokens ? 'token'
+        : node.getLayer() === pictures ? 'image'
+        : node instanceof Konva.Text ? 'text'
+        : node.hasName('shape') ? 'shape'
+        : 'stroke';
+
+// A copy of the item as it's saved, which later changes to the node can't reach
+const snapshot = (node: Konva.Node) => JSON.parse(node.toJSON()) as ItemJson;
+
+function remember(kind: Change['kind'], node: Konva.Node, before: ItemJson | null = kind === 'added' ? null : snapshot(node)) {
+    history.push({ kind, id: node.id(), type: typeOf(node), before, locked: locked.has(node.id()) });
+}
+
+// Taking something off the board yourself, which undo can put back
+function removeMine(node: Konva.Node) {
+    remember('removed', node);
+    live?.removeItem(node.id());
+    removeItem(node);
+}
 
 function undo() {
-    while (mine.length) {
-        const node = stage.findOne('#' + mine.pop()!);
-        if (!node) continue;                               // someone already erased it
-        live?.removeItem(node.id());
-        removeItem(node);
+    if (viewOnly) return;
+    while (history.length) {
+        const { kind, id, type, before, locked: wasLocked } = history.pop()!;
+        const node = stage.findOne('#' + id);
+        // Someone else already erased it, so there's nothing to take away or change back
+        if (kind !== 'removed' && !node) continue;
+        if (kind === 'added') {
+            live?.removeItem(id);
+            removeItem(node!);
+        } else {
+            addItem(id, type, before!, wasLocked ? FIGHT_AUTHOR : undefined);
+            live?.addItem(id, type, before!);
+        }
         return;
     }
 }
@@ -442,7 +483,7 @@ let stroke: { line: Konva.Line; unsent: number[]; timer: number | null } | null 
 let erasing = false;
 
 stage.on('pointerdown', e => {
-    if (spaceHeld) return;                                 // the stage drag pans instead
+    if (spaceHeld || viewOnly) return;                     // the stage drag pans instead
     const { x, y } = pointer();
     if (tool === 'pen') {
         const line = new Konva.Line({
@@ -518,7 +559,7 @@ window.addEventListener('pointerup', () => {
     const { line } = stroke;
     stroke = null;
     live?.strokeEnd(line.id(), line.toObject());
-    mine.push(line.id());
+    remember('added', line);
 });
 
 function eraseHere() {
@@ -526,8 +567,7 @@ function eraseHere() {
     const item = shape && itemOf(shape);
     // Sweeping the eraser over a map shouldn't take the whole map; pictures go with Move, then Delete
     if (!item || item.getLayer() === pictures || isLocked(item)) return;
-    live?.removeItem(item.id());
-    removeItem(item);
+    removeMine(item);
 }
 
 // ---- Shapes --------------------------------------------------------------------------------------------------------
@@ -588,7 +628,7 @@ function finishShape() {
     const box = node.getClientRect({ skipStroke: true, relativeTo: stage });
     if (Math.max(box.width, box.height) < 4) { node.destroy(); return; }
     live?.addItem(node.id(), 'shape', node.toObject());
-    mine.push(node.id());
+    remember('added', node);
 }
 
 // ---- Moving and scaling text, shapes and pictures --------------------------------------------------------------------------------------
@@ -623,9 +663,15 @@ function select(shape: Konva.Node | null) {
 
 // The handles scale it; when you let go, the scale becomes a real font size or width and height, so text stays crisp
 // and what's saved is plain bigger (or smaller) text or picture
+// How it was before the handles were dragged, for undo
+let beforeTransform: ItemJson | null = null;
+transformer.on('transformstart', () => { const shape = selected(); beforeTransform = shape && snapshot(shape); });
+
 transformer.on('transformend', () => {
     const shape = selected();
     if (!shape) return;
+    if (beforeTransform) remember('changed', shape, beforeTransform);
+    beforeTransform = null;
     if (isToken(shape)) {
         // Tokens keep their scale too: a token is a circle with initials or a picture in it, all of which grow with it
         shape.scale({ x: Math.round(shape.scaleX() * 100) / 100, y: Math.round(shape.scaleX() * 100) / 100 });
@@ -655,7 +701,7 @@ transformer.on('transformend', () => {
 
 // Double-click text with the Move tool to change the words
 drawing.on('dblclick dbltap', e => {
-    if (tool === 'move' && e.target instanceof Konva.Text) {
+    if (tool === 'move' && !viewOnly && e.target instanceof Konva.Text) {
         select(null);
         editText(e.target, e.target.position());
     }
@@ -698,10 +744,10 @@ function editText(existing: Konva.Text | null, at: { x: number; y: number }) {
             existing.show();
             if (!save || words === existing.text()) return;
             if (!words) {                                  // emptied out: it goes
-                live?.removeItem(existing.id());
-                removeItem(existing);
+                removeMine(existing);
                 return;
             }
+            remember('changed', existing);
             existing.text(words);
             live?.addItem(existing.id(), 'text', existing.toObject());   // the same ID replaces it for everyone
             return;
@@ -714,7 +760,7 @@ function editText(existing: Konva.Text | null, at: { x: number; y: number }) {
         });
         drawing.add(text);
         live?.addItem(text.id(), 'text', text.toObject());
-        mine.push(text.id());
+        remember('added', text);
     }
 
     editor.addEventListener('keydown', e => {
@@ -778,12 +824,15 @@ function placeToken(x: number, y: number, picture?: string, name = window.prompt
     tokens.add(token);
     listTokens();
     live?.addItem(token.id(), 'token', token.toObject());
-    mine.push(token.id());
+    remember('added', token);
 }
 
 // Others see a dragged token or text move about 12 times a second; where it's dropped is always sent
 let lastMove = 0;
+// Where it was picked up from, for undo
+let beforeDrag: ItemJson | null = null;
 for (const layer of [tokens, drawing, pictures]) {
+    layer.on('dragstart', e => { beforeDrag = snapshot(e.target); });
     layer.on('dragmove', e => {
         // Dragging takes over the pointer, so the stage's pointermove doesn't send the cursor meanwhile
         const { x, y } = pointer();
@@ -792,7 +841,13 @@ for (const layer of [tokens, drawing, pictures]) {
         lastMove = Date.now();
         live?.moveItem(e.target.id(), e.target.x(), e.target.y());
     });
-    layer.on('dragend', e => live?.moveItem(e.target.id(), e.target.x(), e.target.y()));
+    layer.on('dragend', e => {
+        // A press that didn't move it isn't worth an undo
+        const from = beforeDrag?.attrs as { x?: number; y?: number } | undefined;
+        if (beforeDrag && (e.target.x() !== (from?.x ?? 0) || e.target.y() !== (from?.y ?? 0))) remember('changed', e.target, beforeDrag);
+        beforeDrag = null;
+        live?.moveItem(e.target.id(), e.target.x(), e.target.y());
+    });
 }
 
 // ---- Adding pictures -----------------------------------------------------------------------------------------------
@@ -842,7 +897,7 @@ async function addPicture(file: File, at = viewCenter()) {
     prepare(picture, 'image');
     pictures.add(picture);
     live?.addItem(picture.id(), 'image', picture.toObject());
-    mine.push(picture.id());
+    remember('added', picture);
 }
 
 async function addPictureToken(file: File, at = viewCenter()) {
@@ -874,7 +929,7 @@ document.querySelector<HTMLFormElement>('#add-enemies form')?.addEventListener('
 
 // A picture on the board, or a token's picture (only from the sidebar's "+ Image token")
 function addFile(file: File | undefined, asToken: boolean, at?: { x: number; y: number }) {
-    if (!file?.type.startsWith('image/')) return;
+    if (viewOnly || !file?.type.startsWith('image/')) return;
     (asToken ? addPictureToken(file, at) : addPicture(file, at))
         .catch(err => window.alert(`Couldn't add that picture: ${err instanceof Error ? err.message : err}`));
 }
@@ -884,7 +939,7 @@ const filePicker = document.querySelector<HTMLInputElement>('[data-file]')!;
 let pickingToken = false;
 document.querySelector('.board-page')!.addEventListener('click', e => {
     const button = (e.target as HTMLElement).closest<HTMLElement>('[data-pick]');
-    if (!button) return;
+    if (!button || viewOnly) return;
     pickingToken = button.dataset.pick === 'token';
     filePicker.value = '';
     filePicker.click();
@@ -905,6 +960,24 @@ document.addEventListener('paste', e => {
     const file = [...e.clipboardData?.files ?? []].find(f => f.type.startsWith('image/'));
     if (file) { e.preventDefault(); addFile(file, false); }
 });
+
+// ---- Watching a fight you're not in -------------------------------------------------------------------------------
+
+// While a fight is on an encounter scene, only the DM and those in it can change its board (FightBoard on the server
+// refuses anyone else). Everyone else can still look, pan and zoom. The encounter panel says which, and app.js swaps in
+// a fresh panel as fights start and end, so this looks again whenever it does.
+function checkViewOnly() {
+    const next = document.querySelector<HTMLElement>('[data-encounter-panel]')?.dataset.viewOnly === 'true';
+    if (next === viewOnly) return;
+    viewOnly = next;
+    document.querySelector('.board-page')!.classList.toggle('view-only', viewOnly);
+    select(null);
+    setTool('move');
+    listTokens();
+}
+checkViewOnly();
+const boardSide = document.querySelector('.board-side');
+if (boardSide) new MutationObserver(checkViewOnly).observe(boardSide, { childList: true });
 
 // ---- Thumbnail for the canvases page --------------------------------------------------------------------------
 

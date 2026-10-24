@@ -56,7 +56,7 @@ public class MoveCommand : DungeonWorldCommandBase
     [Description("Attack an enemy in melee (+STR)")]
     public Task<IResult> HackAndSlashAsync(
         [Description(BonusDescription)] int bonus = 0,
-        [Description(TargetDescription)] [AutocompleteProvider(LivingEnemyAutocomplete.ID)] string? target = null,
+        [Description(TargetDescription)] [AutocompleteProvider(TargetAutocomplete.ID)] string? target = null,
         [Option(DamageService.ExtraOption)] [Description(DamageService.ExtraDescription)] int extraDamage = 0)
         => MakeStatMoveAsync(BasicMoves.HackAndSlash, StatType.Str, bonus, target, extraDamage);
 
@@ -64,7 +64,7 @@ public class MoveCommand : DungeonWorldCommandBase
     [Description("Take aim and shoot at an enemy at range (+DEX)")]
     public Task<IResult> VolleyAsync(
         [Description(BonusDescription)] int bonus = 0,
-        [Description(TargetDescription)] [AutocompleteProvider(LivingEnemyAutocomplete.ID)] string? target = null,
+        [Description(TargetDescription)] [AutocompleteProvider(TargetAutocomplete.ID)] string? target = null,
         [Option(DamageService.ExtraOption)] [Description(DamageService.ExtraDescription)] int extraDamage = 0)
         => MakeStatMoveAsync(BasicMoves.Volley, StatType.Dex, bonus, target, extraDamage);
 

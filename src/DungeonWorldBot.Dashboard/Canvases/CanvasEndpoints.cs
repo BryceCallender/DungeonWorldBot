@@ -1,5 +1,7 @@
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Dashboard.Auth;
+using DungeonWorldBot.Dashboard.Encounters;
+using DungeonWorldBot.Features.Encounters;
 using Microsoft.AspNetCore.Mvc;
 
 namespace DungeonWorldBot.Dashboard.Canvases;
@@ -48,10 +50,12 @@ public static class CanvasEndpoints
 
         // A picture for the board or a token. The page shrinks it first; this only checks it's really a picture and
         // not too big, and never decodes it.
-        group.MapPost("/{id}/images", async (string id, IFormFile file, CanvasStore store, Viewer viewer) =>
+        group.MapPost("/{id}/images", async (string id, IFormFile file, CanvasStore store, Viewer viewer, IEncounterService encounters) =>
         {
-            if (!CanvasIds.TryDecode(id, out var canvasID) || await store.FindAsync(canvasID) is null)
+            if (!CanvasIds.TryDecode(id, out var canvasID) || await store.FindAsync(canvasID) is not { } scene)
                 return Results.NotFound();
+            if (!await FightBoard.CanChangeAsync(scene, viewer, encounters))
+                return Results.BadRequest(FightBoard.ViewOnlyMessage);
             if (file.Length is 0 or > MaxImageBytes)
                 return Results.BadRequest($"Pictures can be up to {MaxImageBytes / 1024 / 1024} MB.");
 

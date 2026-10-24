@@ -266,18 +266,19 @@
 
 /* On a phone: tools in a row above the board, tokens below it */
 @media (max-width: 800px) {
-    .board-body { grid-template-columns: minmax(0, 1fr); height: auto; min-height: 0; }
+    /* Not in a frame beside other scenes, which keeps the desktop layout however narrow it is */
+    :root:not(.embedded) .board-body { grid-template-columns: minmax(0, 1fr); height: auto; min-height: 0; }
     /* Most of the screen, so there's room to draw: canvas.ts fits the board to whatever shape it's given */
-    #container { height: 65svh; min-height: 320px; }
-    .board-rail { flex-direction: row; flex-wrap: wrap; justify-content: center; padding: .4rem; border-right: 0; border-bottom: 1px solid var(--border); }
-    .board-rail hr { width: auto; height: 20px; margin: 0 .2rem; border-top: 0; border-left: 1px solid var(--border); }
-    .swatches { grid-template-columns: repeat(7, 18px); }
-    .width-slider { flex-direction: row; padding: 0 4px; }
-    .width-slider input { writing-mode: horizontal-tb; direction: ltr; width: 90px; height: 20px; }
-    .board-zoom { flex-direction: row; margin-top: 0; }
+    :root:not(.embedded) #container { height: 65svh; min-height: 320px; }
+    :root:not(.embedded) .board-rail { flex-direction: row; flex-wrap: wrap; justify-content: center; padding: .4rem; border-right: 0; border-bottom: 1px solid var(--border); }
+    :root:not(.embedded) .board-rail hr { width: auto; height: 20px; margin: 0 .2rem; border-top: 0; border-left: 1px solid var(--border); }
+    :root:not(.embedded) .swatches { grid-template-columns: repeat(7, 18px); }
+    :root:not(.embedded) .width-slider { flex-direction: row; padding: 0 4px; }
+    :root:not(.embedded) .width-slider input { writing-mode: horizontal-tb; direction: ltr; width: 90px; height: 20px; }
+    :root:not(.embedded) .board-zoom { flex-direction: row; margin-top: 0; }
     /* Below the button when the tools are a row */
-    .shape-picker { top: calc(100% + 8px); left: 0; }
-    .board-side { border-left: 0; border-top: 1px solid var(--border); }
+    :root:not(.embedded) .shape-picker { top: calc(100% + 8px); left: 0; }
+    :root:not(.embedded) .board-side { border-left: 0; border-top: 1px solid var(--border); }
 }
 
 /* Someone off the edge of the screen (canvas.ts adds these): their initial, with an arrow pointing their way */
@@ -327,3 +328,21 @@
 .pick-count { display: flex; align-items: center; justify-content: space-between; gap: .75rem; font-size: .9rem; }
 .pick-count input { width: 4.5rem; flex: none; }
 .modal p.small { margin: 0; }
+
+/* In a frame beside other scenes: the whole frame, edge to edge, with no way back to the list (the page around it has
+   that). The board takes whatever height is left under the header. */
+:root.embedded .board-page { display: flex; flex-direction: column; height: 100dvh; border: 0; border-radius: 0; }
+:root.embedded .board-back { display: none; }
+:root.embedded .board-body { flex: 1; height: auto; min-height: 0; grid-template-columns: 52px minmax(0, 1fr) 180px; }
+/* Too short for the tools in one column (they take about 820px): two columns, so none are cut off */
+@media (max-height: 900px) {
+    :root.embedded .board-body { grid-template-columns: 88px minmax(0, 1fr) 180px; }
+    :root.embedded .board-rail { flex-direction: row; flex-wrap: wrap; justify-content: center; align-content: flex-start; }
+    :root.embedded .board-rail hr { flex-basis: 100%; }
+}
+:root.embedded .board-split { display: none; }
+.board-split { text-decoration: none; }
+
+/* Watching a fight you're not in (canvas.ts adds .view-only): only Move, for panning, and zoom are left */
+.board-page.view-only .board-rail > :not([data-tool="move"], .board-zoom) { display: none; }
+.board-page.view-only .token-add { display: none; }

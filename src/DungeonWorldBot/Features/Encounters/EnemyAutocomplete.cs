@@ -1,7 +1,11 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Features.Characters;
+using DungeonWorldBot.Features.Npcs;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Autocomplete;
+using Remora.Discord.Commands.Extensions;
+using Remora.Discord.Commands.Services;
 
 namespace DungeonWorldBot.Features.Encounters;
 
@@ -24,7 +28,7 @@ public class EnemyAutocomplete(IEncounterService encounterService) : IAutocomple
         string userInput,
         CancellationToken ct = default)
     {
-        var running = await encounterService.GetRunningAsync();
+        var running = await FightsAsync(options);
         var input = userInput.Trim();
 
         return running
@@ -43,6 +47,12 @@ public class EnemyAutocomplete(IEncounterService encounterService) : IAutocomple
             .ToList();
     }
 
+    /// <summary>
+    /// The fights whose enemies to suggest: every one going on.
+    /// </summary>
+    protected virtual async Task<IReadOnlyList<Encounter>> FightsAsync(IReadOnlyList<IApplicationCommandInteractionDataOption> options) =>
+        await encounterService.GetRunningAsync();
+
     // Discord takes names up to 100 characters
     private static string Shorten(string name) => name.Length <= 100 ? name : name[..99] + "…";
 }
@@ -57,4 +67,38 @@ public class LivingEnemyAutocomplete(IEncounterService encounterService) : Enemy
     protected override bool IncludeDead => false;
 
     public override string Identity => ID;
+}
+
+/// <summary>
+/// The enemies still standing in the fight whoever's acting is in, for a player's move or an NPC's roll to aim at: the
+/// NPC picked in the command's "name" option, or else the player's own character. Every fight's when they're in none.
+/// </summary>
+public class TargetAutocomplete(
+    IEncounterService encounterService,
+    ICharacterService characterService,
+    INpcService npcService,
+    ContextInjectionService? contextInjection = null)
+    : LivingEnemyAutocomplete(encounterService)
+{
+    public new const string ID = "target";
+
+    public override string Identity => ID;
+
+    protected override async Task<IReadOnlyList<Encounter>> FightsAsync(IReadOnlyList<IApplicationCommandInteractionDataOption> options)
+    {
+        Encounter? fight = null;
+        if (NpcRollAutocomplete.ChosenName(options) is { } name)
+        {
+            if (await npcService.FindAsync(name) is { } npc)
+                fight = await encounterService.GetForAsync(npcID: npc.ID);
+        }
+        else if (contextInjection?.Context is { } context
+                 && context.TryGetUserID(out var userID)
+                 && await characterService.GetCharacterFromUserAsync(userID) is { } character)
+        {
+            fight = await encounterService.GetForAsync(character.ID);
+        }
+
+        return fight is not null ? [fight] : await base.FightsAsync(options);
+    }
 }

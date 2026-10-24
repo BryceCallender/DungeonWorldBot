@@ -2,7 +2,12 @@ using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Encounters;
 using Microsoft.EntityFrameworkCore;
+using DungeonWorldBot.Features.Characters;
+using DungeonWorldBot.Features.Npcs;
 using Remora.Discord.API;
+using Remora.Discord.API.Abstractions.Objects;
+using Remora.Discord.API.Objects;
+using Remora.Rest.Core;
 
 namespace DungeonWorldBot.Tests.Features.Encounters;
 
@@ -90,6 +95,56 @@ public sealed class EncounterTests : IDisposable
 
         Assert.Equal(["Defy Danger"], (await service.GetActionsAsync(ambush)).Select(a => a.Action));
         Assert.Equal(["Volley", "Smash"], (await service.GetActionsAsync(raid)).Select(a => a.Action));
+    }
+
+    [Fact]
+    public async Task Targets_AreTheEnemiesInTheActorsFight()
+    {
+        await using var context = CreateContext();
+        var service = new EncounterService(context);
+        var npcs = new NpcService(context);
+        var grub = new Npc { Name = "Grub", CurrentHP = 6, MaxHP = 6 };
+        await npcs.AddAsync(grub);
+        var ambush = (await service.StartAsync("Ambush", roster: new EncounterRoster([], [])))!;
+        var raid = (await service.StartAsync("Raid", roster: new EncounterRoster([], [grub.ID])))!;
+        await service.AddEnemyAsync(ambush, new Enemy { Name = "Goblin", MaxHP = 3, CurrentHP = 3 });
+        await service.AddEnemyAsync(raid, new Enemy { Name = "Ogre", MaxHP = 10, CurrentHP = 10 });
+        var targets = new TargetAutocomplete(service, new CharacterService(context), npcs);
+
+        // Grub is in the raid, so only its enemies; with nobody to go on, every fight's, saying which
+        var grubs = await targets.GetSuggestionsAsync([Option("roll", [Option("name", value: "grub")])], "");
+        Assert.Equal(["Ogre"], grubs.Select(c => c.Value.AsT0));
+        var anyone = await targets.GetSuggestionsAsync([], "");
+        Assert.Equal(["Goblin · Unhurt · Ambush", "Ogre · Unhurt · Raid"], anyone.Select(c => c.Name));
+    }
+
+    private static ApplicationCommandInteractionDataOption Option(
+        string name, IReadOnlyList<IApplicationCommandInteractionDataOption>? options = null, string? value = null) =>
+        new(name, ApplicationCommandOptionType.String,
+            value is null ? default(Optional<OneOf.OneOf<string, long, bool, Snowflake, double>>) : new Optional<OneOf.OneOf<string, long, bool, Snowflake, double>>(value),
+            options is null ? default(Optional<IReadOnlyList<IApplicationCommandInteractionDataOption>>) : new Optional<IReadOnlyList<IApplicationCommandInteractionDataOption>>(options));
+
+    [Fact]
+    public async Task Picks_AreInOneFightAtATime()
+    {
+        await using var context = CreateContext();
+        var service = new EncounterService(context);
+        var aria = DiscordSnowflake.New(1);
+        var bram = DiscordSnowflake.New(2);
+        var grub = new Npc { Name = "Grub", CurrentHP = 6, MaxHP = 6 };
+        await new NpcService(context).AddAsync(grub);
+        var ambush = (await service.StartAsync("Ambush", roster: new EncounterRoster([aria], [grub.ID])))!;
+
+        // Aria and Grub are taken, so the raid only gets Bram
+        var raid = (await service.StartAsync("Raid", roster: new EncounterRoster([aria, bram], [grub.ID])))!;
+        Assert.Equal([bram], raid.Participants.Select(p => p.CharacterID!.Value));
+        var taken = await service.GetTakenAsync();
+        Assert.Equal([aria, bram], taken.Characters.OrderBy(id => id.Value));
+        Assert.Equal([grub.ID], taken.Npcs);
+
+        // Free again once their fight ends
+        await service.EndAsync(ambush);
+        Assert.Equal([bram], (await service.GetTakenAsync()).Characters);
     }
 
     [Fact]

@@ -13,8 +13,10 @@
 .canvas-filters .chip { text-decoration: none; color: var(--muted); }
 .canvas-filters .chip.on { background: var(--accent-soft); color: var(--accent); }
 
-/* "New scene" sits at the right, and opens a modal */
+/* "New scene" sits at the right, and opens a modal, with "Side by side" before it for the DM */
 .new-canvas { margin-left: auto; }
+.side-by-side { margin-left: auto; text-decoration: none; }
+.side-by-side + .new-canvas { margin-left: 0; }
 
 
 .canvas-grid {

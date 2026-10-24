@@ -24,6 +24,8 @@
 .topbar nav ::deep a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 
 main { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
+/* Scenes side by side want every bit of the width */
+main:has(.side-page) { max-width: none; }
 
 /* Signed-in viewer and live updates */
 
@@ -48,3 +50,7 @@ a.me:hover span { color: var(--accent); }
     .viewer { gap: .6rem; }
     .me span:not(.chip) { display: none; }
 }
+
+/* A scene in a frame beside other scenes: the page around the frames has the header, so this one is all board */
+:root.embedded .topbar { display: none; }
+:root.embedded main { max-width: none; padding: 0; }

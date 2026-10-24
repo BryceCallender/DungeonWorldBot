@@ -7,8 +7,8 @@
     border-bottom: 1px solid var(--border);
 }
 
-/* Its own display would otherwise beat hidden's */
-.encounter-panel[hidden] { display: none; }
+/* Someone watching a fight they're not in */
+.view-only-note { margin: 0; font-size: .8rem; color: var(--muted); }
 
 .encounter-panel h2 { margin: 0; font-size: .8rem; font-weight: 600; color: var(--muted); }
 

@@ -1,0 +1,93 @@
+@page "/scenes/side-by-side"
+@using DungeonWorldBot.Dashboard.Canvases
+@inject CanvasStore CanvasStore
+
+@* Up to four scenes at once, for a DM running fights in more than one place. Each is the scene's own page in a frame,
+   so it's as live and usable as on its own; App.razor marks a framed page so it leaves out the site's header. Which
+   scenes are shown is in the address (ids=…), so the forms and links here need no script. *@
+
+<PageTitle>Side by side · Sana Solem</PageTitle>
+
+<div class="side-page">
+    <header class="side-head">
+        <a class="tool side-back" href="scenes" title="Back to the scenes" aria-label="Back to the scenes"><Icon Name="back" /></a>
+        <h1>Side by side</h1>
+
+        <ul class="side-shown" aria-label="Showing">
+            @foreach (var scene in _shown)
+            {
+                var sqid = CanvasIds.Encode(scene.ID);
+                <li class="chip">
+                    <a href="scene/@sqid" title="Open @scene.Name on its own">@scene.Name</a>
+                    <a class="side-remove" href="@Without(sqid)" title="Take it off" aria-label="Take @scene.Name off">×</a>
+                </li>
+            }
+        </ul>
+
+        @if (_shown.Count < MaxScenes && _others.Count > 0)
+        {
+            <form method="get" action="scenes/side-by-side" class="side-add">
+                @foreach (var scene in _shown)
+                {
+                    <input type="hidden" name="ids" value="@CanvasIds.Encode(scene.ID)" />
+                }
+                <select class="filter" name="ids" required aria-label="Scene to add">
+                    <option value="">Add a scene…</option>
+                    @foreach (var scene in _others)
+                    {
+                        <option value="@CanvasIds.Encode(scene.ID)">@scene.Name · @scene.Kind</option>
+                    }
+                </select>
+                <button class="tool">Add</button>
+            </form>
+        }
+    </header>
+
+    @if (_shown.Count == 0)
+    {
+        <p class="empty">Pick up to @MaxScenes scenes to see them side by side.</p>
+    }
+    else
+    {
+        <div class="side-grid" style="--columns: @(_shown.Count == 1 ? 1 : 2); --rows: @((_shown.Count + 1) / 2)">
+            @foreach (var scene in _shown)
+            {
+                <iframe src="scene/@CanvasIds.Encode(scene.ID)" title="@scene.Name"></iframe>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    // More than this and each board is too small to use
+    private const int MaxScenes = 4;
+
+    /// <summary>
+    /// The scenes to show, by their short IDs, in order.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "ids")]
+    public string[]? Ids { get; set; }
+
+    private List<Canvas> _shown = [];
+    private List<Canvas> _others = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        var scenes = await CanvasStore.ListAsync();
+
+        // Anything that isn't a scene still out (archived, deleted or mistyped) is left out, as are repeats
+        _shown = (Ids ?? [])
+            .Select(id => CanvasIds.TryDecode(id, out var canvasID) ? scenes.FirstOrDefault(s => s.ID == canvasID) : null)
+            .OfType<Canvas>()
+            .DistinctBy(s => s.ID)
+            .Take(MaxScenes)
+            .ToList();
+        _others = scenes.Where(s => _shown.All(shown => shown.ID != s.ID)).ToList();
+    }
+
+    private string Without(string sqid)
+    {
+        var rest = _shown.Select(s => CanvasIds.Encode(s.ID)).Where(id => id != sqid).ToList();
+        return rest.Count == 0 ? "scenes/side-by-side" : $"scenes/side-by-side?{string.Join("&", rest.Select(id => $"ids={id}"))}";
+    }
+}

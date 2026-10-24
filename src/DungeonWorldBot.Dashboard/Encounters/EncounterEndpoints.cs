@@ -34,6 +34,7 @@ public static class EncounterEndpoints
             EncounterDesk desk,
             ICharacterService characters,
             PartyReader party,
+            IEncounterService encounters,
             IHubContext<CanvasHub, ICanvasClient> hub) =>
         {
             if (!CanRun(viewer))
@@ -49,6 +50,14 @@ public static class EncounterEndpoints
             var pickedNpcs = form["npc"].ToHashSet(StringComparer.OrdinalIgnoreCase);
             var fighters = (await characters.GetCharactersAsync()).Where(c => picked.Contains(c.Name)).OrderBy(c => c.Name).ToList();
             var npcs = (await party.GetNpcsAsync()).Where(n => pickedNpcs.Contains(n.Name)).ToList();
+
+            // Nobody can be in two fights at once
+            var taken = await encounters.GetTakenAsync();
+            var busy = fighters.Where(c => taken.Characters.Contains(c.ID)).Select(c => c.Name)
+                .Concat(npcs.Where(n => taken.Npcs.Contains(n.ID)).Select(n => n.Name))
+                .ToList();
+            if (busy.Count > 0)
+                return Back(id, "start-fight", $"{string.Join(", ", busy)} {(busy.Count == 1 ? "is" : "are")} already in another fight.");
 
             var url = $"{request.Scheme}://{request.Host}{request.PathBase}/scene/{id}";
             var started = await desk.StartAsync(
