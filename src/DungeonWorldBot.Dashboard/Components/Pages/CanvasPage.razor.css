@@ -93,6 +93,12 @@
     min-height: 380px;
 }
 
+/* Over the top middle of the board, in the board's own grid cell, letting clicks through to the board around it. The
+   board is put in its cell by hand too, or it would be moved along out of the ribbon's way. */
+#container { grid-column: 2; grid-row: 1; }
+.board-ribbon { grid-column: 2; grid-row: 1; align-self: start; justify-self: center; z-index: 2; max-width: calc(100% - 1.2rem); margin-top: .6rem; pointer-events: none; }
+.board-ribbon:empty { display: none; }
+
 .board-rail {
     display: flex;
     flex-direction: column;
@@ -478,6 +484,11 @@
     :root:not(.embedded) .board-rail .color-picker { width: 36px; height: 36px; }
     :root:not(.embedded) .swatches { width: auto; padding: 2px 0; }
     /* Below the button when the tools are a row */
+    /* Tools, then the board with the ribbon over it, then the tokens */
+    :root:not(.embedded) .board-rail { grid-area: 1 / 1; }
+    :root:not(.embedded) #container,
+    :root:not(.embedded) .board-ribbon { grid-area: 2 / 1; }
+    :root:not(.embedded) .board-side { grid-area: 3 / 1; }
     :root:not(.embedded) .shape-picker { top: calc(100% + 8px); left: 0; }
     :root:not(.embedded) .board-side { border-left: 0; border-top: 1px solid var(--border); }
 }

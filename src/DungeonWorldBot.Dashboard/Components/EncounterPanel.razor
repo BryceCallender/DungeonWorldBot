@@ -2,6 +2,7 @@
 @using DungeonWorldBot.Features.Encounters
 @inject PartyReader PartyReader
 @inject ISpotlightService SpotlightService
+@inject PortraitStore PortraitStore
 @inject Viewer Viewer
 
 @* The fight on an encounter scene, beside its board. The board page doesn't refresh itself, so app.js swaps in a fresh
@@ -24,6 +25,56 @@
     else
     {
         <h2>⚔️ @encounter.Name</h2>
+
+        @* How far below their max each fighter is, for the numbers that float off tokens as they're hurt and healed
+           (canvas.ts). Only how hurt, never their max, which players don't see for enemies. *@
+        <ul hidden data-wounds>
+            @foreach (var enemy in encounter.Enemies)
+            {
+                <li data-fighter="@TokenFighter.Enemy(enemy.ID)" data-name="@enemy.Name" data-hurt="@(enemy.MaxHP - enemy.CurrentHP)"></li>
+            }
+            @foreach (var c in _fighters)
+            {
+                <li data-fighter="@TokenFighter.Character(c.Character.ID.Value)" data-name="@c.Name" data-hurt="@(c.MaxHP - c.CurrentHP)"></li>
+            }
+            @foreach (var npc in _npcs)
+            {
+                <li data-fighter="@TokenFighter.Npc(npc.ID)" data-name="@npc.Name" data-hurt="@(npc.MaxHP - npc.CurrentHP)"></li>
+            }
+        </ul>
+
+        @* The party's spotlight as faces along the top of the board, which app.js moves there from here: whoever acted
+           last glows, and anyone who hasn't acted yet pulses, so the DM can see who to turn to next *@
+        @if (_spotlight is { } ribbon && ribbon.Party.Count + ribbon.Allies.Count > 0)
+        {
+            var latest = ribbon.Party.Concat(ribbon.Allies).Where(l => l.Last is not null).MaxBy(l => l.Last!.At);
+            <template data-ribbon>
+                <ol class="spotlight-ribbon" aria-label="Spotlight">
+                    @foreach (var line in ribbon.Party.Concat(ribbon.Allies))
+                    {
+                        var view = line.CharacterID is { } id ? _party.FirstOrDefault(c => c.Character.ID.Value == id.Value) : null;
+                        <li class="ribbon-who classed @(line == latest ? "latest" : null) @(line.Quiet ? "quiet" : null)" style="@(view is null ? null : Lookup.ColorOf(view.Character.Class.Type))"
+                            title="@RibbonTitle(line)">
+                            <span class="ribbon-face">
+                                @if (line.CharacterID is { } cid && _portraits.GetValueOrDefault(cid.Value) is { } picture)
+                                {
+                                    <img src="@picture" alt="" />
+                                }
+                                else
+                                {
+                                    <span class="ribbon-initial">@line.Name[..1]</span>
+                                }
+                                @if (line.Actions > 0)
+                                {
+                                    <span class="ribbon-count">@line.Actions</span>
+                                }
+                            </span>
+                            <span class="ribbon-name">@line.Name</span>
+                        </li>
+                    }
+                </ol>
+            </template>
+        }
         @if (_viewOnly)
         {
             <p class="view-only-note">You're not in this fight, so you can watch but not change the board.</p>
@@ -98,6 +149,12 @@
     private bool _viewOnly;
     private Spotlight? _spotlight;
     private Dictionary<ulong, string> _characterUrls = new();
+    private IReadOnlyList<CharacterView> _party = [];
+    private IReadOnlyDictionary<ulong, string> _portraits = new Dictionary<ulong, string>();
+
+    // The characters and NPCs in the fight: the ones the DM picked, or everyone when they picked nobody
+    private List<CharacterView> _fighters = [];
+    private List<Npc> _npcs = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -107,11 +164,19 @@
 
         if (_encounter is { } encounter)
         {
-            var party = await PartyReader.GetPartyAsync();
+            var party = _party = await PartyReader.GetPartyAsync();
             _characterUrls = party.ToDictionary(c => c.Character.ID.Value, c => c.Url);
             _spotlight = await SpotlightService.GetAsync(encounter, party.Select(c => c.Character));
+            _portraits = await PortraitStore.UrlsAsync();
+
+            var everyone = encounter.Participants.Count == 0;
+            _fighters = party.Where(c => everyone || encounter.Participants.Any(p => p.CharacterID == c.Character.ID)).ToList();
+            _npcs = (await PartyReader.GetNpcsAsync()).Where(n => everyone || encounter.Participants.Any(p => p.NpcID == n.ID)).ToList();
         }
     }
+
+    private static string RibbonTitle(SpotlightLine line) =>
+        line.Last is { } last ? $"{line.Name} · {Count(line)} · last: {last.Summary}" : $"{line.Name} · {Count(line)}";
 
     private static string Count(SpotlightLine line) => line switch
     {

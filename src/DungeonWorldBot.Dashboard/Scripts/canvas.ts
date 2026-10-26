@@ -20,7 +20,8 @@ const drawing = new Konva.Layer();                         // saved strokes and 
 const tokens = new Konva.Layer();                          // pieces you can move
 const handles = new Konva.Layer();                         // the box and corners around selected text
 const others = new Konva.Layer({ listening: false });      // other people's cursors and half-drawn strokes
-stage.add(grid, pictures, drawing, tokens, handles, others);
+const effects = new Konva.Layer({ listening: false });     // damage numbers floating off tokens, never saved
+stage.add(grid, pictures, drawing, tokens, handles, others, effects);
 
 // The part of the board you can see, in board units
 function visibleArea() {
@@ -1374,7 +1375,90 @@ function checkViewOnly() {
 checkViewOnly();
 const boardSide = document.querySelector('.board-side');
 // Whoever's defeated can change with any fresh panel too, whether or not you can change the board
-if (boardSide) new MutationObserver(() => { checkViewOnly(); showDefeated(); }).observe(boardSide, { childList: true });
+if (boardSide) new MutationObserver(() => { checkViewOnly(); showDefeated(); showWounds(); }).observe(boardSide, { childList: true });
+
+// ---- Damage floaters -------------------------------------------------------------------------------------------------
+
+// When someone in the fight is hurt or healed, the number floats up off their token and fades, and the token flashes.
+// The encounter panel lists how hurt each fighter is (how far below their max, never their max itself, which players
+// don't see for enemies), and each fresh panel is compared with the last.
+let lastWounds: Map<string, number> | null = null;
+
+function readWounds() {
+    const wounds = new Map<string, number>();
+    const names = new Map<string, string>();
+    for (const li of document.querySelectorAll<HTMLElement>('[data-encounter-panel] [data-wounds] li')) {
+        wounds.set(li.dataset.fighter!, Number(li.dataset.hurt));
+        names.set(li.dataset.fighter!, li.dataset.name ?? '');
+    }
+    return { wounds, names };
+}
+
+// Tokens placed by the fight know who they are; ones made by hand go by their name
+function tokenFor(fighter: string, name: string) {
+    const all: Konva.Node[] = tokens.getChildren();
+    return all.find(t => t.getAttr('fighter') === fighter)
+        ?? all.find(t => !t.getAttr('fighter') && !!name && t.name().toLowerCase() === name.toLowerCase());
+}
+
+function showWounds() {
+    const { wounds, names } = readWounds();
+    const before = lastWounds;
+    lastWounds = wounds;
+    // The first look (and a fight just starting) only learns where everyone's at
+    if (!before) return;
+    for (const [fighter, hurt] of wounds) {
+        const was = before.get(fighter);
+        if (was === undefined || was === hurt) continue;
+        const token = tokenFor(fighter, names.get(fighter) ?? '');
+        if (token) floatOff(token, was - hurt);
+    }
+}
+
+const themeColor = (name: string, fallback: string) =>
+    getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+
+// Negative is damage, positive healing
+function floatOff(token: Konva.Node, change: number) {
+    const box = token.getClientRect({ relativeTo: tokens });
+    const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    const color = change < 0 ? themeColor('--critical', '#d1453b') : themeColor('--good', '#2f9e5b');
+    // The same size on screen however far in or out you're zoomed
+    const scale = 1 / stage.scaleX();
+    const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const ring = new Konva.Circle({ ...centre, radius: box.width / 2, stroke: color, strokeWidth: 6 * scale, opacity: .9 });
+    const text = new Konva.Text({
+        text: change < 0 ? `−${-change}` : `+${change}`,
+        x: centre.x, y: box.y - 6 * scale,
+        fontSize: 30 * scale, fontStyle: 'bold', fontFamily: 'system-ui, sans-serif',
+        fill: color, stroke: 'rgba(0, 0, 0, .55)', strokeWidth: 4 * scale, fillAfterStrokeEnabled: true,
+    });
+    text.offset({ x: text.width() / 2, y: text.height() });
+    effects.add(ring, text);
+
+    if (still) {
+        setTimeout(() => { ring.destroy(); text.destroy(); }, 1500);
+        return;
+    }
+    // A hit punches the token's ring out; the number pops up, rises and fades
+    new Konva.Tween({ node: ring, duration: .6, scaleX: 1.45, scaleY: 1.45, opacity: 0, easing: Konva.Easings.EaseOut, onFinish: () => ring.destroy() }).play();
+    text.scale({ x: .4, y: .4 });
+    new Konva.Tween({ node: text, duration: .25, scaleX: 1.15, scaleY: 1.15, easing: Konva.Easings.BackEaseOut,
+        onFinish: () => new Konva.Tween({ node: text, duration: 1.3, y: text.y() - 46 * scale, scaleX: 1, scaleY: 1, opacity: 0,
+            easing: Konva.Easings.EaseIn, onFinish: () => text.destroy() }).play() }).play();
+    // And the token itself shakes on a hit
+    if (change < 0) {
+        const x = token.x();
+        const shake = new Konva.Animation(frame => {
+            const t = frame!.time;
+            if (t > 400) { token.x(x); shake.stop(); return; }
+            token.x(x + Math.sin(t / 25) * 5 * scale * (1 - t / 400));
+        }, tokens);
+        shake.start();
+    }
+}
+showWounds();
 
 // ---- Thumbnail for the canvases page --------------------------------------------------------------------------
 
@@ -1448,6 +1532,7 @@ function showCursor(personId: string, x: number, y: number) {
     let cursor = cursors.get(personId);
     if (!cursor) {
         const group = new Konva.Group();
+    effects.hide();
         group.add(new Konva.Path({ data: POINTER, fill: colorOf(personId), stroke: '#ffffff', strokeWidth: 1.5, lineJoin: 'round' }));
         group.add(new Konva.Label({ x: 12, y: 18 })
             .add(new Konva.Tag({ fill: colorOf(personId), cornerRadius: 4 }))
@@ -1468,6 +1553,7 @@ function showCursor(personId: string, x: number, y: number) {
 }
 
 // And when you zoom, every cursor already showing
+        effects.show();
 stage.on('scaleXChange', () => cursors.forEach(c => keepScreenSize(c.group)));
 
 // Someone whose cursor is off the screen gets a marker at the edge pointing their way, since the board has no end to

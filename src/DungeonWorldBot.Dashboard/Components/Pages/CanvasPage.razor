@@ -96,6 +96,8 @@
         </div>
 
         <div id="container" data-no-live data-canvas-id="@Id" data-has-thumbnail="@(_hasThumbnail ? "true" : null)" data-runs-fights="@(EncounterEndpoints.CanRun(Viewer) ? "true" : null)" data-portraits="@_portraits"></div>
+        @* The fight's spotlight, shown over the top of the board; app.js brings it here from the encounter panel *@
+        <div class="board-ribbon" data-ribbon-host></div>
 
         @* For the picture buttons, and the token the uploads send back so the server knows they came from this page *@
         <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden data-file />

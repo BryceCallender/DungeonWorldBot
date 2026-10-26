@@ -3,6 +3,8 @@ using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Rolls;
+using System.Text.RegularExpressions;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Remora.Rest.Core;
 
@@ -11,7 +13,7 @@ namespace DungeonWorldBot.Dashboard.Rolls;
 /// <summary>
 /// Reads the raw game chat rolls, for the dice spreads the bot's own roll stats don't work out.
 /// </summary>
-public class RollReader
+public partial class RollReader
 {
     private readonly DungeonWorldContext _context;
     private readonly IRollStatsService _rollStats;
@@ -66,24 +68,197 @@ public class RollReader
             .Select(g => OutcomeTally.Of($"+{g.Key.ToString().ToUpper()}", Dice(g)))
             .ToList();
 
-        return new RollBreakdown(moves, stats, Sessions(rolls), rolls.Count(r => r.Move is null));
+        return new RollBreakdown(moves, stats, Sessions(rolls, await RecordedSessionsAsync()), rolls.Count(r => r.Move is null));
     }
 
-    // Newest first
-    private static List<SessionRolls> Sessions(IEnumerable<RollRecord> rolls)
+    /// <summary>
+    /// How many sessions back each player's luck goes.
+    /// </summary>
+    public const int LuckSessions = 12;
+
+    // The heatmap's rows; beyond these the moves are rarely rolled enough to say much
+    private const int HeatmapMoves = 10;
+
+    // Fewer rolls than this in a night is too few to call anyone's dice hot or cold
+    private const int AwardRolls = 3;
+
+    /// <param name="leaveOut">Someone whose rolls aren't counted, like the DM.</param>
+    public async Task<RollNerdery> GetNerderyAsync(ulong? leaveOut = null)
     {
-        var sessions = new List<List<RollRecord>>();
+        if (_rollStats.GameChatChannelID is not { } gameChat)
+            return new RollNerdery([], new MoveHeatmap([], []), null);
+
+        var rolls = (await GameChatRollsAsync(gameChat)).Where(r => r.UserID.Value != leaveOut).ToList();
+        var sessions = SessionGroups(rolls, await RecordedSessionsAsync());
+
+        var recent = sessions.TakeLast(LuckSessions).ToList();
+        var luck = rolls
+            .GroupBy(r => r.UserID.Value)
+            .OrderByDescending(g => g.Count())
+            .Select(g => new LuckTrend(g.Key, recent
+                .Select(s => s.Rolls.Where(r => r.UserID.Value == g.Key).ToList())
+                .Select(mine => mine.Count == 0 ? (double?)null : mine.Average(r => r.First + r.Second))
+                .ToList()))
+            .ToList();
+
+        var labelled = rolls.Where(r => r.Move is not null).ToList();
+        var players = labelled.GroupBy(r => r.UserID.Value).OrderByDescending(g => g.Count()).Select(g => g.Key).ToList();
+        var heatmap = new MoveHeatmap(players, labelled
+            .GroupBy(r => r.Move!)
+            .OrderByDescending(g => g.Count())
+            .Take(HeatmapMoves)
+            .Select(g => new HeatmapRow(g.Key, g.Count(), players
+                .Select(p => g.Where(r => r.UserID.Value == p).ToList() is { Count: > 0 } theirs ? OutcomeTally.Of(g.Key, Dice(theirs)) : null)
+                .ToList()))
+            .ToList());
+
+        return new RollNerdery(luck, heatmap, sessions.Count == 0 ? null : await AwardsAsync(sessions[^1]));
+    }
+
+    // "💥 4 damage", as the bot writes what a hit did
+    [GeneratedRegex(@"💥\s*(\d+)\s*damage")]
+    private static partial Regex DamageResult();
+
+    private async Task<SessionAwards> AwardsAsync(RollSession night)
+    {
+        var session = night.Rolls;
+        var awards = new List<Award>();
+        var byPlayer = session.GroupBy(r => r.UserID.Value).Select(g => (Player: g.Key, Dice: Dice(g))).ToList();
+        var steady = byPlayer.Where(p => p.Dice.Count >= AwardRolls).ToList();
+
+        if (steady.Count > 0)
+        {
+            var hot = steady.MaxBy(p => p.Dice.Average(d => d.First + d.Second));
+            awards.Add(new Award("🔥", "Hot dice", hot.Player, $"averaged {hot.Dice.Average(d => d.First + d.Second):0.0} over {hot.Dice.Count} rolls"));
+
+            var cold = steady.MinBy(p => p.Dice.Average(d => d.First + d.Second));
+            if (steady.Count > 1 && cold.Player != hot.Player)
+                awards.Add(new Award("🧊", "Cursed dice", cold.Player, $"averaged {cold.Dice.Average(d => d.First + d.Second):0.0} over {cold.Dice.Count} rolls"));
+
+            var sharp = steady.MaxBy(p => p.Dice.Count(d => d.Outcome != MoveOutcome.Miss) / (double)p.Dice.Count);
+            var hits = sharp.Dice.Count(d => d.Outcome != MoveOutcome.Miss);
+            awards.Add(new Award("🎯", "Sharpshooter", sharp.Player, $"hit {hits} of {sharp.Dice.Count}"));
+        }
+
+        var busiest = byPlayer.MaxBy(p => p.Dice.Count);
+        awards.Add(new Award("🗣️", "Busiest", busiest.Player, $"{busiest.Dice.Count} rolls"));
+
+        var blessed = byPlayer.MaxBy(p => p.Dice.Count(d => d.IsNatural12));
+        if (blessed.Dice.Count(d => d.IsNatural12) is > 0 and var twelves)
+            awards.Add(new Award("✨", "Blessed", blessed.Player, $"{twelves} natural 12{(twelves == 1 ? "" : "s")}"));
+
+        var snakes = byPlayer.MaxBy(p => p.Dice.Count(d => d.IsNatural2));
+        if (snakes.Dice.Count(d => d.IsNatural2) is > 0 and var twos)
+            awards.Add(new Award("🐍", "Snake charmer", snakes.Player, $"{twos} snake eyes"));
+
+        awards.AddRange(await FightAwardsAsync(session));
+
+        return new SessionAwards(session[0].MessageID.Timestamp.LocalDateTime, awards, night.Name);
+    }
+
+    // Who dealt and took the most damage in fights that night, from what the fights' timelines say each hit did
+    private async Task<List<Award>> FightAwardsAsync(List<RollRecord> session)
+    {
+        var from = session[0].MessageID.Timestamp - TimeSpan.FromHours(1);
+        var to = session[^1].MessageID.Timestamp + TimeSpan.FromHours(1);
+
+        List<EncounterAction> actions;
+        try
+        {
+            actions = (await _context.EncounterActions.AsNoTracking().Where(a => a.Result != null).ToListAsync())
+                .Where(a => a.At >= from && a.At <= to)
+                .ToList();
+        }
+        catch (SqliteException e) when (e.Message.Contains("no such table") || e.Message.Contains("no such column"))
+        {
+            // The bot hasn't added fights to its database yet
+            return [];
+        }
+
+        int Damage(EncounterAction a) => DamageResult().Match(a.Result!) is { Success: true } m ? int.Parse(m.Groups[1].Value) : 0;
+
+        // Value tuples, so nobody at all comes back as 0 damage rather than throwing
+        var awards = new List<Award>();
+        var dealt = actions
+            .Where(a => a.CharacterID is not null)
+            .GroupBy(a => a.CharacterID!.Value.Value)
+            .Select(g => (Player: g.Key, Damage: g.Sum(Damage)))
+            .OrderByDescending(p => p.Damage)
+            .FirstOrDefault();
+        if (dealt.Damage > 0)
+            awards.Add(new Award("💥", "Heavy hitter", dealt.Player, $"dealt {dealt.Damage} damage"));
+
+        // Enemies' attacks name who they hit
+        var party = await _context.Characters.AsNoTracking().Select(c => new { c.ID, c.Name }).ToListAsync();
+        var taken = actions
+            .Where(a => a.EnemyID is not null && a.Target is not null)
+            .Select(a => (Who: party.FirstOrDefault(c => string.Equals(c.Name, a.Target, StringComparison.OrdinalIgnoreCase)), Damage: Damage(a)))
+            .Where(t => t.Who is not null && t.Damage > 0)
+            .GroupBy(t => t.Who!.ID.Value)
+            .Select(g => (Player: g.Key, Damage: g.Sum(t => t.Damage)))
+            .OrderByDescending(p => p.Damage)
+            .FirstOrDefault();
+        if (taken.Damage > 0)
+            awards.Add(new Award("🛡️", "Punching bag", taken.Player, $"took {taken.Damage} damage"));
+
+        return awards;
+    }
+
+    /// <summary>
+    /// A session's rolls, oldest first, with its name if it was marked with /session start.
+    /// </summary>
+    private record RollSession(List<RollRecord> Rolls, string? Name);
+
+    // The sessions marked with /session start, oldest first. None if the bot's database predates them.
+    private async Task<List<GameSession>> RecordedSessionsAsync()
+    {
+        try
+        {
+            return await _context.Sessions.AsNoTracking().OrderBy(s => s.ID).ToListAsync();
+        }
+        catch (SqliteException e) when (e.Message.Contains("no such table"))
+        {
+            return [];
+        }
+    }
+
+    // Oldest first. Rolls during a marked session are that session; the rest are split wherever nobody rolled for
+    // SessionGap, as they were before sessions could be marked.
+    private static List<RollSession> SessionGroups(IEnumerable<RollRecord> rolls, List<GameSession> recorded)
+    {
+        var sessions = new List<RollSession>();
+        var marked = recorded.Select((s, i) => (Session: s, Group: new RollSession([], s.Title is { } t ? $"Session {i + 1}: {t}" : $"Session {i + 1}"))).ToList();
+        RollSession? guessed = null;
+
         foreach (var roll in rolls.OrderBy(r => r.MessageID.Value))
         {
-            if (sessions.Count == 0 || roll.MessageID.Timestamp - sessions[^1][^1].MessageID.Timestamp > SessionGap)
-                sessions.Add([]);
+            var at = roll.MessageID.Timestamp;
+            if (marked.FirstOrDefault(m => at >= m.Session.StartedAt && at <= (m.Session.EndedAt ?? DateTimeOffset.MaxValue)) is { Group: { } group })
+            {
+                group.Rolls.Add(roll);
+                guessed = null;
+                continue;
+            }
 
-            sessions[^1].Add(roll);
+            if (guessed is null || at - guessed.Rolls[^1].MessageID.Timestamp > SessionGap)
+                sessions.Add(guessed = new RollSession([], null));
+
+            guessed.Rolls.Add(roll);
         }
 
         return sessions
-            .Select(s =>
+            .Concat(marked.Select(m => m.Group))
+            .Where(s => s.Rolls.Count > 0)
+            .OrderBy(s => s.Rolls[0].MessageID.Value)
+            .ToList();
+    }
+
+    // Newest first
+    private static List<SessionRolls> Sessions(IEnumerable<RollRecord> rolls, List<GameSession> recorded) =>
+        SessionGroups(rolls, recorded)
+            .Select(night =>
             {
+                var s = night.Rolls;
                 var dice = Dice(s);
                 return new SessionRolls(
                     s[0].MessageID.Timestamp.LocalDateTime,
@@ -93,11 +268,11 @@ public class RollReader
                     dice.Count(d => d.Outcome == MoveOutcome.Miss),
                     dice.Count(d => d.IsNatural12),
                     dice.Count(d => d.IsNatural2),
-                    dice.Average(d => d.First + d.Second));
+                    dice.Average(d => d.First + d.Second),
+                    night.Name);
             })
             .Reverse()
             .ToList();
-    }
 
     private static List<MoveDice> Dice(IEnumerable<RollRecord> rolls) => rolls.Select(r => new MoveDice(r.First, r.Second, r.Total)).ToList();
 

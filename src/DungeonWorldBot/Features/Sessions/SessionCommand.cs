@@ -1,0 +1,112 @@
+using System.ComponentModel;
+using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Features.Characters;
+using DungeonWorldBot.Infrastructure;
+using Remora.Commands.Attributes;
+using Remora.Discord.API.Abstractions.Objects;
+using Remora.Discord.API.Objects;
+using Remora.Discord.Commands.Contexts;
+using Remora.Discord.Commands.Feedback.Services;
+using Remora.Results;
+
+namespace DungeonWorldBot.Features.Sessions;
+
+/// <summary>
+/// Marking when a game night starts and ends, so the dashboard counts its rolls as one session, and the table gets a
+/// recap of how the night went. Anyone at the table can do either.
+/// </summary>
+[Group("session")]
+public class SessionCommand : DungeonWorldCommandBase
+{
+    private readonly ISessionService _sessions;
+    private readonly ICharacterService _characterService;
+
+    public SessionCommand(
+        ICommandContext context,
+        FeedbackService feedbackService,
+        ISessionService sessions,
+        ICharacterService characterService)
+        : base(context, feedbackService)
+    {
+        _sessions = sessions;
+        _characterService = characterService;
+    }
+
+    [Command("start")]
+    [Description("Start tonight's session. Rolls from now until /session end count as one game night")]
+    public async Task<IResult> StartAsync(
+        [Description("What tonight's about, e.g. Into the Sunken Abbey")]
+        string? title = null)
+    {
+        if (await _sessions.GetCurrentAsync() is { } current)
+            return await ReplyWithErrorAsync(
+                $"Session {await _sessions.NumberOfAsync(current)} has been going since {Stamp(current.StartedAt)}. End it with /session end first.");
+
+        if (await _sessions.StartAsync(title) is not { } session)
+            return await ReplyWithErrorAsync("Couldn't start the session. Try again.");
+
+        var number = await _sessions.NumberOfAsync(session);
+        return await _feedbackService.SendContextualEmbedAsync(
+            new Embed(
+                Title: Truncate(session.Title is { } t ? $"📜 Session {number}: {t}" : $"📜 Session {number} begins", 256),
+                Description: $"Started by <@{GetUserId()}>. Gather round, adventurers. Every roll from here counts toward tonight's tale.",
+                Timestamp: session.StartedAt,
+                Colour: _feedbackService.Theme.Primary
+            ),
+            ct: CancellationToken
+        );
+    }
+
+    [Command("end")]
+    [Description("End tonight's session, with a recap of how the dice went")]
+    public async Task<IResult> EndAsync()
+    {
+        if (await _sessions.EndAsync() is not { } session)
+            return await ReplyWithErrorAsync("No session is going on. Start one with /session start.");
+
+        var number = await _sessions.NumberOfAsync(session);
+        var recap = await _sessions.RecapAsync(session);
+        var names = (await _characterService.GetCharactersAsync()).ToDictionary(c => c.ID, c => c.Name);
+
+        return await _feedbackService.SendContextualEmbedAsync(
+            new Embed(
+                Title: Truncate(session.Title is { } t ? $"🌙 Session {number} ends: {t}" : $"🌙 Session {number} ends", 256),
+                Description: Describe(session, recap),
+                Fields: recap.Players
+                    // Discord rejects embeds with more than 25 fields
+                    .Take(25)
+                    .Select(p => (IEmbedField)new EmbedField(
+                        // Whoever rolled without a character, like the DM
+                        names.GetValueOrDefault(p.UserID) ?? "No character",
+                        $"<@{p.UserID}> · {p.Rolls} roll{(p.Rolls == 1 ? "" : "s")}" + (p.Misses > 0 ? $" · {p.Misses} miss{(p.Misses == 1 ? "" : "es")}" : ""),
+                        IsInline: true))
+                    .ToList(),
+                Timestamp: session.EndedAt!.Value,
+                Colour: _feedbackService.Theme.Primary
+            ),
+            ct: CancellationToken
+        );
+    }
+
+    private static string Describe(GameSession session, SessionRecap recap)
+    {
+        var length = session.EndedAt!.Value - session.StartedAt;
+        var played = length.TotalHours >= 1 ? $"{(int)length.TotalHours}h {length.Minutes}m" : $"{Math.Max(1, length.Minutes)}m";
+        if (recap.Rolls == 0)
+            return $"Played for {played}. Nobody rolled 2d6 in the game chat.";
+
+        var lines = new List<string>
+        {
+            $"Played for **{played}** · **{recap.Rolls}** roll{(recap.Rolls == 1 ? "" : "s")} · **{recap.Hits * 100 / recap.Rolls}%** hit",
+            $"💀 {recap.Misses} miss{(recap.Misses == 1 ? "" : "es")}",
+        };
+        if (recap.Natural12s > 0 || recap.Natural2s > 0)
+            lines.Add($"✨ {recap.Natural12s} natural 12{(recap.Natural12s == 1 ? "" : "s")} · 🐍 {recap.Natural2s} snake eyes");
+        if (recap.Fights > 0)
+            lines.Add($"⚔️ {recap.Fights} fight{(recap.Fights == 1 ? "" : "s")}");
+        return string.Join('\n', lines);
+    }
+
+    // Discord shows it in each reader's own time zone, e.g. "7:02 PM"
+    private static string Stamp(DateTimeOffset at) => $"<t:{at.ToUnixTimeSeconds()}:t>";
+}

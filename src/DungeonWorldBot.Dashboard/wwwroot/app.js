@@ -138,6 +138,9 @@ addEventListener('resize', markSection);
 addEventListener('hashchange', markSection);
 markSection();
 
+// Tells the rest of the page (like the roll feed) that the live stream saw a change, whichever stream heard it
+const changed = () => document.dispatchEvent(new Event('live-change'));
+
 // Live updates: the server says when the bot changed the database, and the page swaps in a fresh copy of itself,
 // keeping open moves, searches and scroll position.
 (() => {
@@ -173,7 +176,7 @@ markSection();
         current.onopen = () => {
             setLive(true);
             // Changes made while disconnected were missed
-            if (dropped) refresh();
+            if (dropped) { refresh(); changed(); }
             dropped = false;
         };
         current.addEventListener('ping', () => {
@@ -184,6 +187,7 @@ markSection();
         current.onmessage = () => {
             expectPing();
             refresh();
+            changed();
         };
         current.onerror = () => {
             if (current !== source) return;
@@ -404,7 +408,16 @@ markSection();
             if (open.has(enemy.dataset.enemy)) enemy.querySelector('details')?.setAttribute('open', '');
         }
         panel.replaceWith(fresh);
+        showRibbon();
     }
+
+    // The spotlight ribbon comes in the panel, as a template, and is shown over the top of the board
+    function showRibbon() {
+        const host = document.querySelector('[data-ribbon-host]');
+        const ribbon = document.querySelector('[data-encounter-panel] template[data-ribbon]');
+        host?.replaceChildren(...(ribbon ? [ribbon.content.cloneNode(true)] : []));
+    }
+    showRibbon();
 
     async function refreshTimeline() {
         const host = document.querySelector('[data-timeline-host]');
@@ -439,10 +452,10 @@ markSection();
     const source = new EventSource('live');
     let connectedBefore = false;
     source.onopen = () => {
-        if (connectedBefore) refresh();
+        if (connectedBefore) { refresh(); changed(); }
         connectedBefore = true;
     };
-    source.onmessage = refresh;
+    source.onmessage = () => { refresh(); changed(); };
 })();
 
 // Dialogs: buttons with data-open-dialog open the one with that ID, data-close-dialog closes its own, and clicking
@@ -495,3 +508,194 @@ document.addEventListener('change', async e => {
     }
     input.form.submit();
 });
+
+// The bonds web: pointing at someone lights up their bonds and fades the rest. Listened for on the document, since live
+// updates replace the web.
+document.addEventListener('pointerover', e => {
+    const web = e.target.closest?.('[data-bond-web]');
+    if (!web) return;
+    const id = e.target.closest('.bond-node')?.dataset.id;
+    web.classList.toggle('focus', !!id);
+    const related = new Set([id]);
+    for (const edge of web.querySelectorAll('.bond-edge')) {
+        const lit = !!id && (edge.dataset.from === id || edge.dataset.to === id);
+        edge.classList.toggle('lit', lit);
+        if (lit) { related.add(edge.dataset.from); related.add(edge.dataset.to); }
+    }
+    for (const node of web.querySelectorAll('.bond-node')) node.classList.toggle('lit', !!id && related.has(node.dataset.id));
+});
+document.addEventListener('pointerout', e => {
+    const web = e.target.closest?.('[data-bond-web]');
+    if (web && !web.contains(e.relatedTarget)) web.classList.remove('focus');
+});
+
+// The roll feed: when someone rolls 2d6 in the game chat, the dice tumble onto whatever page is open, land, and show
+// how it went. Nat 12s burst, snake eyes shudder. Rides on the page's live stream, or opens its own on pages without
+// one (stories, canvases with no fight). Not in a scene framed beside others, or each frame would show every roll.
+(() => {
+    if (document.documentElement.classList.contains('embedded')) return;
+
+    // The pips lit on a 3×3 grid, for each face
+    const faces = { 1: [4], 2: [0, 8], 3: [0, 4, 8], 4: [0, 2, 6, 8], 5: [0, 2, 4, 6, 8], 6: [0, 2, 3, 5, 6, 8] };
+    const outcomes = { strong: 'Strong hit', weak: 'Weak hit', miss: 'Miss' };
+    const maxShown = 3;
+    const lifetime = 8000;
+    const still = matchMedia('(prefers-reduced-motion: reduce)');
+
+    let latest = null;
+    let checking = false;
+    let again = false;
+    let feed = null;
+
+    const el = (tag, className, text) => {
+        const e = document.createElement(tag);
+        if (className) e.className = className;
+        if (text != null) e.textContent = text;
+        return e;
+    };
+
+    function die() {
+        const d = el('span', 'die');
+        for (let i = 0; i < 9; i++) d.append(el('i'));
+        return d;
+    }
+
+    function showFace(d, face) {
+        const lit = faces[face];
+        [...d.children].forEach((pip, i) => pip.classList.toggle('on', lit.includes(i)));
+    }
+
+    // Flickers through random faces while it tumbles, then lands on the real one
+    function roll(d, face, after) {
+        if (still.matches) { showFace(d, face); d.classList.add('landed'); return Promise.resolve(); }
+        return new Promise(resolve => {
+            d.classList.add('tumbling');
+            const flicker = setInterval(() => showFace(d, 1 + Math.floor(Math.random() * 6)), 70);
+            setTimeout(() => {
+                clearInterval(flicker);
+                showFace(d, face);
+                d.classList.replace('tumbling', 'landed');
+                resolve();
+            }, after);
+        });
+    }
+
+    function burst(toast) {
+        if (still.matches) return;
+        const sparks = el('span', 'roll-sparks');
+        for (let i = 0; i < 18; i++) {
+            const spark = el('i');
+            spark.style.setProperty('--angle', `${i * 20 + Math.random() * 12}deg`);
+            spark.style.setProperty('--reach', `${50 + Math.random() * 40}px`);
+            sparks.append(spark);
+        }
+        toast.append(sparks);
+        setTimeout(() => sparks.remove(), 1200);
+    }
+
+    function dismiss(toast) {
+        if (toast.classList.contains('leaving')) return;
+        clearTimeout(toast.timer);
+        toast.classList.add('leaving');
+        setTimeout(() => toast.remove(), still.matches ? 0 : 300);
+    }
+
+    // Leaves after a while, but not while the pointer's on it
+    function expireLater(toast) {
+        clearTimeout(toast.timer);
+        toast.timer = setTimeout(() => dismiss(toast), lifetime);
+    }
+
+    async function show(r) {
+        feed ??= document.body.appendChild(Object.assign(el('div', 'roll-feed'), { ariaLive: 'polite' }));
+
+        const nat12 = r.first === 6 && r.second === 6;
+        const nat2 = r.first === 1 && r.second === 1;
+        const toast = el('div', `roll-toast ${r.outcome}${nat12 ? ' nat12' : ''}${nat2 ? ' nat2' : ''}${r.mine ? ' mine' : ''}`);
+        toast.title = 'Click to dismiss';
+
+        const who = el('div', 'roll-who');
+        if (r.portrait) {
+            const img = el('img', 'roll-avatar');
+            img.src = r.portrait;
+            img.alt = '';
+            who.append(img);
+        } else {
+            who.append(el('span', 'roll-avatar', r.isDungeonMaster ? 'DM' : r.who.charAt(0)));
+        }
+        const names = el('div', 'roll-names');
+        names.append(el('strong', null, r.mine ? `${r.who} (you)` : r.who));
+        const what = [r.move, r.stat].filter(Boolean).join(' ');
+        names.append(el('span', 'roll-move', what || 'rolls 2d6'));
+        who.append(names);
+
+        const first = die();
+        const second = die();
+        const modifier = r.total - r.first - r.second;
+        const dice = el('div', 'roll-dice');
+        dice.append(first, second);
+        if (modifier) dice.append(el('span', 'roll-mod', modifier > 0 ? `+${modifier}` : `−${-modifier}`));
+        const result = el('div', 'roll-result');
+        result.append(el('span', 'roll-total', r.total));
+        result.append(el('span', 'roll-outcome', nat12 ? 'Natural 12!' : nat2 ? 'Snake eyes' : outcomes[r.outcome]));
+        dice.append(result);
+
+        toast.append(who, dice);
+        toast.setAttribute('aria-label', `${r.who} rolled ${r.first} and ${r.second}${what ? ` for ${what}` : ''}: ${r.total}, ${outcomes[r.outcome]}`);
+        toast.addEventListener('click', () => dismiss(toast));
+        toast.addEventListener('pointerenter', () => clearTimeout(toast.timer));
+        toast.addEventListener('pointerleave', () => expireLater(toast));
+
+        feed.append(toast);
+        const shown = feed.querySelectorAll('.roll-toast:not(.leaving)');
+        for (let i = 0; i < shown.length - maxShown; i++) dismiss(shown[i]);
+
+        await Promise.all([roll(first, r.first, 750), roll(second, r.second, 950)]);
+        toast.classList.add('revealed');
+        if (nat12) burst(toast);
+        expireLater(toast);
+    }
+
+    async function check() {
+        if (checking) { again = true; return; }
+        checking = true;
+        try {
+            const url = latest ? `api/rolls/feed?after=${latest}` : 'api/rolls/feed';
+            // A lapsed sign-in redirects to Discord, which a fetch can't follow; leave it until they reload
+            const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', redirect: 'manual' });
+            if (!response.ok) return false;
+            const feedNow = await response.json();
+            const first = latest === null;
+            // With no rolls yet, every roll that comes is new
+            latest = feedNow.latest ?? latest ?? '0';
+            // The first look only finds where the chat's up to
+            if (!first) {
+                // A few at once (several people rolling together) land one after another
+                feedNow.rolls.forEach((r, i) => setTimeout(() => show(r), i * 450));
+            }
+            return true;
+        } catch {
+            return false;
+        } finally {
+            checking = false;
+            if (again) { again = false; check(); }
+        }
+    }
+
+    (async () => {
+        // Can't see the dashboard (like on /denied): nothing to show
+        if (!await check()) return;
+        document.addEventListener('live-change', check);
+
+        // The page's own live stream, or the encounter panel's, already says when things change
+        const shared = !document.querySelector('[data-no-live]') || document.querySelector('[data-encounter-panel]');
+        if (shared || !window.EventSource) return;
+        const source = new EventSource('live');
+        let connectedBefore = false;
+        source.onopen = () => {
+            if (connectedBefore) check();
+            connectedBefore = true;
+        };
+        source.onmessage = check;
+    })();
+})();

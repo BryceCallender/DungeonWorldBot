@@ -139,6 +139,7 @@ var portraits = app.MapPortraitEndpoints();
 var encounters = app.MapEncounterEndpoints();
 var enemies = app.MapEnemyEndpoints();
 var npcs = app.MapNpcEndpoints();
+var rollFeed = app.MapRollFeedEndpoints();
 
 if (signInEnabled)
 {
@@ -152,6 +153,7 @@ if (signInEnabled)
     encounters.RequireAuthorization(DiscordSignIn.Policy);
     enemies.RequireAuthorization(DiscordSignIn.Policy);
     npcs.RequireAuthorization(DiscordSignIn.Policy);
+    rollFeed.RequireAuthorization(DiscordSignIn.Policy);
 }
 
 app.Run();
