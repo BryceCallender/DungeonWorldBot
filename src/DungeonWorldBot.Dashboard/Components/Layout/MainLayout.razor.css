@@ -1,13 +1,32 @@
+/* The Discord server's banner, a burning sun in space, darkened enough behind the left side to read over. It's dark in
+   either theme, so the bar sets its own light colors. */
 .topbar {
+    --text: #fbf3ea;
+    --muted: #d9c4b2;
+    --accent: #ffb366;
+    --accent-soft: rgb(255 140 50 / .22);
     display: flex;
     align-items: center;
     gap: 1.5rem;
-    padding: .75rem 1.5rem;
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
+    padding: 1rem 1.5rem;
+    color: var(--text);
+    background:
+        linear-gradient(90deg, rgb(10 6 4 / .85), rgb(10 6 4 / .3) 50%, rgb(10 6 4 / .75)),
+        url("/banner.webp") center 46% / cover,
+        #120a06;
+    border-bottom: 1px solid #ff8a3a66;
+    box-shadow: 0 1px 18px -6px #ff7a1a88;
 }
 
-.brand { font-weight: 700; color: var(--text); text-decoration: none; white-space: nowrap; }
+.brand {
+    font-weight: 700;
+    font-size: 1.1rem;
+    letter-spacing: .02em;
+    color: var(--text);
+    text-decoration: none;
+    white-space: nowrap;
+    text-shadow: 0 0 12px #ff8a3aaa;
+}
 .brand span { margin-right: .4rem; }
 
 .topbar nav { display: flex; gap: .25rem; min-width: 0; }

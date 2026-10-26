@@ -5,8 +5,9 @@
     --text: #1f1d1a;
     --muted: #6b665d;
     --border: #e2ddd3;
-    --accent: #6d4bd8;
-    --accent-soft: #ece6ff;
+    /* Ember orange, after the Discord banner's burning sun */
+    --accent: #c2410c;
+    --accent-soft: #ffedd5;
     --good: #2f9e5b;
     --low: #d38b16;
     --critical: #d1453b;
@@ -22,14 +23,14 @@
 
 @media (prefers-color-scheme: dark) {
     :root {
-        --bg: #16151a;
-        --surface: #1f1e25;
-        --surface-2: #2a2932;
-        --text: #ecebf0;
-        --muted: #9d9aa8;
-        --border: #34333d;
-        --accent: #a28bff;
-        --accent-soft: #2f2852;
+        --bg: #120e0c;
+        --surface: #1c1714;
+        --surface-2: #28201b;
+        --text: #f1ebe6;
+        --muted: #a8998e;
+        --border: #3a2e27;
+        --accent: #ff9a3d;
+        --accent-soft: #42230f;
         --good: #49c27c;
         --low: #e8a33a;
         --critical: #ef6a5f;
