@@ -29,6 +29,33 @@ td.unlucky { color: var(--critical); font-weight: 700; }
 
 .dice-grid h3 { margin-top: 0; }
 
+/* Each player's luck by session: a line of their average dice, dots hot (green) or cold (red), fair dice dashed */
+.sparkline { display: block; overflow: visible; }
+.sparkline .fair { stroke: var(--muted); stroke-width: 1; stroke-dasharray: 3 3; opacity: .6; }
+.sparkline polyline { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linejoin: round; }
+.sparkline circle { fill: var(--accent); }
+.sparkline circle.hot { fill: var(--good); }
+.sparkline circle.cold { fill: var(--critical); }
+
+/* Last session's awards: a row of small cards, each with its emoji standing out */
+.awards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .75rem; margin-top: .75rem; }
+.award { position: relative; display: flex; flex-direction: column; gap: .15rem; overflow: hidden; }
+.award.mine { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.award-icon { position: absolute; right: .6rem; top: .45rem; font-size: 1.9rem; opacity: .9; }
+.award strong { font-size: 1.05rem; padding-right: 2.2rem; }
+
+/* Who's good at what: each cell shaded from red (always misses) to green (always hits) by --rate, 0 to 1, and fainter
+   by --sure when there are only a few rolls to go on */
+.heatmap th.heat-player, .heatmap td.heat { text-align: center; }
+.heatmap td.heat {
+    background: color-mix(in oklab, color-mix(in oklab, var(--good) calc(var(--rate) * 100%), var(--critical)) calc(10% + var(--sure) * 25%), transparent);
+    border-left: 1px solid var(--surface);
+    font-variant-numeric: tabular-nums;
+}
+.heatmap td.heat strong { display: block; }
+.heatmap td.heat span { font-size: .72rem; color: var(--muted); }
+.heatmap td.heat.none { background: none; color: var(--muted); }
+
 @media (max-width: 600px) {
     .dice-grid { grid-template-columns: 1fr; }
     /* The names stay put while the numbers scroll under them */

@@ -57,3 +57,5 @@
 .alert .chip.low { background: color-mix(in srgb, var(--low) 18%, transparent); color: var(--low); }
 .alert .chip.accent { background: var(--accent-soft); color: var(--accent); }
 .alert a.chip:hover { text-decoration: underline; }
+
+.bonds-card { margin-top: .75rem; padding: 1.25rem .75rem; }

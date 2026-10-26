@@ -1,0 +1,20 @@
+.bond-web { display: block; width: 100%; max-width: 760px; height: auto; margin: 0 auto; overflow: visible; }
+
+.bond-edge path { fill: none; stroke: var(--class, var(--muted)); stroke-width: 2; opacity: .75; transition: opacity .2s, stroke-width .2s; }
+.bond-edge.mutual path { stroke-width: 3.5; }
+.bond-web marker path { fill: var(--muted); }
+
+.bond-node { cursor: pointer; transition: opacity .2s; }
+.bond-node .ring { fill: var(--surface); stroke: var(--class, var(--muted)); stroke-width: 3; transition: stroke-width .2s; }
+.bond-node .face { fill: color-mix(in srgb, var(--class, var(--muted)) 22%, var(--surface)); }
+.bond-node .initial { text-anchor: middle; font-weight: 800; font-size: 22px; fill: var(--class, var(--muted)); }
+.bond-node .label { text-anchor: middle; font-size: 13px; font-weight: 600; fill: var(--text); }
+.bond-node.outsider .ring { stroke: var(--muted); stroke-dasharray: 4 3; }
+.bond-node.outsider .initial { font-size: 15px; }
+.bond-node.outsider .label { font-size: 11px; fill: var(--muted); font-weight: 500; }
+.bond-node:hover .ring, .bond-node:focus-visible .ring { stroke-width: 5; }
+
+/* Pointing at someone (app.js marks them .lit, and the web .focus) brings their bonds forward and fades everyone else's */
+.bond-web.focus .bond-edge:not(.lit) path { opacity: .08; }
+.bond-web.focus .bond-edge.lit path { opacity: 1; stroke-width: 3.5; }
+.bond-web.focus .bond-node:not(.lit) { opacity: .35; }

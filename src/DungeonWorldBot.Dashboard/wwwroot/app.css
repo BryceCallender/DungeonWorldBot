@@ -510,3 +510,150 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 }
 
 .modal .create.danger { background: var(--critical); border-color: var(--critical); }
+
+/* ---- Roll feed --------------------------------------------------------------------------------------------------- */
+
+/* Rolls from the game chat, stacked in the bottom corner (app.js). Each toast slides in, its dice tumble and land, and
+   then the total and how it went show, colored by --roll: green for a strong hit, amber weak, red a miss. */
+.roll-feed {
+    position: fixed;
+    right: 1rem;
+    bottom: 1rem;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: .6rem;
+    pointer-events: none;
+}
+
+.roll-toast {
+    --roll: var(--muted);
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: .55rem;
+    width: 17.5rem;
+    padding: .75rem .9rem;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 4px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 10px 30px -10px rgb(0 0 0 / .35);
+    cursor: pointer;
+    pointer-events: auto;
+    animation: roll-in .35s cubic-bezier(.2, .9, .3, 1.2);
+    transition: border-color .3s, box-shadow .3s;
+}
+.roll-toast.strong { --roll: var(--good); }
+.roll-toast.weak { --roll: var(--low); }
+.roll-toast.miss { --roll: var(--critical); }
+.roll-toast.nat12 { --roll: var(--divine); }
+.roll-toast.revealed { border-left-color: var(--roll); }
+.roll-toast.revealed.nat12 { box-shadow: 0 0 0 1px var(--roll), 0 0 28px -4px var(--roll); }
+.roll-toast.revealed.nat2 { animation: roll-shudder .5s; }
+.roll-toast.leaving { animation: roll-out .3s ease-in forwards; }
+
+.roll-who { display: flex; align-items: center; gap: .6rem; min-width: 0; }
+.roll-avatar {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-weight: 700;
+    font-size: .8rem;
+}
+.roll-names { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.roll-names strong, .roll-move { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.roll-move { color: var(--muted); font-size: .8rem; }
+.roll-toast.mine .roll-names strong { color: var(--accent); }
+
+.roll-dice { display: flex; align-items: center; gap: .5rem; }
+
+/* A d6 face: a 3×3 grid of pips, with only some lit */
+.die {
+    display: grid;
+    grid-template: repeat(3, 1fr) / repeat(3, 1fr);
+    gap: 2px;
+    width: 34px;
+    height: 34px;
+    padding: 5px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    box-shadow: inset 0 -2px 0 rgb(0 0 0 / .12);
+}
+.die i { border-radius: 50%; }
+.die i.on { background: var(--text); }
+.die.tumbling { animation: die-tumble .32s linear infinite; }
+.die.landed { animation: die-land .35s cubic-bezier(.3, 1.6, .5, 1); }
+.revealed .die { border-color: color-mix(in srgb, var(--roll) 45%, var(--border)); }
+
+.roll-mod { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+/* The total and outcome wait for the dice to land */
+.roll-result {
+    margin-left: auto;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    line-height: 1.1;
+    opacity: 0;
+    transform: scale(.6);
+    transition: opacity .2s, transform .35s cubic-bezier(.3, 1.8, .5, 1);
+}
+.revealed .roll-result { opacity: 1; transform: none; }
+.roll-total { font-size: 1.6rem; font-weight: 800; color: var(--roll); font-variant-numeric: tabular-nums; }
+.roll-outcome { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--roll); }
+
+/* A nat 12's sparks fly out from the dice */
+.roll-sparks { position: absolute; left: 3.2rem; top: 70%; pointer-events: none; }
+.roll-sparks i {
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--divine);
+    box-shadow: 0 0 6px var(--divine);
+    animation: roll-spark 1s cubic-bezier(.1, .8, .3, 1) forwards;
+}
+
+@keyframes roll-in {
+    from { opacity: 0; transform: translateX(40px) scale(.95); }
+}
+@keyframes roll-out {
+    to { opacity: 0; transform: translateX(40px); }
+}
+@keyframes die-tumble {
+    0% { transform: translateY(0) rotate(0); }
+    25% { transform: translateY(-5px) rotate(90deg); }
+    50% { transform: translateY(0) rotate(180deg); }
+    75% { transform: translateY(-3px) rotate(270deg); }
+    100% { transform: translateY(0) rotate(360deg); }
+}
+@keyframes die-land {
+    from { transform: scale(1.25); }
+}
+@keyframes roll-shudder {
+    20%, 60% { transform: translateX(-5px); }
+    40%, 80% { transform: translateX(5px); }
+}
+@keyframes roll-spark {
+    from { transform: rotate(var(--angle)) translateX(0); opacity: 1; }
+    to { transform: rotate(var(--angle)) translateX(var(--reach)); opacity: 0; }
+}
+
+@media (max-width: 600px) {
+    .roll-feed { left: 1rem; align-items: stretch; }
+    .roll-toast { width: auto; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .roll-toast, .roll-toast.leaving, .roll-toast.revealed.nat2, .die.landed { animation: none; }
+    .roll-result { transition: none; }
+}

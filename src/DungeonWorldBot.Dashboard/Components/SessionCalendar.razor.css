@@ -57,3 +57,4 @@ button.cal-day { border: 0; padding: 0; font: inherit; font-size: .75rem; cursor
 .cal-older > summary { display: inline-block; list-style: none; }
 .cal-older > summary::-webkit-details-marker { display: none; }
 .cal-older[open] > summary { display: none; }
+.cal-pop .small { display: block; }

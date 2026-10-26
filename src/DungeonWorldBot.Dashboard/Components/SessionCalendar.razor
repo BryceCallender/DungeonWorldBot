@@ -46,12 +46,20 @@
                         <button type="button" class="cal-day played" popovertarget="@id" style="--busy: @Busy(session)"
                                 aria-label="@session.Started.ToString("dddd, MMMM d"): @session.Rolls rolls">@d</button>
                         <div id="@id" class="cal-pop card" popover>
-                            <strong>@session.Started.ToString("ddd, MMM d, yyyy")</strong>
+                            @if (session.Name is { } name)
+                            {
+                                <strong>@name</strong>
+                                <span class="small muted">@session.Started.ToString("ddd, MMM d, yyyy")</span>
+                            }
+                            else
+                            {
+                                <strong>@session.Started.ToString("ddd, MMM d, yyyy")</strong>
+                            }
                             <dl>
                                 <dt>Players</dt><dd>@session.Players</dd>
                                 <dt>Rolls</dt><dd>@session.Rolls</dd>
                                 <dt>Hit rate</dt><dd>@Percent(session.Hits, session.Rolls)</dd>
-                                <dt>Misses (XP)</dt><dd>@session.Misses</dd>
+                                <dt>Misses</dt><dd>@session.Misses</dd>
                                 <dt>Nat 12s</dt><dd>@session.Natural12s</dd>
                                 <dt>Nat 2s</dt><dd>@session.Natural2s</dd>
                                 <dt>Avg dice</dt><dd class="@Luck(session)">@session.AverageNatural.ToString("0.0")</dd>

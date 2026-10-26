@@ -4,6 +4,7 @@ using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Features.Moves;
+using DungeonWorldBot.Features.Subclasses;
 using DungeonWorldBot.Infrastructure;
 using DungeonWorldBot.Rules;
 using Remora.Discord.API.Objects;
@@ -40,6 +41,7 @@ public class MoveRequestProcessor
     private readonly ICharacterService _characterService;
     private readonly IEncounterService _encounterService;
     private readonly MoveResolver _moveResolver;
+    private readonly CharacterMoves _characterMoves;
     private readonly EnemyAttackResolver _enemyAttackResolver;
 
     public MoveRequestProcessor(
@@ -47,12 +49,14 @@ public class MoveRequestProcessor
         ICharacterService characterService,
         IEncounterService encounterService,
         MoveResolver moveResolver,
+        CharacterMoves characterMoves,
         EnemyAttackResolver enemyAttackResolver)
     {
         _context = context;
         _characterService = characterService;
         _encounterService = encounterService;
         _moveResolver = moveResolver;
+        _characterMoves = characterMoves;
         _enemyAttackResolver = enemyAttackResolver;
     }
 
@@ -63,29 +67,45 @@ public class MoveRequestProcessor
 
         return request.Kind switch
         {
-            MoveRequestKind.HackAndSlash => await PlayerMoveAsync(request, BasicMoves.HackAndSlash, StatType.Str),
-            MoveRequestKind.Volley => await PlayerMoveAsync(request, BasicMoves.Volley, StatType.Dex),
+            MoveRequestKind.HackAndSlash or MoveRequestKind.Volley or MoveRequestKind.BasicMove or MoveRequestKind.ClassMove
+                => await PlayerMoveAsync(request),
             MoveRequestKind.EnemyAttack => await EnemyAttackAsync(request),
             _ => ProcessedMoveResult.Failed("The bot doesn't know that move."),
         };
     }
 
-    private async Task<ProcessedMoveResult> PlayerMoveAsync(MoveRequest request, MoveDefinition move, StatType stat)
+    private async Task<ProcessedMoveResult> PlayerMoveAsync(MoveRequest request)
     {
         if (request.CharacterID is not { } characterID || await _characterService.GetCharacterFromUserAsync(characterID) is not { } character)
             return ProcessedMoveResult.Failed("That character isn't around anymore.");
 
-        if (await TargetEnemyAsync(request) is not { } target)
+        Enemy? target = null;
+        if (request.TargetEnemyID is not null && (target = await TargetEnemyAsync(request)) is null)
             return ProcessedMoveResult.Failed("That enemy isn't in the fight anymore.");
 
+        Character? ally = null;
+        if (request.TargetCharacterID is { } allyID && (ally = await _characterService.GetCharacterFromUserAsync(allyID)) is null)
+            return ProcessedMoveResult.Failed("Who you're helping isn't around anymore.");
+
+        var prepared = request.Kind switch
+        {
+            MoveRequestKind.HackAndSlash => Basic(character, BasicMoves.HackAndSlash, null, null),
+            MoveRequestKind.Volley => Basic(character, BasicMoves.Volley, null, null),
+            MoveRequestKind.ClassMove => _characterMoves.PrepareClassMove(character, request.Move ?? "", request.Stat),
+            _ => BasicMoves.All.FirstOrDefault(m => m.Name.Equals(request.Move?.Trim(), StringComparison.OrdinalIgnoreCase)) is { } basic
+                ? Basic(character, basic, request.Stat, ally)
+                : PreparedMove.Failed($"There's no basic move called {request.Move}."),
+        };
+        if (prepared.Error is { } error)
+            return ProcessedMoveResult.Failed(error);
+
+        var move = prepared.Move!;
         if (TacticRules.WhyCannotMake(character, move.Name) is { } forbidden)
             return ProcessedMoveResult.Failed(forbidden);
 
-        if (MoveInput.ForStat(character, stat, request.Bonus, target.Name, request.ExtraDamage) is not { } input)
-            return ProcessedMoveResult.Failed($"{character.Name} has no {stat} stat.");
-
+        var input = prepared.Input! with { Bonus = request.Bonus, Target = target?.Name, ExtraDamage = request.ExtraDamage };
         var resolution = await _moveResolver.ResolveAsync(character, move, input);
-        var action = resolution.ToAction(messageID: null);
+        var action = resolution.ToAction(messageID: null, ally?.Name);
         await LogAsync(request, action);
 
         var outcome = resolution.Outcome switch
@@ -102,6 +122,32 @@ public class MoveRequestProcessor
             summary,
             character.ID,
             resolution.Roll.Dice));
+    }
+
+    /// <summary>
+    /// What a basic move rolls with, as /move rolls it.
+    /// </summary>
+    /// <param name="stat">The stat they picked, for a move like Defy Danger that rolls whichever fits.</param>
+    /// <param name="ally">Who they're helping or hindering, for Aid or Interfere.</param>
+    private static PreparedMove Basic(Character character, MoveDefinition move, StatType? stat, Character? ally)
+    {
+        if (move == BasicMoves.AidOrInterfere)
+        {
+            if (ally is null)
+                return PreparedMove.Failed("Pick whose character you're helping or hindering.");
+            var bonds = character.Bonds?.Count(b => b.TargetID == ally.ID) ?? 0;
+            return new PreparedMove(null, move, new MoveInput($"Bond with {ally.Name}", bonds, 0));
+        }
+
+        if (move == BasicMoves.LastBreath)
+            return new PreparedMove(null, move, new MoveInput(null, 0, 0, Kind: RollKind.LastBreath));
+
+        if ((stat ?? move.Stat) is not { } rolled)
+            return PreparedMove.Failed($"Pick a stat to roll {move.Name} with.");
+
+        return MoveInput.ForStat(character, rolled, 0) is { } input
+            ? new PreparedMove(null, move, input)
+            : PreparedMove.Failed($"{character.Name} has no {rolled} stat.");
     }
 
     private async Task<ProcessedMoveResult> EnemyAttackAsync(MoveRequest request)

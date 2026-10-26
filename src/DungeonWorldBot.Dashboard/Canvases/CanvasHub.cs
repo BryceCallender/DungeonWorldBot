@@ -119,18 +119,29 @@ public class CanvasHub(
     }
 
     /// <summary>
-    /// Makes a move from one token at another, like Hack and Slash at an enemy, for the bot to roll. How it went comes
-    /// back to everyone as MoveResolved.
+    /// The moves you can make from a token, for its right-click menu: your own character's, or an enemy's if you run the fight.
+    /// </summary>
+    public async Task<IReadOnlyList<BoardMove>> MovesFor(string itemID)
+    {
+        var (canvas, _) = await ChangerAsync();
+        return await moves.MovesForAsync(canvas, ViewerOf(), CheckID(itemID));
+    }
+
+    /// <summary>
+    /// Makes a move from a token, like Hack and Slash at an enemy or Spout Lore at no one, for the bot to roll. How it
+    /// went comes back to everyone as MoveResolved.
     /// </summary>
     public async Task MakeMove(MoveAsk ask)
     {
         var (canvas, me) = await ChangerAsync();
-        var asked = await moves.AskAsync(canvas, ViewerOf(), ask with { Actor = CheckID(ask.Actor), Target = CheckID(ask.Target) });
+        var asked = await moves.AskAsync(canvas, ViewerOf(), ask with { Actor = CheckID(ask.Actor), Target = ask.Target is null ? null : CheckID(ask.Target) });
         if (asked.Error is { } error)
             throw new HubException(error);
 
-        results.Follow(asked.ID, new WaitingMove(canvas, me.ID, ask.Actor, ask.Target, DateTimeOffset.UtcNow));
-        await Clients.OthersInGroup(Group(canvas)).MoveAsked(me.ID, ask.Actor, ask.Target);
+        // A move aimed at no one shows how it went over whoever made it
+        var shownOver = ask.Target ?? ask.Actor;
+        results.Follow(asked.ID, new WaitingMove(canvas, me.ID, ask.Actor, shownOver, DateTimeOffset.UtcNow));
+        await Clients.OthersInGroup(Group(canvas)).MoveAsked(me.ID, ask.Actor, shownOver);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)

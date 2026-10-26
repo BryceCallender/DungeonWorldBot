@@ -45,17 +45,35 @@ export interface SavedItem {
 export type LiveStatus = 'live' | 'reconnecting' | 'offline';
 
 /** The moves that can be made from a token on a fight's board, as MoveRequestKind goes over the wire. */
-export type MoveKind = 'hackAndSlash' | 'volley' | 'enemyAttack';
+export type MoveKind = 'hackAndSlash' | 'volley' | 'enemyAttack' | 'basicMove' | 'classMove';
 
-/** A move from one token (by item ID) at another, like the hub's MoveAsk. */
+export type Stat = 'str' | 'dex' | 'con' | 'int' | 'wis' | 'cha';
+
+/** A move a token can make, for its right-click menu, like the hub's BoardMove. */
+export interface BoardMove {
+    kind: MoveKind;
+    name: string;
+    /** Who it's aimed at: an enemy, another player's character, a character or NPC (for an enemy), or no one. */
+    aim: 'none' | 'enemy' | 'ally' | 'party';
+    /** Whether the player chooses the stat it rolls with, like Defy Danger. */
+    picksStat: boolean;
+    rollsDamage: boolean;
+    /** What the roll adds to 2d6 before any bonus, for showing the chance to hit; null when it isn't known yet. */
+    modifier?: number | null;
+    /** Each stat's modifier ("str": 2), for a move that picks its stat. */
+    statModifiers?: Record<string, number> | null;
+}
+
+/** A move from one token (by item ID), at another or at no one, like the hub's MoveAsk. */
 export interface MoveAsk {
     kind: MoveKind;
     actor: string;
-    target: string;
+    target?: string;
     bonus?: number;
     extraDamage?: number;
-    /** What an enemy does, e.g. Bite. */
+    /** What an enemy does, e.g. Bite, or the player's move, e.g. Defy Danger. */
     move?: string;
+    stat?: Stat;
 }
 
 /** How a move made from the board went, like the hub's MoveResult. */
@@ -98,6 +116,8 @@ export interface CanvasLive {
     addItem(itemId: string, type: CanvasItemType, item: ItemJson): void;
     moveItem(itemId: string, x: number, y: number): void;
     removeItem(itemId: string): void;
+    /** The moves you can make from a token: none if it isn't yours, or you're offline. */
+    movesFor(itemId: string): Promise<BoardMove[]>;
     /** Asks the bot to roll a move. Rejects with why, in words for people, if it can't be made. */
     makeMove(ask: MoveAsk): Promise<void>;
     stop(): Promise<void>;
@@ -160,6 +180,14 @@ export async function connect(canvasId: string, on: CanvasHandlers = {}): Promis
         addItem: (itemId, type, item) => save('AddItem', itemId, type, item),
         moveItem: (itemId, x, y) => save('MoveItem', itemId, x, y),
         removeItem: itemId => save('RemoveItem', itemId),
+        movesFor: async itemId => {
+            if (connection.state !== signalR.HubConnectionState.Connected) return [];
+            try {
+                return await connection.invoke<BoardMove[]>('MovesFor', itemId);
+            } catch {
+                return [];
+            }
+        },
         makeMove: async ask => {
             try {
                 await connection.invoke('MakeMove', { bonus: 0, extraDamage: 0, ...ask });

@@ -3,6 +3,7 @@
 @inject PartyReader PartyReader
 @inject DashboardSettings Settings
 @inject Viewer Viewer
+@inject PortraitStore PortraitStore
 
 <PageTitle>Party · Sana Solem</PageTitle>
 
@@ -148,14 +149,25 @@ else
             </a>
         }
     </div>
+
+    @if (_party.Any(c => c.Character.Bonds is { Count: > 0 }))
+    {
+        <h2 class="section-title">Bonds</h2>
+        <p class="small">Who has a bond with whom. Arrows point from a character to who they have a bond with; a thick line means it goes both ways. Point at someone to see just theirs.</p>
+        <section class="card bonds-card">
+            <BondWeb Party="_party" Portraits="_portraits" />
+        </section>
+    }
 }
 
 @code {
     private IReadOnlyList<CharacterView> _party = [];
+    private IReadOnlyDictionary<ulong, string> _portraits = new Dictionary<ulong, string>();
 
     protected override async Task OnInitializedAsync()
     {
         _party = await PartyReader.GetPartyAsync();
+        _portraits = await PortraitStore.UrlsAsync();
         _alerts = Alerts().Where(a => a.Who.Count > 0).ToList();
     }
 

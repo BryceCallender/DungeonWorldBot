@@ -10,6 +10,7 @@ using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Npcs;
 using DungeonWorldBot.Features.Resources;
 using DungeonWorldBot.Features.Rolls;
+using DungeonWorldBot.Features.Subclasses.Homebrew;
 using DungeonWorldBot.Rules;
 using Microsoft.EntityFrameworkCore;
 using Remora.Rest.Core;
@@ -37,6 +38,7 @@ public sealed class MoveRequestTests : IDisposable
             characters,
             encounters,
             new MoveResolver(dice, damage, encounters),
+            new CharacterMoves(new ResourceService(context)),
             new EnemyAttackResolver(dice, damage, npcs));
     }
 
@@ -139,5 +141,70 @@ public sealed class MoveRequestTests : IDisposable
         });
         Assert.Equal("The fight is over.", over.Error);
         Assert.Equal(6, goblin.CurrentHP);
+    }
+
+    [Fact]
+    public async Task BasicMove_ByName_RollsWithThePickedStat_AtNoOne()
+    {
+        await using var context = _db.CreateContext();
+        var (fight, goblin) = await SetupAsync(context);
+
+        var processed = await Processor(context).ProcessAsync(new MoveRequest
+        {
+            EncounterID = fight.ID,
+            Kind = MoveRequestKind.BasicMove,
+            CharacterID = UserId,
+            Move = "Defy Danger",
+            Stat = StatType.Str,
+        });
+
+        var move = Assert.IsType<ProcessedMove>(processed.Move);
+        Assert.Equal("Strong hit", move.Summary);
+        Assert.Contains("Arthur: Defy Danger", move.Embed.Title.Value);
+        Assert.Equal(6, goblin.CurrentHP);
+        Assert.Null((await context.EncounterActions.SingleAsync()).Target);
+    }
+
+    [Fact]
+    public async Task BasicMove_WithoutAStatItNeeds_OrAClassMoveTheyDontKnow_IsRefused()
+    {
+        await using var context = _db.CreateContext();
+        var (fight, _) = await SetupAsync(context);
+
+        var noStat = await Processor(context).ProcessAsync(new MoveRequest
+        {
+            EncounterID = fight.ID, Kind = MoveRequestKind.BasicMove, CharacterID = UserId, Move = "Defy Danger",
+        });
+        Assert.Equal("Pick a stat to roll Defy Danger with.", noStat.Error);
+
+        var unknown = await Processor(context).ProcessAsync(new MoveRequest
+        {
+            EncounterID = fight.ID, Kind = MoveRequestKind.ClassMove, CharacterID = UserId, Move = "Lay on Hands",
+        });
+        Assert.Null(unknown.Move);
+        Assert.Empty(context.EncounterActions);
+    }
+
+    [Fact]
+    public async Task ClassMove_RollsASubclassMoveTheyKnow_LikeRevelation()
+    {
+        await using var context = _db.CreateContext();
+        var (fight, _) = await SetupAsync(context);
+        var character = (await new CharacterService(context).GetCharacterFromUserAsync(UserId))!;
+        character.Class.Type = ClassType.Ranger;
+        character.Level = 3;
+        character.Stats.Add(new Stat { StatType = StatType.Wis, Value = 13 });
+        character.Abilities = [new Ability { Name = ChampionOfLuna.Name }, new Ability { Name = ChampionOfLuna.Revelation }];
+        await context.SaveChangesAsync();
+
+        Assert.Contains(CharacterMoves.For(character), m => m.Name == ChampionOfLuna.Revelation && m.IsClassMove);
+
+        var processed = await Processor(context).ProcessAsync(new MoveRequest
+        {
+            EncounterID = fight.ID, Kind = MoveRequestKind.ClassMove, CharacterID = UserId, Move = ChampionOfLuna.Revelation,
+        });
+
+        var move = Assert.IsType<ProcessedMove>(processed.Move);
+        Assert.Contains("Arthur: Revelation", move.Embed.Title.Value);
     }
 }

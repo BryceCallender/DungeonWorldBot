@@ -28,6 +28,8 @@ public class DungeonWorldContext : DbContext
 
     public DbSet<MonsterTemplate> MonsterTemplates => Set<MonsterTemplate>();
 
+    public DbSet<GameSession> Sessions => Set<GameSession>();
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
