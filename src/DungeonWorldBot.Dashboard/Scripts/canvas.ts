@@ -1,6 +1,6 @@
 // The canvas page's board. Built into wwwroot/canvas.js by `npm run build` (dotnet build runs it too).
 import Konva from 'konva';
-import { connect, type CanvasItemType, type CanvasLive, type CanvasPerson, type ItemJson, type MoveAsk, type MoveKind, type MoveResult, type SavedItem } from './canvas-live';
+import { connect, type CanvasItemType, type CanvasLive, type CanvasPerson, type ItemJson, type BoardMove, type MoveAsk, type MoveResult, type Stat, type SavedItem } from './canvas-live';
 
 // ---- The board ----------------------------------------------------------------------------------------------------
 
@@ -826,16 +826,18 @@ stage.on('contextmenu', e => {
     hidePictureMenu();
     hideMoveMenu();
     if (viewOnly) return;
-    // A token in a fight offers its moves instead
+    const at = { x: e.evt.clientX, y: e.evt.clientY };
+    const picture = pictures.getIntersection(stage.getPointerPosition()!);
+    // A token in a fight offers its moves instead, once the server says which. With none, it's the picture under it.
     const token = e.target.getLayer() === tokens ? itemOf(e.target) : null;
-    if (token && showMoveMenu(token, { x: e.evt.clientX, y: e.evt.clientY })) {
+    if (token && mightHaveMoves(token)) {
         e.evt.preventDefault();
+        void showMoveMenu(token, at).then(shown => { if (!shown && picture) showPictureMenu(picture, at); });
         return;
     }
-    const picture = pictures.getIntersection(stage.getPointerPosition()!);
     if (!picture) return;
     e.evt.preventDefault();
-    showPictureMenu(picture, { x: e.evt.clientX, y: e.evt.clientY });
+    showPictureMenu(picture, at);
 });
 
 lockButton.addEventListener('click', () => {
@@ -857,12 +859,12 @@ stage.on('wheel dragstart', hidePictureMenu);
 
 // ---- Moves from tokens ---------------------------------------------------------------------------------------------
 
-// While a fight is on, right-clicking a token offers the moves it can make: Hack and Slash or Volley for your own
-// character, and an attack for an enemy if you run the fight. Then click who it's aimed at, add any bonus, and the bot
-// rolls it by the same rules as /move and tells game chat. Tokens placed when the fight started know who they are
-// (their `fighter` attribute, like "enemy:12"); ones made by hand go by their name. The server has the last word.
+// While a fight is on, right-clicking your own character's token offers every move they can make: the basic moves and
+// their rolled class moves. An enemy's offers its attack if you run the fight; anyone else's offers nothing. For a move
+// aimed at someone, click who, then add any bonus, and the bot rolls it by the same rules as /move and tells game chat.
+// Tokens placed when the fight started know who they are (their `fighter` attribute, like "enemy:12"); ones made by
+// hand go by their name. The server says which moves a token has, and has the last word on making them.
 
-const MOVE_NAMES: Record<MoveKind, string> = { hackAndSlash: 'Hack and Slash', volley: 'Volley', enemyAttack: 'Attack' };
 const AIM_COLOR = '#D85A30';
 
 const fightOn = () => document.querySelector<HTMLElement>('[data-encounter-panel]')?.dataset.fight === 'true';
@@ -870,14 +872,13 @@ const fighterOf = (token: Konva.Node) => ((token.getAttr('fighter') as string | 
 // With sign-in off everyone's a guest, and anyone can do anything in a fight
 const isGuest = () => !live || live.me.id.startsWith('guest-');
 
-function movesFor(token: Konva.Node): MoveKind[] {
-    if (!live || !fightOn()) return [];
+/** Whether it's worth asking the server for a token's moves: not for someone else's character, or an enemy you don't run. */
+function mightHaveMoves(token: Konva.Node) {
+    if (!live || !fightOn()) return false;
     const [kind, id] = fighterOf(token);
-    const runsFight = isGuest() || live.me.isDungeonMaster;
-    if (kind === undefined) return runsFight ? ['hackAndSlash', 'volley', 'enemyAttack'] : ['hackAndSlash', 'volley'];
-    if (kind === 'character' && (isGuest() || live.me.id === id)) return ['hackAndSlash', 'volley'];
-    if (kind === 'enemy' && runsFight) return ['enemyAttack'];
-    return [];
+    if (kind === 'character') return isGuest() || live.me.id === id;
+    if (kind === 'enemy') return isGuest() || live.me.isDungeonMaster;
+    return kind === undefined;
 }
 
 // How big a token is on the board: its circle's radius, scaled with it
@@ -899,16 +900,36 @@ moveMenu.hidden = true;
 moveMenu.setAttribute('role', 'menu');
 container.append(moveMenu);
 
-/** Opens the token's moves, if it has any for you. */
-function showMoveMenu(token: Konva.Node, at: { x: number; y: number }) {
-    const moves = movesFor(token);
-    if (!moves.length) return false;
-    moveMenu.replaceChildren(...moves.map(kind => {
-        const button = Object.assign(document.createElement('button'), { type: 'button', textContent: `${MOVE_NAMES[kind]}…` });
-        button.setAttribute('role', 'menuitem');
-        button.addEventListener('click', () => { hideMoveMenu(); startAiming(token, kind); });
-        return button;
-    }));
+// A right-click whose moves come back after the menu was closed, or another right-click, is dropped
+let menuAsk = 0;
+
+/** Opens the token's moves, if it has any for you: its basic moves, then its class moves. */
+async function showMoveMenu(token: Konva.Node, at: { x: number; y: number }) {
+    const ask = ++menuAsk;
+    const moves = await live!.movesFor(token.id());
+    if (ask !== menuAsk || !moves.length) return false;
+    const button = (move: BoardMove) => {
+        const item = Object.assign(document.createElement('button'), { type: 'button', textContent: `${move.name}…` });
+        item.setAttribute('role', 'menuitem');
+        if (move.modifier != null) {
+            const odds = chances(move.modifier);
+            item.append(Object.assign(document.createElement('span'), {
+                className: `odds ${oddsClass(odds.hit)}`,
+                textContent: `${signed(move.modifier)} · ${percent(odds.hit)}`,
+                title: `${percent(odds.hit)} to hit (7+), ${percent(odds.strong)} strong (10+)`,
+            }));
+        }
+        item.addEventListener('click', () => {
+            hideMoveMenu();
+            if (move.aim === 'none') showMoveForm(token, null, move, at);
+            else startAiming(token, move);
+        });
+        return item;
+    };
+    const basic = moves.filter(m => m.kind !== 'classMove').map(button);
+    const classMoves = moves.filter(m => m.kind === 'classMove').map(button);
+    const divider = Object.assign(document.createElement('hr'), { className: 'divider' });
+    moveMenu.replaceChildren(...basic, ...(basic.length && classMoves.length ? [divider] : []), ...classMoves);
     moveMenu.hidden = false;
     placeMenu(moveMenu, at);
     // Focusing mustn't scroll the page under the board, which would move everything away from the pointer
@@ -916,14 +937,14 @@ function showMoveMenu(token: Konva.Node, at: { x: number; y: number }) {
     return true;
 }
 
-function hideMoveMenu() { moveMenu.hidden = true; }
+function hideMoveMenu() { moveMenu.hidden = true; menuAsk++; }
 
 // Picking who it's aimed at: an arrow follows the pointer until a token is clicked. Anywhere else, or Escape, cancels.
-let aiming: { actor: Konva.Node; kind: MoveKind; arrow: Konva.Arrow } | null = null;
+let aiming: { actor: Konva.Node; move: BoardMove; arrow: Konva.Arrow; ring: Konva.Circle } | null = null;
 const aimHint = Object.assign(document.createElement('div'), { className: 'board-hint', hidden: true });
 container.append(aimHint);
 
-function startAiming(actor: Konva.Node, kind: MoveKind) {
+function startAiming(actor: Konva.Node, move: BoardMove) {
     stopAiming();
     setTool('move');
     select(null);
@@ -931,11 +952,13 @@ function startAiming(actor: Konva.Node, kind: MoveKind) {
         points: [actor.x(), actor.y(), actor.x(), actor.y()],
         stroke: AIM_COLOR, fill: AIM_COLOR, strokeWidth: 3, dash: [12, 8], pointerLength: 14, pointerWidth: 14, opacity: 0.85,
     });
-    others.add(arrow);
-    aiming = { actor, kind, arrow };
+    // Around whichever token the pointer is over, so you can see who you'd pick
+    const ring = new Konva.Circle({ stroke: AIM_COLOR, strokeWidth: 3, opacity: 0.85, visible: false });
+    others.add(arrow, ring);
+    aiming = { actor, move, arrow, ring };
     // Clicking a token picks it rather than picking it up
     for (const token of tokens.getChildren()) token.draggable(false);
-    aimHint.textContent = `${MOVE_NAMES[kind]}: click who ${actor.name() || 'it'} is aiming at · Esc cancels`;
+    aimHint.textContent = `${move.name}: click who ${actor.name() || 'it'} is ${move.aim === 'ally' ? 'helping or hindering' : 'aiming at'} · Esc cancels`;
     aimHint.hidden = false;
     container.classList.add('aiming');
 }
@@ -943,6 +966,7 @@ function startAiming(actor: Konva.Node, kind: MoveKind) {
 function stopAiming() {
     if (!aiming) return;
     aiming.arrow.destroy();
+    aiming.ring.destroy();
     aiming = null;
     for (const token of tokens.getChildren()) token.draggable(canDrag(token));
     aimHint.hidden = true;
@@ -952,19 +976,33 @@ function stopAiming() {
 stage.on('pointermove', () => {
     if (!aiming) return;
     const { x, y } = pointer();
-    aiming.arrow.points([aiming.actor.x(), aiming.actor.y(), x, y]);
+    const { actor, arrow, ring } = aiming;
+    const over = stage.getIntersection(stage.getPointerPosition() ?? { x: 0, y: 0 });
+    const hovered = over?.getLayer() === tokens ? itemOf(over) : null;
+    if (!hovered || hovered === actor) {
+        ring.visible(false);
+        arrow.points([actor.x(), actor.y(), x, y]);
+        return;
+    }
+    // Over a token: ring it, and the arrow stops at the ring rather than running on to the pointer
+    const radius = radiusOf(hovered) + 8;
+    ring.position(hovered.position()).radius(radius).visible(true);
+    const dx = actor.x() - hovered.x(), dy = actor.y() - hovered.y();
+    const distance = Math.hypot(dx, dy) || 1;
+    const reach = Math.max(0, distance - radius) / distance;
+    arrow.points([actor.x(), actor.y(), actor.x() - dx * reach, actor.y() - dy * reach]);
 });
 
 stage.on('pointerdown', e => {
     if (!aiming || e.evt.button !== 0) return;
     const target = e.target.getLayer() === tokens ? itemOf(e.target) : null;
     if (target === aiming.actor) return;
-    const { actor, kind } = aiming;
+    const { actor, move } = aiming;
     stopAiming();
     if (!target) return;
     // The same press reaches the page next, which mustn't take it for a press outside the form
     formOpenedBy = e.evt;
-    showMoveForm(actor, target, kind, { x: e.evt.clientX, y: e.evt.clientY });
+    showMoveForm(actor, target, move, { x: e.evt.clientX, y: e.evt.clientY });
 });
 
 // The last step: any bonus for a player's move, or what an enemy does, then roll
@@ -972,7 +1010,7 @@ const moveForm = Object.assign(document.createElement('form'), { className: 'boa
 container.append(moveForm);
 let formOpenedBy: Event | null = null;
 
-function field(label: string, input: HTMLInputElement) {
+function field(label: string, input: HTMLInputElement | HTMLSelectElement) {
     const wrapper = document.createElement('label');
     wrapper.append(Object.assign(document.createElement('span'), { textContent: label }), input);
     return wrapper;
@@ -981,35 +1019,88 @@ function field(label: string, input: HTMLInputElement) {
 const numberInput = (name: string) =>
     Object.assign(document.createElement('input'), { type: 'number', name, value: '0', min: '-10', max: '10', step: '1' });
 
-function showMoveForm(actor: Konva.Node, target: Konva.Node, kind: MoveKind, at: { x: number; y: number }) {
-    const title = Object.assign(document.createElement('strong'), { textContent: `${MOVE_NAMES[kind]} → ${target.name() || 'token'}` });
-    const fields = kind === 'enemyAttack'
+// For Defy Danger: how they do it decides the stat, as /move defy-danger puts it
+const STATS: [Stat, string][] = [
+    ['str', 'STR: power through'], ['dex', 'DEX: dodge'], ['con', 'CON: endure'],
+    ['int', 'INT: think fast'], ['wis', 'WIS: resist'], ['cha', 'CHA: charm'],
+];
+
+function statSelect() {
+    const select = Object.assign(document.createElement('select'), { name: 'stat' });
+    select.append(...STATS.map(([value, label]) => Object.assign(document.createElement('option'), { value, textContent: label })));
+    return select;
+}
+
+// ---- Odds -----------------------------------------------------------------------------------------------------------
+
+// How likely 2d6 plus a modifier is to hit (7+) and to hit strongly (10+): out of the 36 ways two dice land
+function chances(modifier: number) {
+    const atLeast = (target: number) => {
+        let ways = 0;
+        for (let sum = 2; sum <= 12; sum++) if (sum + modifier >= target) ways += 6 - Math.abs(sum - 7);
+        return ways / 36;
+    };
+    return { hit: atLeast(7), strong: atLeast(10) };
+}
+const percent = (share: number) => `${Math.round(share * 100)}%`;
+const signed = (n: number) => (n < 0 ? `−${-n}` : `+${n}`);
+const oddsClass = (hit: number) => (hit >= 0.75 ? 'good' : hit >= 0.5 ? 'fair' : 'poor');
+
+// The chance to hit under the form's fields, kept up to date as the bonus or stat changes
+function oddsLine(move: BoardMove) {
+    const line = Object.assign(document.createElement('div'), { className: 'odds-line' });
+    const update = () => {
+        const data = new FormData(moveForm);
+        const base = move.picksStat ? move.statModifiers?.[(data.get('stat') as string) ?? 'str'] : move.modifier;
+        if (base == null) { line.hidden = true; return; }
+        const modifier = base + (Number(data.get('bonus') ?? 0) || 0);
+        const odds = chances(modifier);
+        line.hidden = false;
+        line.className = `odds-line ${oddsClass(odds.hit)}`;
+        line.replaceChildren(
+            Object.assign(document.createElement('strong'), { textContent: `${percent(odds.hit)} to hit` }),
+            Object.assign(document.createElement('span'), { textContent: ` · ${percent(odds.strong)} strong · 2d6${signed(modifier)}` }));
+    };
+    return { line, update };
+}
+
+function showMoveForm(actor: Konva.Node, target: Konva.Node | null, move: BoardMove, at: { x: number; y: number }) {
+    const title = Object.assign(document.createElement('strong'), { textContent: target ? `${move.name} → ${target.name() || 'token'}` : move.name });
+    const fields = move.kind === 'enemyAttack'
         ? [field('What it does', Object.assign(document.createElement('input'), { type: 'text', name: 'move', placeholder: 'Attack', maxLength: 80 }))]
-        : [field('Bonus', numberInput('bonus')), field('Extra damage', numberInput('extraDamage'))];
+        : [
+            ...(move.picksStat ? [field('How', statSelect())] : []),
+            field('Bonus', numberInput('bonus')),
+            ...(move.rollsDamage ? [field('Extra damage', numberInput('extraDamage'))] : []),
+        ];
     const roll = Object.assign(document.createElement('button'), { type: 'submit', className: 'roll', textContent: '🎲 Roll' });
     const cancel = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Cancel' });
     cancel.addEventListener('click', hideMoveForm);
     const actions = Object.assign(document.createElement('div'), { className: 'actions' });
     actions.append(cancel, roll);
-    moveForm.replaceChildren(title, ...fields, actions);
+    const odds = move.kind === 'enemyAttack' ? null : oddsLine(move);
+    moveForm.replaceChildren(title, ...fields, ...(odds ? [odds.line] : []), actions);
+    moveForm.oninput = () => odds?.update();
+    odds?.update();
     moveForm.onsubmit = e => {
         e.preventDefault();
         const data = new FormData(moveForm);
         hideMoveForm();
         makeMove({
-            kind,
+            kind: move.kind,
             actor: actor.id(),
-            target: target.id(),
+            target: target?.id(),
             bonus: Number(data.get('bonus') ?? 0) || 0,
             extraDamage: Number(data.get('extraDamage') ?? 0) || 0,
-            move: (data.get('move') as string | null)?.trim() || undefined,
+            move: move.kind === 'enemyAttack' ? (data.get('move') as string | null)?.trim() || undefined : move.name,
+            stat: (data.get('stat') as Stat | null) ?? undefined,
         });
     };
     moveForm.hidden = false;
     placeMenu(moveForm, at);
-    const first = moveForm.querySelector('input');
+    const first = moveForm.querySelector<HTMLInputElement | HTMLSelectElement>('input, select');
     first?.focus({ preventScroll: true });
-    first?.select();
+    if (first instanceof HTMLInputElement) first.select();
 }
 
 function hideMoveForm() { moveForm.hidden = true; }
@@ -1485,6 +1576,7 @@ async function saveThumbnail() {
     const frame = thumbnailFrame();
     handles.hide();
     others.hide();
+    effects.hide();
     try {
         // The grid is only drawn where you're looking; draw it under the frame instead, just while the picture is
         // drawn (which happens before toBlob returns), so the board on screen never shows it
@@ -1505,6 +1597,7 @@ async function saveThumbnail() {
         gridArea = null;
         handles.show();
         others.show();
+        effects.show();
     }
 }
 
@@ -1532,7 +1625,6 @@ function showCursor(personId: string, x: number, y: number) {
     let cursor = cursors.get(personId);
     if (!cursor) {
         const group = new Konva.Group();
-    effects.hide();
         group.add(new Konva.Path({ data: POINTER, fill: colorOf(personId), stroke: '#ffffff', strokeWidth: 1.5, lineJoin: 'round' }));
         group.add(new Konva.Label({ x: 12, y: 18 })
             .add(new Konva.Tag({ fill: colorOf(personId), cornerRadius: 4 }))
@@ -1553,7 +1645,6 @@ function showCursor(personId: string, x: number, y: number) {
 }
 
 // And when you zoom, every cursor already showing
-        effects.show();
 stage.on('scaleXChange', () => cursors.forEach(c => keepScreenSize(c.group)));
 
 // Someone whose cursor is off the screen gets a marker at the edge pointing their way, since the board has no end to

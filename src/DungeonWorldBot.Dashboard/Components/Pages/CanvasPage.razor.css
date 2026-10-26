@@ -271,6 +271,14 @@
 #container ::deep .board-menu button:hover,
 #container ::deep .board-menu button:focus-visible { background: var(--surface-2); outline: none; }
 
+/* A move's modifier and chance to hit beside its name, coloured by how likely it is (canvas.ts) */
+#container ::deep .board-menu button:has(.odds) { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+#container ::deep .odds { font-size: .75rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
+#container ::deep .odds.good, #container ::deep .odds-line.good strong { color: var(--good); }
+#container ::deep .odds.fair, #container ::deep .odds-line.fair strong { color: var(--low); }
+#container ::deep .odds.poor, #container ::deep .odds-line.poor strong { color: var(--critical); }
+#container ::deep .odds-line { font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+
 /* The last step of a move made from a token: any bonus, then roll */
 #container ::deep .move-form {
     gap: .5rem;
@@ -286,7 +294,15 @@
     font-size: .9rem;
 }
 
-#container ::deep .move-form input {
+/* Between a character's basic moves and their class moves */
+#container ::deep .board-menu .divider {
+    margin: 4px 2px;
+    border: 0;
+    border-top: 1px solid var(--border);
+}
+
+#container ::deep .move-form input,
+#container ::deep .move-form select {
     width: 5rem;
     padding: .3rem .4rem;
     border: 1px solid var(--border);
@@ -297,6 +313,7 @@
 }
 
 #container ::deep .move-form input[type="text"] { width: 8rem; }
+#container ::deep .move-form select { width: 11rem; }
 
 #container ::deep .move-form .actions {
     display: flex;
@@ -475,6 +492,11 @@
     :root:not(.embedded) .board-body { grid-template-columns: minmax(0, 1fr); height: auto; min-height: 0; }
     /* Most of the screen, so there's room to draw: canvas.ts fits the board to whatever shape it's given */
     :root:not(.embedded) #container { height: 65svh; min-height: 320px; }
+    /* Tools, then the board with the ribbon over it, then the tokens */
+    :root:not(.embedded) .board-rail { grid-area: 1 / 1; }
+    :root:not(.embedded) #container,
+    :root:not(.embedded) .board-ribbon { grid-area: 2 / 1; }
+    :root:not(.embedded) .board-side { grid-area: 3 / 1; }
     :root:not(.embedded) .board-rail { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; padding: .4rem; border-right: 0; border-bottom: 1px solid var(--border); }
     :root:not(.embedded) .board-rail hr { width: auto; height: 20px; margin: 0 .2rem; border-top: 0; border-left: 1px solid var(--border); }
     :root:not(.embedded) .swatches { grid-template-columns: repeat(7, 18px); }
@@ -484,11 +506,6 @@
     :root:not(.embedded) .board-rail .color-picker { width: 36px; height: 36px; }
     :root:not(.embedded) .swatches { width: auto; padding: 2px 0; }
     /* Below the button when the tools are a row */
-    /* Tools, then the board with the ribbon over it, then the tokens */
-    :root:not(.embedded) .board-rail { grid-area: 1 / 1; }
-    :root:not(.embedded) #container,
-    :root:not(.embedded) .board-ribbon { grid-area: 2 / 1; }
-    :root:not(.embedded) .board-side { grid-area: 3 / 1; }
     :root:not(.embedded) .shape-picker { top: calc(100% + 8px); left: 0; }
     :root:not(.embedded) .board-side { border-left: 0; border-top: 1px solid var(--border); }
 }

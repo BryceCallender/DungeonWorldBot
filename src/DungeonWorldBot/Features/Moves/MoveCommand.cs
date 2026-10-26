@@ -27,7 +27,7 @@ public class MoveCommand : DungeonWorldCommandBase
     private const string TargetDescription = "The enemy you're attacking, to take your damage off it on a hit";
 
     private readonly ICharacterService _characterService;
-    private readonly IResourceService _resourceService;
+    private readonly CharacterMoves _characterMoves;
     private readonly IRollStatsService _rollStatsService;
     private readonly IEncounterService _encounterService;
     private readonly MoveResolver _moveResolver;
@@ -36,14 +36,14 @@ public class MoveCommand : DungeonWorldCommandBase
         ICommandContext context,
         FeedbackService feedbackService,
         ICharacterService characterService,
-        IResourceService resourceService,
+        CharacterMoves characterMoves,
         IRollStatsService rollStatsService,
         IEncounterService encounterService,
         MoveResolver moveResolver)
         : base(context, feedbackService)
     {
         _characterService = characterService;
-        _resourceService = resourceService;
+        _characterMoves = characterMoves;
         _rollStatsService = rollStatsService;
         _encounterService = encounterService;
         _moveResolver = moveResolver;
@@ -136,55 +136,12 @@ public class MoveCommand : DungeonWorldCommandBase
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to make moves. Try using /character create");
 
-        if (ClassSheetLibrary.For(character.Class.Type) is not { } sheet)
-            return await ReplyWithErrorAsync($"The {character.Class.Type} doesn't have a class sheet in the bot yet.");
+        var prepared = _characterMoves.PrepareClassMove(character, move, stat);
+        if (prepared.Error is { } error)
+            return await ReplyWithErrorAsync(error);
 
-        var classMove = sheet.FindMove(move);
-        var rollsFrom = sheet;
-        if (classMove is null
-            && Multiclassing.KnownForeignMoves(character, sheet).FirstOrDefault(f => f.Move.Name.Equals(move.Trim(), StringComparison.OrdinalIgnoreCase)) is { } foreign)
-        {
-            // A move learned from another class's sheet
-            classMove = foreign.Move;
-            rollsFrom = foreign.Sheet;
-        }
-
-        classMove ??= SubclassLibrary.Of(character)?.FindMove(move);
-
-        if (classMove?.Roll is not { } definition)
-            return await ReplyWithErrorAsync($"{character.Name} doesn't have a rolled class move called {move}.");
-
-        if (!ClassSheetLibrary.KnownMoves(character).Contains(classMove.Name, StringComparer.OrdinalIgnoreCase))
-            return await ReplyWithErrorAsync($"{character.Name} doesn't know {classMove.Name}. Learn it with /class learn");
-
-        if (stat is null && classMove.RollsWith is { } rollsWith)
-        {
-            if (rollsFrom.FindResource(rollsWith) is { } resource)
-            {
-                var value = _resourceService.GetValue(character, resource);
-                return await ReplyWithMoveAsync(character, definition, resource.Name, value, bonus, extraDamage: extraDamage);
-            }
-
-            if (rollsFrom.ClassStat?.Name.Equals(rollsWith, StringComparison.OrdinalIgnoreCase) == true)
-            {
-                stat = rollsFrom == sheet ? ClassSheetLibrary.ResolveClassStat(character, sheet) : null;
-                if (stat is null)
-                {
-                    return await ReplyWithErrorAsync(rollsFrom == sheet
-                        ? $"Choose your {sheet.ClassStat.Feature} with /class learn first, it decides your {rollsWith} stat."
-                        : $"{classMove.Name} rolls the {rollsFrom.Type}'s {rollsWith} stat. Pick which stat to use with the stat option.");
-                }
-            }
-        }
-
-        if ((stat ?? definition.Stat) is not { } statType)
-            return await ReplyWithMoveAsync(character, definition, modifierLabel: null, modifier: 0, bonus, extraDamage: extraDamage);
-
-        var characterStat = character.Stats.FirstOrDefault(s => s.StatType == statType);
-        if (characterStat is null)
-            return await ReplyWithErrorAsync($"Your character has no {statType} stat.");
-
-        return await ReplyWithMoveAsync(character, definition, statType.ToString().ToUpper(), characterStat.Modifier, bonus, statType, extraDamage: extraDamage);
+        var input = prepared.Input!;
+        return await ReplyWithMoveAsync(character, prepared.Move!, input.ModifierLabel, input.Modifier, bonus, input.Stat, extraDamage: extraDamage);
     }
 
     /// <param name="target">The enemy to take the damage off, for moves that roll it.</param>

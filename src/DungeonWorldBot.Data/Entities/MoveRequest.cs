@@ -11,6 +11,16 @@ public enum MoveRequestKind
     /// An enemy attacking a player's character or an NPC.
     /// </summary>
     EnemyAttack,
+
+    /// <summary>
+    /// One of a player's basic moves, by name in <see cref="MoveRequest.Move"/>.
+    /// </summary>
+    BasicMove,
+
+    /// <summary>
+    /// One of a player's rolled class or subclass moves, by name in <see cref="MoveRequest.Move"/>.
+    /// </summary>
+    ClassMove,
 }
 
 /// <summary>
@@ -18,7 +28,8 @@ public enum MoveRequestKind
 /// asks, and the bot rolls it by the same rules as its commands and tells game chat a moment later.
 /// </summary>
 /// <remarks>
-/// Who acts is <see cref="CharacterID"/> or <see cref="EnemyID"/>, and who it's aimed at is one of the targets.
+/// Who acts is <see cref="CharacterID"/> or <see cref="EnemyID"/>, and who it's aimed at is one of the targets, or
+/// none for a move like Spout Lore.
 /// </remarks>
 public class MoveRequest
 {
@@ -64,9 +75,14 @@ public class MoveRequest
     public int ExtraDamage { get; set; }
 
     /// <summary>
-    /// What an enemy does, e.g. Bite. A plain attack if not given.
+    /// What an enemy does, e.g. Bite (a plain attack if not given), or the player's move, e.g. Spout Lore.
     /// </summary>
     public string? Move { get; set; }
+
+    /// <summary>
+    /// The stat a player picked to roll with, like for Defy Danger.
+    /// </summary>
+    public StatType? Stat { get; set; }
 
     /// <summary>
     /// When the bot rolled it, or gave up on it. Null while it's waiting.

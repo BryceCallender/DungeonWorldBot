@@ -11,6 +11,7 @@ using DungeonWorldBot.Data;
 using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Features.Encounters;
 using DungeonWorldBot.Features.Leveling;
+using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Npcs;
 using DungeonWorldBot.Features.Resources;
 using DungeonWorldBot.Features.Rolls;
@@ -88,6 +89,7 @@ builder.Services.AddSignalR(o => o.MaximumReceiveMessageSize = 512 * 1024)
 builder.Services.AddSingleton<CanvasPresence>();
 
 // Moves made from tokens on a fight's board are rolled by the bot, and boards hear how they went
+builder.Services.AddScoped<CharacterMoves>();
 builder.Services.AddScoped<FightMoves>();
 builder.Services.AddSingleton<MoveResults>();
 builder.Services.AddHostedService(services => services.GetRequiredService<MoveResults>());
