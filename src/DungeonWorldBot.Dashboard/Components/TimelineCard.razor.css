@@ -1,0 +1,29 @@
+/* Its own card beside the board's, as tall as the board at most; the entries scroll inside it */
+.timeline-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    overflow: hidden;
+}
+.timeline-card summary {
+    display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+    padding: .7rem 1rem; cursor: pointer; list-style: none; white-space: nowrap;
+}
+.timeline-card summary::-webkit-details-marker { display: none; }
+.timeline-card summary:hover { background: var(--surface-2); }
+.timeline-card summary h2 { margin: 0; font-size: .85rem; font-weight: 600; }
+.timeline-card summary h2::before { content: '▸ '; color: var(--muted); }
+.timeline-card[open] summary h2::before { content: '▾ '; }
+.timeline-card summary .muted { font-size: .75rem; }
+.timeline-list {
+    list-style: none; margin: 0; padding: .25rem 1rem .75rem;
+    /* The board card's height (its header and body), less this card's header */
+    max-height: calc(100dvh - 160px);
+    overflow-y: auto;
+    border-top: 1px solid var(--border);
+}
+
+/* Beside the board on a phone it would squeeze it, so it goes under instead, not as tall */
+@media (max-width: 1100px) {
+    .timeline-list { max-height: 24rem; }
+}

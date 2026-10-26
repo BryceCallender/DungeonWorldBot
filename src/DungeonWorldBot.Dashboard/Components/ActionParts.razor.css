@@ -1,0 +1,4 @@
+.action-parts { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .5rem; font-size: .72rem; min-width: 0; }
+.action { font-weight: 500; }
+.roll, .target, .result { opacity: .8; white-space: nowrap; }
+.roll.miss { color: var(--critical); opacity: 1; }

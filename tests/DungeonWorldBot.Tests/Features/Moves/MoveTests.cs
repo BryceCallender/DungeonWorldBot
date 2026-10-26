@@ -10,6 +10,8 @@ public class MoveTests
     public static IEnumerable<object[]> AllMoves() =>
         typeof(BasicMoves)
             .GetFields(BindingFlags.Public | BindingFlags.Static)
+            // Each move, not the All list of them
+            .Where(f => f.FieldType == typeof(MoveDefinition))
             .Select(f => new object[] { (MoveDefinition)f.GetValue(null)! });
 
     [Theory]

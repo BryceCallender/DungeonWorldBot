@@ -16,7 +16,13 @@ namespace DungeonWorldBot.Dashboard.Canvases;
 /// still being drawn are only passed on. While a fight is on an encounter scene, only those who can change its board
 /// (see <see cref="FightBoard"/>) can do anything but look.
 /// </remarks>
-public class CanvasHub(CanvasPresence presence, CanvasStore store, DashboardSettings settings, IEncounterService encounters)
+public class CanvasHub(
+    CanvasPresence presence,
+    CanvasStore store,
+    DashboardSettings settings,
+    IEncounterService encounters,
+    FightMoves moves,
+    MoveResults results)
     : Hub<ICanvasClient>
 {
     /// <summary>
@@ -110,6 +116,21 @@ public class CanvasHub(CanvasPresence presence, CanvasStore store, DashboardSett
             throw new HubException("That picture is locked. Right-click it to unlock it first.");
         await store.RemoveItemAsync(canvas, itemID);
         await Clients.OthersInGroup(Group(canvas)).ItemRemoved(me.ID, itemID);
+    }
+
+    /// <summary>
+    /// Makes a move from one token at another, like Hack and Slash at an enemy, for the bot to roll. How it went comes
+    /// back to everyone as MoveResolved.
+    /// </summary>
+    public async Task MakeMove(MoveAsk ask)
+    {
+        var (canvas, me) = await ChangerAsync();
+        var asked = await moves.AskAsync(canvas, ViewerOf(), ask with { Actor = CheckID(ask.Actor), Target = CheckID(ask.Target) });
+        if (asked.Error is { } error)
+            throw new HubException(error);
+
+        results.Follow(asked.ID, new WaitingMove(canvas, me.ID, ask.Actor, ask.Target, DateTimeOffset.UtcNow));
+        await Clients.OthersInGroup(Group(canvas)).MoveAsked(me.ID, ask.Actor, ask.Target);
     }
 
     public override async Task OnDisconnectedAsync(Exception? exception)

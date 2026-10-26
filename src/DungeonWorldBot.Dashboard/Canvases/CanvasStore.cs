@@ -54,6 +54,9 @@ public class CanvasStore(CanvasContext db)
             .OrderBy(i => i.CreatedAt)
             .ToListAsync();
 
+    public Task<CanvasItem?> FindItemAsync(int canvasID, string itemID) =>
+        db.CanvasItems.AsNoTracking().FirstOrDefaultAsync(i => i.CanvasID == canvasID && i.ID == itemID);
+
     /// <summary>
     /// Adds an item, or replaces it if the page sends the same ID again (like after reconnecting).
     /// </summary>

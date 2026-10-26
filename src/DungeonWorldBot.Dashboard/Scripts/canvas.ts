@@ -1,6 +1,6 @@
 // The canvas page's board. Built into wwwroot/canvas.js by `npm run build` (dotnet build runs it too).
 import Konva from 'konva';
-import { connect, type CanvasItemType, type CanvasLive, type CanvasPerson, type ItemJson, type SavedItem } from './canvas-live';
+import { connect, type CanvasItemType, type CanvasLive, type CanvasPerson, type ItemJson, type MoveAsk, type MoveKind, type MoveResult, type SavedItem } from './canvas-live';
 
 // ---- The board ----------------------------------------------------------------------------------------------------
 
@@ -309,6 +309,61 @@ function listTokens() {
         li.append(remove);
         return li;
     }));
+    showDefeated();
+}
+
+// ---- Defeated enemies ----------------------------------------------------------------------------------------------
+
+// An enemy beaten down to 0 HP goes gray on the board and in the list. The encounter panel marks who's defeated, and
+// app.js swaps in a fresh one whenever the bot changes something, so the board looks again each time (see checkViewOnly).
+// Tokens placed by the fight know their enemy's ID; ones made by hand go by their name.
+function defeatedEnemies() {
+    const rows = [...document.querySelectorAll<HTMLElement>('[data-encounter-panel] .enemy.defeated')];
+    return {
+        ids: new Set(rows.map(r => r.dataset.enemyId)),
+        names: new Set(rows.map(r => r.dataset.enemy?.toLowerCase())),
+    };
+}
+
+function isDefeated(token: Konva.Node, defeated = defeatedEnemies()) {
+    const [kind, id] = fighterOf(token);
+    if (kind !== undefined) return kind === 'enemy' && defeated.ids.has(id);
+    return !!token.name() && defeated.names.has(token.name().toLowerCase());
+}
+
+// Grayed as it's drawn rather than with a Konva filter, since filters are attributes and would be saved with the token
+type SceneCanvas = Parameters<Konva.Group['drawScene']>[0];
+const drawGroup = Konva.Group.prototype.drawScene;
+const drawCircle = Konva.Circle.prototype.drawScene;
+function drawGray(this: Konva.Node, draw: Function, canvas: SceneCanvas, ...rest: unknown[]) {
+    const context = (canvas ?? this.getLayer()?.getCanvas())?.getContext() as Konva.Context | undefined;
+    context?.save();
+    context?.setAttr('filter', 'grayscale(1) opacity(.55)');
+    draw.call(this, canvas, ...rest);
+    context?.restore();
+    return this;
+}
+
+// Kept here rather than as an attribute, which would be saved with the token too
+const grayed = new WeakSet<Konva.Node>();
+
+function showDefeated() {
+    const defeated = defeatedEnemies();
+    for (const token of tokens.getChildren()) {
+        const gray = isDefeated(token, defeated);
+        if (gray === grayed.has(token)) continue;
+        if (gray) grayed.add(token); else grayed.delete(token);
+        const draw = token instanceof Konva.Group ? drawGroup : drawCircle;
+        (token as Konva.Group).drawScene = gray
+            ? function (this: Konva.Node, canvas?: SceneCanvas, ...rest: unknown[]) { return drawGray.call(this, draw, canvas, ...rest); } as Konva.Group['drawScene']
+            : draw as Konva.Group['drawScene'];
+    }
+    tokens.batchDraw();
+    for (const li of tokenList.children) {
+        const id = li.querySelector<HTMLElement>('[data-token]')?.dataset.token;
+        const token = id && stage.findOne('#' + id);
+        li.classList.toggle('defeated', !!token && isDefeated(token, defeated));
+    }
 }
 
 // Clicking a token in the list makes it jump, so you can find it on a busy board
@@ -350,8 +405,8 @@ type ShapeKind = 'rect' | 'ellipse' | 'line' | 'arrow';
 let shapeKind: ShapeKind = 'rect';
 let tool: Tool = 'move';
 let color = (document.querySelector<HTMLElement>('[data-color].on')?.dataset.color) ?? '#7F77DD';
-const widthSlider = document.querySelector<HTMLInputElement>('[data-width]')!;
-let penWidth = Number(widthSlider.value);
+const widthButtons = [...document.querySelectorAll<HTMLElement>('[data-width]')];
+let penWidth = Number(document.querySelector<HTMLElement>('[data-width].on')?.dataset.width ?? 16);
 
 // The strip of shape kinds beside the Shape button, which opens like a menu and closes once you've picked
 const shapeTool = document.querySelector<HTMLElement>('.shape-tool')!;
@@ -378,13 +433,20 @@ function pickColor(next: string, swatch: Element) {
     if (tool !== 'token' && tool !== 'text' && tool !== 'shape') setTool('pen');
 }
 
-// The thickness slider, and the dot above it that shows how thick
-widthSlider.addEventListener('input', () => {
-    penWidth = Number(widthSlider.value);
-    document.querySelector<HTMLElement>('[data-width-dot]')!.style.setProperty('--dot', penWidth + 'px');
+// The thickness buttons, each a dot of its size
+function pickWidth(button: HTMLElement) {
+    penWidth = Number(button.dataset.width);
+    widthButtons.forEach(b => b.classList.toggle('on', b === button));
     // Like a color: you want to draw with it, unless you're about to drag out a shape
     if (tool !== 'shape') setTool('pen');
-});
+}
+
+// [ and ] step to the next thinner or thicker
+function stepWidth(by: number) {
+    const now = widthButtons.findIndex(b => b.classList.contains('on'));
+    const next = widthButtons[Math.max(0, Math.min(widthButtons.length - 1, now + by))];
+    if (next) pickWidth(next);
+}
 
 // The palette button: the browser's own color picker, which fires as you drag around in it
 const customColor = document.querySelector<HTMLInputElement>('[data-custom-color]')!;
@@ -407,6 +469,7 @@ document.querySelector('.board-page')!.addEventListener('click', e => {
     if (button.dataset.tool === 'shape') showShapes(!(tool === 'shape' && shapeTool.classList.contains('open')));
     if (button.dataset.tool) setTool(button.dataset.tool as Tool);
     if (button.dataset.color) pickColor(button.dataset.color, button);
+    if (button.dataset.width) pickWidth(button);
     if (button.hasAttribute('data-undo')) undo();
     if (button.dataset.shape) {
         shapeKind = button.dataset.shape as ShapeKind;
@@ -421,7 +484,7 @@ document.querySelector('.board-page')!.addEventListener('click', e => {
     if (button.dataset.zoom === 'fit') fitView();
 });
 
-const keys: Record<string, Tool> = { p: 'pen', e: 'erase', m: 'move', t: 'token', x: 'text', s: 'shape' };
+const keys: Record<string, Tool> = { p: 'pen', e: 'erase', m: 'move', x: 'text', s: 'shape' };
 document.addEventListener('keydown', e => {
     // Typing text on the board, or anywhere else, isn't a shortcut; nor is anything in an open dialog
     if ((e.target as HTMLElement).closest('input, textarea, select, [contenteditable], dialog')) return;
@@ -430,6 +493,7 @@ document.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && e.key === '-') { e.preventDefault(); zoomAt({ x: stage.width() / 2, y: stage.height() / 2 }, 0.8); return; }
     if ((e.ctrlKey || e.metaKey) && e.key === '0') { e.preventDefault(); fitView(); return; }
     if (e.key === ' ' && !spaceHeld) { e.preventDefault(); spaceHeld = true; updatePanning(); return; }
+    if ((e.key === '[' || e.key === ']') && !e.ctrlKey && !e.metaKey && !viewOnly) { stepWidth(e.key === '[' ? -1 : 1); return; }
     const chosen = selected();
     if (chosen && (e.key === 'Delete' || e.key === 'Backspace')) { if (!isLocked(chosen) && !viewOnly) removeMine(chosen); return; }
     if (!e.ctrlKey && !e.metaKey && !e.altKey && keys[e.key]) setTool(keys[e.key]);
@@ -501,7 +565,7 @@ let stroke: { line: Konva.Line; unsent: number[]; timer: number | null } | null 
 let erasing = false;
 
 stage.on('pointerdown', e => {
-    if (spaceHeld || viewOnly) return;                     // the stage drag pans instead
+    if (spaceHeld || viewOnly || aiming) return;           // the stage drag pans instead; aiming picks a target
     if (e.evt.button !== 0) return;                        // a right-click is for the picture menu, not drawing
     const { x, y } = pointer();
     if (tool === 'pen') {
@@ -759,7 +823,14 @@ function hidePictureMenu() {
 
 stage.on('contextmenu', e => {
     hidePictureMenu();
+    hideMoveMenu();
     if (viewOnly) return;
+    // A token in a fight offers its moves instead
+    const token = e.target.getLayer() === tokens ? itemOf(e.target) : null;
+    if (token && showMoveMenu(token, { x: e.evt.clientX, y: e.evt.clientY })) {
+        e.evt.preventDefault();
+        return;
+    }
     const picture = pictures.getIntersection(stage.getPointerPosition()!);
     if (!picture) return;
     e.evt.preventDefault();
@@ -782,6 +853,251 @@ lockButton.addEventListener('click', () => {
 document.addEventListener('pointerdown', e => { if (!pictureMenu.contains(e.target as Node)) hidePictureMenu(); });
 document.addEventListener('keydown', e => { if (e.key === 'Escape') hidePictureMenu(); });
 stage.on('wheel dragstart', hidePictureMenu);
+
+// ---- Moves from tokens ---------------------------------------------------------------------------------------------
+
+// While a fight is on, right-clicking a token offers the moves it can make: Hack and Slash or Volley for your own
+// character, and an attack for an enemy if you run the fight. Then click who it's aimed at, add any bonus, and the bot
+// rolls it by the same rules as /move and tells game chat. Tokens placed when the fight started know who they are
+// (their `fighter` attribute, like "enemy:12"); ones made by hand go by their name. The server has the last word.
+
+const MOVE_NAMES: Record<MoveKind, string> = { hackAndSlash: 'Hack and Slash', volley: 'Volley', enemyAttack: 'Attack' };
+const AIM_COLOR = '#D85A30';
+
+const fightOn = () => document.querySelector<HTMLElement>('[data-encounter-panel]')?.dataset.fight === 'true';
+const fighterOf = (token: Konva.Node) => ((token.getAttr('fighter') as string | undefined)?.split(':') ?? []) as [string?, string?];
+// With sign-in off everyone's a guest, and anyone can do anything in a fight
+const isGuest = () => !live || live.me.id.startsWith('guest-');
+
+function movesFor(token: Konva.Node): MoveKind[] {
+    if (!live || !fightOn()) return [];
+    const [kind, id] = fighterOf(token);
+    const runsFight = isGuest() || live.me.isDungeonMaster;
+    if (kind === undefined) return runsFight ? ['hackAndSlash', 'volley', 'enemyAttack'] : ['hackAndSlash', 'volley'];
+    if (kind === 'character' && (isGuest() || live.me.id === id)) return ['hackAndSlash', 'volley'];
+    if (kind === 'enemy' && runsFight) return ['enemyAttack'];
+    return [];
+}
+
+// How big a token is on the board: its circle's radius, scaled with it
+function radiusOf(token: Konva.Node) {
+    const circle = token instanceof Konva.Circle ? token : (token as Konva.Group).findOne<Konva.Circle>('Circle');
+    return (circle?.radius() ?? TOKEN_RADIUS) * token.scaleX();
+}
+
+// Kept inside the board, so one opened near the edge isn't cut off
+function placeMenu(menu: HTMLElement, at: { x: number; y: number }) {
+    const box = container.getBoundingClientRect();
+    menu.style.left = `${Math.max(4, Math.min(at.x - box.left, box.width - menu.offsetWidth - 4))}px`;
+    menu.style.top = `${Math.max(4, Math.min(at.y - box.top, box.height - menu.offsetHeight - 4))}px`;
+}
+
+const moveMenu = document.createElement('div');
+moveMenu.className = 'board-menu';
+moveMenu.hidden = true;
+moveMenu.setAttribute('role', 'menu');
+container.append(moveMenu);
+
+/** Opens the token's moves, if it has any for you. */
+function showMoveMenu(token: Konva.Node, at: { x: number; y: number }) {
+    const moves = movesFor(token);
+    if (!moves.length) return false;
+    moveMenu.replaceChildren(...moves.map(kind => {
+        const button = Object.assign(document.createElement('button'), { type: 'button', textContent: `${MOVE_NAMES[kind]}…` });
+        button.setAttribute('role', 'menuitem');
+        button.addEventListener('click', () => { hideMoveMenu(); startAiming(token, kind); });
+        return button;
+    }));
+    moveMenu.hidden = false;
+    placeMenu(moveMenu, at);
+    // Focusing mustn't scroll the page under the board, which would move everything away from the pointer
+    (moveMenu.firstElementChild as HTMLElement).focus({ preventScroll: true });
+    return true;
+}
+
+function hideMoveMenu() { moveMenu.hidden = true; }
+
+// Picking who it's aimed at: an arrow follows the pointer until a token is clicked. Anywhere else, or Escape, cancels.
+let aiming: { actor: Konva.Node; kind: MoveKind; arrow: Konva.Arrow } | null = null;
+const aimHint = Object.assign(document.createElement('div'), { className: 'board-hint', hidden: true });
+container.append(aimHint);
+
+function startAiming(actor: Konva.Node, kind: MoveKind) {
+    stopAiming();
+    setTool('move');
+    select(null);
+    const arrow = new Konva.Arrow({
+        points: [actor.x(), actor.y(), actor.x(), actor.y()],
+        stroke: AIM_COLOR, fill: AIM_COLOR, strokeWidth: 3, dash: [12, 8], pointerLength: 14, pointerWidth: 14, opacity: 0.85,
+    });
+    others.add(arrow);
+    aiming = { actor, kind, arrow };
+    // Clicking a token picks it rather than picking it up
+    for (const token of tokens.getChildren()) token.draggable(false);
+    aimHint.textContent = `${MOVE_NAMES[kind]}: click who ${actor.name() || 'it'} is aiming at · Esc cancels`;
+    aimHint.hidden = false;
+    container.classList.add('aiming');
+}
+
+function stopAiming() {
+    if (!aiming) return;
+    aiming.arrow.destroy();
+    aiming = null;
+    for (const token of tokens.getChildren()) token.draggable(canDrag(token));
+    aimHint.hidden = true;
+    container.classList.remove('aiming');
+}
+
+stage.on('pointermove', () => {
+    if (!aiming) return;
+    const { x, y } = pointer();
+    aiming.arrow.points([aiming.actor.x(), aiming.actor.y(), x, y]);
+});
+
+stage.on('pointerdown', e => {
+    if (!aiming || e.evt.button !== 0) return;
+    const target = e.target.getLayer() === tokens ? itemOf(e.target) : null;
+    if (target === aiming.actor) return;
+    const { actor, kind } = aiming;
+    stopAiming();
+    if (!target) return;
+    // The same press reaches the page next, which mustn't take it for a press outside the form
+    formOpenedBy = e.evt;
+    showMoveForm(actor, target, kind, { x: e.evt.clientX, y: e.evt.clientY });
+});
+
+// The last step: any bonus for a player's move, or what an enemy does, then roll
+const moveForm = Object.assign(document.createElement('form'), { className: 'board-menu move-form', hidden: true });
+container.append(moveForm);
+let formOpenedBy: Event | null = null;
+
+function field(label: string, input: HTMLInputElement) {
+    const wrapper = document.createElement('label');
+    wrapper.append(Object.assign(document.createElement('span'), { textContent: label }), input);
+    return wrapper;
+}
+
+const numberInput = (name: string) =>
+    Object.assign(document.createElement('input'), { type: 'number', name, value: '0', min: '-10', max: '10', step: '1' });
+
+function showMoveForm(actor: Konva.Node, target: Konva.Node, kind: MoveKind, at: { x: number; y: number }) {
+    const title = Object.assign(document.createElement('strong'), { textContent: `${MOVE_NAMES[kind]} → ${target.name() || 'token'}` });
+    const fields = kind === 'enemyAttack'
+        ? [field('What it does', Object.assign(document.createElement('input'), { type: 'text', name: 'move', placeholder: 'Attack', maxLength: 80 }))]
+        : [field('Bonus', numberInput('bonus')), field('Extra damage', numberInput('extraDamage'))];
+    const roll = Object.assign(document.createElement('button'), { type: 'submit', className: 'roll', textContent: '🎲 Roll' });
+    const cancel = Object.assign(document.createElement('button'), { type: 'button', textContent: 'Cancel' });
+    cancel.addEventListener('click', hideMoveForm);
+    const actions = Object.assign(document.createElement('div'), { className: 'actions' });
+    actions.append(cancel, roll);
+    moveForm.replaceChildren(title, ...fields, actions);
+    moveForm.onsubmit = e => {
+        e.preventDefault();
+        const data = new FormData(moveForm);
+        hideMoveForm();
+        makeMove({
+            kind,
+            actor: actor.id(),
+            target: target.id(),
+            bonus: Number(data.get('bonus') ?? 0) || 0,
+            extraDamage: Number(data.get('extraDamage') ?? 0) || 0,
+            move: (data.get('move') as string | null)?.trim() || undefined,
+        });
+    };
+    moveForm.hidden = false;
+    placeMenu(moveForm, at);
+    const first = moveForm.querySelector('input');
+    first?.focus({ preventScroll: true });
+    first?.select();
+}
+
+function hideMoveForm() { moveForm.hidden = true; }
+
+async function makeMove(ask: MoveAsk) {
+    if (!live) return showToast("You're offline, so the bot can't roll it.");
+    // A move refused while an earlier one is still rolling leaves that one's ring alone
+    const alreadyRolling = rolling.has(ask.actor);
+    showRolling(ask.actor);
+    try {
+        await live.makeMove(ask);
+    } catch (e) {
+        if (!alreadyRolling) stopRolling(ask.actor);
+        showToast((e as Error).message);
+    }
+}
+
+// A dashed ring turns around a token while the bot rolls its move, for everyone looking
+const rolling = new Map<string, { ring: Konva.Circle; spin: Konva.Animation }>();
+
+function showRolling(tokenId: string) {
+    const token = stage.findOne('#' + tokenId);
+    if (!token || rolling.has(tokenId)) return;
+    const ring = new Konva.Circle({
+        x: token.x(), y: token.y(), radius: radiusOf(token) + 8,
+        stroke: AIM_COLOR, strokeWidth: 3, dash: [10, 8], listening: false,
+    });
+    others.add(ring);
+    const spin = new Konva.Animation(frame => { ring.rotation((frame?.time ?? 0) / 8); }, others);
+    spin.start();
+    rolling.set(tokenId, { ring, spin });
+    // If the answer never comes (a dropped connection), it doesn't spin forever
+    setTimeout(() => { if (rolling.get(tokenId)?.ring === ring) stopRolling(tokenId); }, 90_000);
+}
+
+function stopRolling(tokenId: string) {
+    const shown = rolling.get(tokenId);
+    if (!shown) return;
+    shown.spin.stop();
+    shown.ring.destroy();
+    rolling.delete(tokenId);
+}
+
+// What it did floats up off the target and fades: red for damage, grey for a miss
+function floatOver(tokenId: string, text: string) {
+    const token = stage.findOne('#' + tokenId);
+    if (!token) return;
+    const radius = radiusOf(token);
+    const label = new Konva.Text({
+        x: token.x() - 150, y: token.y() - radius - 34, width: 300, align: 'center',
+        text, fontSize: 24, fontStyle: 'bold', fontFamily: 'system-ui, sans-serif',
+        fill: text.includes('-') ? '#d1453b' : text === 'Miss' ? '#6b665d' : '#2f9e5b',
+        stroke: '#ffffff', strokeWidth: 4, fillAfterStrokeEnabled: true, listening: false,
+    });
+    others.add(label);
+    new Konva.Tween({ node: label, duration: 2.4, y: label.y() - 40, opacity: 0, easing: Konva.Easings.EaseIn, onFinish: () => label.destroy() }).play();
+}
+
+function showMoveResult(result: MoveResult) {
+    stopRolling(result.actor);
+    if (result.summary) floatOver(result.target, result.summary);
+    // Only whoever made it needs to know why it didn't happen
+    if (result.error && result.personID === live?.me.id) showToast(result.error);
+}
+
+const toast = Object.assign(document.createElement('div'), { className: 'board-toast', hidden: true });
+toast.setAttribute('role', 'status');
+container.append(toast);
+let toastTimer = 0;
+
+function showToast(text: string) {
+    toast.textContent = text;
+    toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = window.setTimeout(() => { toast.hidden = true; }, 5000);
+}
+
+// Like any menu: pressing anywhere else, Escape, or moving the board closes them
+document.addEventListener('pointerdown', e => {
+    if (!moveMenu.contains(e.target as Node)) hideMoveMenu();
+    if (!moveForm.contains(e.target as Node) && e !== formOpenedBy) hideMoveForm();
+});
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Escape') return;
+    hideMoveMenu();
+    hideMoveForm();
+    stopAiming();
+});
+stage.on('wheel dragstart', () => { hideMoveMenu(); hideMoveForm(); });
 
 // ---- Text ----------------------------------------------------------------------------------------------------------
 
@@ -1057,7 +1373,8 @@ function checkViewOnly() {
 }
 checkViewOnly();
 const boardSide = document.querySelector('.board-side');
-if (boardSide) new MutationObserver(checkViewOnly).observe(boardSide, { childList: true });
+// Whoever's defeated can change with any fresh panel too, whether or not you can change the board
+if (boardSide) new MutationObserver(() => { checkViewOnly(); showDefeated(); }).observe(boardSide, { childList: true });
 
 // ---- Thumbnail for the canvases page --------------------------------------------------------------------------
 
@@ -1363,6 +1680,8 @@ try {
         itemMoved: (_, itemId, x, y) => stage.findOne('#' + itemId)?.position({ x, y }),
         // Moves aren't flashed: a drag sends a dozen a second, which would keep it lit
         itemRemoved: (_, itemId) => { const node = stage.findOne('#' + itemId); if (node) removeItem(node); pulse(); },
+        moveAsked: (_, actor) => showRolling(actor),
+        moveResolved: showMoveResult,
     });
     // Joining showed everyone before `live` was set, so it couldn't tell which face is yours, or send your view
     showPeople([...people.values()]);

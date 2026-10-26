@@ -10,6 +10,8 @@
 //       itemAdded: (personId, itemId, type, item) => ...,
 //       itemMoved: (personId, itemId, x, y) => ...,
 //       itemRemoved: (personId, itemId) => ...,
+//       moveAsked: (personId, actor, target) => ...,       // someone made a move from a token; the bot's rolling it
+//       moveResolved: result => ...,                       // how it went, for everyone
 //       status: state => ...,
 //   });
 //   live.cursor(x, y); live.strokeEnd(id, line.toObject()); live.addItem(id, 'token', circle.toObject()); ...
@@ -42,6 +44,30 @@ export interface SavedItem {
 
 export type LiveStatus = 'live' | 'reconnecting' | 'offline';
 
+/** The moves that can be made from a token on a fight's board, as MoveRequestKind goes over the wire. */
+export type MoveKind = 'hackAndSlash' | 'volley' | 'enemyAttack';
+
+/** A move from one token (by item ID) at another, like the hub's MoveAsk. */
+export interface MoveAsk {
+    kind: MoveKind;
+    actor: string;
+    target: string;
+    bonus?: number;
+    extraDamage?: number;
+    /** What an enemy does, e.g. Bite. */
+    move?: string;
+}
+
+/** How a move made from the board went, like the hub's MoveResult. */
+export interface MoveResult {
+    personID: string;
+    actor: string;
+    target: string;
+    /** A few words to show over the target, e.g. "Miss" or "Weak hit · -3". */
+    summary: string | null;
+    error: string | null;
+}
+
 export interface CanvasHandlers {
     load?: (items: SavedItem[]) => void;
     presence?: (people: CanvasPerson[]) => void;
@@ -53,6 +79,8 @@ export interface CanvasHandlers {
     itemAdded?: (personId: string, itemId: string, type: CanvasItemType, item: ItemJson) => void;
     itemMoved?: (personId: string, itemId: string, x: number, y: number) => void;
     itemRemoved?: (personId: string, itemId: string) => void;
+    moveAsked?: (personId: string, actor: string, target: string) => void;
+    moveResolved?: (result: MoveResult) => void;
     status?: (state: LiveStatus) => void;
     /** You saved a change (a finished stroke, or an item added, moved or removed), like for retaking the thumbnail. */
     changed?: () => void;
@@ -70,6 +98,8 @@ export interface CanvasLive {
     addItem(itemId: string, type: CanvasItemType, item: ItemJson): void;
     moveItem(itemId: string, x: number, y: number): void;
     removeItem(itemId: string): void;
+    /** Asks the bot to roll a move. Rejects with why, in words for people, if it can't be made. */
+    makeMove(ask: MoveAsk): Promise<void>;
     stop(): Promise<void>;
     /** Tells the server you've gone, and waits until it has, then disconnects. */
     leave(): Promise<void>;
@@ -91,6 +121,8 @@ const hubEvents = {
     ItemAdded: 'itemAdded',
     ItemMoved: 'itemMoved',
     ItemRemoved: 'itemRemoved',
+    MoveAsked: 'moveAsked',
+    MoveResolved: 'moveResolved',
 } as const satisfies Record<string, keyof CanvasHandlers>;
 
 export async function connect(canvasId: string, on: CanvasHandlers = {}): Promise<CanvasLive> {
@@ -128,6 +160,15 @@ export async function connect(canvasId: string, on: CanvasHandlers = {}): Promis
         addItem: (itemId, type, item) => save('AddItem', itemId, type, item),
         moveItem: (itemId, x, y) => save('MoveItem', itemId, x, y),
         removeItem: itemId => save('RemoveItem', itemId),
+        makeMove: async ask => {
+            try {
+                await connection.invoke('MakeMove', { bonus: 0, extraDamage: 0, ...ask });
+            } catch (e) {
+                // SignalR wraps a HubException's words in its own; only they're for people
+                const message = e instanceof Error ? e.message : String(e);
+                throw new Error(message.split('HubException: ')[1] ?? "Couldn't make the move. Try again.");
+            }
+        },
         stop: () => connection.stop(),
         leave: async () => {
             try {

@@ -13,8 +13,8 @@ namespace DungeonWorldBot.Dashboard.Encounters;
 /// start and end in game chat when it notices them.
 /// </summary>
 /// <param name="Error">Why it couldn't, or null once it has.</param>
-/// <param name="Added">The names of the enemies added.</param>
-public record Added(string? Error, IReadOnlyList<string> Names)
+/// <param name="Enemies">The enemies added.</param>
+public record Added(string? Error, IReadOnlyList<Enemy> Enemies)
 {
     public static Added Failed(string error) => new(error, []);
 }
@@ -67,9 +67,9 @@ public class EncounterDesk
         if (await service.StartAsync(fightName, scene, roster: roster) is not { } encounter)
             return Added.Failed("Couldn't start the fight. Try again.");
 
-        var spawned = new List<string>();
+        var spawned = new List<Enemy>();
         foreach (var (template, count) in templates)
-            spawned.AddRange((await service.SpawnAsync(encounter, template, count)).Select(e => e.Name));
+            spawned.AddRange(await service.SpawnAsync(encounter, template, count));
 
         return new Added(null, spawned);
     }
@@ -92,7 +92,7 @@ public class EncounterDesk
             return Added.Failed($"There's no saved monster called {monster.Trim()}.");
 
         var spawned = await service.SpawnAsync(encounter, template, count);
-        return new Added(null, spawned.Select(e => e.Name).ToList());
+        return new Added(null, spawned.ToList());
     }
 
     /// <summary>
@@ -120,7 +120,7 @@ public class EncounterDesk
         var moves = FormText.Clean(details.Moves);
         var notes = FormText.Clean(details.Notes);
 
-        await service.AddEnemyAsync(encounter, new Enemy
+        var enemy = new Enemy
         {
             Name = name,
             CurrentHP = details.MaxHP,
@@ -131,7 +131,8 @@ public class EncounterDesk
             Instinct = instinct,
             Moves = moves,
             Notes = notes,
-        });
+        };
+        await service.AddEnemyAsync(encounter, enemy);
 
         if (save)
         {
@@ -148,7 +149,30 @@ public class EncounterDesk
             });
         }
 
-        return new Added(null, [name]);
+        return new Added(null, [enemy]);
+    }
+
+    /// <summary>
+    /// Asks the bot to roll a move made from a scene (see <see cref="MoveRequest"/>). Refused while whoever's making it
+    /// is still waiting on their last one, so a double-click can't make it twice.
+    /// </summary>
+    public async Task<MoveAsked> RequestMoveAsync(MoveRequest request)
+    {
+        await using var context = new DungeonWorldContext(_options);
+
+        // SQLite can't compare times, so the few waiting are checked here
+        var waiting = await context.MoveRequests
+            .Where(r => r.ResolvedAt == null && r.EncounterID == request.EncounterID)
+            .Where(r => request.CharacterID != null ? r.CharacterID == request.CharacterID : r.EnemyID == request.EnemyID)
+            .Select(r => r.RequestedAt)
+            .ToListAsync();
+        if (waiting.Any(at => DateTimeOffset.UtcNow - at < MoveRequestWorker.GiveUpAfter))
+            return MoveAsked.Failed("Still waiting on the last move. Give the bot a moment.");
+
+        request.RequestedAt = DateTimeOffset.UtcNow;
+        context.MoveRequests.Add(request);
+        await context.SaveChangesAsync();
+        return new MoveAsked(null, request.ID);
     }
 
     /// <summary>

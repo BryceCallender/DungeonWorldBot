@@ -46,20 +46,22 @@ function applyFilter(input) {
     if (none) none.hidden = shown > 0;
 }
 
-// Session calendar popups open next to their day, flipping above or left when they'd run off screen
+// Session calendar popups open next to their day, and card menus under their ⋯ (lined up on its right edge),
+// flipping above or left when they'd run off screen
 document.addEventListener('toggle', e => {
     const pop = e.target;
-    if (!pop.classList?.contains('cal-pop') || e.newState !== 'open') return;
+    if (!pop.matches?.('.cal-pop, .menu-pop') || e.newState !== 'open') return;
 
-    const day = document.querySelector(`[popovertarget="${pop.id}"]`).getBoundingClientRect();
+    const opener = document.querySelector(`[popovertarget="${pop.id}"]`).getBoundingClientRect();
     const gap = 6;
-    const below = day.bottom + gap + pop.offsetHeight <= innerHeight;
-    pop.style.top = `${below ? day.bottom + gap : Math.max(gap, day.top - gap - pop.offsetHeight)}px`;
-    pop.style.left = `${Math.max(gap, Math.min(day.left, innerWidth - pop.offsetWidth - gap))}px`;
+    const below = opener.bottom + gap + pop.offsetHeight <= innerHeight;
+    const left = pop.classList.contains('menu-pop') ? opener.right - pop.offsetWidth : opener.left;
+    pop.style.top = `${below ? opener.bottom + gap : Math.max(gap, opener.top - gap - pop.offsetHeight)}px`;
+    pop.style.left = `${Math.max(gap, Math.min(left, innerWidth - pop.offsetWidth - gap))}px`;
 }, true);
 
 // They're placed for where the page was, so close them when it scrolls
-addEventListener('scroll', () => document.querySelectorAll('.cal-pop:popover-open').forEach(p => p.hidePopover()), { passive: true });
+addEventListener('scroll', () => document.querySelectorAll('.cal-pop:popover-open, .menu-pop:popover-open').forEach(p => p.hidePopover()), { passive: true });
 
 // <time data-ago> shows how long ago it was ("2 minutes ago", "yesterday"), in the viewer's own language and time
 // zone, which the server can't know. The text inside is what shows until this runs.
@@ -351,8 +353,9 @@ markSection();
     if (window.EventSource) connect();
 })();
 
-// The encounter panel beside a scene's board. The board page can't be swapped out like the others without losing the
-// board, so only the panel is fetched again when the bot changes something, keeping open enemies open.
+// The encounter panel beside a scene's board, and the fight's timeline beside that. The board page can't be swapped out
+// like the others without losing the board, so only these are fetched again when the bot changes something, keeping
+// open enemies open and the timeline as it was.
 (() => {
     const scene = document.querySelector('[data-encounter-panel]')?.dataset.encounterPanel;
     if (!scene) return;
@@ -360,24 +363,70 @@ markSection();
     let fetching = false;
     let again = false;
 
+    const fetchHtml = async url => {
+        const response = await fetch(url, { headers: { Accept: 'text/html' } });
+        if (!response.ok) throw new Error(`${url}: ${response.status}`);
+        const template = document.createElement('template');
+        template.innerHTML = (await response.text()).trim();
+        return template.content;
+    };
+
+    // Whether you last left the timeline open, remembered between visits. It starts open.
+    const timelineOpen = () => { try { return localStorage.getItem('timeline-open') !== 'false'; } catch { return true; } };
+    const firstTimeline = document.querySelector('[data-timeline]');
+    if (firstTimeline) firstTimeline.open = timelineOpen();
+    // toggle doesn't bubble, so it's caught on the way down
+    document.addEventListener('toggle', e => {
+        if (!e.target.matches?.('[data-timeline]')) return;
+        try { localStorage.setItem('timeline-open', String(e.target.open)); } catch { /* not remembered, then */ }
+    }, true);
+
+    // "Show older" swaps itself for the entries before the oldest shown, and another "Show older" if there are more
+    document.addEventListener('click', async e => {
+        const button = e.target.closest('[data-timeline-older]');
+        if (!button || button.disabled) return;
+        button.disabled = true;
+        try {
+            const older = await fetchHtml(`api/scenes/${scene}/encounter/timeline?before=${button.dataset.timelineOlder}`);
+            button.closest('li').replaceWith(older);
+        } catch {
+            button.disabled = false;
+        }
+    });
+
+    async function refreshPanel() {
+        const panel = document.querySelector('[data-encounter-panel]');
+        const fresh = (await fetchHtml(`api/scenes/${scene}/encounter/panel`)).querySelector('[data-encounter-panel]');
+        if (!panel || !fresh) return;
+
+        const open = new Set([...panel.querySelectorAll('[data-enemy] details[open]')].map(d => d.closest('[data-enemy]').dataset.enemy));
+        for (const enemy of fresh.querySelectorAll('[data-enemy]')) {
+            if (open.has(enemy.dataset.enemy)) enemy.querySelector('details')?.setAttribute('open', '');
+        }
+        panel.replaceWith(fresh);
+    }
+
+    async function refreshTimeline() {
+        const host = document.querySelector('[data-timeline-host]');
+        if (!host) return;
+        // As much as is showing, so what "Show older" fetched stays
+        const timeline = host.querySelector('[data-timeline]');
+        const shown = host.querySelectorAll('[data-at]').length;
+        const fresh = (await fetchHtml(`api/scenes/${scene}/encounter/timeline-card?timeline=${shown}`)).querySelector('[data-timeline]');
+        if (!fresh) { host.replaceChildren(); return; }
+
+        // Open or closed as it was, and scrolled where it was
+        fresh.open = timeline ? timeline.open : timelineOpen();
+        const scroll = timeline?.querySelector('ol').scrollTop ?? 0;
+        host.replaceChildren(fresh);
+        fresh.querySelector('ol').scrollTop = scroll;
+    }
+
     async function refresh() {
         if (fetching) { again = true; return; }
         fetching = true;
         try {
-            const response = await fetch(`api/scenes/${scene}/encounter/panel`, { headers: { Accept: 'text/html' } });
-            const panel = document.querySelector('[data-encounter-panel]');
-            if (!response.ok || !panel) return;
-
-            const open = new Set([...panel.querySelectorAll('[data-enemy] details[open]')].map(d => d.closest('[data-enemy]').dataset.enemy));
-            const template = document.createElement('template');
-            template.innerHTML = (await response.text()).trim();
-            const fresh = template.content.querySelector('[data-encounter-panel]');
-            if (!fresh) return;
-
-            for (const enemy of fresh.querySelectorAll('[data-enemy]')) {
-                if (open.has(enemy.dataset.enemy)) enemy.querySelector('details')?.setAttribute('open', '');
-            }
-            panel.replaceWith(fresh);
+            await Promise.all([refreshPanel(), refreshTimeline()]);
         } catch {
             // Offline for a moment; the next change tries again
         } finally {

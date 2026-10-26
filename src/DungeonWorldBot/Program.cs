@@ -76,7 +76,8 @@ public class Program
                     .AddSqlite<DungeonWorldContext>(context.Configuration.GetConnectionString("DungeonWorldConnectionString"))
                     .AddAttributedServices(typeof(Program).Assembly)
                     .AddRemoraServices()
-                    .AddHostedService<EncounterAnnouncer>();
+                    .AddHostedService<EncounterAnnouncer>()
+                    .AddHostedService<MoveRequestWorker>();
             }
         )
         .ConfigureLogging

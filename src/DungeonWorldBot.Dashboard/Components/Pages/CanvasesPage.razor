@@ -113,34 +113,35 @@ else
                     @* Shown as "2 minutes ago" by app.js, in the viewer's own time zone *@
                     <time datetime="@DateTime.SpecifyKind(c.UpdatedAt, DateTimeKind.Utc).ToString("o")" data-ago>@c.UpdatedAt.ToString("MMM d")</time>
 
+                    @* Only for the DM or whoever made it. A native popover, so it closes on Escape or a click elsewhere *@
                     @if (CanPutAway(c))
                     {
-                        <form method="post" action="api/canvases/@sqid/@(Archived ? "restore" : "archive")" class="canvas-action">
-                            <AntiforgeryToken />
-                            <button class="link-button" title="@(Archived ? "Bring it back to the list" : "Hide it from the list; it's kept")">@(Archived ? "Restore" : "Archive")</button>
-                        </form>
+                        <button type="button" class="card-menu-button" popovertarget="menu-@sqid" title="More" aria-label="More for @c.Name"><Icon Name="more" /></button>
+                        <div id="menu-@sqid" class="menu-pop card" popover>
+                            <form method="post" action="api/canvases/@sqid/@(Archived ? "restore" : "archive")">
+                                <AntiforgeryToken />
+                                <button title="@(Archived ? "Bring it back to the list" : "Hide it from the list; it's kept")">@(Archived ? "Restore" : "Archive")</button>
+                            </form>
+                            <button type="button" class="delete" data-open-dialog="delete-@sqid" title="Delete it for good">Delete</button>
+                        </div>
 
-                        @if (Archived)
-                        {
-                            <button type="button" class="link-button delete" data-open-dialog="delete-@sqid" title="Delete it for good">Delete</button>
+                        @* Outside the menu, which hides as the dialog opens *@
+                        <dialog id="delete-@sqid" class="modal" aria-labelledby="delete-@sqid-title">
+                            <form method="post" action="api/canvases/@sqid/delete">
+                                <AntiforgeryToken />
+                                <div class="modal-head">
+                                    <h2 id="delete-@sqid-title">Delete @c.Name?</h2>
+                                    <button type="button" class="modal-close" data-close-dialog aria-label="Close">×</button>
+                                </div>
 
-                            <dialog id="delete-@sqid" class="modal" aria-labelledby="delete-@sqid-title">
-                                <form method="post" action="api/canvases/@sqid/delete">
-                                    <AntiforgeryToken />
-                                    <div class="modal-head">
-                                        <h2 id="delete-@sqid-title">Delete @c.Name?</h2>
-                                        <button type="button" class="modal-close" data-close-dialog aria-label="Close">×</button>
-                                    </div>
+                                <p class="muted">Everything drawn on it and every picture added to it goes too. This can't be undone.</p>
 
-                                    <p class="muted">Everything drawn on it and every picture added to it goes too. This can't be undone.</p>
-
-                                    <div class="modal-actions">
-                                        <button type="button" class="tool" data-close-dialog>Cancel</button>
-                                        <button class="tool destroy">Delete</button>
-                                    </div>
-                                </form>
-                            </dialog>
-                        }
+                                <div class="modal-actions">
+                                    <button type="button" class="tool" data-close-dialog>Cancel</button>
+                                    <button class="tool destroy">Delete</button>
+                                </div>
+                            </form>
+                        </dialog>
                     }
                 </div>
             </article>

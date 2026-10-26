@@ -90,7 +90,7 @@ public class EncounterCommand : DungeonWorldCommandBase
     }
 
     /// <summary>
-    /// e.g. "💤 **Aria** · 2× · Volley · 11 · Strong Hit (10+) → Goblin 2 · took 4".
+    /// e.g. "💤 **Aria** · 2× · Volley · 11 · Strong Hit (10+) → Goblin 2 · 💥 4 damage".
     /// </summary>
     private static string Line(SpotlightLine line) =>
         (line.Quiet ? "💤 " : string.Empty)

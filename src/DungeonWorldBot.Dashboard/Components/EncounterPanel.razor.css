@@ -50,8 +50,3 @@
 .spotlight-row .muted { flex: none; white-space: nowrap; font-size: .75rem; }
 .spotlight.quiet { background: var(--accent-soft); }
 .spotlight.quiet .muted { color: var(--accent); }
-/* What they did last: the move, its roll, who it was aimed at and what it did */
-.spotlight-last { display: flex; flex-wrap: wrap; align-items: baseline; gap: .15rem .5rem; font-size: .72rem; min-width: 0; }
-.spotlight-last .action { font-weight: 500; }
-.spotlight-last .roll, .spotlight-last .target, .spotlight-last .result { opacity: .8; white-space: nowrap; }
-.spotlight-last .roll.miss { color: var(--critical); opacity: 1; }

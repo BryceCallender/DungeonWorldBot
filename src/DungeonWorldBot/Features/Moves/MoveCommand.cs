@@ -27,29 +27,26 @@ public class MoveCommand : DungeonWorldCommandBase
     private const string TargetDescription = "The enemy you're attacking, to take your damage off it on a hit";
 
     private readonly ICharacterService _characterService;
-    private readonly IDiceRoller _diceRoller;
     private readonly IResourceService _resourceService;
     private readonly IRollStatsService _rollStatsService;
-    private readonly IDamageService _damageService;
     private readonly IEncounterService _encounterService;
+    private readonly MoveResolver _moveResolver;
 
     public MoveCommand(
         ICommandContext context,
         FeedbackService feedbackService,
         ICharacterService characterService,
-        IDiceRoller diceRoller,
         IResourceService resourceService,
         IRollStatsService rollStatsService,
-        IDamageService damageService,
-        IEncounterService encounterService)
+        IEncounterService encounterService,
+        MoveResolver moveResolver)
         : base(context, feedbackService)
     {
         _characterService = characterService;
-        _diceRoller = diceRoller;
         _resourceService = resourceService;
         _rollStatsService = rollStatsService;
-        _damageService = damageService;
         _encounterService = encounterService;
+        _moveResolver = moveResolver;
     }
 
     [Command("hack-and-slash")]
@@ -225,109 +222,24 @@ public class MoveCommand : DungeonWorldCommandBase
         if (TacticRules.WhyCannotMake(character, move.Name) is { } forbidden)
             return await ReplyWithErrorAsync(forbidden);
 
-        var debility = stat is { } rolled ? DebilityRules.RollPenalty(character, rolled) : null;
-        kind ??= stat is not null ? RollKind.Stat : null;
-        var subclassBonuses = kind is { } rollKind ? await _damageService.BonusesAsync(character, rollKind, stat) : [];
-        if (TacticRules.RollBonus(character, move.Name) is not 0 and var tacticBonus)
-            subclassBonuses = subclassBonuses.Append(new RollBonus($"{TacticRules.Current(character)!.Name} Tactics", tacticBonus)).ToList();
-        var roll = MoveRoller.Roll(_diceRoller, modifier + bonus + (debility?.Penalty ?? 0) + subclassBonuses.Sum(b => b.Amount));
-        var outcome = TacticRules.Outcome(character, move.Name, roll.Outcome);
+        var resolution = await _moveResolver.ResolveAsync(
+            character,
+            move,
+            new MoveInput(modifierLabel, modifier, bonus, stat, kind, target, extraDamage));
 
-        var fields = new List<IEmbedField>();
-
-        if (modifierLabel is not null || bonus != 0 || debility is not null || subclassBonuses.Count > 0)
-        {
-            var parts = new List<string>();
-            if (modifierLabel is not null)
-                parts.Add($"{modifierLabel} {FormatSigned(modifier)}");
-            if (debility is { } penalty)
-                parts.Add($"{penalty.Debility} {FormatSigned(penalty.Penalty)}");
-            parts.AddRange(subclassBonuses.Select(b => $"{b.Source} {FormatSigned(b.Amount)}"));
-            if (bonus != 0)
-                parts.Add($"Bonus {FormatSigned(bonus)}");
-
-            fields.Add(new EmbedField("Rolled with", string.Join(", ", parts), IsInline: true));
-        }
-
-        if (outcome != roll.Outcome)
-            fields.Add(new EmbedField($"{TacticRules.Current(character)!.Name} Tactics", $"Your {MoveRoller.Describe(roll.Outcome)} counts as a {MoveRoller.Describe(outcome)}."));
-
-        fields.Add(new EmbedField(MoveRoller.Describe(outcome), move.Describe(outcome)));
-
-        var isHit = outcome != MoveOutcome.Miss;
-        if (move.ShowsOptions(outcome))
-        {
-            fields.Add(new EmbedField("Options", string.Join('\n', move.Options!.Select(o => $"• {o}"))));
-        }
-
-        DamageDealt? dealt = null;
-        if (move.RollsDamage && (isHit || TacticRules.DamagesOnMiss(character, move.Name)))
-        {
-            if (!isHit)
-                fields.Add(new EmbedField($"{TacticRules.Current(character)!.Name} Tactics", "Your damage lands even on a miss."));
-            dealt = await RollDamageAsync(character, move.Name, target, extraDamage);
-            fields.AddRange(dealt.Fields);
-        }
-
-        if (isHit && move.Name == TacticRules.ChangeTactics)
-        {
-            fields.Add(new EmbedField("New Tactic", $"Now in {TacticRules.Current(character)?.Name ?? "no"} Tactics. Switch with /class tactic change"));
-        }
-
-        var colour = MoveRoller.ColourFor(outcome);
-
-        var embed = new Embed(
-            Title: $"🎲 {character.Name}: {move.Name}",
-            Description: $"*{move.Trigger}...*\n\n{DiceHelper.BuildDiceResult(roll.Dice)}",
-            Fields: fields,
-            Colour: colour
-        );
-
-        var reply = await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);
+        var reply = await _feedbackService.SendContextualEmbedAsync(resolution.Embed, ct: CancellationToken);
 
         if (!reply.IsSuccess)
             return reply;
 
         if (_context.TryGetChannelID(out var channelID))
-            await _rollStatsService.RecordAsync(reply.Entity.ID, channelID, character.ID, roll.Dice, RollLabel.Of(embed));
+            await _rollStatsService.RecordAsync(reply.Entity.ID, channelID, character.ID, resolution.Roll.Dice, RollLabel.Of(resolution.Embed));
 
         // Does nothing between fights
-        await _encounterService.LogAsync(new EncounterAction
-        {
-            Actor = character.Name,
-            CharacterID = character.ID,
-            MessageID = reply.Entity.ID,
-            Action = move.Name,
-            Roll = $"{roll.Dice.Value} · {MoveRoller.Describe(outcome)}",
-            Target = dealt?.Target ?? ally,
-            Result = dealt?.Result,
-        });
+        await _encounterService.LogAsync(resolution.ToAction(reply.Entity.ID, ally));
 
         return reply;
     }
-
-    /// <summary>
-    /// A move's damage, and what it did to the enemy it was aimed at.
-    /// </summary>
-    /// <param name="Target">The enemy it hit, if there was one in the fight.</param>
-    /// <param name="Result">What the damage came to, e.g. "took 4" for an enemy or "6 damage" with none.</param>
-    private record DamageDealt(IReadOnlyList<IEmbedField> Fields, string? Target = null, string? Result = null);
-
-    private async Task<DamageDealt> RollDamageAsync(Character character, string move, string? target, int extra)
-    {
-        if (await _damageService.RollAsync(character, move, extra) is not { } damage)
-            return new DamageDealt([new EmbedField("Damage", $"Couldn't roll `{character.DamageModifier ?? character.Class.Damage}`. Fix it with /character damage-dice")]);
-
-        var fields = new List<IEmbedField> { new EmbedField("Damage", $"{damage.Expression} → **{damage.Total}**{damage.Details}") };
-        if (string.IsNullOrWhiteSpace(target))
-            return new DamageDealt(fields, Result: $"{damage.Total} damage");
-
-        var hit = await EnemyHit.ApplyAsync(_encounterService, target, damage.Total);
-        fields.Add(hit.Field);
-        return new DamageDealt(fields, hit.Target, hit.Result ?? $"{damage.Total} damage");
-    }
-
-    private static string FormatSigned(int value) => value >= 0 ? $"+{value}" : value.ToString();
 
     private async Task<Character?> GetOwnCharacterAsync() =>
         await _characterService.GetCharacterFromUserAsync(GetUserId());

@@ -18,12 +18,35 @@ namespace DungeonWorldBot.Dashboard.Encounters;
 /// </summary>
 public static class EncounterEndpoints
 {
+    // The most of the timeline a refreshed card shows, however much older was fetched
+    private const int MaxTimeline = 500;
+
     public static RouteGroupBuilder MapEncounterEndpoints(this IEndpointRouteBuilder app)
     {
         var group = app.MapGroup("/api/scenes/{id}/encounter");
 
         group.MapGet("/panel", (string id) =>
             new RazorComponentResult<EncounterPanel>(new { SceneID = id }));
+
+        // A card refreshed after "Show older" was used asks for as much of the timeline as it showed
+        group.MapGet("/timeline-card", (string id, int? timeline) =>
+            new RazorComponentResult<TimelineCard>(new
+            {
+                SceneID = id,
+                Take = Math.Clamp(timeline ?? TimelineCard.PageSize, TimelineCard.PageSize, MaxTimeline),
+            }));
+
+        // "Show older": the timeline before the oldest entry shown, by its time in ticks
+        group.MapGet("/timeline", async (string id, long before, PartyReader partyReader, ITimelineService timeline) =>
+        {
+            if (await partyReader.GetEncounterAsync(id) is not { } encounter)
+                return Results.NotFound();
+
+            var party = await partyReader.GetPartyAsync();
+            var page = await timeline.GetAsync(
+                encounter, party.Select(c => c.Character), TimelineCard.PageSize, new DateTimeOffset(before, TimeSpan.Zero));
+            return (IResult)new RazorComponentResult<TimelineItems>(new { Page = page, encounter.StartedAt });
+        });
 
         group.MapPost("/start", async (
             string id,
@@ -73,11 +96,11 @@ public static class EncounterEndpoints
             var portraits = await portraitStore.UrlsAsync();
             await EnemyTokens.PlacePartyAsync(
                 scene.ID,
-                fighters.Select(c => new NewToken(c.Name, portraits.GetValueOrDefault(c.ID.Value))).ToList(),
-                npcs.Select(n => n.Name).ToList(),
+                fighters.Select(c => new NewToken(c.Name, portraits.GetValueOrDefault(c.ID.Value), TokenFighter.Character(c.ID.Value))).ToList(),
+                npcs.Select(n => new NewToken(n.Name, Fighter: TokenFighter.Npc(n.ID))).ToList(),
                 store,
                 hub);
-            await EnemyTokens.PlaceAsync(scene.ID, started.Names, store, hub);
+            await EnemyTokens.PlaceAsync(scene.ID, started.Enemies, store, hub);
 
             return Back(id, "start-fight", null);
         });
@@ -123,7 +146,7 @@ public static class EncounterEndpoints
 
             // Each one gets a token on the board, for everyone looking at it, with the picture if one came along
             var picture = await ScenePictureAsync(id, scene.ID, pictureUrl, store);
-            await EnemyTokens.PlaceAsync(scene.ID, added.Names, store, hub, picture);
+            await EnemyTokens.PlaceAsync(scene.ID, added.Enemies, store, hub, picture);
 
             // A mistake in a new monster reopens the dialog on writing one up, not on the saved ones
             return Back(id, "add-enemies", added.Error, from == "saved" ? null : "new");

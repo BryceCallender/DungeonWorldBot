@@ -57,7 +57,7 @@ public class EncounterAction
     public string? Target { get; set; }
 
     /// <summary>
-    /// What happened to the target, e.g. "took 4".
+    /// What happened to the target, e.g. "💥 4 damage".
     /// </summary>
     public string? Result { get; set; }
 }

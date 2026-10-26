@@ -1,3 +1,18 @@
+/* The board's card, with the fight's timeline beside it while there is one: wide when it's open, just its header when
+   it's closed. Narrower screens put it under the board. */
+.board-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; align-items: start; }
+.board-layout:has(.timeline-card) { grid-template-columns: minmax(0, 1fr) auto; }
+.board-layout:has(.timeline-card[open]) { grid-template-columns: minmax(0, 1fr) 280px; }
+.board-timeline:not(:has(.timeline-card)) { display: none; }
+/* Scenes shown side by side have no room for one beside each */
+:root.embedded .board-layout { grid-template-columns: minmax(0, 1fr); }
+:root.embedded .board-timeline { display: none; }
+
+@media (max-width: 1100px) {
+    .board-layout:has(.timeline-card),
+    .board-layout:has(.timeline-card[open]) { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* Laid out like the canvas mockup: a header, then tools | board | tokens */
 .board-page {
     background: var(--surface);
@@ -72,6 +87,8 @@
 .board-body {
     display: grid;
     grid-template-columns: 52px minmax(0, 1fr) 210px;
+    /* The row is the board's height, however tall the rail's tools are, so nothing runs off the screen */
+    grid-template-rows: minmax(0, 1fr);
     height: calc(100dvh - 170px);
     min-height: 380px;
 }
@@ -115,40 +132,34 @@
 
 .swatch.on { outline: 2px solid var(--text); outline-offset: 1px; }
 
-/* Thickness: a dot as wide as the line, over a slider that runs down the rail */
-.width-slider { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 4px 0; }
-.width-dot {
+/* Thicknesses: a dot of each size, in a square of four */
+.widths { display: grid; grid-template-columns: repeat(2, 22px); gap: 4px; padding: 2px 0; }
+
+.width {
     display: grid;
     place-items: center;
-    width: 24px;
-    height: 24px;
-}
-.width-dot::after {
-    content: "";
-    width: min(var(--dot), 24px);
-    height: min(var(--dot), 24px);
-    border-radius: 50%;
-    background: var(--text);
-}
-.width-slider input {
-    writing-mode: vertical-lr;
-    direction: rtl;                                        /* thicker at the top */
-    width: 20px;
-    height: 90px;
-    margin: 0;
-    accent-color: var(--accent);
+    width: 22px;
+    height: 22px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text);
     cursor: pointer;
 }
 
+.width::after { content: ""; width: var(--dot); height: var(--dot); border-radius: 50%; background: currentColor; }
+.width:hover { background: var(--surface-2); }
+.width.on { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+
 /* A palette button with a strip under the icon: a rainbow until you've picked something, then that color */
-.color-picker { position: relative; }
+/* Stacked in the flow rather than pinned to the bottom, so the gap holds however tall the button is */
+.board-rail .color-picker { position: relative; flex-direction: column; gap: 3px; }
 
 .color-picker::after {
     content: "";
-    position: absolute;
-    left: 7px;
-    right: 7px;
-    bottom: 4px;
+    align-self: stretch;
+    margin: 0 7px;
     height: 4px;
     border-radius: 2px;
     background: var(--swatch, linear-gradient(90deg, #E24B4A, #EF9F27, #639922, #1A9AA8, #378ADD, #7F77DD, #D4537E));
@@ -254,6 +265,81 @@
 #container ::deep .board-menu button:hover,
 #container ::deep .board-menu button:focus-visible { background: var(--surface-2); outline: none; }
 
+/* The last step of a move made from a token: any bonus, then roll */
+#container ::deep .move-form {
+    gap: .5rem;
+    min-width: 13rem;
+    padding: .6rem;
+}
+
+#container ::deep .move-form label {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: .75rem;
+    font-size: .9rem;
+}
+
+#container ::deep .move-form input {
+    width: 5rem;
+    padding: .3rem .4rem;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: var(--bg);
+    color: inherit;
+    font: inherit;
+}
+
+#container ::deep .move-form input[type="text"] { width: 8rem; }
+
+#container ::deep .move-form .actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .25rem;
+}
+
+#container ::deep .move-form button.roll {
+    background: var(--accent);
+    color: #fff;
+    font-weight: 600;
+}
+
+#container ::deep .move-form button.roll:hover,
+#container ::deep .move-form button.roll:focus-visible { background: var(--accent); filter: brightness(1.1); }
+
+/* What to do while picking who a move is aimed at, and why a move didn't happen */
+/* Both at the top, since the bottom of a tall board can be off the screen */
+#container ::deep .board-hint,
+#container ::deep .board-toast {
+    position: absolute;
+    z-index: 2;
+    top: 12px;
+    left: 50%;
+    max-width: calc(100% - 32px);
+    padding: .45rem .8rem;
+    border-radius: 8px;
+    transform: translateX(-50%);
+    font-size: .9rem;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, .25);
+    pointer-events: none;
+}
+
+#container ::deep .board-hint {
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+
+#container ::deep .board-toast {
+    background: var(--warn-soft);
+    color: var(--text);
+    border: 1px solid var(--critical);
+}
+
+#container ::deep .board-hint[hidden],
+#container ::deep .board-toast[hidden] { display: none; }
+
+#container.aiming { cursor: crosshair; }
+
 /* Where text is typed before it goes on the board: no box, just the words, at the board's zoom */
 #container ::deep .board-text-editor {
     position: absolute;
@@ -332,18 +418,65 @@
 .token-empty { margin: 0; font-size: .8rem; color: var(--muted); }
 .token-add { margin-top: .25rem; }
 
+/* A screen too short for the rail's tools in one column (they need about 800px), and scenes shown side by side, get
+   two: tools in pairs, a full-width row each for the colors, any color and the thicknesses, then undo and zoom at the bottom.
+   Phones (below) put the tools in a row above the board instead. */
+@media (max-height: 1000px) {
+    .board-body { grid-template-columns: 92px minmax(0, 1fr) 210px; }
+
+    .board-rail {
+        display: grid;
+        grid-template-columns: repeat(2, 36px);
+        /* The tools' four rows, a divider, colors, any color, thickness and a spare row for the shapes when they open
+           inside the rail; then whatever room is left, so undo and zoom sit at the bottom */
+        grid-template-rows: repeat(9, auto) 1fr auto auto;
+        justify-content: center;
+        justify-items: center;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 0;
+    }
+
+    .board-rail hr { grid-column: 1 / -1; width: 100%; margin: 2px 0; }
+    /* The divider above undo and zoom, at the bottom of the spare room */
+    .board-rail hr:last-of-type { grid-row: -4; align-self: end; }
+
+    .swatches { grid-column: 1 / -1; width: 100%; grid-template-columns: repeat(3, 18px); justify-content: space-between; row-gap: 10px; padding: 2px 3px; }
+    .board-rail .color-picker { grid-column: 1 / -1; width: 100%; height: 36px; }
+
+    .widths { grid-column: 1 / -1; width: 100%; grid-template-columns: repeat(2, 1fr); gap: 6px; padding: 0; }
+    .width { width: 100%; height: 28px; }
+
+    /* Undo beside the zoom level, then zoom out and in */
+    .board-zoom { display: contents; }
+    .board-rail [data-undo] { grid-area: -3 / 1; }
+    .board-rail .zoom-level { grid-area: -3 / 2; }
+    .board-rail [data-zoom="out"] { grid-area: -2 / 1; }
+    .board-rail [data-zoom="in"] { grid-area: -2 / 2; }
+}
+
+/* Shorter still, even that doesn't fit: the rail scrolls, and the shapes open inside it (beside it, the scrolling would
+   cut them off) */
+@media (max-height: 720px) and (min-width: 801px) {
+    .board-rail { overflow-y: auto; scrollbar-width: thin; }
+    .shape-tool.open { grid-column: 1 / -1; flex-direction: column; align-items: center; gap: 6px; }
+    .shape-tool.open .shape-picker { position: static; display: grid; grid-template-columns: repeat(2, 36px); gap: 6px; padding: 0; border: 0; box-shadow: none; }
+}
+
 /* On a phone: tools in a row above the board, tokens below it */
 @media (max-width: 800px) {
     /* Not in a frame beside other scenes, which keeps the desktop layout however narrow it is */
     :root:not(.embedded) .board-body { grid-template-columns: minmax(0, 1fr); height: auto; min-height: 0; }
     /* Most of the screen, so there's room to draw: canvas.ts fits the board to whatever shape it's given */
     :root:not(.embedded) #container { height: 65svh; min-height: 320px; }
-    :root:not(.embedded) .board-rail { flex-direction: row; flex-wrap: wrap; justify-content: center; padding: .4rem; border-right: 0; border-bottom: 1px solid var(--border); }
+    :root:not(.embedded) .board-rail { display: flex; flex-direction: row; flex-wrap: wrap; justify-content: center; padding: .4rem; border-right: 0; border-bottom: 1px solid var(--border); }
     :root:not(.embedded) .board-rail hr { width: auto; height: 20px; margin: 0 .2rem; border-top: 0; border-left: 1px solid var(--border); }
     :root:not(.embedded) .swatches { grid-template-columns: repeat(7, 18px); }
-    :root:not(.embedded) .width-slider { flex-direction: row; padding: 0 4px; }
-    :root:not(.embedded) .width-slider input { writing-mode: horizontal-tb; direction: ltr; width: 90px; height: 20px; }
-    :root:not(.embedded) .board-zoom { flex-direction: row; margin-top: 0; }
+    :root:not(.embedded) .widths { width: auto; grid-template-columns: repeat(4, 26px); }
+    :root:not(.embedded) .width { width: 26px; height: 26px; }
+    :root:not(.embedded) .board-zoom { display: flex; flex-direction: row; margin-top: 0; }
+    :root:not(.embedded) .board-rail .color-picker { width: 36px; height: 36px; }
+    :root:not(.embedded) .swatches { width: auto; padding: 2px 0; }
     /* Below the button when the tools are a row */
     :root:not(.embedded) .shape-picker { top: calc(100% + 8px); left: 0; }
     :root:not(.embedded) .board-side { border-left: 0; border-top: 1px solid var(--border); }
@@ -402,15 +535,15 @@
 :root.embedded .board-page { display: flex; flex-direction: column; height: 100dvh; border: 0; border-radius: 0; }
 :root.embedded .board-back { display: none; }
 :root.embedded .board-body { flex: 1; height: auto; min-height: 0; grid-template-columns: 52px minmax(0, 1fr) 180px; }
-/* Too short for the tools in one column (they take about 820px): two columns, so none are cut off */
-@media (max-height: 900px) {
-    :root.embedded .board-body { grid-template-columns: 88px minmax(0, 1fr) 180px; }
-    :root.embedded .board-rail { flex-direction: row; flex-wrap: wrap; justify-content: center; align-content: flex-start; }
-    :root.embedded .board-rail hr { flex-basis: 100%; }
-}
+/* Room for the rail's two columns on a short screen (see above) */
+@media (max-height: 1000px) { :root.embedded .board-body { grid-template-columns: 92px minmax(0, 1fr) 180px; } }
 :root.embedded .board-split { display: none; }
 .board-split { text-decoration: none; }
 
 /* Watching a fight you're not in (canvas.ts adds .view-only): only Move, for panning, and zoom are left */
 .board-page.view-only .board-rail > :not([data-tool="move"], .board-zoom) { display: none; }
 .board-page.view-only .token-add { display: none; }
+
+/* An enemy beaten in the fight, grayed like its token on the board */
+.token-list ::deep li.defeated { opacity: .55; }
+.token-list ::deep li.defeated .dot { filter: grayscale(1); }

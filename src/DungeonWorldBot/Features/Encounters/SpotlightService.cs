@@ -1,10 +1,8 @@
-using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Npcs;
 using DungeonWorldBot.Features.Rolls;
 using DungeonWorldBot.Infrastructure;
-using Microsoft.EntityFrameworkCore;
 using Remora.Rest.Core;
 
 namespace DungeonWorldBot.Features.Encounters;
@@ -14,50 +12,22 @@ public class SpotlightService : ISpotlightService
 {
     private const string PlainRoll = "Roll";
 
-    private readonly DungeonWorldContext _context;
-    private readonly IRollStatsService _rollStats;
-    private readonly IEncounterService _encounterService;
+    private readonly IFightLogService _fightLog;
     private readonly INpcService _npcService;
 
-    public SpotlightService(
-        DungeonWorldContext context,
-        IRollStatsService rollStats,
-        IEncounterService encounterService,
-        INpcService npcService)
+    public SpotlightService(IFightLogService fightLog, INpcService npcService)
     {
-        _context = context;
-        _rollStats = rollStats;
-        _encounterService = encounterService;
+        _fightLog = fightLog;
         _npcService = npcService;
     }
 
     public async Task<Spotlight> GetAsync(Encounter encounter, IEnumerable<Character> party)
     {
-        var log = await _encounterService.GetActionsAsync(encounter);
-        var rolls = _rollStats.GameChatChannelID is { } gameChat
-            ? (await _context.Rolls.AsNoTracking().Where(r => r.ChannelID == gameChat).ToListAsync())
-                .Where(r => r.MessageID.Timestamp >= encounter.StartedAt)
-                .OrderBy(r => r.MessageID.Value)
-                .ToList()
-            : [];
-
-        // A move logged in the fight is also a roll kept for stats; the log says more about it
-        var logged = log.Where(a => a.MessageID is not null).ToDictionary(a => a.MessageID!.Value);
-
-        // With several fights going, a roll is only this fight's if it was logged here, or, for a plain roll nobody
-        // logged, if the player is in this fight rather than another
-        var loggedElsewhere = (await _context.EncounterActions.AsNoTracking()
-                .Where(a => a.EncounterID != encounter.ID && a.MessageID != null)
-                .Select(a => a.MessageID)
-                .ToListAsync())
-            .Select(id => id!.Value)
-            .ToHashSet();
-        var running = await _encounterService.GetRunningAsync();
-        rolls = rolls
-            .Where(r => logged.ContainsKey(r.MessageID)
-                        || (!loggedElsewhere.Contains(r.MessageID) && EncounterService.FightFor(running, r.UserID)?.ID == encounter.ID))
-            .ToList();
-        var rolled = rolls.Select(r => r.MessageID).ToHashSet();
+        var fight = await _fightLog.GetAsync(encounter);
+        var log = fight.Actions;
+        var rolls = fight.Rolls;
+        var logged = fight.Logged;
+        var rolled = fight.Rolled;
 
         var players = party
             .Where(c => c.Status != Status.Dead)
@@ -137,15 +107,15 @@ public class SpotlightService : ISpotlightService
             .ToList();
     }
 
-    private static SpotlightAction FromLog(EncounterAction action, DateTimeOffset at, bool missed) =>
+    internal static SpotlightAction FromLog(EncounterAction action, DateTimeOffset at, bool missed) =>
         new(at, action.Action, action.Roll, action.Target, action.Result, missed);
 
-    private static SpotlightAction FromRoll(RollRecord roll)
+    internal static SpotlightAction FromRoll(RollRecord roll)
     {
         var outcome = new MoveDice(roll.First, roll.Second, roll.Total).Outcome;
         return new SpotlightAction(
             roll.MessageID.Timestamp, roll.Move ?? PlainRoll, $"{roll.Total} · {MoveRoller.Describe(outcome)}", null, null, outcome == MoveOutcome.Miss);
     }
 
-    private static bool IsMiss(RollRecord roll) => new MoveDice(roll.First, roll.Second, roll.Total).Outcome == MoveOutcome.Miss;
+    internal static bool IsMiss(RollRecord roll) => new MoveDice(roll.First, roll.Second, roll.Total).Outcome == MoveOutcome.Miss;
 }

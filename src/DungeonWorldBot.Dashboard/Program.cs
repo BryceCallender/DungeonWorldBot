@@ -44,7 +44,9 @@ builder.Services.AddScoped<ILevelingService, LevelingService>();
 builder.Services.AddScoped<IRollStatsService, RollStatsService>();
 builder.Services.AddScoped<INpcService, NpcService>();
 builder.Services.AddScoped<IEncounterService, EncounterService>();
+builder.Services.AddScoped<IFightLogService, FightLogService>();
 builder.Services.AddScoped<ISpotlightService, SpotlightService>();
+builder.Services.AddScoped<ITimelineService, TimelineService>();
 builder.Services.AddScoped<PartyReader>();
 builder.Services.AddScoped<RollReader>();
 var writableDatabase = new DbContextOptionsBuilder<DungeonWorldContext>()
@@ -84,6 +86,11 @@ builder.Services.AddSignalR(o => o.MaximumReceiveMessageSize = 512 * 1024)
     // Item types go back and forth as "stroke", "token" and "text" rather than numbers
     .AddJsonProtocol(o => o.PayloadSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)));
 builder.Services.AddSingleton<CanvasPresence>();
+
+// Moves made from tokens on a fight's board are rolled by the bot, and boards hear how they went
+builder.Services.AddScoped<FightMoves>();
+builder.Services.AddSingleton<MoveResults>();
+builder.Services.AddHostedService(services => services.GetRequiredService<MoveResults>());
 
 var app = builder.Build();
 

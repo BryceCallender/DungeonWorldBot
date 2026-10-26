@@ -9,8 +9,9 @@
    enemy looks; whoever runs the fight (the DM, or anyone with sign-in off) sees its numbers, and gets buttons for the
    dialogs on the scene page that run it. Everyone sees the spotlight. Fights on other scenes don't show here. *@
 
-@* data-view-only tells the board (canvas.ts) to only let them look, as the server only lets them *@
-<section class="encounter-panel" data-encounter-panel="@SceneID" data-view-only="@(_viewOnly ? "true" : null)">
+@* data-view-only tells the board (canvas.ts) to only let them look, as the server only lets them; data-fight says
+   there's a fight on, so moves can be made from its tokens *@
+<section class="encounter-panel" data-encounter-panel="@SceneID" data-view-only="@(_viewOnly ? "true" : null)" data-fight="@(_encounter is null ? null : "true")">
     @if (_encounter is not { } encounter)
     {
         <h2>Fight</h2>
@@ -36,7 +37,7 @@
             <ol class="enemy-list">
                 @foreach (var enemy in EnemySheet.Ordered(encounter.Enemies))
                 {
-                    <li class="enemy @(enemy.Condition == EnemyCondition.Defeated ? "defeated" : null)" data-enemy="@enemy.Name">
+                    <li class="enemy @(enemy.Condition == EnemyCondition.Defeated ? "defeated" : null)" data-enemy="@enemy.Name" data-enemy-id="@enemy.ID">
                         @if (_canRun)
                         {
                             <details>
@@ -139,21 +140,7 @@
                         </div>
                         @if (line.Last is { } last)
                         {
-                            <div class="spotlight-last" title="@($"{last.At.ToLocalTime():t}: {last.Summary}")">
-                                <span class="action">@last.Action</span>
-                                @if (last.Roll is not null)
-                                {
-                                    <span class="roll @(last.Missed ? "miss" : null)">🎲 @last.Roll</span>
-                                }
-                                @if (last.Target is not null)
-                                {
-                                    <span class="target">🎯 @last.Target</span>
-                                }
-                                @if (last.Result is not null)
-                                {
-                                    <span class="result">@last.Result</span>
-                                }
-                            </div>
+                            <ActionParts Action="last" Title="@($"{last.At.ToLocalTime():t}: {last.Summary}")" />
                         }
                     </li>
                 }

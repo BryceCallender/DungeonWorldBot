@@ -18,7 +18,7 @@ public sealed class SpotlightTests : IDisposable
     public void Dispose() => _db.Dispose();
 
     private static SpotlightService Spotlight(DungeonWorldContext context, EncounterService encounters) =>
-        new(context, new RollStatsService(context, GameChatConfig()), encounters, new NpcService(context));
+        new(new FightLogService(context, new RollStatsService(context, GameChatConfig()), encounters), new NpcService(context));
 
     private static IConfiguration GameChatConfig() =>
         new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["GameChatChannelId"] = GameChat.Value.ToString() }).Build();
@@ -38,7 +38,7 @@ public sealed class SpotlightTests : IDisposable
 
         await encounters.LogAsync(new EncounterAction
         {
-            Actor = goblin.Name, EnemyID = goblin.ID, Action = "Bite", Roll = "d6 = 4", Target = "Aria", Result = "took 3",
+            Actor = goblin.Name, EnemyID = goblin.ID, Action = "Bite", Roll = "d6 = 4", Target = "Aria", Result = "💥 3 damage",
         });
 
         var spotlight = await Spotlight(context, encounters).GetAsync(encounter, []);
@@ -47,7 +47,7 @@ public sealed class SpotlightTests : IDisposable
         Assert.Equal(["Goblin 2", "Goblin 1"], spotlight.Enemies.Select(e => e.Name));
         Assert.True(spotlight.Enemies[0].Quiet);
         var bite = spotlight.Enemies[1].Last!;
-        Assert.Equal("Bite · d6 = 4 → Aria · took 3", bite.Summary);
+        Assert.Equal("Bite · d6 = 4 → Aria · 💥 3 damage", bite.Summary);
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public sealed class SpotlightTests : IDisposable
         await encounters.LogAsync(new EncounterAction
         {
             Actor = aria.Name, CharacterID = aria.ID, MessageID = logged, Action = "Hack and Slash",
-            Roll = "9 · Weak Hit (7-9)", Target = "Goblin", Result = "took 4",
+            Roll = "9 · Weak Hit (7-9)", Target = "Goblin", Result = "💥 4 damage",
         });
 
         var spotlight = await Spotlight(context, encounters).GetAsync(encounter, [aria, bram]);
@@ -96,14 +96,14 @@ public sealed class SpotlightTests : IDisposable
 
         await encounters.LogAsync(new EncounterAction
         {
-            Actor = grub.Name, NpcID = grub.ID, Action = "Damage", Roll = "d6 = 5", Target = "Goblin", Result = "took 4",
+            Actor = grub.Name, NpcID = grub.ID, Action = "Damage", Roll = "d6 = 5", Target = "Goblin", Result = "💥 4 damage",
         });
 
         var spotlight = await Spotlight(context, encounters).GetAsync(encounter, []);
 
         Assert.Equal(["Pip", "Grub"], spotlight.Allies.Select(a => a.Name));
         Assert.True(spotlight.Allies[0].Quiet);
-        Assert.Equal("Damage · d6 = 5 → Goblin · took 4", spotlight.Allies[1].Last!.Summary);
+        Assert.Equal("Damage · d6 = 5 → Goblin · 💥 4 damage", spotlight.Allies[1].Last!.Summary);
         // NPCs' rolls aren't the party's
         Assert.Equal(0, spotlight.Rolls);
     }

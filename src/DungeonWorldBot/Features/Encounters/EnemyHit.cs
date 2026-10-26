@@ -8,8 +8,9 @@ namespace DungeonWorldBot.Features.Encounters;
 /// </summary>
 /// <param name="Field">The roll's embed field saying what happened. Players only see how hurt the enemy looks.</param>
 /// <param name="Target">The enemy, as named in the fight, if there was one.</param>
-/// <param name="Result">e.g. "took 4", or null if the damage wasn't applied.</param>
-public record EnemyHit(IEmbedField Field, string? Target = null, string? Result = null)
+/// <param name="Result">e.g. "💥 4 damage", or null if the damage wasn't applied.</param>
+/// <param name="Taken">The damage that got through their armor, if it was applied.</param>
+public record EnemyHit(IEmbedField Field, string? Target = null, string? Result = null, int? Taken = null)
 {
     /// <summary>
     /// Takes the damage off the enemy. The roll stands either way; if there's no such enemy, the DM can apply it by hand.
@@ -27,6 +28,7 @@ public record EnemyHit(IEmbedField Field, string? Target = null, string? Result 
         return new EnemyHit(
             new EmbedField($"🎯 {enemy.Name}", $"Took **{hit.Taken}**{armor} · {EnemySheet.Condition(enemy)}"),
             enemy.Name,
-            $"took {hit.Taken}");
+            $"💥 {hit.Taken} damage",
+            hit.Taken);
     }
 }

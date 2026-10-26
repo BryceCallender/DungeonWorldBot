@@ -1,0 +1,26 @@
+@using DungeonWorldBot.Features.Encounters
+
+@* Something someone did in a fight: the move, its roll, who it was aimed at and what it did *@
+<div class="action-parts" title="@Title">
+    <span class="action">@Action.Action</span>
+    @if (Action.Roll is not null)
+    {
+        <span class="roll @(Action.Missed ? "miss" : null)">🎲 @Action.Roll</span>
+    }
+    @if (Action.Target is not null)
+    {
+        <span class="target">🎯 @Action.Target</span>
+    }
+    @if (Action.Result is not null)
+    {
+        <span class="result">@Action.Result</span>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public SpotlightAction Action { get; set; } = null!;
+
+    [Parameter]
+    public string? Title { get; set; }
+}

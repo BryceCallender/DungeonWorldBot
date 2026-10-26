@@ -1,4 +1,5 @@
 using System.Text.Json;
+using DungeonWorldBot.Dashboard.Encounters;
 
 namespace DungeonWorldBot.Dashboard.Canvases;
 
@@ -15,4 +16,11 @@ public interface ICanvasClient
     Task ItemAdded(string personID, string itemID, CanvasItemType type, JsonElement item);
     Task ItemMoved(string personID, string itemID, double x, double y);
     Task ItemRemoved(string personID, string itemID);
+
+    /// <summary>
+    /// Someone made a move from one token at another, and the bot is rolling it.
+    /// </summary>
+    Task MoveAsked(string personID, string actor, string target);
+
+    Task MoveResolved(MoveResult result);
 }

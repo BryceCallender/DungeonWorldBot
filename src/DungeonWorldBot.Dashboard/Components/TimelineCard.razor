@@ -1,0 +1,53 @@
+@using DungeonWorldBot.Dashboard.Party
+@using DungeonWorldBot.Features.Encounters
+@inject PartyReader PartyReader
+@inject ITimelineService TimelineService
+
+@* Everything that's happened in the fight on a scene, newest first, in a card of its own beside the board. Only the
+   latest page comes with it; "Show older" fetches more from api/scenes/{id}/encounter/timeline. Like the encounter
+   panel, app.js swaps in a fresh one from api/scenes/{id}/encounter/timeline-card whenever the bot changes something,
+   keeping it open or closed, and as long, as it was. With no fight on, there's nothing to show. *@
+@if (_page is { Total: > 0 } shown && _encounter is { } encounter)
+{
+    <details class="timeline-card" data-timeline open>
+        <summary>
+            <h2>Timeline</h2>
+            <span class="muted">@shown.Total</span>
+        </summary>
+        <ol class="timeline-list">
+            <TimelineItems Page="shown" StartedAt="encounter.StartedAt" />
+        </ol>
+    </details>
+}
+
+@code {
+    /// <summary>
+    /// How many come with the card, and with each "Show older".
+    /// </summary>
+    public const int PageSize = 30;
+
+    /// <summary>
+    /// The scene the fight's on, by its short ID.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string SceneID { get; set; } = "";
+
+    /// <summary>
+    /// How many to show, for a card refreshed after "Show older" was used, so what was shown stays.
+    /// </summary>
+    [Parameter]
+    public int Take { get; set; } = PageSize;
+
+    private Encounter? _encounter;
+    private TimelinePage? _page;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _encounter = await PartyReader.GetEncounterAsync(SceneID);
+        if (_encounter is { } encounter)
+        {
+            var party = await PartyReader.GetPartyAsync();
+            _page = await TimelineService.GetAsync(encounter, party.Select(c => c.Character), Take);
+        }
+    }
+}

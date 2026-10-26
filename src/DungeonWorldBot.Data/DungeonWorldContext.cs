@@ -24,6 +24,8 @@ public class DungeonWorldContext : DbContext
 
     public DbSet<EncounterParticipant> EncounterParticipants => Set<EncounterParticipant>();
 
+    public DbSet<MoveRequest> MoveRequests => Set<MoveRequest>();
+
     public DbSet<MonsterTemplate> MonsterTemplates => Set<MonsterTemplate>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -73,6 +75,33 @@ public class DungeonWorldContext : DbContext
                 .WithMany()
                 .HasForeignKey(a => a.NpcID)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<MoveRequest>(request =>
+        {
+            // Asked from a fight, so they go with it
+            request.HasOne(r => r.Encounter)
+                .WithMany()
+                .HasForeignKey(r => r.EncounterID)
+                .OnDelete(DeleteBehavior.Cascade);
+            request.HasOne<Enemy>()
+                .WithMany()
+                .HasForeignKey(r => r.EnemyID)
+                .OnDelete(DeleteBehavior.SetNull);
+            request.HasOne<Enemy>()
+                .WithMany()
+                .HasForeignKey(r => r.TargetEnemyID)
+                .OnDelete(DeleteBehavior.SetNull);
+            request.HasOne<Npc>()
+                .WithMany()
+                .HasForeignKey(r => r.TargetNpcID)
+                .OnDelete(DeleteBehavior.SetNull);
+            request.HasOne<EncounterAction>()
+                .WithMany()
+                .HasForeignKey(r => r.ActionID)
+                .OnDelete(DeleteBehavior.SetNull);
+            // The bot looks for those still waiting every second
+            request.HasIndex(r => r.ResolvedAt);
         });
 
         modelBuilder.Entity<Enemy>(enemy =>

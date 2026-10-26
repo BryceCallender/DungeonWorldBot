@@ -94,31 +94,68 @@
     box-shadow: 0 0 0 1px var(--border);
 }
 
-/* Archive / Restore: quiet until you look for it */
-.canvas-action { margin-left: auto; }
-
-.link-button {
+/* The ⋯ menu (Archive or Restore, and Delete): quiet until you look for it */
+.card-menu-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-left: auto;
+    width: 26px;
+    height: 22px;
     padding: 0;
-    border: 0;
+    border: 1px solid transparent;
+    border-radius: 6px;
     background: none;
     color: var(--muted);
-    font: inherit;
     cursor: pointer;
     opacity: 0;
     transition: opacity .15s;
 }
 
-.canvas-card:hover .link-button,
-.link-button:focus-visible { opacity: 1; }
-.link-button:hover { color: var(--accent); text-decoration: underline; }
-.link-button.delete:hover { color: var(--critical); }
+.card-menu-button ::deep .icon { width: 16px; height: 16px; }
+.canvas-card:hover .card-menu-button,
+.card-menu-button:focus-visible,
+.card-menu-button:has(+ .menu-pop:popover-open) { opacity: 1; }
+.card-menu-button:hover,
+.card-menu-button:has(+ .menu-pop:popover-open) { background: var(--surface-2); border-color: var(--border); color: var(--text); }
+
+/* Placed under its button by app.js */
+.menu-pop {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    padding: .25rem;
+    min-width: 140px;
+    color: var(--text);
+    box-shadow: 0 8px 24px rgb(0 0 0 / .25);
+}
+
+.menu-pop form { margin: 0; }
+
+.menu-pop button {
+    display: block;
+    width: 100%;
+    padding: .4rem .6rem;
+    border: 0;
+    border-radius: 6px;
+    background: none;
+    color: inherit;
+    font: inherit;
+    font-size: .85rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.menu-pop button:hover,
+.menu-pop button:focus-visible { background: var(--surface-2); outline: none; }
+.menu-pop .delete { color: var(--critical); }
 
 .modal p { margin: 0; }
 .modal .destroy { background: var(--critical); border-color: var(--critical); color: #fff; }
 .modal .destroy:hover { color: #fff; opacity: .9; }
 
 /* No hovering on a touch screen, so it's always there */
-@media (hover: none) { .link-button { opacity: 1; } }
+@media (hover: none) { .card-menu-button { opacity: 1; } }
 
 .archived-link { margin-top: 1rem; font-size: .85rem; }
 .archived-link a { color: var(--muted); }

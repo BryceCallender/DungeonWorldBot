@@ -5,11 +5,11 @@ namespace DungeonWorldBot.Features.Encounters;
 /// </summary>
 /// <param name="Roll">What it rolled, e.g. "9 · Weak Hit (7-9)" or "d8+1 = 6".</param>
 /// <param name="Target">Who it was aimed at, if anyone.</param>
-/// <param name="Result">What happened to the target, e.g. "took 4".</param>
+/// <param name="Result">What happened to the target, e.g. "💥 4 damage".</param>
 public record SpotlightAction(DateTimeOffset At, string Action, string? Roll, string? Target, string? Result, bool Missed)
 {
     /// <summary>
-    /// e.g. "Hack and Slash · 9 · Weak Hit (7-9) → Goblin 2 · took 4".
+    /// e.g. "Hack and Slash · 9 · Weak Hit (7-9) → Goblin 2 · 💥 4 damage".
     /// </summary>
     public string Summary =>
         Action

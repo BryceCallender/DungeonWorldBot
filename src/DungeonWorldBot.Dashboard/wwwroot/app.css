@@ -295,6 +295,8 @@ html:has(.jump) { scroll-padding-top: 3.5rem; }
 }
 
 .filter { width: 14rem; max-width: 100%; }
+/* The browser draws a dropdown's chevron inside the right padding, so it needs more than the text does */
+select.filter { padding-right: 1.4rem; }
 .filter:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 .tool { cursor: pointer; white-space: nowrap; }
 .tool:hover { border-color: var(--accent); color: var(--accent); }

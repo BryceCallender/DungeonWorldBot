@@ -28,6 +28,8 @@
     <script type="module" src="@Assets["canvas.js"]"></script>
 </HeadContent>
 
+@* The board's card, and on an encounter scene the fight's timeline in a card of its own beside it *@
+<div class="board-layout">
 <div class="board-page">
     <header class="board-head">
         <a class="board-back tool" href="scenes" title="Back to the scenes" aria-label="Back to the scenes"><Icon Name="back" /></a>
@@ -47,7 +49,6 @@
             <button type="button" class="tool" data-tool="pen" title="Pen (P)" aria-label="Pen"><Icon Name="pen" /></button>
             <button type="button" class="tool" data-tool="erase" title="Eraser (E)" aria-label="Eraser"><Icon Name="eraser" /></button>
             <button type="button" class="tool on" data-tool="move" title="Move tokens (M)" aria-label="Move tokens"><Icon Name="move" /></button>
-            <button type="button" class="tool" data-tool="token" title="Place a token (T)" aria-label="Place a token"><Icon Name="token" /></button>
             <button type="button" class="tool" data-tool="text" title="Text (X)" aria-label="Text"><Icon Name="text" /></button>
             @* The kinds of shape show beside the button while the Shape tool is on *@
             <span class="shape-tool">
@@ -74,11 +75,14 @@
                 <Icon Name="palette" />
                 <input type="color" value="#ffffff" data-custom-color aria-label="Pick any color" />
             </label>
-            @* How thick the pen and shapes draw, in board units; the dot shows it at that size *@
-            <label class="width-slider" title="Thickness">
-                <span class="width-dot" data-width-dot style="--dot: 4px"></span>
-                <input type="range" min="1" max="24" step="1" value="4" data-width aria-label="Thickness" />
-            </label>
+            @* How thick the pen and shapes draw, in board units; each dot shows its size. [ and ] step between them *@
+            <span class="widths" role="group" aria-label="Thickness">
+                @foreach (var width in Widths)
+                {
+                    <button type="button" class="width@(width.Size == Widths[3].Size ? " on" : "")" data-width="@width.Size"
+                            style="--dot: @(width.Dot)px" title="@width.Name ([ and ] to change)" aria-label="@width.Name line"></button>
+                }
+            </span>
             <hr />
 
             <button type="button" class="tool" data-undo title="Undo your last change (Ctrl+Z)" aria-label="Undo"><Icon Name="undo" /></button>
@@ -107,9 +111,17 @@
             <ol class="token-list" data-tokens></ol>
             <p class="token-empty" data-tokens-empty>Nothing on the board yet.</p>
             <button type="button" class="tool token-add" data-tool="token">+ Add token</button>
-            <button type="bgit reset --soft HEAD~1utton" class="tool token-add" data-pick="token">+ Image token</button>
+            <button type="button" class="tool token-add" data-pick="token">+ Image token</button>
         </aside>
     </div>
+</div>
+@if (c.Kind == CanvasKind.Encounter)
+{
+    @* app.js swaps the card in here as the fight changes, so it's here even before there's one to show *@
+    <div class="board-timeline" data-timeline-host="@Id">
+        <TimelineCard SceneID="@Id" />
+    </div>
+}
 </div>
 
 
@@ -325,6 +337,19 @@
     private string _portraits = "{}";
 
     // Ink that reads on the board in both light and dark mode
+    /// <summary>
+    /// A thickness to draw with.
+    /// </summary>
+    /// <param name="Size">How thick, in board units.</param>
+    /// <param name="Dot">How big its dot is on the button, enough to tell them apart without the thick ones filling it.</param>
+    private record Width(int Size, string Name, int Dot);
+
+    // Normal (the second) is what you start with
+    private static readonly Width[] Widths =
+    [
+        new(2, "Thin", 4), new(4, "Normal", 7), new(8, "Bold", 11), new(16, "Marker", 16),
+    ];
+
     private static readonly string[] Colors =
     [
         "#7F77DD", "#D85A30", "#1D9E75", "#378ADD", "#BA7517", "#888780",
