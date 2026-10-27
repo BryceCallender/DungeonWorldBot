@@ -6,13 +6,6 @@ using DungeonWorldBot.Features.Rolls;
 
 namespace DungeonWorldBot.Features.Moves;
 
-public enum MoveOutcome
-{
-    Miss,
-    WeakHit,
-    StrongHit,
-}
-
 /// <summary>
 /// Which results a move's options apply on.
 /// </summary>

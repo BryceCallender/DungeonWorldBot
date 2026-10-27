@@ -1,4 +1,5 @@
 using System.Reflection;
+using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Rolls;
 using d20Tek.DiceNotation.DieRoller;

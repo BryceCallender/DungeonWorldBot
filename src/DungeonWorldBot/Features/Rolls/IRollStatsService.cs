@@ -29,6 +29,14 @@ public interface IRollStatsService
     /// <returns>How many were new.</returns>
     Task<int> AddMissingAsync(IReadOnlyList<RollRecord> rolls);
 
+    /// <summary>
+    /// Saves what a recorded roll counts as after someone changed its outcome. Does nothing for rolls that weren't
+    /// recorded.
+    /// </summary>
+    /// <param name="outcome">What it counts as now, or null when it was changed back to what it rolled.</param>
+    /// <param name="reason">Why it was changed.</param>
+    Task ChangeOutcomeAsync(Snowflake messageID, MoveOutcome? outcome, string reason, Snowflake changedBy);
+
     /// <returns>Everyone's stats from rolls in the game chat, most rolls first.</returns>
     Task<List<PlayerRollStats>> GetStatsAsync();
 }

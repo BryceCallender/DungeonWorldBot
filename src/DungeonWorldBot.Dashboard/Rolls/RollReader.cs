@@ -36,10 +36,10 @@ public class RollReader
         var rolls = await GameChatRollsAsync(gameChat);
 
         return (
-            DiceSpread.Of(rolls.Where(r => r.UserID.Value != leaveOut).Select(r => new MoveDice(r.First, r.Second, r.Total)).ToList()),
+            DiceSpread.Of(rolls.Where(r => r.UserID.Value != leaveOut).Select(r => MoveDice.Of(r)).ToList()),
             rolls
                 .GroupBy(r => r.UserID.Value)
-                .ToDictionary(g => g.Key, g => DiceSpread.Of(g.Select(r => new MoveDice(r.First, r.Second, r.Total)).ToList())));
+                .ToDictionary(g => g.Key, g => DiceSpread.Of(g.Select(r => MoveDice.Of(r)).ToList())));
     }
 
     /// <inheritdoc cref="SessionService.Gap"/>
@@ -318,7 +318,7 @@ public class RollReader
             .Reverse()
             .ToList();
 
-    private static List<MoveDice> Dice(IEnumerable<RollRecord> rolls) => rolls.Select(r => new MoveDice(r.First, r.Second, r.Total)).ToList();
+    private static List<MoveDice> Dice(IEnumerable<RollRecord> rolls) => rolls.Select(r => MoveDice.Of(r)).ToList();
 
     private Task<List<RollRecord>> GameChatRollsAsync(Snowflake gameChat) =>
         _context.Rolls.AsNoTracking().Where(r => r.ChannelID == gameChat).ToListAsync();

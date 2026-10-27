@@ -28,4 +28,20 @@ public class RollRecord
     /// The stat rolled with, if any. Moves that roll a class resource or bonds have none.
     /// </summary>
     public StatType? Stat { get; set; }
+
+    /// <summary>
+    /// What the roll counts as instead of its total's band, when someone changed it after it was posted for a rule the
+    /// bot doesn't track. Null if it wasn't changed.
+    /// </summary>
+    public MoveOutcome? ChangedOutcome { get; set; }
+
+    /// <summary>
+    /// Why the outcome was changed, e.g. "Blessing of Luna".
+    /// </summary>
+    public string? ChangedReason { get; set; }
+
+    /// <summary>
+    /// Who changed the outcome.
+    /// </summary>
+    public Snowflake? ChangedBy { get; set; }
 }

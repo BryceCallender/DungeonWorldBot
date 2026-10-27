@@ -58,6 +58,8 @@ public partial class RollHistoryReader
                 Total = dice.Total,
                 Move = label.Move,
                 Stat = label.Stat,
+                // The reason and who changed it stay in the embed's note
+                ChangedOutcome = RollOutcomeChange.ChangedOf(embed),
             };
         }
     }

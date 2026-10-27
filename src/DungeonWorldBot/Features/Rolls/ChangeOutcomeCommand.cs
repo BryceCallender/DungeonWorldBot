@@ -1,3 +1,4 @@
+using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Infrastructure;
 using Remora.Commands.Attributes;
@@ -14,7 +15,7 @@ namespace DungeonWorldBot.Features.Rolls;
 
 /// <summary>
 /// Right-click a roll → Apps → Change outcome, for when something the bot doesn't track makes it a hit (or a miss).
-/// Asks which result it should count as with buttons, handled by <see cref="ChangeOutcomeInteractions"/>.
+/// Asks which result it should count as with buttons, then why, handled by <see cref="ChangeOutcomeInteractions"/>.
 /// </summary>
 public class ChangeOutcomeCommand : DungeonWorldCommandBase
 {

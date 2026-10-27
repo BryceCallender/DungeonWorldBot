@@ -77,6 +77,17 @@ public class RollStatsService : IRollStatsService
         return missing.Count;
     }
 
+    public async Task ChangeOutcomeAsync(Snowflake messageID, MoveOutcome? outcome, string reason, Snowflake changedBy)
+    {
+        if (await _dungeonWorldContext.Rolls.FindAsync(messageID) is not { } roll)
+            return;
+
+        roll.ChangedOutcome = outcome;
+        roll.ChangedReason = outcome is null ? null : reason;
+        roll.ChangedBy = outcome is null ? null : changedBy;
+        await _dungeonWorldContext.SaveChangesAsync();
+    }
+
     public async Task<List<PlayerRollStats>> GetStatsAsync()
     {
         // Every roll is recorded with its channel, but only game chat rolls count
@@ -89,7 +100,7 @@ public class RollStatsService : IRollStatsService
             .GroupBy(r => r.UserID)
             .Select(g =>
             {
-                var dice = g.Select(r => new MoveDice(r.First, r.Second, r.Total)).ToList();
+                var dice = g.Select(MoveDice.Of).ToList();
                 return new PlayerRollStats(
                     g.Key,
                     dice.Count,

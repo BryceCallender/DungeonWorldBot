@@ -112,10 +112,10 @@ public class SpotlightService : ISpotlightService
 
     internal static SpotlightAction FromRoll(RollRecord roll)
     {
-        var outcome = new MoveDice(roll.First, roll.Second, roll.Total).Outcome;
+        var outcome = MoveDice.Of(roll).Outcome;
         return new SpotlightAction(
             roll.MessageID.Timestamp, roll.Move ?? PlainRoll, $"{roll.Total} · {MoveRoller.Describe(outcome)}", null, null, outcome == MoveOutcome.Miss);
     }
 
-    internal static bool IsMiss(RollRecord roll) => new MoveDice(roll.First, roll.Second, roll.Total).Outcome == MoveOutcome.Miss;
+    internal static bool IsMiss(RollRecord roll) => MoveDice.Of(roll).Outcome == MoveOutcome.Miss;
 }

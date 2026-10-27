@@ -1,6 +1,7 @@
 using DungeonWorldBot.Dashboard.Auth;
 using DungeonWorldBot.Dashboard.Party;
 using DungeonWorldBot.Dashboard.Shared;
+using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Features.Classes;
 using DungeonWorldBot.Features.Moves;
@@ -51,7 +52,7 @@ public static class RollFeedEndpoints
                 .Select(r =>
                 {
                     var player = r.UserID.Value;
-                    var dice = new MoveDice(r.First, r.Second, r.Total);
+                    var dice = MoveDice.Of(r);
                     // The streak as of this roll, counting back through theirs before it
                     var streak = RollStreak.Of(newest.Where(o => o.UserID == r.UserID && o.MessageID.Value <= r.MessageID.Value));
                     return new FeedRoll(

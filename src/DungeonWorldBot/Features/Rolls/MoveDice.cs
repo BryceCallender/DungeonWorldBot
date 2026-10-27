@@ -1,17 +1,24 @@
 using System.Text.RegularExpressions;
-using d20Tek.DiceNotation.Results;
+using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Moves;
+using d20Tek.DiceNotation.Results;
 
 namespace DungeonWorldBot.Features.Rolls;
 
 /// <summary>
 /// The two d6 of a move roll and its total with modifiers, which is all the roll stats need.
 /// </summary>
-public partial record MoveDice(int First, int Second, int Total)
+/// <param name="ChangedOutcome">What the roll counts as instead of its total's band, if someone changed it.</param>
+public partial record MoveDice(int First, int Second, int Total, MoveOutcome? ChangedOutcome = null)
 {
     public bool IsNatural2 => First == 1 && Second == 1;
     public bool IsNatural12 => First == 6 && Second == 6;
-    public MoveOutcome Outcome => MoveRoller.OutcomeFor(Total);
+    public MoveOutcome Outcome => ChangedOutcome ?? MoveRoller.OutcomeFor(Total);
+
+    /// <summary>
+    /// A recorded roll's dice, counting as whatever its outcome was changed to.
+    /// </summary>
+    public static MoveDice Of(RollRecord roll) => new(roll.First, roll.Second, roll.Total, roll.ChangedOutcome);
 
     /// <returns>The move dice, or null if the roll isn't 2d6 plus flat modifiers (e.g. damage).</returns>
     public static MoveDice? From(DiceResult roll)

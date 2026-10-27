@@ -80,7 +80,7 @@ public class SessionService : ISessionService
                 .Where(r => r.MessageID.Timestamp >= from && r.MessageID.Timestamp <= to)
                 .ToList()
             : [];
-        var dice = rolls.Select(r => new MoveDice(r.First, r.Second, r.Total)).ToList();
+        var dice = rolls.Select(r => MoveDice.Of(r)).ToList();
 
         var fights = (await _context.Encounters.AsNoTracking().OrderBy(e => e.ID).Select(e => new { e.Name, e.StartedAt }).ToListAsync())
             .Where(e => e.StartedAt >= from && e.StartedAt <= to)
@@ -98,7 +98,7 @@ public class SessionService : ISessionService
                 .Select(g => new PlayerSessionRolls(
                     g.Key,
                     g.Count(),
-                    g.Count(r => new MoveDice(r.First, r.Second, r.Total).Outcome == MoveOutcome.Miss)))
+                    g.Count(r => MoveDice.Of(r).Outcome == MoveOutcome.Miss)))
                 .OrderByDescending(p => p.Rolls)
                 .ToList(),
             fights);

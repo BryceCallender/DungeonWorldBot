@@ -102,7 +102,7 @@ else
             <tbody>
                 @foreach (var r in _rolls)
                 {
-                    var dice = new MoveDice(r.First, r.Second, r.Total);
+                    var dice = MoveDice.Of(r);
                     <tr class="@OutcomeClass(dice.Outcome)">
                         <td class="muted">@r.MessageID.Timestamp.ToLocalTime().ToString("h:mm tt")</td>
                         <td>@Who(r.UserID.Value)</td>
@@ -178,7 +178,7 @@ else
         var points = new List<string>();
         foreach (var (roll, i) in party.Select((r, i) => (r, i)))
         {
-            if (new MoveDice(roll.First, roll.Second, roll.Total).Outcome != MoveOutcome.Miss)
+            if (MoveDice.Of(roll).Outcome != MoveOutcome.Miss)
                 hits++;
             points.Add($"{X(roll)},{Y(hits / (double)(i + 1))}");
         }
@@ -195,7 +195,7 @@ else
             <polyline points="@string.Join(' ', points)" />
             @foreach (var roll in party)
             {
-                <line class="tick @OutcomeClass(new MoveDice(roll.First, roll.Second, roll.Total).Outcome)" x1="@X(roll)" x2="@X(roll)" y1="@F(ticks - 10)" y2="@F(ticks)">
+                <line class="tick @OutcomeClass(MoveDice.Of(roll).Outcome)" x1="@X(roll)" x2="@X(roll)" y1="@F(ticks - 10)" y2="@F(ticks)">
                     <title>@Who(roll.UserID.Value): @roll.Total@(roll.Move is { } move ? $" ({move})" : "")</title>
                 </line>
             }

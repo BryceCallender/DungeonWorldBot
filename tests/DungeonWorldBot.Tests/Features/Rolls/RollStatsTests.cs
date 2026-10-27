@@ -161,6 +161,55 @@ public class RollStatsTests
         Assert.Equal(StatType.Dex, roll.Stat);
     }
 
+    [Fact]
+    public async Task ChangedOutcomes_CountInStats_AndCanBeChangedBack()
+    {
+        using var database = new TestDatabase();
+        await using var context = database.CreateContext();
+        var service = new RollStatsService(context, GameChat(222));
+
+        var message = new Snowflake(1);
+        await service.RecordAsync(message, new Snowflake(222), new Snowflake(111), new DiceRoller(new ConstantDieRoller(2)).Roll("2d6"));
+
+        await service.ChangeOutcomeAsync(message, MoveOutcome.StrongHit, "Blessing of Luna", new Snowflake(333));
+
+        var stats = Assert.Single(await service.GetStatsAsync());
+        Assert.Equal((1, 0), (stats.StrongHits, stats.Misses));
+        var roll = Assert.Single(await context.Rolls.AsNoTracking().ToListAsync());
+        Assert.Equal("Blessing of Luna", roll.ChangedReason);
+        Assert.Equal(new Snowflake(333), roll.ChangedBy);
+
+        await service.ChangeOutcomeAsync(message, null, "Oops", new Snowflake(333));
+
+        stats = Assert.Single(await service.GetStatsAsync());
+        Assert.Equal((0, 1), (stats.StrongHits, stats.Misses));
+        roll = Assert.Single(await context.Rolls.AsNoTracking().ToListAsync());
+        Assert.Null(roll.ChangedReason);
+    }
+
+    [Fact]
+    public void ChangingAnOutcome_RewritesTheEmbed_AndChangingBackRemovesTheNote()
+    {
+        var embed = new Embed(
+            Title: "🎲 Aria: Hack and Slash",
+            Fields: new List<EmbedField> { new(RollLabel.RolledWith, "STR +1"), new(MoveRoller.Describe(MoveOutcome.Miss), BasicMoves.HackAndSlash.Miss) });
+
+        var changed = RollOutcomeChange.Apply(embed, MoveOutcome.StrongHit, "Blessing of Luna", new Snowflake(42));
+
+        Assert.True(changed.Changed);
+        Assert.Equal(MoveOutcome.StrongHit, RollOutcomeChange.ChangedOf(changed.Embed));
+        var fields = changed.Embed.Fields.Value;
+        var note = Assert.Single(fields, f => f.Name == RollOutcomeChange.FieldName);
+        Assert.StartsWith("Your Miss (6-) counts as a Strong Hit (10+): Blessing of Luna", note.Value);
+        Assert.Contains(fields, f => f.Name == MoveRoller.Describe(MoveOutcome.StrongHit) && f.Value == BasicMoves.HackAndSlash.StrongHit);
+
+        var back = RollOutcomeChange.Apply(changed.Embed, MoveOutcome.Miss, "Oops", new Snowflake(42));
+
+        Assert.False(back.Changed);
+        Assert.Null(RollOutcomeChange.ChangedOf(back.Embed));
+        Assert.DoesNotContain(back.Embed.Fields.Value, f => f.Name == RollOutcomeChange.FieldName);
+    }
+
     private static IConfiguration GameChat(ulong channelID) =>
         new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["GameChatChannelId"] = channelID.ToString() }).Build();
 }

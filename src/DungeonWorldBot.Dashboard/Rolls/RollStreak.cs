@@ -24,7 +24,7 @@ public record RollStreak(bool Hot, int Length)
         var length = 0;
         foreach (var roll in newestFirst)
         {
-            var hit = new MoveDice(roll.First, roll.Second, roll.Total).Outcome != MoveOutcome.Miss;
+            var hit = MoveDice.Of(roll).Outcome != MoveOutcome.Miss;
             hot ??= hit;
             if (hit != hot)
                 break;
