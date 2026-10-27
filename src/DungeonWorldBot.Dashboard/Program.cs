@@ -69,7 +69,7 @@ builder.Services.AddSingleton(settings);
 var signInEnabled = builder.AddDiscordSignIn();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped(services =>
-    Viewer.From(services.GetRequiredService<IHttpContextAccessor>().HttpContext?.User, signInEnabled, settings));
+    Viewer.From(services.GetRequiredService<IHttpContextAccessor>().HttpContext?.User, signInEnabled));
 
 builder.Services.AddRazorComponents();
 

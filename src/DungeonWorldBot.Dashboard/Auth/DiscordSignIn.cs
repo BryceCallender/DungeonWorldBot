@@ -13,7 +13,7 @@ namespace DungeonWorldBot.Dashboard.Auth;
 /// <remarks>
 /// On only when Discord:ClientId and Discord:ClientSecret are set (from the bot's application in the Discord developer
 /// portal). Discord:GuildId limits it to that server's members. Without them the dashboard is open to anyone who can
-/// reach it, as before.
+/// reach it, as before. Members with the role in Discord:DungeonMasterRoleId are the DM.
 /// </remarks>
 public static class DiscordSignIn
 {
@@ -23,6 +23,10 @@ public static class DiscordSignIn
     public const string MemberClaim = "urn:sanasolem:member";
     public const string AvatarClaim = "urn:discord:avatar";
     public const string DisplayNameClaim = "urn:discord:display_name";
+    public const string DungeonMasterClaim = "urn:sanasolem:dm";
+
+    // Sana Solem's DM role. By ID rather than name like the bot, since only the server's roles' IDs reach the dashboard.
+    public const ulong DefaultDungeonMasterRoleID = 1325144809282998315;
 
     private const string Api = "https://discord.com/api";
 
@@ -41,6 +45,7 @@ public static class DiscordSignIn
             return false;
 
         var guildId = discord.GetValue<ulong?>("GuildId");
+        var dungeonMasterRoleId = discord.GetValue<ulong?>("DungeonMasterRoleId") ?? DefaultDungeonMasterRoleID;
 
         builder.Services
             .AddAuthentication(options =>
@@ -119,6 +124,11 @@ public static class DiscordSignIn
                         return;
 
                     identity.AddClaim(new Claim(MemberClaim, guildId.Value.ToString()));
+
+                    // Checked only here, so someone given or losing the role needs to sign in again
+                    if (member.RootElement.TryGetProperty("roles", out var roles)
+                        && roles.EnumerateArray().Any(r => r.GetString() == dungeonMasterRoleId.ToString()))
+                        identity.AddClaim(new Claim(DungeonMasterClaim, dungeonMasterRoleId.ToString()));
 
                     // Their server nickname is the name the table knows them by
                     if (String(member.RootElement, "nick") is { } nick && identity.FindFirst(DisplayNameClaim) is { } display)

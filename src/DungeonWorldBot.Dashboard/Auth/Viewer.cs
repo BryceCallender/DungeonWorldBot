@@ -1,5 +1,4 @@
 using System.Security.Claims;
-using DungeonWorldBot.Dashboard.Shared;
 
 namespace DungeonWorldBot.Dashboard.Auth;
 
@@ -15,7 +14,7 @@ public record Viewer(bool SignInEnabled, ulong? ID, string? Name, string? Avatar
 
     public bool Is(string id) => ID?.ToString() == id;
 
-    public static Viewer From(ClaimsPrincipal? user, bool signInEnabled, DashboardSettings settings)
+    public static Viewer From(ClaimsPrincipal? user, bool signInEnabled)
     {
         if (user?.Identity?.IsAuthenticated != true || !ulong.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var id))
             return new Viewer(signInEnabled, null, null, null, false);
@@ -28,6 +27,6 @@ public record Viewer(bool SignInEnabled, ulong? ID, string? Name, string? Avatar
             string.IsNullOrEmpty(avatar)
                 ? $"https://cdn.discordapp.com/embed/avatars/{(id >> 22) % 6}.png"
                 : $"https://cdn.discordapp.com/avatars/{id}/{avatar}.png?size=64",
-            id == settings.DungeonMasterID);
+            user.HasClaim(c => c.Type == DiscordSignIn.DungeonMasterClaim));
     }
 }

@@ -19,7 +19,6 @@ namespace DungeonWorldBot.Dashboard.Canvases;
 public class CanvasHub(
     CanvasPresence presence,
     CanvasStore store,
-    DashboardSettings settings,
     IEncounterService encounters,
     FightMoves moves,
     MoveResults results)
@@ -189,7 +188,7 @@ public class CanvasHub(
     }
 
     // With sign-in on, only signed-in members get this far, so being signed in says whether sign-in is on
-    private Viewer ViewerOf() => Viewer.From(Context.User, Context.User?.Identity?.IsAuthenticated == true, settings);
+    private Viewer ViewerOf() => Viewer.From(Context.User, Context.User?.Identity?.IsAuthenticated == true);
 
     private static string CheckID(string id) =>
         !string.IsNullOrWhiteSpace(id) && id.Length <= CanvasStore.MaxItemIDLength
