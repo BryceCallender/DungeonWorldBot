@@ -19,6 +19,7 @@ public static class TacticRules
     public const string ChangeTactics = "Change Tactics";
     public const string Counterattack = "Counterattack";
     public const string DefaultTacticPrefix = "Default Tactic: ";
+    public const string RecklessAggression = "Reckless Aggression";
 
     /// <summary>
     /// The ability whose description holds the active Tactic's name. Without it, the Default Tactic is active.
@@ -112,15 +113,21 @@ public static class TacticRules
         IsIn(character, Reckless) ? RecklessDamageDice : null;
 
     /// <summary>
+    /// Whether the character rolls damage twice and keeps the better, from Reckless Aggression in Aggressive Tactics.
+    /// </summary>
+    public static bool RollsDamageTwice(Character character) =>
+        IsIn(character, Aggressive) && Knows(character, RecklessAggression);
+
+    /// <summary>
     /// Reminders from the character's advanced moves that work in their current Tactic.
     /// </summary>
     public static IEnumerable<string> Reminders(Character character)
     {
         var tactic = Current(character);
-        if (tactic == Reckless && Knows(character, "Reckless Aggression"))
-            yield return "**Reckless Aggression:** your melee attacks gain +2 piercing.";
-        if (tactic == Aggressive && Knows(character, "Reckless Aggression"))
-            yield return "**Reckless Aggression:** roll damage twice and keep the better result.";
+        if (tactic == Reckless && Knows(character, RecklessAggression))
+            yield return $"**{RecklessAggression}:** your melee attacks gain +2 piercing.";
+        if (RollsDamageTwice(character))
+            yield return $"**{RecklessAggression}:** your damage is rolled twice, keeping the better result.";
         if (tactic == Cautious && Knows(character, "Combat Sight"))
             yield return "**Combat Sight:** a 10+ on Defy Danger gains you a Gambit.";
         if (tactic == Reactive && Knows(character, "Combat Sight"))

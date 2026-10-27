@@ -84,4 +84,17 @@ public class TacticTests
     [Fact]
     public void Reckless_AddsAD4() =>
         Assert.Equal("1d4", TacticRules.ExtraDamage(Battlemaster("Cautious", "Reckless")));
+
+    [Fact]
+    public void RecklessAggression_RollsDamageTwice_OnlyInAggressive()
+    {
+        var aggressive = Battlemaster("Aggressive");
+        aggressive.Abilities!.Add(new Ability { Name = TacticRules.RecklessAggression });
+        var reckless = Battlemaster("Aggressive", "Reckless");
+        reckless.Abilities!.Add(new Ability { Name = TacticRules.RecklessAggression });
+
+        Assert.True(TacticRules.RollsDamageTwice(aggressive));
+        Assert.False(TacticRules.RollsDamageTwice(reckless));
+        Assert.False(TacticRules.RollsDamageTwice(Battlemaster("Aggressive")));
+    }
 }

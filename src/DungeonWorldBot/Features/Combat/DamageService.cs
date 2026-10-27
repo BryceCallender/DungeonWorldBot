@@ -38,9 +38,22 @@ public class DamageService : IDamageService
         if (!_diceRoller.TryRoll(expression, out var dice))
             return null;
 
-        var gear = await ApplyGearAsync(character, move, DamageDice(dice));
+        var notes = new List<string>();
         if (tactic is not null)
-            gear = gear with { Notes = gear.Notes.Prepend($"{TacticRules.Current(character)!.Name} Tactics: +{tactic} damage").ToList() };
+            notes.Add($"{TacticRules.Current(character)!.Name} Tactics: +{tactic} damage");
+
+        // Reckless Aggression: in Aggressive Tactics, roll twice and keep the better. Gear applies once, to the kept roll,
+        // so effects like counters don't trigger for the discarded one
+        if (TacticRules.RollsDamageTwice(character) && _diceRoller.TryRoll(expression, out var second))
+        {
+            var kept = second.Value > dice.Value ? second : dice;
+            notes.Add($"{TacticRules.RecklessAggression}: rolled {dice.Value} and {second.Value}, kept **{kept.Value}**");
+            dice = kept;
+        }
+
+        var gear = await ApplyGearAsync(character, move, DamageDice(dice));
+        if (notes.Count > 0)
+            gear = gear with { Notes = [..notes, ..gear.Notes] };
         return new DamageRoll(expression, dice, dice.Value + gear.Bonus, bonuses, gear);
     }
 
