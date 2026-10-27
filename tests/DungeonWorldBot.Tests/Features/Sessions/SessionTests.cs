@@ -115,4 +115,18 @@ public sealed class SessionTests : IDisposable
         Assert.Empty(await Service(context).BackfillAsync());
         Assert.Equal(3, (await sessions.GetAllAsync()).Count);
     }
+
+    [Fact]
+    public async Task Rename_TidiesTheTitle_OrTakesItAway()
+    {
+        await using var context = _db.CreateContext();
+        var sessions = Service(context);
+        var session = (await sessions.StartAsync())!;
+
+        await sessions.RenameAsync(session, "  The Ford ");
+        Assert.Equal("The Ford", (await sessions.GetCurrentAsync())?.Title);
+
+        await sessions.RenameAsync(session, " ");
+        Assert.Null((await sessions.GetCurrentAsync())?.Title);
+    }
 }
