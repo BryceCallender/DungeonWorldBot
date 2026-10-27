@@ -1,0 +1,100 @@
+@using System.Globalization
+
+@* Who the party's NPCs are loyal to, drawn as a web: the party round a campfire in the middle, and each NPC outside it,
+   tied to the character they follow (or to the camp, if they travel with everyone). The tie's colour and thickness say
+   how loyal they are, so the hireling who's about to walk stands out in red. *@
+@if (Hirelings.Count > 0)
+{
+    <svg class="npc-web" viewBox="0 0 @F(Width) @F(Height)" role="img" aria-label="The NPCs' loyalty">
+        @foreach (var tie in _ties)
+        {
+            <line class="tie @Mood(tie.Npc.Loyalty)" x1="@F(tie.Npc.X)" y1="@F(tie.Npc.Y)" x2="@F(tie.To.X)" y2="@F(tie.To.Y)"
+                  style="stroke-width: @F(Math.Clamp(2 + tie.Npc.Loyalty, 1, 6))">
+                <title>@TieTitle(tie)</title>
+            </line>
+        }
+
+        <g class="camp">
+            <circle cx="@F(Cx)" cy="@F(Cy)" r="26" />
+            <g><text x="@F(Cx)" y="@F(Cy)" dy=".35em">🏕️</text></g>
+        </g>
+
+        @foreach (var node in _nodes)
+        {
+            <g class="@NodeClass(node)" style="@node.Color">
+                <title>@NodeTitle(node)</title>
+                <circle cx="@F(node.X)" cy="@F(node.Y)" r="@F(node.IsNpc ? 22 : 26)" />
+                <text class="initial" x="@F(node.X)" y="@F(node.Y)" dy=".35em">@node.Name[..1]</text>
+                <text class="label" x="@F(node.X)" y="@F(node.Y + (node.IsNpc ? 38 : 42))">@node.Name</text>
+                @if (node.IsNpc)
+                {
+                    <g><text class="loyalty" x="@F(node.X)" y="@F(node.Y + 52)">loyalty @Signed(node.Loyalty)</text></g>
+                }
+            </g>
+        }
+    </svg>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<Npc> Hirelings { get; set; } = [];
+
+    /// <summary>
+    /// The party, round the camp.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<Character> Characters { get; set; } = [];
+
+    private const double Width = 640, Height = 460, Cx = Width / 2, Cy = Height / 2 - 10;
+
+    private record Node(string Name, double X, double Y, bool IsNpc, int Loyalty, string? Color, bool IsCamp = false);
+
+    private record Tie(Node Npc, Node To);
+
+    private List<Node> _nodes = [];
+    private List<Tie> _ties = [];
+
+    protected override void OnParametersSet()
+    {
+        var camp = new Node("The party", Cx, Cy, false, 0, null, IsCamp: true);
+
+        // The party round the camp; NPCs further out, next to whoever they follow where they can be
+        var party = Characters
+            .Select((c, i) =>
+            {
+                var angle = -Math.PI / 2 + i * 2 * Math.PI / Math.Max(1, Characters.Count);
+                return (c.ID, Node: new Node(c.Name, Cx + Math.Cos(angle) * 120, Cy + Math.Sin(angle) * 95, false, 0, Lookup.ColorOf(c.Class.Type)), Angle: angle);
+            })
+            .ToList();
+
+        var npcs = Hirelings
+            .Select((n, i) =>
+            {
+                var leader = party.FirstOrDefault(p => n.FollowsID is { } f && p.ID == f);
+                // Followers fan out beyond their leader; the rest spread round the outside
+                var angle = leader.Node is not null
+                    ? leader.Angle + (Hirelings.Where(o => o.FollowsID == n.FollowsID).ToList().IndexOf(n) - .5) * .35
+                    : -Math.PI / 2 + Math.PI / Math.Max(1, Hirelings.Count) + i * 2 * Math.PI / Math.Max(1, Hirelings.Count);
+                var node = new Node(n.Name, Cx + Math.Cos(angle) * 250, Cy + Math.Sin(angle) * 175, true, n.Loyalty, null);
+                return new Tie(node, leader.Node ?? camp);
+            })
+            .ToList();
+
+        _nodes = party.Select(p => p.Node).Concat(npcs.Select(t => t.Npc)).ToList();
+        _ties = npcs;
+    }
+
+    private static string TieTitle(Tie tie) =>
+        $"{tie.Npc.Name} {(tie.To.IsCamp ? "travels with the party" : "follows " + tie.To.Name)} · loyalty {Signed(tie.Npc.Loyalty)}";
+
+    private static string NodeClass(Node node) => node.IsNpc ? "node npc " + Mood(node.Loyalty) : "node character classed";
+
+    private static string NodeTitle(Node node) => node.IsNpc ? $"{node.Name} · loyalty {Signed(node.Loyalty)}" : node.Name;
+
+    // Not a switch: Razor reads a line starting with "<" in code as the start of a tag
+    private static string Mood(int loyalty) => loyalty < 0 ? "wavering" : loyalty == 0 ? "steady" : "loyal";
+
+    private static string Signed(int value) => value > 0 ? $"+{value}" : value.ToString();
+
+    private static string F(double value) => value.ToString("0.#", CultureInfo.InvariantCulture);
+}

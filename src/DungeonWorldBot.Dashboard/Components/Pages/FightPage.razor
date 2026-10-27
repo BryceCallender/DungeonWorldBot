@@ -1,0 +1,105 @@
+@page "/fight/{Id:int}"
+@using System.Text.Json
+@using DungeonWorldBot.Dashboard.Encounters
+@inject FightReplayReader Replays
+@inject Viewer Viewer
+
+@* A fight played back from its timeline: who did what to whom, step by step, with the hits landing and enemies falling.
+   replay.js plays it from the data below. It doesn't refresh itself (data-no-live), so a replay isn't cut off halfway. *@
+@if (_replay is not { } r)
+{
+    <PageTitle>Not found · Sana Solem</PageTitle>
+    <p class="empty">No fight with that number. <a href="bestiary">To the bestiary</a></p>
+    return;
+}
+
+<PageTitle>⚔️ @r.Fight.Name · Sana Solem</PageTitle>
+
+<header class="fight-head">
+    <h1>⚔️ @r.Fight.Name</h1>
+    <div class="muted">
+        @r.Fight.StartedAt.ToLocalTime().ToString("dddd d MMMM yyyy, h:mm tt")
+        @if (r.Fight.SceneID is { } scene)
+        {
+            <span> · on <a href="scene/@scene">@(r.Fight.SceneName ?? "its scene")</a></span>
+        }
+        @(r.Fight.EndedAt is null ? " · still going" : "")
+    </div>
+</header>
+
+@if (r.Steps.Count == 0)
+{
+    <p class="empty">Nothing happened in this fight yet, so there's nothing to replay.</p>
+    return;
+}
+
+<div class="replay" data-no-live data-replay>
+    <div class="replay-stage">
+        <div class="replay-side party" data-side="party"></div>
+        <div class="replay-middle">
+            <div class="replay-caption" data-caption aria-live="polite"></div>
+        </div>
+        <div class="replay-side enemies" data-side="enemies"></div>
+        <svg class="replay-arrow" data-arrow aria-hidden="true">
+            <defs><marker id="replay-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" /></marker></defs>
+            <path marker-end="url(#replay-head)" />
+        </svg>
+    </div>
+
+    <div class="replay-controls card">
+        <button type="button" class="tool" data-step="-1" title="Back a step (←)" aria-label="Back a step">⏮</button>
+        <button type="button" class="tool play" data-play title="Play or pause (Space)" aria-label="Play">▶</button>
+        <button type="button" class="tool" data-step="1" title="Forward a step (→)" aria-label="Forward a step">⏭</button>
+        <input type="range" min="0" max="@r.Steps.Count" value="0" data-scrub aria-label="Where in the fight" />
+        <span class="replay-count small" data-count>0 / @r.Steps.Count</span>
+        <select data-speed aria-label="Speed">
+            <option value="2200">Slow</option>
+            <option value="1400" selected>Normal</option>
+            <option value="700">Fast</option>
+        </select>
+    </div>
+
+    <ol class="replay-log card" data-log>
+        @foreach (var (step, i) in r.Steps.Select((s, i) => (s, i)))
+        {
+            <li data-index="@(i + 1)">
+                <span class="muted">@step.At</span>
+                <strong>@step.ActorName</strong> · @step.Action@(step.TargetName is { } t ? $" → {t}" : "")
+                @if (step.Roll is not null)
+                {
+                    <span class="small muted">🎲 @step.Roll</span>
+                }
+                @if (step.Result is not null)
+                {
+                    <span class="small">@step.Result</span>
+                }
+            </li>
+        }
+    </ol>
+</div>
+
+<script type="application/json" data-replay-data>@((MarkupString)_json)</script>
+<script src="replay.js" defer></script>
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private FightReplay? _replay;
+    private string _json = "{}";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _replay = await Replays.GetAsync(Id);
+        if (_replay is not { } r)
+            return;
+
+        // Players see how hurt enemies look, not their numbers, so their health goes down in quarters for them
+        _json = JsonSerializer.Serialize(new
+        {
+            exact = EncounterEndpoints.CanRun(Viewer),
+            fighters = r.Fighters,
+            steps = r.Steps,
+        }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+    }
+}

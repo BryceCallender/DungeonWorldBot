@@ -6,6 +6,7 @@ using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Features.Encounters;
 using DungeonWorldBot.Features.Moves;
+using DungeonWorldBot.Rules;
 using Microsoft.EntityFrameworkCore;
 using Remora.Rest.Core;
 
@@ -97,7 +98,7 @@ public class FightMoves(CanvasStore store, IEncounterService encounters, ICharac
         {
             case FighterKind.Character when OwnCharacter(fight, viewer, actor) is { } id
                                            && await characters.GetCharacterFromUserAsync(new Snowflake(id)) is { } character:
-                var stats = character.Stats.ToDictionary(s => s.StatType.ToString().ToLowerInvariant(), s => s.Modifier);
+                var stats = character.Stats.ToDictionary(s => s.StatType.ToString().ToLowerInvariant(), s => s.Modifier + Penalty(character, s.StatType));
                 return CharacterMoves.For(character).Select(m => new BoardMove(
                     m.IsClassMove ? MoveRequestKind.ClassMove : MoveRequestKind.BasicMove,
                     m.Name,
@@ -113,16 +114,17 @@ public class FightMoves(CanvasStore store, IEncounterService encounters, ICharac
         }
     }
 
-    // What a move adds to its 2d6, worked out as the bot will when it rolls it
+    // What a move adds to its 2d6, worked out as the bot will when it rolls it, debilities and all
     private int? ModifierFor(Character character, CharacterMove move)
     {
-        if (move.IsClassMove)
-            return characterMoves.PrepareClassMove(character, move.Name).Input?.Modifier;
+        var input = move.IsClassMove
+            ? characterMoves.PrepareClassMove(character, move.Name).Input
+            : BasicMoves.All.FirstOrDefault(b => b.Name == move.Name) is { Stat: { } stat } ? MoveInput.ForStat(character, stat, 0) : null;
 
-        return BasicMoves.All.FirstOrDefault(b => b.Name == move.Name) is { Stat: { } stat }
-            ? MoveInput.ForStat(character, stat, 0)?.Modifier
-            : null;
+        return input is null ? null : input.Modifier + (input.Stat is { } rolled ? Penalty(character, rolled) : 0);
     }
+
+    private static int Penalty(Character character, StatType stat) => DebilityRules.RollPenalty(character, stat)?.Penalty ?? 0;
 
     public async Task<MoveAsked> AskAsync(int canvasID, Viewer viewer, MoveAsk ask)
     {

@@ -20,8 +20,9 @@ const drawing = new Konva.Layer();                         // saved strokes and 
 const tokens = new Konva.Layer();                          // pieces you can move
 const handles = new Konva.Layer();                         // the box and corners around selected text
 const others = new Konva.Layer({ listening: false });      // other people's cursors and half-drawn strokes
+const badges = new Konva.Layer({ listening: false });      // conditions over fighters' tokens, never saved
 const effects = new Konva.Layer({ listening: false });     // damage numbers floating off tokens, never saved
-stage.add(grid, pictures, drawing, tokens, handles, others, effects);
+stage.add(grid, pictures, drawing, tokens, badges, handles, others, effects);
 
 // The part of the board you can see, in board units
 function visibleArea() {
@@ -244,6 +245,9 @@ const isLocked = (node: Konva.Node) => !runsFights && locked.has(node.id());
 // Whether you can only look at the board, not change it: someone watching a fight they're not in (see checkViewOnly)
 let viewOnly = false;
 
+// Each fighter's condition badge, by their token (see showBadges)
+const badgeFor = new Map<Konva.Node, Konva.Label>();
+
 function addItem(id: string, type: CanvasItemType, json: ItemJson, author?: string) {
     if (author === FIGHT_AUTHOR) locked.add(id);
     const wasSelected = selected()?.id() === id;
@@ -311,6 +315,8 @@ function listTokens() {
         return li;
     }));
     showDefeated();
+    // Tokens arrive after the panel, and come and go, so their badges are worked out again
+    showBadges();
 }
 
 // ---- Defeated enemies ----------------------------------------------------------------------------------------------
@@ -1466,7 +1472,51 @@ function checkViewOnly() {
 checkViewOnly();
 const boardSide = document.querySelector('.board-side');
 // Whoever's defeated can change with any fresh panel too, whether or not you can change the board
-if (boardSide) new MutationObserver(() => { checkViewOnly(); showDefeated(); showWounds(); }).observe(boardSide, { childList: true });
+if (boardSide) new MutationObserver(() => { checkViewOnly(); showDefeated(); showWounds(); showBadges(); }).observe(boardSide, { childList: true });
+
+// ---- Condition badges ------------------------------------------------------------------------------------------------
+
+// A little pill of icons at the top right of a fighter's token: a character's debilities (🫨 Shaky) or 0 HP, and how hurt
+// an enemy looks (🤕 🩸 💀). The encounter panel says which; they follow their token as it's dragged around.
+
+function showBadges() {
+    const wanted = new Map<Konva.Node, { icons: string; title: string }>();
+    for (const li of document.querySelectorAll<HTMLElement>('[data-encounter-panel] [data-wounds] li')) {
+        const icons = li.dataset.badges?.trim();
+        const token = icons && tokenFor(li.dataset.fighter!, li.dataset.name ?? '');
+        if (token) wanted.set(token, { icons, title: li.dataset.badgeTitle ?? '' });
+    }
+    for (const [token, label] of badgeFor) {
+        if (wanted.has(token) && token.getLayer()) continue;
+        label.destroy();
+        badgeFor.delete(token);
+    }
+    for (const [token, { icons }] of wanted) {
+        let label = badgeFor.get(token);
+        if (!label) {
+            label = new Konva.Label();
+            label.add(new Konva.Tag({ fill: themeColor('--surface', '#1c1714'), stroke: themeColor('--border', '#3a2e27'), strokeWidth: 1, cornerRadius: 999, shadowColor: 'black', shadowBlur: 4, shadowOpacity: .35 }));
+            label.add(new Konva.Text({ fontSize: 15, padding: 3, fontFamily: 'system-ui, sans-serif' }));
+            badges.add(label);
+            badgeFor.set(token, label);
+        }
+        label.getText().text(icons);
+    }
+    placeBadges();
+}
+
+// Over each token's top right edge, the same size on screen however far you're zoomed
+function placeBadges() {
+    const scale = 1 / stage.scaleX();
+    for (const [token, label] of badgeFor) {
+        const box = token.getClientRect({ relativeTo: tokens });
+        label.scale({ x: scale, y: scale });
+        label.position({ x: box.x + box.width * .78 - label.width() * scale / 2, y: box.y - label.height() * scale * .35 });
+    }
+    badges.batchDraw();
+}
+// Tokens move (dragged, or by someone else) and the board zooms, so the badges follow whenever the tokens are drawn
+tokens.on('draw', placeBadges);
 
 // ---- Damage floaters -------------------------------------------------------------------------------------------------
 
@@ -1506,8 +1556,10 @@ function showWounds() {
     }
 }
 
-const themeColor = (name: string, fallback: string) =>
-    getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+// A declaration rather than a const, since badges (drawn whenever the token list is) can need it before this line runs
+function themeColor(name: string, fallback: string) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
 
 // Negative is damage, positive healing
 function floatOff(token: Konva.Node, change: number) {
@@ -1550,6 +1602,70 @@ function floatOff(token: Konva.Node, change: number) {
     }
 }
 showWounds();
+showBadges();
+
+// ---- The party's trail (map scenes) -----------------------------------------------------------------------------------
+
+// A map has one pin for the party. Dragging it somewhere new adds where it was to a dotted trail behind it, so the map
+// shows the road they've travelled, older stops fading. Both are ordinary items (the pin a token marked partyPin, the
+// trail a drawing marked partyTrail), so they're saved and shared like anything else on the board.
+const TRAIL_COLOR = '#e8a33a';
+// Shorter hops than this are tidying the pin's spot, not travelling
+const TRAIL_STEP = 24;
+
+const partyPin = () => (tokens.getChildren() as Konva.Node[]).find(t => t.getAttr('partyPin')) as Konva.Group | undefined;
+const partyTrail = () => (drawing.getChildren() as Konva.Node[]).find(t => t.getAttr('partyTrail')) as Konva.Group | undefined;
+
+document.querySelector('[data-party-pin]')?.addEventListener('click', () => {
+    let pin = partyPin();
+    if (!pin) {
+        // In the middle of what you can see
+        const at = { x: (stage.width() / 2 - stage.x()) / stage.scaleX(), y: (stage.height() / 2 - stage.y()) / stage.scaleY() };
+        pin = new Konva.Group({ id: crypto.randomUUID(), ...at, name: 'The party', partyPin: true });
+        pin.add(new Konva.Circle({ radius: TOKEN_RADIUS * .8, fill: TRAIL_COLOR, stroke: '#ffffff', strokeWidth: 3, shadowColor: 'black', shadowBlur: 8, shadowOpacity: .4 }));
+        pin.add(new Konva.Text({ text: '🧭', fontSize: TOKEN_RADIUS * .9, x: -TOKEN_RADIUS * .45, y: -TOKEN_RADIUS * .45, listening: false }));
+        prepare(pin, 'token');
+        tokens.add(pin);
+        listTokens();
+        live?.addItem(pin.id(), 'token', pin.toObject());
+        remember('added', pin);
+    }
+    select(pin);
+});
+
+let pinFrom: { x: number; y: number } | null = null;
+tokens.on('dragstart', e => { const node: Konva.Node = e.target; pinFrom = node.getAttr('partyPin') ? node.position() : null; });
+tokens.on('dragend', e => {
+    const node: Konva.Node = e.target;
+    if (!pinFrom || !node.getAttr('partyPin')) return;
+    const from = pinFrom, to = node.position();
+    pinFrom = null;
+    if (Math.hypot(to.x - from.x, to.y - from.y) < TRAIL_STEP) return;
+
+    // The stops so far, then where it's just left, ending at where it is now
+    const old = partyTrail();
+    const stops: { x: number; y: number; at: string }[] = old?.getAttr('stops') ?? [];
+    stops.push({ ...from, at: new Date().toISOString() });
+    const trail = drawTrail(old?.id() ?? crypto.randomUUID(), stops, to);
+    old?.destroy();
+    drawing.add(trail);
+    live?.addItem(trail.id(), 'stroke', trail.toObject());
+});
+
+// A dashed path through every stop to the pin, with a dot at each stop, fainter the longer ago it was
+function drawTrail(id: string, stops: { x: number; y: number; at: string }[], to: { x: number; y: number }) {
+    const trail = new Konva.Group({ id, name: 'Party trail', partyTrail: true, stops, listening: false });
+    trail.add(new Konva.Line({
+        points: [...stops.flatMap(s => [s.x, s.y]), to.x, to.y],
+        stroke: TRAIL_COLOR, strokeWidth: 4, dash: [2, 12], lineCap: 'round', lineJoin: 'round', opacity: .9,
+        tension: .25,
+    }));
+    stops.forEach((s, i) => trail.add(new Konva.Circle({
+        x: s.x, y: s.y, radius: 7, fill: TRAIL_COLOR, stroke: '#ffffff', strokeWidth: 2,
+        opacity: .35 + .65 * ((i + 1) / stops.length),
+    })));
+    return trail;
+}
 
 // ---- Thumbnail for the canvases page --------------------------------------------------------------------------
 
@@ -1577,6 +1693,7 @@ async function saveThumbnail() {
     handles.hide();
     others.hide();
     effects.hide();
+    badges.hide();
     try {
         // The grid is only drawn where you're looking; draw it under the frame instead, just while the picture is
         // drawn (which happens before toBlob returns), so the board on screen never shows it
@@ -1598,6 +1715,7 @@ async function saveThumbnail() {
         handles.show();
         others.show();
         effects.show();
+        badges.show();
     }
 }
 

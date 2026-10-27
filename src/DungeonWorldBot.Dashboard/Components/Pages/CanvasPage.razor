@@ -114,6 +114,11 @@
             <p class="token-empty" data-tokens-empty>Nothing on the board yet.</p>
             <button type="button" class="tool token-add" data-tool="token">+ Add token</button>
             <button type="button" class="tool token-add" data-pick="token">+ Image token</button>
+            @if (c.Kind == CanvasKind.Map)
+            {
+                @* The party's pin, which leaves a trail of where they've been as it's dragged around (canvas.ts) *@
+                <button type="button" class="tool token-add" data-party-pin title="Drag the pin as the party travels; it leaves a trail">🧭 The party's pin</button>
+            }
         </aside>
     </div>
 </div>

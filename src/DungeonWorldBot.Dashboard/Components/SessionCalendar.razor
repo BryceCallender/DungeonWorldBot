@@ -64,6 +64,10 @@
                                 <dt>Nat 2s</dt><dd>@session.Natural2s</dd>
                                 <dt>Avg dice</dt><dd class="@Luck(session)">@session.AverageNatural.ToString("0.0")</dd>
                             </dl>
+                            @if (session.Number is { } number)
+                            {
+                                <a class="small" href="session/@number">Open the session →</a>
+                            }
                         </div>
                     }
                     else

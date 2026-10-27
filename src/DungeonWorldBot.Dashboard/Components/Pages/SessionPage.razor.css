@@ -1,0 +1,30 @@
+.session-nav { display: flex; gap: 1rem; justify-content: space-between; font-size: .85rem; margin-bottom: .75rem; }
+.session-nav a:nth-child(2) { margin: 0 auto; }
+
+.session-head { margin-bottom: 1rem; }
+.session-head h1 { margin-bottom: .25rem; }
+.session-head .chip { display: inline-flex; align-items: center; gap: .4rem; margin-left: .5rem; }
+
+.night-card { padding: 1rem; }
+.night-chart { display: block; width: 100%; height: auto; overflow: visible; }
+.night-chart .grid { stroke: var(--border); stroke-dasharray: 3 4; }
+.night-chart .axis { font-size: 11px; fill: var(--muted); }
+.night-chart polyline { fill: none; stroke: var(--accent); stroke-width: 2.5; stroke-linejoin: round; }
+.night-chart .tick { stroke-width: 3; stroke-linecap: round; }
+.night-chart .tick.strong { stroke: var(--good); }
+.night-chart .tick.weak { stroke: var(--low); }
+.night-chart .tick.miss { stroke: var(--critical); }
+
+.session-fights { list-style: none; margin: .75rem 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: .75rem; }
+.session-fights li { display: flex; flex-direction: column; gap: .2rem; }
+.session-fights a strong { color: var(--text); }
+
+.table-card { padding: 0; overflow-x: auto; margin-top: .75rem; }
+.roll-log { width: 100%; border-collapse: collapse; }
+.roll-log th, .roll-log td { padding: .45rem .8rem; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; font-size: .9rem; }
+.roll-log th { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+.roll-log tbody tr:last-child td { border-bottom: 0; }
+.roll-log .num { text-align: right; font-variant-numeric: tabular-nums; }
+.roll-log tr.strong .outcome { color: var(--good); font-weight: 600; }
+.roll-log tr.weak .outcome { color: var(--low); font-weight: 600; }
+.roll-log tr.miss .outcome { color: var(--critical); font-weight: 600; }
