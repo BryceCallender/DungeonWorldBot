@@ -67,14 +67,7 @@
                         <li class="ribbon-who classed @(line == latest ? "latest" : null) @(line.Quiet ? "quiet" : null)" style="@(view is null ? null : Lookup.ColorOf(view.Character.Class.Type))"
                             title="@RibbonTitle(line)">
                             <span class="ribbon-face">
-                                @if (line.CharacterID is { } cid && _portraits.GetValueOrDefault(cid.Value) is { } picture)
-                                {
-                                    <img src="@picture" alt="" />
-                                }
-                                else
-                                {
-                                    <span class="ribbon-initial">@line.Name[..1]</span>
-                                }
+                                <Face Name="@line.Name" Picture="@(line.CharacterID is { } cid ? _portraits.GetValueOrDefault(cid.Value) : null)" />
                                 @if (line.Actions > 0)
                                 {
                                     <span class="ribbon-count">@line.Actions</span>

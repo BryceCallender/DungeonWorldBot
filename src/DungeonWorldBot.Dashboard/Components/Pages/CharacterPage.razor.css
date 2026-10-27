@@ -38,7 +38,7 @@ ul.items li {
 
 /* The name, with their picture before it and the story link beside it (wrapping underneath when there's no room) */
 .hero-title { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .9rem; }
-.portrait { flex: none; width: 56px; height: 56px; border-radius: 50%; object-fit: cover; border: 2px solid var(--class, var(--border)); }
+.portrait { flex: none; display: grid; place-items: center; width: 56px; height: 56px; border-radius: 50%; overflow: hidden; border: 2px solid var(--class, var(--border)); background: color-mix(in srgb, var(--class, var(--muted)) 20%, var(--surface)); font-size: 1.5rem; }
 
 /* Setting the picture: quiet links under the name, for their player or the DM */
 .portrait-actions { display: flex; gap: .9rem; margin: .1rem 0 .3rem; }

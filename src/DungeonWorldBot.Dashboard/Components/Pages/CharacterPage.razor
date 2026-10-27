@@ -22,10 +22,7 @@
     <div class="hero-main">
         @* Backstory, goals and notes have their own page; the link sits with the name, since it's about who they are *@
         <div class="hero-title">
-            @if (_portrait is not null)
-            {
-                <img class="portrait" src="@_portrait" alt="" width="56" height="56" />
-            }
+            <span class="portrait"><Face Name="@c.Name" Picture="@_portrait" /></span>
             <h1>@c.Name</h1>
             <a class="story-link" href="@c.Url/story"><Icon Name="notes" />Story →</a>
         </div>

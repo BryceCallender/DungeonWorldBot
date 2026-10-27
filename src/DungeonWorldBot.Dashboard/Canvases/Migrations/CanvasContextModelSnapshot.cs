@@ -133,28 +133,6 @@ namespace DungeonWorldBot.Dashboard.Canvases.Migrations
                     b.ToTable("CanvasThumbnails");
                 });
 
-            modelBuilder.Entity("DungeonWorldBot.Dashboard.Party.CharacterPortrait", b =>
-                {
-                    b.Property<ulong>("CharacterID")
-                        .HasColumnType("INTEGER");
-
-                    b.Property<string>("ContentType")
-                        .IsRequired()
-                        .HasMaxLength(32)
-                        .HasColumnType("TEXT");
-
-                    b.Property<byte[]>("Data")
-                        .IsRequired()
-                        .HasColumnType("BLOB");
-
-                    b.Property<DateTime>("UpdatedAt")
-                        .HasColumnType("TEXT");
-
-                    b.HasKey("CharacterID");
-
-                    b.ToTable("CharacterPortraits");
-                });
-
             modelBuilder.Entity("DungeonWorldBot.Dashboard.Canvases.CanvasImage", b =>
                 {
                     b.HasOne("DungeonWorldBot.Dashboard.Canvases.Canvas", "Canvas")

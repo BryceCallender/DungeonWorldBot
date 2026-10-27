@@ -9,7 +9,8 @@
     const still = matchMedia('(prefers-reduced-motion: reduce)');
     const el = (tag, className, text) => Object.assign(document.createElement(tag), className ? { className } : {}, text != null ? { textContent: text } : {});
 
-    // Each fighter's card, by key
+    // Each fighter's card, by key, with their face as the page drew it (Face.razor: their picture, or their initial)
+    const faces = root.querySelector('template[data-faces]')?.content;
     const cards = new Map();
     for (const f of data.fighters) {
         const card = el('div', 'fighter');
@@ -20,7 +21,8 @@
             card.style.setProperty('--class-dark', f.color.dark);
         }
         const face = el('span', 'fighter-face');
-        if (f.portrait) face.append(Object.assign(el('img'), { src: f.portrait, alt: '' }));
+        const drawn = faces?.querySelector(`[data-face="${CSS.escape(f.key)}"]`);
+        if (drawn) face.append(...drawn.cloneNode(true).childNodes);
         else face.textContent = f.name.charAt(0);
         const body = el('div', 'fighter-body');
         body.append(el('span', 'fighter-name', f.name));

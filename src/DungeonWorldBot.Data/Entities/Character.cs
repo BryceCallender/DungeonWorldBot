@@ -48,4 +48,9 @@ public class Character
     /// Where the character comes from, written by their player on the dashboard.
     /// </summary>
     public string? Backstory { get; set; }
+
+    /// <summary>
+    /// Their picture, set on the dashboard. Only there when included.
+    /// </summary>
+    public CharacterPortrait? Portrait { get; set; }
 }

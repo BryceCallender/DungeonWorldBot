@@ -150,6 +150,32 @@ namespace DungeonWorldBot.Data.Migrations
                     b.ToTable("Characters");
                 });
 
+            modelBuilder.Entity("DungeonWorldBot.Data.Entities.CharacterPortrait", b =>
+                {
+                    b.Property<ulong>("CharacterID")
+                        .HasColumnType("INTEGER")
+                        .HasColumnName("ID");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(32)
+                        .HasColumnType("TEXT")
+                        .HasColumnName("PortraitContentType");
+
+                    b.Property<byte[]>("Data")
+                        .IsRequired()
+                        .HasColumnType("BLOB")
+                        .HasColumnName("PortraitData");
+
+                    b.Property<DateTime>("UpdatedAt")
+                        .HasColumnType("TEXT")
+                        .HasColumnName("PortraitUpdatedAt");
+
+                    b.HasKey("CharacterID");
+
+                    b.ToTable("Characters", (string)null);
+                });
+
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.CharacterResource", b =>
                 {
                     b.Property<int>("ID")
@@ -845,6 +871,15 @@ namespace DungeonWorldBot.Data.Migrations
                     b.Navigation("Location");
                 });
 
+            modelBuilder.Entity("DungeonWorldBot.Data.Entities.CharacterPortrait", b =>
+                {
+                    b.HasOne("DungeonWorldBot.Data.Entities.Character", null)
+                        .WithOne("Portrait")
+                        .HasForeignKey("DungeonWorldBot.Data.Entities.CharacterPortrait", "CharacterID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.CharacterResource", b =>
                 {
                     b.HasOne("DungeonWorldBot.Data.Entities.Character", "Character")
@@ -1040,6 +1075,8 @@ namespace DungeonWorldBot.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Notes");
+
+                    b.Navigation("Portrait");
 
                     b.Navigation("Resources");
 

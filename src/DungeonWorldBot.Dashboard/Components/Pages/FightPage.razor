@@ -51,6 +51,13 @@
             <div class="replay-caption" data-caption aria-live="polite"></div>
         </div>
         <div class="replay-side enemies" data-side="enemies"></div>
+        @* Everyone's face, for replay.js to put on their card *@
+        <template data-faces>
+            @foreach (var f in r.Fighters)
+            {
+                <span data-face="@f.Key"><Face Name="@f.Name" Picture="@f.Portrait" /></span>
+            }
+        </template>
         <svg class="replay-arrow" data-arrow aria-hidden="true">
             <defs><marker id="replay-head" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse"><path d="M0,0 L10,5 L0,10 z" /></marker></defs>
             <path marker-end="url(#replay-head)" />
@@ -138,7 +145,7 @@
             exact,
             fighters = r.Fighters.Select(f => new
             {
-                f.Key, f.Name, f.Side, f.Portrait, f.Color,
+                f.Key, f.Name, f.Side, f.Color,
                 Tracked = f.MaxHP is > 0,
                 MaxHP = exact || f.Side == "party" ? f.MaxHP : null,
             }),

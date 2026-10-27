@@ -62,6 +62,7 @@ var writableDatabase = new DbContextOptionsBuilder<DungeonWorldContext>()
 builder.Services.AddSingleton(new CharacterJournal(writableDatabase));
 builder.Services.AddSingleton(new EncounterDesk(writableDatabase));
 builder.Services.AddSingleton(new NpcDesk(writableDatabase));
+builder.Services.AddSingleton(new PortraitStore(writableDatabase));
 
 var settings = DashboardSettings.From(builder.Configuration);
 builder.Services.AddSingleton(settings);
@@ -85,7 +86,6 @@ builder.Services.AddSingleton(services =>
     new DatabaseWatcher([databasePath, canvasDatabasePath], services.GetRequiredService<ILogger<DatabaseWatcher>>()));
 builder.Services.AddHostedService(services => services.GetRequiredService<DatabaseWatcher>());
 
-builder.Services.AddScoped<PortraitStore>();
 
 // Canvases are shared live between everyone who has one open
 // The default 32 KB is less than one long freehand stroke; CanvasStore.MaxItemLength sets the real limit per item
@@ -107,7 +107,11 @@ if (!File.Exists(databasePath))
 else
     app.Logger.LogInformation("Reading {Path}", databasePath);
 
-// Creates the canvas database, or brings it up to date, before anyone opens a canvas
+// Creates the canvas database, or brings it up to date, before anyone opens a canvas. Characters' pictures used to be
+// kept there, so any still there are moved onto their rows first, before the update drops their table.
+var movedPortraits = PortraitStore.MoveFromCanvases(databasePath, canvasDatabasePath);
+if (movedPortraits > 0)
+    app.Logger.LogInformation("Moved {Count} character pictures from {Canvases} to {Database}", movedPortraits, canvasDatabasePath, databasePath);
 using (var scope = app.Services.CreateScope())
 {
     var canvasDb = scope.ServiceProvider.GetRequiredService<CanvasContext>();

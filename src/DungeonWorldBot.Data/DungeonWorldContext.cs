@@ -119,6 +119,24 @@ public class DungeonWorldContext : DbContext
             monster.Property(m => m.Name).UseCollation("NOCASE");
         });
 
+        // A character's picture lives on their own row, but is loaded only when asked for (see CharacterPortrait)
+        modelBuilder.Entity<Character>(character =>
+        {
+            character.HasOne(c => c.Portrait)
+                .WithOne()
+                .HasForeignKey<CharacterPortrait>(p => p.CharacterID);
+        });
+
+        modelBuilder.Entity<CharacterPortrait>(portrait =>
+        {
+            portrait.ToTable("Characters");
+            portrait.HasKey(p => p.CharacterID);
+            portrait.Property(p => p.CharacterID).HasColumnName("ID");
+            portrait.Property(p => p.ContentType).HasColumnName("PortraitContentType").HasMaxLength(32);
+            portrait.Property(p => p.Data).HasColumnName("PortraitData");
+            portrait.Property(p => p.UpdatedAt).HasColumnName("PortraitUpdatedAt");
+        });
+
         modelBuilder.Entity<RollRecord>(roll =>
         {
             roll.HasKey(r => r.MessageID);

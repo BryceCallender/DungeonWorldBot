@@ -8,9 +8,11 @@
 .replay-middle { display: flex; align-items: center; justify-content: center; text-align: center; }
 .replay-caption { font-size: .9rem; color: var(--muted); }
 .replay-arrow { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
-.replay-arrow path { fill: none; stroke: var(--accent); stroke-width: 3; stroke-dasharray: 10 7; opacity: 0; transition: opacity .2s; }
-.replay-arrow.on path { opacity: .9; animation: replay-march .6s linear infinite; }
-.replay-arrow marker path { fill: var(--accent); stroke: none; opacity: 1; animation: none; }
+/* The line only (> path): the arrowhead's own path inside the marker mustn't pick up its dashes or see-through opacity,
+   or the line shows through the head */
+.replay-arrow > path { fill: none; stroke: var(--accent); stroke-width: 3; stroke-dasharray: 10 7; opacity: 0; transition: opacity .2s; }
+.replay-arrow.on > path { opacity: .9; animation: replay-march .6s linear infinite; }
+.replay-arrow marker path { fill: var(--accent); stroke: none; }
 
 .replay-controls { grid-area: controls; display: flex; align-items: center; gap: .6rem; padding: .6rem .8rem; }
 .replay-controls input[type="range"] { flex: 1; accent-color: var(--accent); }
@@ -43,7 +45,6 @@
 .replay ::deep .fighter { --ring: var(--class, var(--muted)); position: relative; display: flex; align-items: center; gap: .6rem; padding: .45rem .7rem .45rem .45rem; min-width: 0; max-width: 100%; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); transition: transform .3s cubic-bezier(.3, 1.5, .5, 1), box-shadow .3s, opacity .4s, filter .4s; }
 .replay ::deep .enemies .fighter { flex-direction: row-reverse; padding: .45rem .45rem .45rem .7rem; --ring: var(--damage); }
 .replay ::deep .fighter-face { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%; border: 2px solid var(--ring); background: color-mix(in srgb, var(--ring) 22%, var(--surface)); color: var(--ring); font-weight: 800; overflow: hidden; }
-.replay ::deep .fighter-face img { width: 100%; height: 100%; object-fit: cover; }
 .replay ::deep .fighter-body { display: flex; flex-direction: column; gap: .25rem; min-width: 0; }
 .replay ::deep .enemies .fighter-body { align-items: flex-end; }
 .replay ::deep .fighter-name { font-weight: 600; font-size: .9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
