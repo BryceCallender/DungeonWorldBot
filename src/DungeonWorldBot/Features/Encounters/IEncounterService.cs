@@ -120,6 +120,13 @@ public interface IEncounterService
     Task LogAsync(EncounterAction action);
 
     /// <summary>
+    /// Shows a different result on the spotlight for a roll whose outcome was changed after it was posted.
+    /// </summary>
+    /// <param name="messageID">The bot's roll message.</param>
+    /// <param name="outcome">What it counts as now, e.g. "Strong Hit (10+)".</param>
+    Task ChangeOutcomeAsync(Snowflake messageID, string outcome);
+
+    /// <summary>
     /// Everything done in a fight, oldest first.
     /// </summary>
     Task<List<EncounterAction>> GetActionsAsync(Encounter encounter);

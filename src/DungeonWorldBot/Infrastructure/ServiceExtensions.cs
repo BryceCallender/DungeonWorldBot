@@ -1,4 +1,5 @@
 using System.Reflection;
+using DungeonWorldBot.Features.Rolls;
 using Microsoft.Extensions.DependencyInjection;
 using Remora.Commands.Extensions;
 using Remora.Commands.Groups;
@@ -7,6 +8,7 @@ using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Gateway.Extensions;
 using Remora.Discord.Gateway.Responders;
 using Remora.Discord.Interactivity;
+using Remora.Discord.Interactivity.Extensions;
 using Remora.Discord.Pagination.Extensions;
 
 namespace DungeonWorldBot.Infrastructure;
@@ -22,7 +24,8 @@ public static class ServiceExtensions
             .AddCommands(asm)
             .AddAutocompleteProviders(asm)
             .AddResponders(asm)
-            .AddPagination();
+            .AddPagination()
+            .AddInteractionGroup<ChangeOutcomeInteractions>();
 
         return services;
     }

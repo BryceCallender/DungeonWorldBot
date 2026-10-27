@@ -234,6 +234,19 @@ public class EncounterService : IEncounterService
         await _context.SaveChangesAsync();
     }
 
+    // Rolls are logged as "9 · Weak Hit (7-9)", and the dice stay what they were
+    public async Task ChangeOutcomeAsync(Snowflake messageID, string outcome)
+    {
+        var actions = await _context.EncounterActions.Where(a => a.MessageID == messageID).ToListAsync();
+        foreach (var action in actions)
+        {
+            var total = action.Roll?.Split(" · ")[0];
+            action.Roll = total is null ? outcome : $"{total} · {outcome}";
+        }
+
+        await _context.SaveChangesAsync();
+    }
+
     /// <summary>
     /// The fight something was done in, by its ID: see <see cref="IEncounterService.LogAsync"/>.
     /// </summary>
