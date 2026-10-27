@@ -61,6 +61,9 @@ public static class DiscordSignIn
                 {
                     if (NoRedirects(context.Request.Path))
                         context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+                    // A pasted link still gets its card in Discord
+                    else if (LinkPreview.IsFetcher(context.Request))
+                        return LinkPreview.WriteCardAsync(context.HttpContext);
                     else
                         context.Response.Redirect(context.RedirectUri);
                     return Task.CompletedTask;
