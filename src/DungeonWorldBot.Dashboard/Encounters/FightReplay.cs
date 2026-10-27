@@ -12,8 +12,8 @@ namespace DungeonWorldBot.Dashboard.Encounters;
 /// </summary>
 /// <param name="Key">Who they are, like "enemy:12", matching the steps' actors and targets.</param>
 /// <param name="Side">"party" or "enemies".</param>
-/// <param name="MaxHP">An enemy's max HP, so its health can go down as it's hurt. Null for the party, whose health the
-/// replay doesn't follow.</param>
+/// <param name="MaxHP">Their max HP, so their health can go down as they're hurt. Null when it isn't known, like for
+/// someone since taken out of the fight.</param>
 /// <param name="Color">A character's class colour, light and dark.</param>
 public record ReplayFighter(string Key, string Name, string Side, string? Portrait, int? MaxHP, ClassColor? Color);
 
@@ -105,7 +105,7 @@ public class FightReplayReader(DungeonWorldContext context, PartyReader party, P
 
         ReplayFighter Character(ulong id, string fallback) =>
             characters.FirstOrDefault(c => c.Character.ID.Value == id) is { } c
-                ? Add(new ReplayFighter($"character:{id}", c.Name, "party", pictures.GetValueOrDefault(id), null, ClassSheetLibrary.For(c.Character.Class.Type)?.Color))
+                ? Add(new ReplayFighter($"character:{id}", c.Name, "party", pictures.GetValueOrDefault(id), c.Character.Health?.MaxHP, ClassSheetLibrary.For(c.Character.Class.Type)?.Color))
                 : Add(new ReplayFighter($"character:{id}", fallback, "party", pictures.GetValueOrDefault(id), null, null));
 
         // Everyone who acted or was aimed at, enemies in the fight first so they keep their order
@@ -115,16 +115,19 @@ public class FightReplayReader(DungeonWorldContext context, PartyReader party, P
         ReplayFighter Actor(EncounterAction a) =>
             a.CharacterID is { } cid ? Character(cid.Value, a.Actor)
             : a.EnemyID is { } eid ? Add(new ReplayFighter($"enemy:{eid}", a.Actor, "enemies", null, null, null))
-            : a.NpcID is { } nid ? Add(new ReplayFighter($"npc:{nid}", npcs.FirstOrDefault(n => n.ID == nid)?.Name ?? a.Actor, "party", null, null, null))
+            : a.NpcID is { } nid ? Npc(nid, a.Actor)
             // Someone since taken out of the fight: they're found by name, or else they were an enemy
             : ByName(a.Actor) ?? Add(new ReplayFighter($"name:{a.Actor.ToLowerInvariant()}", a.Actor, "enemies", null, null, null));
 
         ReplayFighter? ByName(string name) =>
             fighters.FirstOrDefault(f => f.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
             ?? (characters.FirstOrDefault(c => c.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) is { } c ? Character(c.Character.ID.Value, c.Name) : null)
-            ?? (npcs.FirstOrDefault(n => n.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) is { } n
-                ? Add(new ReplayFighter($"npc:{n.ID}", n.Name, "party", null, null, null))
-                : null);
+            ?? (npcs.FirstOrDefault(n => n.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) is { } n ? Npc(n.ID, n.Name) : null);
+
+        ReplayFighter Npc(int id, string fallback) =>
+            npcs.FirstOrDefault(n => n.ID == id) is { } n
+                ? Add(new ReplayFighter($"npc:{id}", n.Name, "party", null, n.MaxHP, null))
+                : Add(new ReplayFighter($"npc:{id}", fallback, "party", null, null, null));
 
         var steps = actions.Select(a =>
         {

@@ -1,9 +1,20 @@
+@inject NavigationManager Nav
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
+    @* The card for a pasted link. og:title is left out so it falls back to the page's own title. Signed-out link
+       fetchers never get this far: LinkPreview gives them a card of their own. *@
+    <meta name="description" content="@LinkPreview.Description" />
+    <meta name="theme-color" content="@LinkPreview.ThemeColor" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="@LinkPreview.SiteName" />
+    <meta property="og:description" content="@LinkPreview.Description" />
+    <meta property="og:url" content="@Nav.Uri" />
+    <meta property="og:image" content="@Nav.ToAbsoluteUri(LinkPreview.Image)" />
+    <meta name="twitter:card" content="summary" />
     @* A scene shown side by side with others sits in a frame, without the site's header. Marked before anything draws,
        and again on every page the frame goes to, such as back to the scene after starting a fight. *@
     <script>if (window.self !== window.top) document.documentElement.classList.add('embedded');</script>

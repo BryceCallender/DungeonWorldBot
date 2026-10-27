@@ -39,6 +39,13 @@ public class SessionReader(ISessionService sessions, DungeonWorldContext context
             .ToList();
     }
 
+    /// <summary>
+    /// The session a fight was started during, if any.
+    /// </summary>
+    public Task<SessionSummary?> GetDuringAsync(Encounter fight) => Safely(async () =>
+        (await sessions.GetAllAsync()).FirstOrDefault(s => fight.StartedAt >= s.StartedAt && fight.StartedAt <= (s.EndedAt ?? DateTimeOffset.MaxValue))
+            is { } session ? await SummaryAsync(session) : null);
+
     public Task<SessionSummary?> GetCurrentAsync() => Safely(async () =>
         await sessions.GetCurrentAsync() is { } current ? await SummaryAsync(current) : null);
 

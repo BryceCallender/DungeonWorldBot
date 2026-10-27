@@ -79,13 +79,13 @@ else
         @foreach (var fight in _fights)
         {
             <li class="card">
-                <a href="fight/@fight.ID"><strong>⚔️ @fight.Name</strong></a>
+                <a href="@s.Url/fight/@fight.ID"><strong>⚔️ @fight.Name</strong></a>
                 <span class="small muted">
                     @fight.StartedAt.ToLocalTime().ToString("h:mm tt")
                     @(fight.SceneName is { } scene ? $" · on {scene}" : "")
                     @(fight.EndedAt is null ? " · still going" : "")
                 </span>
-                <a class="small" href="fight/@fight.ID">Replay →</a>
+                <a class="small" href="@s.Url/fight/@fight.ID">Replay →</a>
             </li>
         }
     </ul>
@@ -106,7 +106,7 @@ else
                     <tr>
                         <td class="muted">@r.MessageID.Timestamp.ToLocalTime().ToString("h:mm tt")</td>
                         <td>@Who(r.UserID.Value)</td>
-                        <td>@(r.Move ?? "–")@(r.Stat is { } stat ? $" +{stat.ToString().ToUpper()}" : "")</td>
+                        <td>@MoveLabel(r.Move, r.Stat?.ToString())</td>
                         <td class="num">@r.First + @r.Second</td>
                         <td class="num"><strong class="total-@OutcomeClass(dice.Outcome)">@r.Total</strong></td>
                         <td>
@@ -150,6 +150,9 @@ else
 
     private string Who(ulong userID) =>
         userID == Settings.DungeonMasterID ? "DM" : _party.FirstOrDefault(c => c.Character.ID.Value == userID)?.Name ?? "Player";
+
+    private static string MoveLabel(string? move, string? stat) =>
+        string.Join(" ", new[] { move, stat is null ? null : $"+{stat.ToUpper()}" }.OfType<string>()) is { Length: > 0 } label ? label : "–";
 
     private static string OutcomeClass(MoveOutcome outcome) => outcome switch
     {
