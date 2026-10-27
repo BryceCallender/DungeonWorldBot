@@ -1,7 +1,11 @@
 @page "/fight/{Id:int}"
+@page "/session/{Session:int}/fight/{Id:int}"
 @using System.Text.Json
 @using DungeonWorldBot.Dashboard.Encounters
+@using DungeonWorldBot.Dashboard.Sessions
 @inject FightReplayReader Replays
+@inject SessionReader Sessions
+@inject NavigationManager Navigation
 @inject Viewer Viewer
 
 @* A fight played back from its timeline: who did what to whom, step by step, with the hits landing and enemies falling.
@@ -14,6 +18,13 @@
 }
 
 <PageTitle>⚔️ @r.Fight.Name · Sana Solem</PageTitle>
+
+@if (_session is { } during)
+{
+    <nav class="session-nav">
+        <a href="@during.Url">← @during.Name</a>
+    </nav>
+}
 
 <header class="fight-head">
     <h1>⚔️ @r.Fight.Name</h1>
@@ -85,7 +96,11 @@
     [Parameter]
     public int Id { get; set; }
 
+    [Parameter]
+    public int? Session { get; set; }
+
     private FightReplay? _replay;
+    private SessionSummary? _session;
     private string _json = "{}";
 
     protected override async Task OnInitializedAsync()
@@ -94,15 +109,21 @@
         if (_replay is not { } r)
             return;
 
-        // Enemies' health after each step, worked out here so players never get their max HP: they see how hurt an
-        // enemy looks, so for them it goes down in quarters. Whoever runs the fight gets it exactly, with the numbers.
+        // A fight from a game night belongs under that session (and the Sessions tab); others stay under Scenes
+        _session = await Sessions.GetDuringAsync(r.Fight);
+        if (_session?.Number != Session)
+            Navigation.NavigateTo(_session is { } during ? $"{during.Url}/fight/{Id}" : $"fight/{Id}", replace: true);
+
+        // Everyone's health after each step, worked out here so players never get an enemy's max HP: they see how hurt
+        // an enemy looks, so for them it goes down in quarters. The party's own is exact for everyone, as is the lot
+        // for whoever runs the fight.
         var exact = EncounterEndpoints.CanRun(Viewer);
         var tracked = r.Fighters.Where(f => f.MaxHP is > 0).ToList();
         var lost = new Dictionary<string, int>();
         Dictionary<string, double> Shares() => tracked.ToDictionary(f => f.Key, f =>
         {
             var share = Math.Max(0, 1 - lost.GetValueOrDefault(f.Key) / (double)f.MaxHP!.Value);
-            return exact || share <= 0 ? share : Math.Ceiling(share * 4) / 4;
+            return exact || share <= 0 || f.Side == "party" ? share : Math.Ceiling(share * 4) / 4;
         });
         var health = new List<Dictionary<string, double>> { Shares() };
         foreach (var step in r.Steps)
@@ -119,7 +140,7 @@
             {
                 f.Key, f.Name, f.Side, f.Portrait, f.Color,
                 Tracked = f.MaxHP is > 0,
-                MaxHP = exact ? f.MaxHP : null,
+                MaxHP = exact || f.Side == "party" ? f.MaxHP : null,
             }),
             steps = r.Steps,
             health,

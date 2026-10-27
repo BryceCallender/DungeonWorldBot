@@ -17,7 +17,9 @@
 .replay-controls select { padding: .25rem .4rem; border: 1px solid var(--border); border-radius: 6px; background: var(--bg); color: inherit; font: inherit; font-size: .85rem; }
 .replay-count { font-variant-numeric: tabular-nums; color: var(--muted); min-width: 4.5rem; text-align: right; }
 
-.replay-log { grid-area: log; list-style: none; margin: 0; padding: .5rem; max-height: 480px; overflow-y: auto; display: flex; flex-direction: column; gap: .15rem; font-size: .85rem; }
+/* No taller than the stage and controls beside it (height 0 so it doesn't stretch them, min-height to fill them), so
+   the page doesn't scroll; replay.js keeps it on screen when it's stacked underneath */
+.replay-log { grid-area: log; align-self: stretch; height: 0; min-height: 100%; list-style: none; margin: 0; padding: .5rem; overflow-y: auto; display: flex; flex-direction: column; gap: .15rem; font-size: .85rem; }
 .replay-log li { display: flex; flex-wrap: wrap; gap: .1rem .4rem; padding: .35rem .5rem; border-radius: 6px; opacity: .45; transition: opacity .2s, background .2s; cursor: pointer; }
 .replay-log li.done { opacity: .8; }
 .replay-log li.now { opacity: 1; background: var(--accent-soft); }
@@ -26,6 +28,12 @@
 
 @media (max-width: 900px) {
     .replay { grid-template-columns: minmax(0, 1fr); grid-template-areas: "stage" "controls" "log"; }
+    .replay-log { height: auto; min-height: 0; }
+    .replay-stage { min-height: 0; }
+}
+
+/* Only a phone is too narrow for the caption between the sides */
+@media (max-width: 600px) {
     .replay-stage { grid-template-columns: 1fr 1fr; }
     .replay-middle { grid-column: 1 / -1; grid-row: 2; }
     .replay-side.enemies { grid-column: 2; grid-row: 1; }

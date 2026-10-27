@@ -1,6 +1,6 @@
 // A fight played back from its timeline, on its page (FightPage.razor): fighters down each side, and each step lights up
-// whoever acted, draws an arrow to who they aimed at, and lands any damage on them. Enemies start at full health and
-// lose what each hit did, greying out when they fall.
+// whoever acted, draws an arrow to who they aimed at, and lands any damage on them. Everyone starts at full health and
+// loses what each hit did, greying out when they fall.
 (() => {
     const root = document.querySelector('[data-replay]');
     const data = JSON.parse(document.querySelector('[data-replay-data]')?.textContent ?? '{}');
@@ -40,12 +40,13 @@
     const count = root.querySelector('[data-count]');
     const play = root.querySelector('[data-play]');
     const speed = root.querySelector('[data-speed]');
-    const log = [...root.querySelectorAll('[data-log] li')];
+    const list = root.querySelector('[data-log]');
+    const log = [...list.querySelectorAll('li')];
     let at = 0;
     let timer = null;
 
-    // How hurt each enemy is after the first n steps, as the page worked it out: exactly for whoever runs the fight,
-    // in quarters for players, who never get an enemy's max HP
+    // How hurt everyone is after the first n steps, as the page worked it out: enemies exactly for whoever runs the
+    // fight, in quarters for players, who never get an enemy's max HP; the party exactly for all
     function showHealth(n) {
         const shares = data.health[n] ?? {};
         for (const { fighter, card } of cards.values()) {
@@ -55,8 +56,24 @@
             fill.style.width = `${share * 100}%`;
             fill.className = share <= .25 ? 'critical' : share <= .5 ? 'low' : '';
             card.classList.toggle('down', share <= 0);
-            card.title = data.exact && fighter.maxHP ? `${fighter.name}: ${Math.round(share * fighter.maxHP)}/${fighter.maxHP} HP` : fighter.name;
+            card.title = fighter.maxHP ? `${fighter.name}: ${Math.round(share * fighter.maxHP)}/${fighter.maxHP} HP` : fighter.name;
         }
+    }
+
+    // Keeps the step in view by scrolling the log alone; scrollIntoView would drag the whole page along with it
+    function follow(item) {
+        if (!item) return;
+        const a = item.getBoundingClientRect(), box = list.getBoundingClientRect();
+        const by = a.top < box.top ? a.top - box.top - 4 : a.bottom > box.bottom ? a.bottom - box.bottom + 4 : 0;
+        if (by) list.scrollBy({ top: by, behavior: still.matches ? 'auto' : 'smooth' });
+    }
+
+    // Fits the log into what's left of the screen below it, so the page itself never has to scroll. Beside the stage
+    // it's as tall as the stage already (the stylesheet sees to that); this is for when it's stacked underneath.
+    function fitLog() {
+        const top = list.getBoundingClientRect().top + scrollY;
+        const below = parseFloat(getComputedStyle(list.closest('main') ?? document.body).paddingBottom) || 0;
+        list.style.maxHeight = `${Math.max(160, innerHeight - top - below)}px`;
     }
 
     function drawArrow(from, to) {
@@ -78,7 +95,7 @@
         count.textContent = `${at} / ${data.steps.length}`;
         for (const { card } of cards.values()) card.classList.remove('acting', 'targeted', 'hit');
         log.forEach((li, i) => { li.classList.toggle('done', i < at - 1); li.classList.toggle('now', i === at - 1); });
-        log[at - 1]?.scrollIntoView({ block: 'nearest', behavior: still.matches ? 'auto' : 'smooth' });
+        follow(log[at - 1]);
 
         const step = data.steps[at - 1];
         showHealth(at);
@@ -141,7 +158,9 @@
         else if (e.key === 'ArrowLeft') { stop(); show(at - 1, false); }
         else if (e.key === ' ') { e.preventDefault(); timer ? stop() : start(); }
     });
-    addEventListener('resize', () => show(at, false));
+    addEventListener('resize', () => { fitLog(); show(at, false); });
+    // Refitted whenever the stage above it changes height too, as it does when the caption grows
+    new ResizeObserver(fitLog).observe(root.querySelector('.replay-stage'));
 
     show(0, false);
 })();
