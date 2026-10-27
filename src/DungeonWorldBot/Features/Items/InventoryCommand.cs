@@ -4,6 +4,7 @@ using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Infrastructure;
 using Remora.Commands.Attributes;
 using Remora.Discord.API.Objects;
+using Remora.Discord.Commands.Attributes;
 using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
@@ -206,6 +207,55 @@ public class InventoryCommand : DungeonWorldCommandBase
         await _inventoryService.SaveInventoryAsync();
 
         return await _feedbackService.SendContextualMessageAsync(new FeedbackMessage($"You have successfully paid {amount} coins from your inventory", Color.Green));
+    }
+
+    [Command("give-coins")]
+    [Description("Gives the specified amount of your coins to another player")]
+    public async Task<IResult> GiveCoinsAsync(
+        [Description("The player to give coins to")]
+        IUser user,
+        [Description("How many coins to give")]
+        [MinValue(1)]
+        int amount)
+    {
+        var userId = GetUserId();
+
+        if (user.ID == userId)
+            return await ReplyWithErrorAsync("You cannot give coins to yourself");
+
+        var character = await _characterService.GetCharacterFromUserAsync(userId);
+        if (character is null)
+            return await ReplyWithErrorAsync("You must have a character to give coins. Try using /character create");
+
+        var recipient = await _characterService.GetCharacterFromUserAsync(user.ID);
+        if (recipient is null)
+            return await ReplyWithErrorAsync($"{user.Username} does not have a character");
+
+        if (character.Inventory.Items == null || recipient.Inventory.Items == null)
+            return await ReplyWithErrorAsync("Inventory Doesn't Exist");
+
+        if (amount <= 0)
+            return await ReplyWithErrorAsync("You must give at least 1 coin");
+
+        var coins = character.Inventory.Items.SingleOrDefault(item => item.Name.Equals("Coins", StringComparison.CurrentCultureIgnoreCase));
+        if (coins is null)
+            return await ReplyWithErrorAsync("You do not have any coins in your inventory");
+        if (amount > coins.Amount)
+            return await ReplyWithErrorAsync($"You only have {coins.Amount} coins");
+
+        coins.Amount -= amount;
+        if (coins.Amount == 0)
+            character.Inventory.Items.Remove(coins);
+
+        var recipientCoins = recipient.Inventory.Items.SingleOrDefault(item => item.Name.Equals("Coins", StringComparison.CurrentCultureIgnoreCase));
+        if (recipientCoins is null)
+            recipient.Inventory.Items.Add(new Item { Name = "Coins", Amount = amount });
+        else
+            recipientCoins.Amount += amount;
+
+        await _inventoryService.SaveInventoryAsync();
+
+        return await _feedbackService.SendContextualMessageAsync(new FeedbackMessage($"{character.Name} gave {amount} coins to {recipient.Name}", Color.Green));
     }
 
 }
