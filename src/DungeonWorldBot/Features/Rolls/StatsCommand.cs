@@ -19,21 +19,21 @@ public class StatsCommand : DungeonWorldCommandBase
     // Discord rejects embeds with more than 25 fields
     private const int MaxFields = 25;
 
-    // The most messages Discord hands back per request
-    private const int PageSize = 100;
-
     private readonly ICharacterService _characterService;
     private readonly IRollStatsService _rollStatsService;
     private readonly IDiscordRestChannelAPI _channelAPI;
+    private readonly RollHistoryScanner _scanner;
 
     public StatsCommand(
         ICommandContext context,
         FeedbackService feedbackService,
         ICharacterService characterService,
         IRollStatsService rollStatsService,
-        IDiscordRestChannelAPI channelAPI)
+        IDiscordRestChannelAPI channelAPI,
+        RollHistoryScanner scanner)
         : base(context, feedbackService)
     {
+        _scanner = scanner;
         _characterService = characterService;
         _rollStatsService = rollStatsService;
         _channelAPI = channelAPI;
@@ -97,38 +97,16 @@ public class StatsCommand : DungeonWorldCommandBase
         if (!started.IsSuccess)
             return started;
 
-        var reader = new RollHistoryReader(channelID);
-        var after = new Snowflake(0);
-        var found = 0;
-        var added = 0;
-
-        while (true)
-        {
-            var page = await _channelAPI.GetChannelMessagesAsync(channelID, after: after, limit: PageSize, ct: CancellationToken);
-            if (!page.IsSuccess)
-                return await PostResultAsync(currentChannelID, "🎲 Scan Failed", $"Couldn't read <#{channelID}>: {page.Error.Message}");
-
-            if (page.Entity.Count == 0)
-                break;
-
-            // Discord returns newest first; the reader needs oldest first
-            var messages = page.Entity.OrderBy(m => m.ID.Value).ToList();
-            var rolls = reader.Read(messages).ToList();
-
-            found += rolls.Count;
-            added += await _rollStatsService.AddMissingAsync(rolls);
-            after = messages[^1].ID;
-
-            if (page.Entity.Count < PageSize)
-                break;
-        }
+        var scan = await _scanner.ScanAsync(channelID, CancellationToken);
+        if (!scan.IsSuccess)
+            return await PostResultAsync(currentChannelID, "🎲 Scan Failed", $"Couldn't read <#{channelID}>: {scan.Error.Message}");
 
         var counted = channelID == gameChat
             ? "See them with /stats show"
             : $"They're saved, but only rolls in <#{gameChat}> count toward /stats show";
 
         return await PostResultAsync(currentChannelID, "🎲 Scan Complete",
-            $"Found {found} 2d6 rolls in <#{channelID}>, {added} of them new. {counted}");
+            $"Found {scan.Entity.Found} 2d6 rolls in <#{channelID}>, {scan.Entity.Added} of them new. {counted}");
     }
 
     private static string Describe(PlayerRollStats stats) =>

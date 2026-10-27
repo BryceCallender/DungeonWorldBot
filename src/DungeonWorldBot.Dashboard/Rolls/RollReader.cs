@@ -4,6 +4,7 @@ using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Rolls;
+using DungeonWorldBot.Features.Sessions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Remora.Rest.Core;
@@ -41,10 +42,8 @@ public class RollReader
                 .ToDictionary(g => g.Key, g => DiceSpread.Of(g.Select(r => new MoveDice(r.First, r.Second, r.Total)).ToList())));
     }
 
-    /// <summary>
-    /// A break in rolling this long means the next roll is a new session, so a game that runs past midnight is one session.
-    /// </summary>
-    public static readonly TimeSpan SessionGap = TimeSpan.FromHours(8);
+    /// <inheritdoc cref="SessionService.Gap"/>
+    public static readonly TimeSpan SessionGap = SessionService.Gap;
 
     /// <param name="leaveOut">Someone whose rolls aren't counted, like the DM.</param>
     public async Task<RollBreakdown> GetBreakdownAsync(ulong? leaveOut = null)

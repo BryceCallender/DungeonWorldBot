@@ -40,5 +40,19 @@ public interface ISessionService
     /// <returns>The session that was going on, now ended, or null if none was.</returns>
     Task<GameSession?> EndAsync();
 
+    /// <summary>
+    /// Gives a session a new title, or takes it away when it's blank.
+    /// </summary>
+    Task RenameAsync(GameSession session, string? title);
+
     Task<SessionRecap> RecapAsync(GameSession session);
+
+    /// <summary>
+    /// Adds the game nights played before sessions could be marked, guessed from the game chat's recorded rolls: a
+    /// break in rolling of <see cref="SessionService.Gap"/> starts a new night, and a night runs from its first roll to
+    /// its last. Rolls during a session already marked are left to it, and sessions are renumbered by when they
+    /// started. Safe to run again.
+    /// </summary>
+    /// <returns>The sessions added.</returns>
+    Task<List<GameSession>> BackfillAsync();
 }

@@ -10,6 +10,14 @@ namespace DungeonWorldBot.Features.Sessions;
 [Scoped<ISessionService>]
 public class SessionService : ISessionService
 {
+    /// <summary>
+    /// A break in rolling this long means the next roll is a new session, so a game that runs past midnight is one session.
+    /// </summary>
+    public static readonly TimeSpan Gap = TimeSpan.FromHours(8);
+
+    // Fewer rolls than this on their own aren't a game night, just someone trying the bot
+    public const int MinimumBackfillRolls = 5;
+
     private readonly DungeonWorldContext _context;
     private readonly IRollStatsService _rollStats;
 
@@ -37,7 +45,7 @@ public class SessionService : ISessionService
 
         var session = new GameSession
         {
-            Title = string.IsNullOrWhiteSpace(title) ? null : title.Trim(),
+            Title = Tidy(title),
             StartedAt = DateTimeOffset.UtcNow,
         };
         _context.Sessions.Add(session);
@@ -53,6 +61,12 @@ public class SessionService : ISessionService
         session.EndedAt = DateTimeOffset.UtcNow;
         await _context.SaveChangesAsync();
         return session;
+    }
+
+    public async Task RenameAsync(GameSession session, string? title)
+    {
+        session.Title = Tidy(title);
+        await _context.SaveChangesAsync();
     }
 
     public async Task<SessionRecap> RecapAsync(GameSession session)
@@ -89,4 +103,56 @@ public class SessionService : ISessionService
                 .ToList(),
             fights);
     }
+
+    public async Task<List<GameSession>> BackfillAsync()
+    {
+        if (_rollStats.GameChatChannelID is not { } gameChat)
+            return [];
+
+        var marked = await _context.Sessions.AsNoTracking().OrderBy(s => s.ID).ToListAsync();
+        var rolledAt = (await _context.Rolls.AsNoTracking().Where(r => r.ChannelID == gameChat).Select(r => r.MessageID).ToListAsync())
+            .Select(id => id.Timestamp)
+            .Order()
+            .ToList();
+
+        var nights = new List<List<DateTimeOffset>>();
+        List<DateTimeOffset>? night = null;
+        foreach (var at in rolledAt)
+        {
+            if (marked.Any(s => at >= s.StartedAt && at <= (s.EndedAt ?? DateTimeOffset.MaxValue)))
+            {
+                night = null;
+                continue;
+            }
+
+            // A marked session between two rolls splits them too, even when it had no rolls of its own
+            if (night is null || at - night[^1] > Gap || marked.Any(s => s.StartedAt > night[^1] && s.StartedAt < at))
+                nights.Add(night = []);
+
+            night.Add(at);
+        }
+
+        var added = nights
+            .Where(n => n.Count >= MinimumBackfillRolls)
+            .Select(n => new GameSession { StartedAt = n[0], EndedAt = n[^1] })
+            .ToList();
+        if (added.Count == 0)
+            return added;
+
+        // Sessions are numbered by ID, so they're all written again in the order they started. Nothing else points at
+        // a session's ID.
+        var all = marked.Concat(added).OrderBy(s => s.StartedAt).ToList();
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+        await _context.Sessions.ExecuteDeleteAsync();
+        _context.ChangeTracker.Clear();
+        for (var i = 0; i < all.Count; i++)
+            all[i].ID = i + 1;
+        _context.Sessions.AddRange(all);
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return added;
+    }
+
+    private static string? Tidy(string? title) => string.IsNullOrWhiteSpace(title) ? null : title.Trim();
 }

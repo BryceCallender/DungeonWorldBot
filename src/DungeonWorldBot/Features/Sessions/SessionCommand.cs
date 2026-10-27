@@ -1,12 +1,16 @@
 using System.ComponentModel;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Characters;
+using DungeonWorldBot.Features.Rolls;
 using DungeonWorldBot.Infrastructure;
 using Remora.Commands.Attributes;
 using Remora.Discord.API.Abstractions.Objects;
+using Remora.Discord.API.Abstractions.Rest;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Contexts;
+using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Feedback.Services;
+using Remora.Rest.Core;
 using Remora.Results;
 
 namespace DungeonWorldBot.Features.Sessions;
@@ -20,16 +24,25 @@ public class SessionCommand : DungeonWorldCommandBase
 {
     private readonly ISessionService _sessions;
     private readonly ICharacterService _characterService;
+    private readonly IRollStatsService _rollStatsService;
+    private readonly RollHistoryScanner _scanner;
+    private readonly IDiscordRestChannelAPI _channelAPI;
 
     public SessionCommand(
         ICommandContext context,
         FeedbackService feedbackService,
         ISessionService sessions,
-        ICharacterService characterService)
+        ICharacterService characterService,
+        IRollStatsService rollStatsService,
+        RollHistoryScanner scanner,
+        IDiscordRestChannelAPI channelAPI)
         : base(context, feedbackService)
     {
         _sessions = sessions;
         _characterService = characterService;
+        _rollStatsService = rollStatsService;
+        _scanner = scanner;
+        _channelAPI = channelAPI;
     }
 
     [Command("start")]
@@ -87,6 +100,72 @@ public class SessionCommand : DungeonWorldCommandBase
             ),
             ct: CancellationToken
         );
+    }
+
+    [Command("rename")]
+    [Description("Rename a session. Defaults to the one going on now, or the last one if none is")]
+    public async Task<IResult> RenameAsync(
+        [Description("Its new title, e.g. Into the Sunken Abbey")]
+        string title,
+        [Description("Which session, counting from 1")]
+        [MinValue(1)]
+        int? number = null)
+    {
+        var all = await _sessions.GetAllAsync();
+        var session = number is { } n
+            ? all.ElementAtOrDefault(n - 1)
+            : await _sessions.GetCurrentAsync() ?? all.LastOrDefault();
+        if (session is null)
+            return await ReplyWithErrorAsync(number is null ? "There are no sessions yet. Start one with /session start." : $"There's no session {number}.");
+
+        var before = session.Title;
+        await _sessions.RenameAsync(session, title);
+        var name = $"Session {await _sessions.NumberOfAsync(session)}";
+        return await ReplyAsync("📜 Session Renamed", session.Title is { } t
+            ? $"{name}{(before is null ? "" : $" ({before})")} is now **{t}**."
+            : $"{name} no longer has a title.");
+    }
+
+    [Command("scan")]
+    [Description("Add past game nights, guessed from the game chat's rolls. Safe to run again")]
+    public async Task<IResult> ScanAsync()
+    {
+        if (!_context.TryGetChannelID(out var currentChannelID))
+            throw new NotSupportedException();
+
+        if (_rollStatsService.GameChatChannelID is not { } gameChat)
+            return await ReplyWithErrorAsync("No game chat channel is set. Add a GameChatChannelId setting with the channel's ID.");
+
+        var started = await ReplyAsync("📜 Scanning...", $"Reading <#{gameChat}> for past game nights. I'll post here when it's done.");
+        if (!started.IsSuccess)
+            return started;
+
+        var scan = await _scanner.ScanAsync(gameChat, CancellationToken);
+        if (!scan.IsSuccess)
+            return await PostResultAsync(currentChannelID, "📜 Scan Failed", $"Couldn't read <#{gameChat}>: {scan.Error.Message}");
+
+        var added = await _sessions.BackfillAsync();
+        if (added.Count == 0)
+            return await PostResultAsync(currentChannelID, "📜 Scan Complete", "No game nights were missing. Every night with rolls is already a session.");
+
+        var lines = new List<string>();
+        foreach (var session in added)
+            lines.Add($"Session {await _sessions.NumberOfAsync(session)} · <t:{session.StartedAt.ToUnixTimeSeconds()}:D> · {(await _sessions.RecapAsync(session)).Rolls} rolls");
+
+        return await PostResultAsync(currentChannelID, "📜 Scan Complete", Truncate(
+            $"Added {added.Count} past game night{(added.Count == 1 ? "" : "s")} from <#{gameChat}>, and recorded {scan.Entity.Added} roll{(scan.Entity.Added == 1 ? "" : "s")} that were missing. "
+            + "Sessions are renumbered by when they started.\n\n" + string.Join('\n', lines), 4096));
+    }
+
+    // A long scan can outlast the slash command's 15 minute reply window, so the result is posted as its own message
+    private async Task<IResult> PostResultAsync(Snowflake channelID, string title, string description)
+    {
+        var posted = await _channelAPI.CreateMessageAsync(
+            channelID,
+            embeds: new[] { new Embed(Title: title, Description: description, Colour: _feedbackService.Theme.Primary) },
+            ct: CancellationToken);
+
+        return posted.IsSuccess ? Result.FromSuccess() : Result.FromError(posted);
     }
 
     // "Previously, in Session 11: The Ford", with how the dice went and the fights, to remind everyone where they were

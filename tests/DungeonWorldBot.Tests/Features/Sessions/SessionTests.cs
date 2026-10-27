@@ -86,4 +86,33 @@ public sealed class SessionTests : IDisposable
         Assert.Equal(["Ambush"], recap.Fights);
         Assert.Equal([new PlayerSessionRolls(new Snowflake(1), 2, 1), new PlayerSessionRolls(new Snowflake(2), 1, 0)], recap.Players);
     }
+
+    [Fact]
+    public async Task Backfill_GuessesPastNightsFromGameChatRolls_AndRenumbersByStart()
+    {
+        await using var context = _db.CreateContext();
+        var night1 = new DateTimeOffset(2026, 9, 5, 19, 0, 0, TimeSpan.Zero);
+        var night2 = night1.AddDays(7);
+        var marked = night2.AddDays(7);
+        context.Sessions.Add(new GameSession { Title = "Into the Sunken Abbey", StartedAt = marked, EndedAt = marked.AddHours(3) });
+        // A night that runs past midnight, a stray roll days later, a night in another channel, and the marked night's rolls
+        context.Rolls.AddRange(Enumerable.Range(0, 6).Select(i => Roll(night1.AddHours(i), 1, 3, 4, 7)));
+        context.Rolls.Add(Roll(night1.AddDays(3), 1, 3, 4, 7));
+        context.Rolls.AddRange(Enumerable.Range(0, 5).Select(i => Roll(night2.AddMinutes(i * 20), 2, 3, 4, 7)));
+        context.Rolls.AddRange(Enumerable.Range(0, 5).Select(i => Roll(night2.AddDays(2).AddMinutes(i), 2, 3, 4, 7, new Snowflake(333))));
+        context.Rolls.AddRange(Enumerable.Range(0, 5).Select(i => Roll(marked.AddMinutes(i * 20), 2, 3, 4, 7)));
+        await context.SaveChangesAsync();
+
+        var sessions = Service(context);
+        var added = await sessions.BackfillAsync();
+
+        Assert.Equal([(night1, night1.AddHours(5)), (night2, night2.AddMinutes(80))], added.Select(s => (s.StartedAt, s.EndedAt!.Value)));
+        var all = await sessions.GetAllAsync();
+        Assert.Equal([night1, night2, marked], all.Select(s => s.StartedAt));
+        Assert.Equal("Into the Sunken Abbey", all[2].Title);
+        Assert.Equal(3, await sessions.NumberOfAsync(all[2]));
+
+        Assert.Empty(await Service(context).BackfillAsync());
+        Assert.Equal(3, (await sessions.GetAllAsync()).Count);
+    }
 }
