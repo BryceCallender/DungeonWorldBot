@@ -85,17 +85,7 @@ else
     {
         <h2 class="section-title">Last session's awards</h2>
         <p class="small">Who stood out @(last.Name is { } name ? $"in {name}, " : "")on @last.Started.ToString("dddd d MMMM").</p>
-        <div class="awards">
-            @foreach (var award in last.Awards)
-            {
-                <div class="card award @(Viewer.Is(award.UserID) ? "mine" : "")">
-                    <span class="award-icon" aria-hidden="true">@award.Icon</span>
-                    <span class="tile-label">@award.Title</span>
-                    <strong>@Player(award.UserID)</strong>
-                    <span class="small">@award.Detail</span>
-                </div>
-            }
-        </div>
+        <AwardCards Awards="last.Awards" Party="_characters" />
     }
 
     <h2 class="section-title">Sessions</h2>
@@ -191,6 +181,7 @@ else
     private RollBreakdown _breakdown = new([], [], [], 0);
     private RollNerdery _nerdery = new([], new MoveHeatmap([], []), null);
     private Dictionary<string, string> _names = new();
+    private IReadOnlyList<CharacterView> _characters = [];
 
     protected override async Task OnInitializedAsync()
     {
@@ -201,7 +192,8 @@ else
         (_table, _players) = await RollReader.GetSpreadsAsync(leaveOut: _dungeonMaster);
         _breakdown = await RollReader.GetBreakdownAsync(leaveOut: _dungeonMaster);
         _nerdery = await RollReader.GetNerderyAsync(leaveOut: _dungeonMaster);
-        _names = (await PartyReader.GetPartyAsync()).ToDictionary(c => c.ID, c => c.Name);
+        _characters = await PartyReader.GetPartyAsync();
+        _names = _characters.ToDictionary(c => c.ID, c => c.Name);
     }
 
     // Characters share their player's Discord ID

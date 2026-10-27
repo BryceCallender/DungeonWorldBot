@@ -7,8 +7,8 @@ namespace DungeonWorldBot.Features.Sessions;
 /// How a session went at the table, from the game chat's 2d6 rolls while it was on.
 /// </summary>
 /// <param name="Players">Each player's rolls, most first. The DM's are counted too.</param>
-/// <param name="Fights">Fights started while it was on.</param>
-public record SessionRecap(int Rolls, int Hits, int Misses, int Natural12s, int Natural2s, IReadOnlyList<PlayerSessionRolls> Players, int Fights);
+/// <param name="Fights">The names of fights started while it was on, first first.</param>
+public record SessionRecap(int Rolls, int Hits, int Misses, int Natural12s, int Natural2s, IReadOnlyList<PlayerSessionRolls> Players, IReadOnlyList<string> Fights);
 
 public record PlayerSessionRolls(Snowflake UserID, int Rolls, int Misses);
 
@@ -23,6 +23,11 @@ public interface ISessionService
     /// Every session, oldest first.
     /// </summary>
     Task<List<GameSession>> GetAllAsync();
+
+    /// <summary>
+    /// The session before this one, or null if it's the first.
+    /// </summary>
+    Task<GameSession?> GetPreviousAsync(GameSession session);
 
     /// <summary>
     /// Which session this is, counting from 1.

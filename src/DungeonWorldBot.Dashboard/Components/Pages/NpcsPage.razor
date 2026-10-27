@@ -35,6 +35,12 @@ else
             @NpcCard(npc)
         }
     </div>
+
+    <h2 class="section-title">Loyalty</h2>
+    <p class="small">Who each NPC follows, and how loyal they are: green holds firm, gray is steady, red may walk. Those who follow no one travel with the whole party.</p>
+    <section class="card npc-web-card">
+        <NpcWeb Hirelings="_npcs" Characters="_characters" />
+    </section>
 }
 
 @if (_canRun)

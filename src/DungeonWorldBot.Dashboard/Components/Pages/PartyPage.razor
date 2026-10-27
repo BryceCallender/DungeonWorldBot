@@ -4,6 +4,7 @@
 @inject DashboardSettings Settings
 @inject Viewer Viewer
 @inject PortraitStore PortraitStore
+@inject RollReader RollReader
 
 <PageTitle>Party · Sana Solem</PageTitle>
 
@@ -64,6 +65,10 @@ else
                             @if (Viewer.Is(c.ID))
                             {
                                 <span class="chip accent">You</span>
+                            }
+                            @if (_streaks.GetValueOrDefault(c.Character.ID.Value) is { } streak)
+                            {
+                                <span class="chip streak @(streak.Hot ? "hot" : "cold")" title="@streak.Describe()">@streak.Icon @streak.Length</span>
                             }
                         </div>
                         <div class="muted class-line">
@@ -163,11 +168,13 @@ else
 @code {
     private IReadOnlyList<CharacterView> _party = [];
     private IReadOnlyDictionary<ulong, string> _portraits = new Dictionary<ulong, string>();
+    private Dictionary<ulong, RollStreak> _streaks = new();
 
     protected override async Task OnInitializedAsync()
     {
         _party = await PartyReader.GetPartyAsync();
         _portraits = await PortraitStore.UrlsAsync();
+        _streaks = await RollReader.GetStreaksAsync();
         _alerts = Alerts().Where(a => a.Who.Count > 0).ToList();
     }
 

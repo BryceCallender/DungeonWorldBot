@@ -2,6 +2,7 @@ using DungeonWorldBot.Dashboard.Auth;
 using DungeonWorldBot.Dashboard.Party;
 using DungeonWorldBot.Dashboard.Shared;
 using DungeonWorldBot.Data;
+using DungeonWorldBot.Features.Classes;
 using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Rolls;
 using Microsoft.EntityFrameworkCore;
@@ -20,6 +21,9 @@ public static class RollFeedEndpoints
     // More than this many between two changes (a /stats scan of old chat) aren't news, so only the last few show
     private const int MaxRolls = 4;
 
+    // How far back to look for the streak each new roll puts its roller on
+    private const int StreakRolls = 200;
+
     public static RouteHandlerBuilder MapRollFeedEndpoints(this IEndpointRouteBuilder app) =>
         app.MapGet("/api/rolls/feed", async (ulong? after, DungeonWorldContext context, IRollStatsService rollStats,
             PartyReader party, PortraitStore portraits, DashboardSettings settings, Viewer viewer) =>
@@ -30,17 +34,17 @@ public static class RollFeedEndpoints
 
             // EF won't order by IDs stored as ulong in SQLite, though the column is a plain INTEGER that sorts fine
             var newest = await context.Rolls
-                .FromSql($"SELECT * FROM Rolls WHERE ChannelID = {gameChat.Value} ORDER BY MessageID DESC LIMIT {MaxRolls}")
+                .FromSql($"SELECT * FROM Rolls WHERE ChannelID = {gameChat.Value} ORDER BY MessageID DESC LIMIT {StreakRolls}")
                 .AsNoTracking()
                 .ToListAsync();
 
             var latest = newest.FirstOrDefault()?.MessageID.Value.ToString();
-            var fresh = after is { } seen ? newest.Where(r => r.MessageID.Value > seen).Reverse().ToList() : [];
+            var fresh = after is { } seen ? newest.Take(MaxRolls).Where(r => r.MessageID.Value > seen).Reverse().ToList() : [];
             if (fresh.Count == 0)
                 return new RollFeed(latest, []);
 
             // Characters share their player's Discord ID
-            var names = (await party.GetPartyAsync()).ToDictionary(c => c.ID, c => c.Name);
+            var characters = (await party.GetPartyAsync()).ToDictionary(c => c.ID);
             var pictures = await portraits.UrlsAsync();
 
             return new RollFeed(latest, fresh
@@ -48,9 +52,11 @@ public static class RollFeedEndpoints
                 {
                     var player = r.UserID.Value;
                     var dice = new MoveDice(r.First, r.Second, r.Total);
+                    // The streak as of this roll, counting back through theirs before it
+                    var streak = RollStreak.Of(newest.Where(o => o.UserID == r.UserID && o.MessageID.Value <= r.MessageID.Value));
                     return new FeedRoll(
                         r.MessageID.Value.ToString(),
-                        player == settings.DungeonMasterID ? "The DM" : names.GetValueOrDefault(player.ToString()) ?? "Someone",
+                        player == settings.DungeonMasterID ? "The DM" : characters.GetValueOrDefault(player.ToString())?.Name ?? "Someone",
                         pictures.GetValueOrDefault(player),
                         player == settings.DungeonMasterID,
                         viewer.Is(player),
@@ -64,7 +70,13 @@ public static class RollFeedEndpoints
                             MoveOutcome.StrongHit => "strong",
                             MoveOutcome.WeakHit => "weak",
                             _ => "miss",
-                        });
+                        },
+                        streak is null ? null : $"{streak.Icon} {streak.Describe()}",
+                        streak?.Hot,
+                        // Their dice in their class's colour
+                        characters.GetValueOrDefault(player.ToString()) is { } character
+                            ? ClassSheetLibrary.For(character.Character.Class.Type)?.Color
+                            : null);
                 })
                 .ToList());
         });
@@ -82,6 +94,9 @@ public record RollFeed(string? Latest, IReadOnlyList<FeedRoll> Rolls);
 /// <param name="Mine">Whether the person looking rolled it.</param>
 /// <param name="Stat">The stat rolled with, like "+STR".</param>
 /// <param name="Outcome">"strong", "weak" or "miss".</param>
+/// <param name="Streak">The streak this roll puts them on, like "🔥 4 hits in a row", if it's long enough to mention.</param>
+/// <param name="Hot">Whether that streak is hits rather than misses.</param>
+/// <param name="Color">Their character's class colour, light and dark, which their dice are drawn in.</param>
 public record FeedRoll(
     string ID,
     string Who,
@@ -93,4 +108,7 @@ public record FeedRoll(
     int Total,
     string? Move,
     string? Stat,
-    string Outcome);
+    string Outcome,
+    string? Streak = null,
+    bool? Hot = null,
+    ClassColor? Color = null);

@@ -37,13 +37,6 @@ td.unlucky { color: var(--critical); font-weight: 700; }
 .sparkline circle.hot { fill: var(--good); }
 .sparkline circle.cold { fill: var(--critical); }
 
-/* Last session's awards: a row of small cards, each with its emoji standing out */
-.awards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .75rem; margin-top: .75rem; }
-.award { position: relative; display: flex; flex-direction: column; gap: .15rem; overflow: hidden; }
-.award.mine { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.award-icon { position: absolute; right: .6rem; top: .45rem; font-size: 1.9rem; opacity: .9; }
-.award strong { font-size: 1.05rem; padding-right: 2.2rem; }
-
 /* Who's good at what: each cell shaded from red (always misses) to green (always hits) by --rate, 0 to 1, and fainter
    by --sure when there are only a few rolls to go on */
 .heatmap th.heat-player, .heatmap td.heat { text-align: center; }

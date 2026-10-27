@@ -5,22 +5,41 @@
 
 <header class="topbar">
     <a class="brand" href=""><span aria-hidden="true">🎲</span>Sana Solem</a>
+    @* In groups: who's at the table and where they are; what's happened (monsters fought, how the dice went); and the
+       rules to look things up in, folded into a menu since they're read rather than played *@
     <nav>
         <NavLink href="" Match="NavLinkMatch.All" class="@ActiveFor("character/")">Party</NavLink>
         <NavLink href="npcs">NPCs</NavLink>
+        <NavLink href="scenes" class="@ActiveFor("scene/", "canvas/", "fight/")">Scenes</NavLink>
+        <span class="nav-sep" aria-hidden="true"></span>
+        <NavLink href="bestiary">Bestiary</NavLink>
         @* The DM's own tab, for looking after who the party fights *@
         @if (EncounterEndpoints.CanRun(Viewer))
         {
             <NavLink href="enemies">Enemies</NavLink>
         }
-        <NavLink href="stats">Roll stats</NavLink>
-        <NavLink href="classes">Classes</NavLink>
+        <NavLink href="sessions" class="@ActiveFor("session/")">Sessions</NavLink>
+        <NavLink href="stats">Stats</NavLink>
+        <span class="nav-sep" aria-hidden="true"></span>
+        <button type="button" class="nav-more @ActiveFor("classes", "subclasses/", "spells", "moves")" popovertarget="rules-menu">
+            Rules <span aria-hidden="true">▾</span>
+        </button>
+    </nav>
+    @* Outside the nav, which scrolls sideways on a narrow screen and would otherwise clip it *@
+    <div id="rules-menu" class="menu-pop nav-menu" popover>
+        <NavLink href="classes" class="@ActiveFor("subclasses/")">Classes</NavLink>
         <NavLink href="spells">Spells</NavLink>
         <NavLink href="moves">Moves</NavLink>
-        <NavLink href="scenes" class="@ActiveFor("scene/", "canvas/")">Scenes</NavLink>
-    </nav>
+    </div>
 
     <div class="viewer">
+        @* How the roll feed behaves for you (app.js keeps it in this browser) *@
+        <button type="button" class="feed-settings" popovertarget="roll-settings" title="Roll feed settings" aria-label="Roll feed settings">🎲</button>
+        <div id="roll-settings" class="menu-pop roll-settings" popover>
+            <strong>Roll feed</strong>
+            <label><input type="checkbox" data-roll-setting="show" checked /> Show rolls as they happen</label>
+            <label><input type="checkbox" data-roll-setting="sound" /> Dice sounds</label>
+        </div>
         <span class="live" title="Connecting…"><i class="live-dot off"></i>Live</span>
         @if (Viewer.SignedIn)
         {
@@ -45,6 +64,8 @@
 </header>
 
 <main>
+    @* Inside main, so it's refreshed with the page as the bot changes things *@
+    <SessionBar />
     @Body
 </main>
 

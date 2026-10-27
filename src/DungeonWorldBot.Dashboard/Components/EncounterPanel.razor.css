@@ -116,3 +116,5 @@
 @media (prefers-reduced-motion: reduce) {
     .ribbon-who.quiet .ribbon-face { animation: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--low) 35%, transparent); }
 }
+
+.replay-link { text-decoration: none; text-align: center; }

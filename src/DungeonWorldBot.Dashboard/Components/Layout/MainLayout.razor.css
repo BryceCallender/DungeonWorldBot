@@ -29,7 +29,8 @@
 }
 .brand span { margin-right: .4rem; }
 
-.topbar nav { display: flex; gap: .25rem; min-width: 0; }
+/* Scrolling sideways when there are more tabs than room, rather than running into the viewer's corner */
+.topbar nav { display: flex; gap: .25rem; min-width: 0; overflow-x: auto; scrollbar-width: none; }
 
 /* NavLink draws the links, so they need ::deep to be reached from here */
 .topbar nav ::deep a {
@@ -41,6 +42,34 @@
 }
 
 .topbar nav ::deep a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.topbar nav ::deep a:not(.active):hover { color: var(--text); }
+
+/* A thin line between the groups of tabs */
+.nav-sep { flex: none; align-self: center; width: 1px; height: 1.1rem; margin: 0 .35rem; background: #ff8a3a44; }
+
+/* Rules ▾, looking like the tabs beside it, and lit up like them while you're on one of its pages */
+.nav-more { padding: .35rem .75rem; border: 0; border-radius: 999px; background: none; color: var(--muted); font: inherit; white-space: nowrap; cursor: pointer; }
+.nav-more:hover, .topbar:has(.nav-menu:popover-open) .nav-more { color: var(--text); }
+.nav-more.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+
+/* Its menu: dark like the bar it drops from, placed under its button by app.js */
+.nav-menu {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    flex-direction: column;
+    gap: .15rem;
+    min-width: 9rem;
+    padding: .35rem;
+    background: #1c130e;
+    border: 1px solid #ff8a3a55;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px -10px rgb(0 0 0 / .6);
+}
+.nav-menu:popover-open { display: flex; }
+.nav-menu ::deep a { padding: .45rem .7rem; border-radius: 6px; color: var(--muted); text-decoration: none; }
+.nav-menu ::deep a:hover { background: rgb(255 140 50 / .12); color: var(--text); }
+.nav-menu ::deep a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
 
 main { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
 /* Scenes side by side want every bit of the width */
@@ -48,7 +77,30 @@ main:has(.side-page) { max-width: none; }
 
 /* Signed-in viewer and live updates */
 
-.viewer { margin-left: auto; display: flex; align-items: center; gap: .9rem; font-size: .85rem; }
+.viewer { flex: none; margin-left: auto; display: flex; align-items: center; gap: .9rem; font-size: .85rem; }
+
+/* The roll feed's settings: a die button opening a little menu of switches */
+.feed-settings { padding: .2rem .35rem; border: 1px solid transparent; border-radius: 8px; background: none; font-size: 1rem; line-height: 1; cursor: pointer; filter: saturate(.7); }
+.feed-settings:hover, .feed-settings:has(+ .roll-settings:popover-open) { border-color: #ff8a3a66; background: rgb(255 140 50 / .15); filter: none; }
+.roll-settings {
+    position: fixed;
+    inset: auto;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+    padding: .75rem .9rem;
+    /* Dark in either theme, like the bar it opens from (whose light text it inherits) */
+    background: #1c130e;
+    color: var(--text);
+    border: 1px solid #ff8a3a55;
+    border-radius: 10px;
+    box-shadow: 0 10px 30px -10px rgb(0 0 0 / .6);
+    font-size: .85rem;
+    accent-color: var(--accent);
+}
+.roll-settings:not(:popover-open) { display: none; }
+.roll-settings label { display: flex; align-items: center; gap: .5rem; cursor: pointer; white-space: nowrap; }
 
 /* The dot itself (.live-dot) is in app.css, since canvases show one too */
 .live { display: inline-flex; align-items: center; gap: .6rem; color: var(--muted); }

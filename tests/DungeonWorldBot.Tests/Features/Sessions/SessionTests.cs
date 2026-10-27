@@ -55,6 +55,8 @@ public sealed class SessionTests : IDisposable
         Assert.Equal(1, await sessions.NumberOfAsync(first));
         Assert.Equal(2, await sessions.NumberOfAsync(second));
         Assert.Equal([first.ID, second.ID], (await sessions.GetAllAsync()).Select(s => s.ID));
+        Assert.Null(await sessions.GetPreviousAsync(first));
+        Assert.Equal(first.ID, (await sessions.GetPreviousAsync(second))?.ID);
     }
 
     [Fact]
@@ -81,7 +83,7 @@ public sealed class SessionTests : IDisposable
         Assert.Equal(1, recap.Misses);
         Assert.Equal(1, recap.Natural12s);
         Assert.Equal(1, recap.Natural2s);
-        Assert.Equal(1, recap.Fights);
+        Assert.Equal(["Ambush"], recap.Fights);
         Assert.Equal([new PlayerSessionRolls(new Snowflake(1), 2, 1), new PlayerSessionRolls(new Snowflake(2), 1, 0)], recap.Players);
     }
 }

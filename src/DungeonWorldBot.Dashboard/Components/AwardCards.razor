@@ -1,0 +1,34 @@
+@inject Viewer Viewer
+
+@* Who stood out over a stretch of rolls (a session), a card each with its emoji standing out *@
+<div class="awards">
+    @foreach (var award in Awards)
+    {
+        <div class="card award @(Viewer.Is(award.UserID) ? "mine" : "")">
+            <span class="award-icon" aria-hidden="true">@award.Icon</span>
+            <span class="tile-label">@award.Title</span>
+            <strong>
+                @if (Party.FirstOrDefault(c => c.Character.ID.Value == award.UserID) is { } c)
+                {
+                    <a href="@c.Url">@c.Name</a>
+                }
+                else
+                {
+                    <span>Player</span>
+                }
+            </strong>
+            <span class="small">@award.Detail</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<Award> Awards { get; set; } = [];
+
+    /// <summary>
+    /// The party, for the winners' names.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public IReadOnlyList<CharacterView> Party { get; set; } = [];
+}

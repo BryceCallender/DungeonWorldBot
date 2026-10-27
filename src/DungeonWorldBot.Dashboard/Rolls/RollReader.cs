@@ -1,9 +1,9 @@
+using DungeonWorldBot.Dashboard.Encounters;
 using DungeonWorldBot.Dashboard.Party;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Rolls;
-using System.Text.RegularExpressions;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Remora.Rest.Core;
@@ -13,7 +13,7 @@ namespace DungeonWorldBot.Dashboard.Rolls;
 /// <summary>
 /// Reads the raw game chat rolls, for the dice spreads the bot's own roll stats don't work out.
 /// </summary>
-public partial class RollReader
+public class RollReader
 {
     private readonly DungeonWorldContext _context;
     private readonly IRollStatsService _rollStats;
@@ -71,6 +71,30 @@ public partial class RollReader
         return new RollBreakdown(moves, stats, Sessions(rolls, await RecordedSessionsAsync()), rolls.Count(r => r.Move is null));
     }
 
+    // Enough rolls back to find everyone's streak, without reading the whole history
+    private const int StreakRolls = 400;
+
+    /// <summary>
+    /// The streak each player is on, by Discord ID; only those on one.
+    /// </summary>
+    public async Task<Dictionary<ulong, RollStreak>> GetStreaksAsync()
+    {
+        if (_rollStats.GameChatChannelID is not { } gameChat)
+            return new Dictionary<ulong, RollStreak>();
+
+        // EF won't order by IDs stored as ulong in SQLite, though the column is a plain INTEGER that sorts fine
+        var recent = await _context.Rolls
+            .FromSql($"SELECT * FROM Rolls WHERE ChannelID = {gameChat.Value} ORDER BY MessageID DESC LIMIT {StreakRolls}")
+            .AsNoTracking()
+            .ToListAsync();
+
+        return recent
+            .GroupBy(r => r.UserID.Value)
+            .Select(g => (Player: g.Key, Streak: RollStreak.Of(g)))
+            .Where(p => p.Streak is not null)
+            .ToDictionary(p => p.Player, p => p.Streak!);
+    }
+
     /// <summary>
     /// How many sessions back each player's luck goes.
     /// </summary>
@@ -115,9 +139,29 @@ public partial class RollReader
         return new RollNerdery(luck, heatmap, sessions.Count == 0 ? null : await AwardsAsync(sessions[^1]));
     }
 
-    // "💥 4 damage", as the bot writes what a hit did
-    [GeneratedRegex(@"💥\s*(\d+)\s*damage")]
-    private static partial Regex DamageResult();
+    /// <summary>
+    /// The game chat's rolls between two moments, oldest first.
+    /// </summary>
+    public async Task<List<RollRecord>> GetRollsAsync(DateTimeOffset from, DateTimeOffset to)
+    {
+        if (_rollStats.GameChatChannelID is not { } gameChat)
+            return [];
+
+        return (await GameChatRollsAsync(gameChat))
+            .Where(r => r.MessageID.Timestamp >= from && r.MessageID.Timestamp <= to)
+            .OrderBy(r => r.MessageID.Value)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Who stood out between two moments, like a session.
+    /// </summary>
+    /// <param name="leaveOut">Someone who can't win, like the DM.</param>
+    public async Task<SessionAwards?> GetAwardsAsync(DateTimeOffset from, DateTimeOffset to, ulong? leaveOut = null)
+    {
+        var rolls = (await GetRollsAsync(from, to)).Where(r => r.UserID.Value != leaveOut).ToList();
+        return rolls.Count == 0 ? null : await AwardsAsync(new RollSession(rolls, null));
+    }
 
     private async Task<SessionAwards> AwardsAsync(RollSession night)
     {
@@ -175,7 +219,7 @@ public partial class RollReader
             return [];
         }
 
-        int Damage(EncounterAction a) => DamageResult().Match(a.Result!) is { Success: true } m ? int.Parse(m.Groups[1].Value) : 0;
+        int Damage(EncounterAction a) => FightDamage.Of(a.Result);
 
         // Value tuples, so nobody at all comes back as 0 damage rather than throwing
         var awards = new List<Award>();
@@ -207,7 +251,7 @@ public partial class RollReader
     /// <summary>
     /// A session's rolls, oldest first, with its name if it was marked with /session start.
     /// </summary>
-    private record RollSession(List<RollRecord> Rolls, string? Name);
+    private record RollSession(List<RollRecord> Rolls, string? Name, int? Number = null);
 
     // The sessions marked with /session start, oldest first. None if the bot's database predates them.
     private async Task<List<GameSession>> RecordedSessionsAsync()
@@ -227,7 +271,7 @@ public partial class RollReader
     private static List<RollSession> SessionGroups(IEnumerable<RollRecord> rolls, List<GameSession> recorded)
     {
         var sessions = new List<RollSession>();
-        var marked = recorded.Select((s, i) => (Session: s, Group: new RollSession([], s.Title is { } t ? $"Session {i + 1}: {t}" : $"Session {i + 1}"))).ToList();
+        var marked = recorded.Select((s, i) => (Session: s, Group: new RollSession([], s.Title is { } t ? $"Session {i + 1}: {t}" : $"Session {i + 1}", i + 1))).ToList();
         RollSession? guessed = null;
 
         foreach (var roll in rolls.OrderBy(r => r.MessageID.Value))
@@ -269,7 +313,8 @@ public partial class RollReader
                     dice.Count(d => d.IsNatural12),
                     dice.Count(d => d.IsNatural2),
                     dice.Average(d => d.First + d.Second),
-                    night.Name);
+                    night.Name,
+                    night.Number);
             })
             .Reverse()
             .ToList();

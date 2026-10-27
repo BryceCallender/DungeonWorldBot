@@ -49,7 +49,8 @@ public class SessionCommand : DungeonWorldCommandBase
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: Truncate(session.Title is { } t ? $"📜 Session {number}: {t}" : $"📜 Session {number} begins", 256),
-                Description: $"Started by <@{GetUserId()}>. Gather round, adventurers. Every roll from here counts toward tonight's tale.",
+                Description: Truncate($"Started by <@{GetUserId()}>. Gather round, adventurers. Every roll from here counts toward tonight's tale."
+                    + await PreviouslyAsync(session), 4096),
                 Timestamp: session.StartedAt,
                 Colour: _feedbackService.Theme.Primary
             ),
@@ -88,6 +89,23 @@ public class SessionCommand : DungeonWorldCommandBase
         );
     }
 
+    // "Previously, in Session 11: The Ford", with how the dice went and the fights, to remind everyone where they were
+    private async Task<string> PreviouslyAsync(GameSession session)
+    {
+        if (await _sessions.GetPreviousAsync(session) is not { } previous)
+            return "";
+
+        var recap = await _sessions.RecapAsync(previous);
+        var name = $"Session {await _sessions.NumberOfAsync(previous)}" + (previous.Title is { } t ? $": {t}" : "");
+        var lines = new List<string> { $"\n\n**Previously, in {name}…**" };
+        if (recap.Fights.Count > 0)
+            lines.Add($"⚔️ {string.Join(", ", recap.Fights)}");
+        if (recap.Rolls > 0)
+            lines.Add($"🎲 {recap.Rolls} roll{(recap.Rolls == 1 ? "" : "s")} · {recap.Hits * 100 / recap.Rolls}% hit"
+                + (recap.Natural12s > 0 ? $" · ✨ {recap.Natural12s} natural 12{(recap.Natural12s == 1 ? "" : "s")}" : ""));
+        return string.Join('\n', lines);
+    }
+
     private static string Describe(GameSession session, SessionRecap recap)
     {
         var length = session.EndedAt!.Value - session.StartedAt;
@@ -102,8 +120,8 @@ public class SessionCommand : DungeonWorldCommandBase
         };
         if (recap.Natural12s > 0 || recap.Natural2s > 0)
             lines.Add($"✨ {recap.Natural12s} natural 12{(recap.Natural12s == 1 ? "" : "s")} · 🐍 {recap.Natural2s} snake eyes");
-        if (recap.Fights > 0)
-            lines.Add($"⚔️ {recap.Fights} fight{(recap.Fights == 1 ? "" : "s")}");
+        if (recap.Fights.Count > 0)
+            lines.Add($"⚔️ {string.Join(", ", recap.Fights)}");
         return string.Join('\n', lines);
     }
 

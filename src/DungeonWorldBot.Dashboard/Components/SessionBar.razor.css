@@ -1,0 +1,23 @@
+.session-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .35rem 1.1rem;
+    margin: -.5rem 0 1.25rem;
+    padding: .55rem .9rem;
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--border));
+    border-radius: 12px;
+    background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 14%, var(--surface)), var(--surface));
+    color: var(--text);
+    font-size: .85rem;
+    text-decoration: none;
+    transition: border-color .15s;
+}
+.session-bar:hover { border-color: var(--accent); }
+
+.session-name { display: inline-flex; align-items: center; gap: .5rem; font-weight: 700; color: var(--accent); }
+.session-stat { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.session-previously { color: var(--muted); font-style: italic; }
+
+/* Scenes beside each other are all board */
+:root.embedded .session-bar { display: none; }

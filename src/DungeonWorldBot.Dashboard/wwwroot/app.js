@@ -82,6 +82,16 @@ showTimes();
 // So "2 minutes ago" keeps counting
 setInterval(showTimes, 60000);
 
+// <time data-since> shows how long it's been, like a session's "2h 05m", counting up
+function showElapsed() {
+    for (const el of document.querySelectorAll('time[data-since]')) {
+        const minutes = Math.max(0, Math.floor((Date.now() - new Date(el.dateTime)) / 60000));
+        el.textContent = minutes >= 60 ? `${Math.floor(minutes / 60)}h ${String(minutes % 60).padStart(2, '0')}m` : `${minutes}m`;
+    }
+}
+showElapsed();
+setInterval(showElapsed, 30000);
+
 // On a phone the tabs scroll sideways, so bring the current one into view (Scenes is last and starts off the edge)
 document.querySelector('.topbar nav a.active')?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
 
@@ -280,6 +290,7 @@ const changed = () => document.dispatchEvent(new Event('live-change'));
             main.innerHTML = fresh.innerHTML;
             restore(main, state);
             showTimes(main);
+            showElapsed();
             markSection();
             document.title = next.title;
             pulse();
@@ -547,6 +558,45 @@ document.addEventListener('pointerout', e => {
     let again = false;
     let feed = null;
 
+    // Whether to show rolls at all, and with sound: the 🎲 menu in the top bar, remembered in this browser
+    const settings = { show: true, sound: false };
+    try { Object.assign(settings, JSON.parse(localStorage.getItem('roll-feed') ?? '{}')); } catch { /* the defaults, then */ }
+    for (const input of document.querySelectorAll('[data-roll-setting]')) input.checked = settings[input.dataset.rollSetting];
+    document.addEventListener('change', e => {
+        const input = e.target.closest?.('[data-roll-setting]');
+        if (!input) return;
+        settings[input.dataset.rollSetting] = input.checked;
+        try { localStorage.setItem('roll-feed', JSON.stringify(settings)); } catch { /* just for this visit, then */ }
+        if (input.dataset.rollSetting === 'sound' && input.checked) { rattle(.5); clack(.55, 1); }
+        if (input.dataset.rollSetting === 'show' && !input.checked) feed?.querySelectorAll('.roll-toast').forEach(dismiss);
+    });
+
+    // Dice clatter, made up on the spot rather than loaded: each clack a burst of noise through a band-pass filter, at a
+    // slightly different pitch, so a tumble sounds like dice skittering across a table
+    let audio = null;
+    function clack(delay = 0, loudness = .35) {
+        if (!settings.sound || !window.AudioContext) return;
+        audio ??= new AudioContext();
+        // Browsers start sound only after someone's clicked on the page; until then this is silent
+        if (audio.state === 'suspended') audio.resume().catch(() => {});
+        const length = Math.floor(audio.sampleRate * .045);
+        const buffer = audio.createBuffer(1, length, audio.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / length) ** 4;
+        const source = Object.assign(audio.createBufferSource(), { buffer });
+        const filter = audio.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.value = 1800 + Math.random() * 2200;
+        filter.Q.value = 2.5;
+        const gain = audio.createGain();
+        gain.gain.value = loudness;
+        source.connect(filter).connect(gain).connect(audio.destination);
+        source.start(audio.currentTime + delay);
+    }
+    function rattle(seconds) {
+        for (let t = 0; t < seconds; t += .05 + Math.random() * .09) clack(t, .12 + Math.random() * .15);
+    }
+
     const el = (tag, className, text) => {
         const e = document.createElement(tag);
         if (className) e.className = className;
@@ -607,11 +657,18 @@ document.addEventListener('pointerout', e => {
     }
 
     async function show(r) {
+        if (!settings.show) return;
         feed ??= document.body.appendChild(Object.assign(el('div', 'roll-feed'), { ariaLive: 'polite' }));
 
         const nat12 = r.first === 6 && r.second === 6;
         const nat2 = r.first === 1 && r.second === 1;
         const toast = el('div', `roll-toast ${r.outcome}${nat12 ? ' nat12' : ''}${nat2 ? ' nat2' : ''}${r.mine ? ' mine' : ''}`);
+        // Their dice in their class's colour, as on their party card
+        if (r.color) {
+            toast.classList.add('classed');
+            toast.style.setProperty('--class-light', r.color.light);
+            toast.style.setProperty('--class-dark', r.color.dark);
+        }
         toast.title = 'Click to dismiss';
 
         const who = el('div', 'roll-who');
@@ -641,6 +698,7 @@ document.addEventListener('pointerout', e => {
         dice.append(result);
 
         toast.append(who, dice);
+        if (r.streak) toast.append(el('div', `roll-streak ${r.hot ? 'hot' : 'cold'}`, r.streak));
         toast.setAttribute('aria-label', `${r.who} rolled ${r.first} and ${r.second}${what ? ` for ${what}` : ''}: ${r.total}, ${outcomes[r.outcome]}`);
         toast.addEventListener('click', () => dismiss(toast));
         toast.addEventListener('pointerenter', () => clearTimeout(toast.timer));
@@ -650,7 +708,8 @@ document.addEventListener('pointerout', e => {
         const shown = feed.querySelectorAll('.roll-toast:not(.leaving)');
         for (let i = 0; i < shown.length - maxShown; i++) dismiss(shown[i]);
 
-        await Promise.all([roll(first, r.first, 750), roll(second, r.second, 950)]);
+        if (!still.matches) rattle(.85);
+        await Promise.all([roll(first, r.first, 750).then(() => clack(0, .5)), roll(second, r.second, 950).then(() => clack(0, .6))]);
         toast.classList.add('revealed');
         if (nat12) burst(toast);
         expireLater(toast);

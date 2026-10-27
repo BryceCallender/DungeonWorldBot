@@ -1,0 +1,39 @@
+.nemesis {
+    display: flex;
+    align-items: center;
+    gap: 1.1rem;
+    margin-top: 1rem;
+    border-color: color-mix(in srgb, var(--critical) 50%, var(--border));
+    background: linear-gradient(110deg, color-mix(in srgb, var(--critical) 16%, var(--surface)), var(--surface) 60%);
+}
+.nemesis h2 { margin: .1rem 0 .3rem; font-size: 1.5rem; color: var(--critical); }
+.nemesis p { margin: 0; }
+.nemesis-crest { font-size: 3rem; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--critical) 60%, transparent)); }
+
+.bestiary { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1rem; margin-top: 1rem; }
+.beast { display: flex; flex-direction: column; gap: .65rem; }
+.beast.is-nemesis { border-color: color-mix(in srgb, var(--critical) 55%, var(--border)); }
+
+.beast-head { display: flex; align-items: center; gap: .7rem; }
+.beast-head h3 { margin: 0; }
+.beast-crest {
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    background: color-mix(in srgb, var(--damage) 18%, var(--surface-2));
+    color: var(--damage);
+    font-weight: 800;
+    font-size: 1.15rem;
+    transform: rotate(-4deg);
+}
+.beast-slain { margin-left: auto; display: flex; flex-direction: column; align-items: flex-end; line-height: 1; }
+.beast-slain strong { font-size: 1.7rem; font-variant-numeric: tabular-nums; }
+
+.beast-bar { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.beast-bar div { height: 100%; background: linear-gradient(90deg, var(--damage), var(--critical)); }
+
+.beast-facts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .2rem; color: var(--muted); }
+.beast-secret { padding-top: .5rem; border-top: 1px dashed var(--border); display: flex; flex-direction: column; gap: .2rem; }

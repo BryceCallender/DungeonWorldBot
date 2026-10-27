@@ -590,9 +590,19 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 }
 .die i { border-radius: 50%; }
 .die i.on { background: var(--text); }
+/* A character's dice come in their class colour (.classed sets --class), with white pips */
+.roll-toast.classed .die { background: var(--class); border-color: color-mix(in srgb, var(--class) 70%, black); box-shadow: inset 0 -3px 0 rgb(0 0 0 / .25); }
+.roll-toast.classed .die i.on { background: #fff; box-shadow: 0 1px 1px rgb(0 0 0 / .3); }
+.roll-toast.classed .roll-avatar { background: color-mix(in srgb, var(--class) 25%, var(--surface)); color: var(--class); }
 .die.tumbling { animation: die-tumble .32s linear infinite; }
 .die.landed { animation: die-land .35s cubic-bezier(.3, 1.6, .5, 1); }
 .revealed .die { border-color: color-mix(in srgb, var(--roll) 45%, var(--border)); }
+
+/* "🔥 4 hits in a row" under the dice once they land */
+.roll-streak { font-size: .78rem; font-weight: 700; opacity: 0; transition: opacity .3s .15s; }
+.roll-streak.hot { color: var(--damage); }
+.roll-streak.cold { color: var(--armor); }
+.revealed .roll-streak { opacity: 1; }
 
 .roll-mod { color: var(--muted); font-weight: 600; font-variant-numeric: tabular-nums; }
 

@@ -1,0 +1,5 @@
+.awards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: .75rem; margin-top: .75rem; }
+.award { position: relative; display: flex; flex-direction: column; gap: .15rem; overflow: hidden; }
+.award.mine { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.award-icon { position: absolute; right: .6rem; top: .45rem; font-size: 1.9rem; opacity: .9; }
+.award strong { font-size: 1.05rem; padding-right: 2.2rem; }

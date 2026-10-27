@@ -1,0 +1,26 @@
+.npc-web { display: block; width: 100%; max-width: 760px; height: auto; margin: 0 auto; overflow: visible; }
+
+.tie { stroke-linecap: round; opacity: .8; }
+.tie.loyal { stroke: var(--good); }
+.tie.steady { stroke: var(--muted); stroke-dasharray: 6 6; }
+.tie.wavering { stroke: var(--critical); stroke-dasharray: 3 5; animation: tie-fray 1.4s ease-in-out infinite; }
+
+.camp circle { fill: color-mix(in srgb, var(--damage) 18%, var(--surface)); stroke: var(--damage); stroke-width: 2; }
+.camp text { text-anchor: middle; font-size: 22px; }
+
+.node circle { stroke-width: 3; }
+.node.character circle { fill: color-mix(in srgb, var(--class) 22%, var(--surface)); stroke: var(--class); }
+.node.character .initial { fill: var(--class); }
+.node.npc circle { fill: var(--surface); stroke: var(--muted); }
+.node.npc.loyal circle { stroke: var(--good); }
+.node.npc.wavering circle { stroke: var(--critical); }
+.node .initial { text-anchor: middle; font-weight: 800; font-size: 18px; fill: var(--muted); }
+.node .label { text-anchor: middle; font-size: 13px; font-weight: 600; fill: var(--text); }
+.node .loyalty { text-anchor: middle; font-size: 11px; fill: var(--muted); }
+.node.npc.wavering .loyalty { fill: var(--critical); font-weight: 700; }
+
+@keyframes tie-fray { 50% { opacity: .35; } }
+
+@media (prefers-reduced-motion: reduce) {
+    .tie.wavering { animation: none; }
+}

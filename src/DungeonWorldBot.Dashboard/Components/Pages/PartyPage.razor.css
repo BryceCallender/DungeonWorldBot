@@ -59,3 +59,16 @@
 .alert a.chip:hover { text-decoration: underline; }
 
 .bonds-card { margin-top: .75rem; padding: 1.25rem .75rem; }
+
+/* On a streak of hits (🔥) or misses (🧊), from their latest rolls */
+.chip.streak { font-variant-numeric: tabular-nums; }
+.chip.streak.hot { background: color-mix(in srgb, var(--damage) 20%, transparent); color: var(--damage); animation: streak-flicker 1.6s ease-in-out infinite; }
+.chip.streak.cold { background: color-mix(in srgb, var(--armor) 20%, transparent); color: var(--armor); }
+
+@keyframes streak-flicker {
+    50% { box-shadow: 0 0 10px -2px var(--damage); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .chip.streak.hot { animation: none; }
+}

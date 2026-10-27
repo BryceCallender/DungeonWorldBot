@@ -6,6 +6,7 @@ using DungeonWorldBot.Dashboard.Live;
 using DungeonWorldBot.Dashboard.Npcs;
 using DungeonWorldBot.Dashboard.Party;
 using DungeonWorldBot.Dashboard.Rolls;
+using DungeonWorldBot.Dashboard.Sessions;
 using DungeonWorldBot.Dashboard.Shared;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Features.Characters;
@@ -15,6 +16,7 @@ using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Npcs;
 using DungeonWorldBot.Features.Resources;
 using DungeonWorldBot.Features.Rolls;
+using DungeonWorldBot.Features.Sessions;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -50,6 +52,10 @@ builder.Services.AddScoped<ISpotlightService, SpotlightService>();
 builder.Services.AddScoped<ITimelineService, TimelineService>();
 builder.Services.AddScoped<PartyReader>();
 builder.Services.AddScoped<RollReader>();
+builder.Services.AddScoped<ISessionService, SessionService>();
+builder.Services.AddScoped<SessionReader>();
+builder.Services.AddScoped<BestiaryReader>();
+builder.Services.AddScoped<FightReplayReader>();
 var writableDatabase = new DbContextOptionsBuilder<DungeonWorldContext>()
     .UseSqlite($"Data Source={databasePath};Mode=ReadWrite")
     .Options;
