@@ -1,5 +1,7 @@
 @using DungeonWorldBot.Dashboard.Sessions
 @inject SessionReader Sessions
+@inject Viewer Viewer
+@inject IHttpContextAccessor Http
 
 @* While a session's going on (/session start), a strip across the top of every page with how long it's been and how
    the dice are going, linking to the session's page. Before anyone's rolled, it reminds everyone where they left off. *@
@@ -35,6 +37,10 @@
 
     protected override async Task OnInitializedAsync()
     {
+        // Pages open to anyone (like /denied) share the layout, and the session is only for the server's members
+        if (Viewer.SignInEnabled && Http.HttpContext?.User.HasClaim(c => c.Type == DiscordSignIn.MemberClaim) != true)
+            return;
+
         _current = await Sessions.GetCurrentAsync();
         if (_current is { Recap.Rolls: 0 } current)
             _previous = await Sessions.GetPreviousAsync(current);

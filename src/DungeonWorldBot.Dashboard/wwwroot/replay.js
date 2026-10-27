@@ -24,7 +24,7 @@
         else face.textContent = f.name.charAt(0);
         const body = el('div', 'fighter-body');
         body.append(el('span', 'fighter-name', f.name));
-        if (f.maxHP) {
+        if (f.tracked) {
             const bar = el('div', 'fighter-hp');
             bar.append(el('div'));
             body.append(bar);
@@ -44,26 +44,18 @@
     let at = 0;
     let timer = null;
 
-    // How hurt everyone is after the first n steps: enemies start at full and lose each hit's damage
-    function healthAfter(n) {
-        const lost = new Map();
-        for (const step of data.steps.slice(0, n))
-            if (step.target && step.damage) lost.set(step.target, (lost.get(step.target) ?? 0) + step.damage);
-        return lost;
-    }
-
+    // How hurt each enemy is after the first n steps, as the page worked it out: exactly for whoever runs the fight,
+    // in quarters for players, who never get an enemy's max HP
     function showHealth(n) {
-        const lost = healthAfter(n);
+        const shares = data.health[n] ?? {};
         for (const { fighter, card } of cards.values()) {
-            if (!fighter.maxHP) continue;
-            let share = Math.max(0, 1 - (lost.get(fighter.key) ?? 0) / fighter.maxHP);
-            // Players see how hurt an enemy looks, not its numbers
-            if (!data.exact && share > 0) share = Math.ceil(share * 4) / 4;
+            if (!fighter.tracked) continue;
+            const share = shares[fighter.key] ?? 1;
             const fill = card.querySelector('.fighter-hp div');
             fill.style.width = `${share * 100}%`;
             fill.className = share <= .25 ? 'critical' : share <= .5 ? 'low' : '';
             card.classList.toggle('down', share <= 0);
-            card.title = data.exact ? `${fighter.name}: ${Math.max(0, fighter.maxHP - (lost.get(fighter.key) ?? 0))}/${fighter.maxHP} HP` : fighter.name;
+            card.title = data.exact && fighter.maxHP ? `${fighter.name}: ${Math.round(share * fighter.maxHP)}/${fighter.maxHP} HP` : fighter.name;
         }
     }
 

@@ -1595,6 +1595,8 @@ function floatOff(token: Konva.Node, change: number) {
         const x = token.x();
         const shake = new Konva.Animation(frame => {
             const t = frame!.time;
+            // Picked up mid-shake: leave it where the drag takes it
+            if (token.isDragging()) { shake.stop(); return; }
             if (t > 400) { token.x(x); shake.stop(); return; }
             token.x(x + Math.sin(t / 25) * 5 * scale * (1 - t / 400));
         }, tokens);

@@ -94,12 +94,35 @@
         if (_replay is not { } r)
             return;
 
-        // Players see how hurt enemies look, not their numbers, so their health goes down in quarters for them
+        // Enemies' health after each step, worked out here so players never get their max HP: they see how hurt an
+        // enemy looks, so for them it goes down in quarters. Whoever runs the fight gets it exactly, with the numbers.
+        var exact = EncounterEndpoints.CanRun(Viewer);
+        var tracked = r.Fighters.Where(f => f.MaxHP is > 0).ToList();
+        var lost = new Dictionary<string, int>();
+        Dictionary<string, double> Shares() => tracked.ToDictionary(f => f.Key, f =>
+        {
+            var share = Math.Max(0, 1 - lost.GetValueOrDefault(f.Key) / (double)f.MaxHP!.Value);
+            return exact || share <= 0 ? share : Math.Ceiling(share * 4) / 4;
+        });
+        var health = new List<Dictionary<string, double>> { Shares() };
+        foreach (var step in r.Steps)
+        {
+            if (step.Target is { } target && step.Damage > 0)
+                lost[target] = lost.GetValueOrDefault(target) + step.Damage;
+            health.Add(Shares());
+        }
+
         _json = JsonSerializer.Serialize(new
         {
-            exact = EncounterEndpoints.CanRun(Viewer),
-            fighters = r.Fighters,
+            exact,
+            fighters = r.Fighters.Select(f => new
+            {
+                f.Key, f.Name, f.Side, f.Portrait, f.Color,
+                Tracked = f.MaxHP is > 0,
+                MaxHP = exact ? f.MaxHP : null,
+            }),
             steps = r.Steps,
+            health,
         }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
     }
 }

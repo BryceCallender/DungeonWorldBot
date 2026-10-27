@@ -33,11 +33,12 @@
         <h2>⚔️ @encounter.Name</h2>
 
         @* How far below their max each fighter is, for the numbers that float off tokens as they're hurt and healed
-           (canvas.ts). Only how hurt, never their max, which players don't see for enemies. *@
+           (canvas.ts). For enemies, players get only the damage the timeline already shows them, since how much HP
+           an enemy's lost, beside how hurt it looks, would give away its max. *@
         <ul hidden data-wounds>
             @foreach (var enemy in encounter.Enemies)
             {
-                <li data-fighter="@TokenFighter.Enemy(enemy.ID)" data-name="@enemy.Name" data-hurt="@(enemy.MaxHP - enemy.CurrentHP)"
+                <li data-fighter="@TokenFighter.Enemy(enemy.ID)" data-name="@enemy.Name" data-hurt="@(_canRun ? enemy.MaxHP - enemy.CurrentHP : _damageTaken.GetValueOrDefault(enemy.Name))"
                     data-badges="@EnemyBadge(enemy.Condition)" data-badge-title="@EnemyConditions.Describe(enemy.Condition)"></li>
             }
             @foreach (var c in _fighters)
@@ -159,6 +160,7 @@
     private bool _viewOnly;
     private Spotlight? _spotlight;
     private Encounter? _lastFight;
+    private Dictionary<string, int> _damageTaken = new();
     private Dictionary<ulong, string> _characterUrls = new();
     private IReadOnlyList<CharacterView> _party = [];
     private IReadOnlyDictionary<ulong, string> _portraits = new Dictionary<ulong, string>();
@@ -181,6 +183,8 @@
             _characterUrls = party.ToDictionary(c => c.Character.ID.Value, c => c.Url);
             _spotlight = await SpotlightService.GetAsync(encounter, party.Select(c => c.Character));
             _portraits = await PortraitStore.UrlsAsync();
+            if (!_canRun)
+                _damageTaken = await Replays.DamageTakenAsync(encounter.ID);
 
             var everyone = encounter.Participants.Count == 0;
             _fighters = party.Where(c => everyone || encounter.Participants.Any(p => p.CharacterID == c.Character.ID)).ToList();

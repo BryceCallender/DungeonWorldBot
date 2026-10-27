@@ -50,6 +50,27 @@ public class FightReplayReader(DungeonWorldContext context, PartyReader party, P
         }
     }
 
+    /// <summary>
+    /// How much damage each enemy has taken in a fight, by name, as its timeline tells it: what players can already
+    /// read there, unlike the enemies' health.
+    /// </summary>
+    public async Task<Dictionary<string, int>> DamageTakenAsync(int fightID)
+    {
+        try
+        {
+            return (await context.EncounterActions.AsNoTracking()
+                    .Where(a => a.EncounterID == fightID && a.Target != null && a.Result != null)
+                    .Select(a => new { a.Target, a.Result })
+                    .ToListAsync())
+                .GroupBy(a => a.Target!, StringComparer.OrdinalIgnoreCase)
+                .ToDictionary(g => g.Key, g => g.Sum(a => FightDamage.Of(a.Result)), StringComparer.OrdinalIgnoreCase);
+        }
+        catch (SqliteException e) when (e.Message.Contains("no such table") || e.Message.Contains("no such column"))
+        {
+            return new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
     public async Task<FightReplay?> GetAsync(int fightID)
     {
         Encounter? fight;
