@@ -12,7 +12,8 @@ namespace DungeonWorldBot.Features.Rolls;
 /// </summary>
 /// <param name="Move">The move rolled, when the title names one, e.g. "🎲 Zephyr: Volley" or ".dex volley".</param>
 /// <param name="Stat">The stat the roll went with, from the start of "Rolled with", e.g. "DEX +2, Bonus +1".</param>
-public record RollLabel(string? Move, StatType? Stat)
+/// <param name="Modifiers">All of "Rolled with": where each modifier came from.</param>
+public record RollLabel(string? Move, StatType? Stat, string? Modifiers = null)
 {
     public const string RolledWith = "Rolled with";
 
@@ -33,7 +34,7 @@ public record RollLabel(string? Move, StatType? Stat)
     {
         var fields = embed.Fields.OrDefault(null) ?? [];
         var rolledWith = fields.FirstOrDefault(f => f.Name == RolledWith)?.Value;
-        return new RollLabel(MoveIn(embed.Title.OrDefault(null)), StatIn(rolledWith));
+        return new RollLabel(MoveIn(embed.Title.OrDefault(null)), StatIn(rolledWith), rolledWith);
     }
 
     /// <returns>The move's name as the bot spells it, or null if the title's label (after the ": ") isn't a move.</returns>

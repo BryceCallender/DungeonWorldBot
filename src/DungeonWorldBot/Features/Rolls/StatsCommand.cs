@@ -40,7 +40,7 @@ public class StatsCommand : DungeonWorldCommandBase
     }
 
     [Command("show")]
-    [Description("Show how everyone's 2d6 rolls in the game chat have gone: hits, misses, nat 12s and nat 2s")]
+    [Description("Show how everyone's 2d6 rolls in the game chat have gone: hits, misses, nat 12s, nat 2s, modifiers")]
     public async Task<IResult> ShowStatsAsync(
         [Description("Only show this player's stats")]
         IUser? user = null)
@@ -114,7 +114,8 @@ public class StatsCommand : DungeonWorldCommandBase
         $"Strong hits (10+): {stats.StrongHits} ({Percent(stats.StrongHits, stats.Rolls)})\n" +
         $"Weak hits (7-9): {stats.WeakHits} ({Percent(stats.WeakHits, stats.Rolls)})\n" +
         $"Misses (6-): {stats.Misses} ({Percent(stats.Misses, stats.Rolls)})\n" +
-        $"Nat 12s: {stats.Natural12s} · Nat 2s: {stats.Natural2s}";
+        $"Nat 12s: {stats.Natural12s} · Nat 2s: {stats.Natural2s}\n" +
+        $"Modifiers lifted {stats.Lifted} · sank {stats.Sunk}";
 
     private static string Percent(int count, int total) => $"{(double)count / total:P0}";
 

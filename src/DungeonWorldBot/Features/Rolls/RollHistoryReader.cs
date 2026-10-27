@@ -56,6 +56,8 @@ public partial class RollHistoryReader
                 First = dice.First,
                 Second = dice.Second,
                 Total = dice.Total,
+                Modifier = dice.Modifier,
+                Modifiers = label.Modifiers,
                 Move = label.Move,
                 Stat = label.Stat,
                 // The reason and who changed it stay in the embed's note

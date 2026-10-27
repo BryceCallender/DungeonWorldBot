@@ -20,6 +20,17 @@ public class RollRecord
     public int Total { get; set; }
 
     /// <summary>
+    /// Everything added to the dice, so <see cref="Total"/> is the dice plus this.
+    /// </summary>
+    public int Modifier { get; set; }
+
+    /// <summary>
+    /// Where the modifier came from, as the roll's "Rolled with" showed it, e.g. "STR +2, Weak -1, Bonus +1". Null when
+    /// the roll didn't say.
+    /// </summary>
+    public string? Modifiers { get; set; }
+
+    /// <summary>
     /// The move rolled, like "Hack and Slash", if the roll was for one.
     /// </summary>
     public string? Move { get; set; }

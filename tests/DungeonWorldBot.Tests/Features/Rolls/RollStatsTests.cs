@@ -137,7 +137,7 @@ public class RollStatsTests
             Title: title,
             Fields: rolledWith is null ? [] : new List<EmbedField> { new(RollLabel.RolledWith, rolledWith) });
 
-        Assert.Equal(new RollLabel(move, stat), RollLabel.Of(embed));
+        Assert.Equal(new RollLabel(move, stat, rolledWith), RollLabel.Of(embed));
     }
 
     [Fact]
@@ -159,6 +159,48 @@ public class RollStatsTests
         var roll = Assert.Single(await context.Rolls.AsNoTracking().ToListAsync());
         Assert.Equal("Volley", roll.Move);
         Assert.Equal(StatType.Dex, roll.Stat);
+    }
+
+    [Fact]
+    public async Task Modifiers_AreKept_AndCountedWhenTheyChangeTheBand()
+    {
+        using var database = new TestDatabase();
+        await using var context = database.CreateContext();
+        var service = new RollStatsService(context, GameChat(222));
+
+        var channel = new Snowflake(222);
+        var player = new Snowflake(111);
+        var rolledWith = new RollLabel("Volley", StatType.Dex, "DEX +2, Bonus +1");
+
+        // 6 + 3 lifts a miss to a strong hit, 8 - 2 sinks a weak hit to a miss, 4 + 0 stays a miss
+        await service.RecordAsync(new Snowflake(1), channel, player, new DiceRoller(new ConstantDieRoller(3)).Roll("2d6+3"), rolledWith);
+        await service.RecordAsync(new Snowflake(2), channel, player, new DiceRoller(new ConstantDieRoller(4)).Roll("2d6-2"));
+        await service.RecordAsync(new Snowflake(3), channel, player, new DiceRoller(new ConstantDieRoller(2)).Roll("2d6"));
+
+        var first = await context.Rolls.AsNoTracking().SingleAsync(r => r.MessageID == new Snowflake(1));
+        Assert.Equal((3, "DEX +2, Bonus +1"), (first.Modifier, first.Modifiers));
+
+        var stats = Assert.Single(await service.GetStatsAsync());
+        Assert.Equal((1, 1), (stats.Lifted, stats.Sunk));
+    }
+
+    [Fact]
+    public async Task Scans_FillInModifierSourcesForRollsRecordedWithoutThem()
+    {
+        using var database = new TestDatabase();
+        await using var context = database.CreateContext();
+        var service = new RollStatsService(context, GameChat(222));
+
+        var channel = new Snowflake(222);
+        await service.RecordAsync(new Snowflake(1), channel, new Snowflake(111), new DiceRoller(new ConstantDieRoller(3)).Roll("2d6+1"));
+
+        await service.AddMissingAsync(new[]
+        {
+            new RollRecord { MessageID = new Snowflake(1), ChannelID = channel, UserID = new Snowflake(111), First = 3, Second = 3, Total = 7, Modifier = 1, Modifiers = "STR +1" },
+        });
+
+        var roll = Assert.Single(await context.Rolls.AsNoTracking().ToListAsync());
+        Assert.Equal((1, "STR +1"), (roll.Modifier, roll.Modifiers));
     }
 
     [Fact]

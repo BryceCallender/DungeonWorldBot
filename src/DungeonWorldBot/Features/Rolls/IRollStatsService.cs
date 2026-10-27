@@ -7,7 +7,18 @@ namespace DungeonWorldBot.Features.Rolls;
 /// <summary>
 /// How someone's 2d6 rolls have gone.
 /// </summary>
-public record PlayerRollStats(Snowflake UserID, int Rolls, int StrongHits, int WeakHits, int Misses, int Natural12s, int Natural2s);
+/// <param name="Lifted">Rolls their modifiers moved up a band, like a 6 + 1 turning a miss into a 7-9.</param>
+/// <param name="Sunk">Rolls their modifiers moved down a band, like a 7 - 1 turning a 7-9 into a miss.</param>
+public record PlayerRollStats(
+    Snowflake UserID,
+    int Rolls,
+    int StrongHits,
+    int WeakHits,
+    int Misses,
+    int Natural12s,
+    int Natural2s,
+    int Lifted = 0,
+    int Sunk = 0);
 
 public interface IRollStatsService
 {

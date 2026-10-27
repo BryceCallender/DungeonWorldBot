@@ -43,6 +43,8 @@ public class RollStatsService : IRollStatsService
             First = dice.First,
             Second = dice.Second,
             Total = dice.Total,
+            Modifier = dice.Modifier,
+            Modifiers = label?.Modifiers,
             Move = label?.Move,
             Stat = label?.Stat,
         });
@@ -68,6 +70,7 @@ public class RollStatsService : IRollStatsService
 
             recorded.Move ??= roll.Move;
             recorded.Stat ??= roll.Stat;
+            recorded.Modifiers ??= roll.Modifiers;
         }
 
         var missing = rolls.Where(r => !existing.ContainsKey(r.MessageID)).ToList();
@@ -108,7 +111,9 @@ public class RollStatsService : IRollStatsService
                     dice.Count(d => d.Outcome == MoveOutcome.WeakHit),
                     dice.Count(d => d.Outcome == MoveOutcome.Miss),
                     dice.Count(d => d.IsNatural12),
-                    dice.Count(d => d.IsNatural2));
+                    dice.Count(d => d.IsNatural2),
+                    dice.Count(d => d.LiftedByModifier),
+                    dice.Count(d => d.SunkByModifier));
             })
             .OrderByDescending(s => s.Rolls)
             .ToList();

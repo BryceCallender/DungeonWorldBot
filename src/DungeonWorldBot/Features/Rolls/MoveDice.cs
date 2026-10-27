@@ -14,6 +14,22 @@ public partial record MoveDice(int First, int Second, int Total, MoveOutcome? Ch
     public bool IsNatural2 => First == 1 && Second == 1;
     public bool IsNatural12 => First == 6 && Second == 6;
     public MoveOutcome Outcome => ChangedOutcome ?? MoveRoller.OutcomeFor(Total);
+    public int Modifier => Total - First - Second;
+
+    /// <summary>
+    /// The band the dice alone would have landed in, without modifiers.
+    /// </summary>
+    public MoveOutcome NaturalOutcome => MoveRoller.OutcomeFor(First + Second);
+
+    /// <summary>
+    /// Whether modifiers lifted the roll into a better band, like a 6 + 1 turning a miss into a 7-9.
+    /// </summary>
+    public bool LiftedByModifier => MoveRoller.OutcomeFor(Total) > NaturalOutcome;
+
+    /// <summary>
+    /// Whether modifiers dropped the roll into a worse band, like a 7 - 1 turning a 7-9 into a miss.
+    /// </summary>
+    public bool SunkByModifier => MoveRoller.OutcomeFor(Total) < NaturalOutcome;
 
     /// <summary>
     /// A recorded roll's dice, counting as whatever its outcome was changed to.

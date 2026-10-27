@@ -26,6 +26,7 @@ else
         <div class="card tile"><span class="tile-label">Hit rate</span><strong>@Percent(_party.Sum(s => s.StrongHits + s.WeakHits), _table.Rolls)</strong></div>
         <div class="card tile"><span class="tile-label">Avg dice</span><strong>@Avg(_table.AverageNatural)</strong><span class="small">fair dice: 7.0</span></div>
         <div class="card tile"><span class="tile-label">Avg total</span><strong>@Avg(_table.AverageTotal)</strong><span class="small">with modifiers</span></div>
+        <div class="card tile"><span class="tile-label">Lifted by mods</span><strong>@_party.Sum(s => s.Lifted)</strong><span class="small">sank @_party.Sum(s => s.Sunk)</span></div>
         <div class="card tile"><span class="tile-label">Nat 12s</span><strong>@_party.Sum(s => s.Natural12s)</strong></div>
         <div class="card tile"><span class="tile-label">Nat 2s</span><strong>@_party.Sum(s => s.Natural2s)</strong></div>
     </div>
@@ -43,6 +44,7 @@ else
                     <th class="num">Nat 2</th>
                     <th class="num" title="Average of the two dice, before modifiers. Fair dice average 7.">Avg dice</th>
                     <th class="num">Avg total</th>
+                    <th class="num" title="Rolls their modifiers moved up a band (like 6 + 1 into a 7–9), then down a band (like 7 − 1 into a miss).">Lifted / sank</th>
                     <th title="Average dice each of the last @RollReader.LuckSessions sessions. The dashed line is fair dice (7).">Luck</th>
                     <th class="spread">Spread</th>
                 </tr>
@@ -61,6 +63,7 @@ else
                         <td class="num">@s.Natural2s</td>
                         <td class="num @Luck(spread)">@Avg(spread?.AverageNatural)</td>
                         <td class="num">@Avg(spread?.AverageTotal)</td>
+                        <td class="num">@s.Lifted / @s.Sunk</td>
                         <td class="luck">@Sparkline(s.UserID.Value)</td>
                         <td class="spread">
                             <div class="spread-bar" title="@Percent(s.StrongHits, s.Rolls) strong · @Percent(s.WeakHits, s.Rolls) weak · @Percent(s.Misses, s.Rolls) miss">
