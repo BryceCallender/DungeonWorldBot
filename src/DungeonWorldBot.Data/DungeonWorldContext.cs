@@ -119,6 +119,17 @@ public class DungeonWorldContext : DbContext
             monster.Property(m => m.Name).UseCollation("NOCASE");
         });
 
+        // An item is always in someone's inventory, so one taken out of it (Items.Remove) is deleted, not left behind
+        // with no inventory
+        modelBuilder.Entity<Inventory>(inventory =>
+        {
+            inventory.HasMany(i => i.Items)
+                .WithOne()
+                .HasForeignKey("InventoryID")
+                .IsRequired()
+                .OnDelete(DeleteBehavior.Cascade);
+        });
+
         // A character's picture lives on their own row, but is loaded only when asked for (see CharacterPortrait)
         modelBuilder.Entity<Character>(character =>
         {

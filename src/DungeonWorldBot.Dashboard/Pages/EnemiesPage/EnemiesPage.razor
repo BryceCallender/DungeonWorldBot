@@ -1,0 +1,241 @@
+@page "/enemies"
+@namespace DungeonWorldBot.Dashboard.Pages
+@using DungeonWorldBot.Dashboard.Services.Encounters
+@using DungeonWorldBot.Features.Encounters
+@inject IEncounterService Encounters
+@inject Viewer Viewer
+
+@* The DM's tab for who the party fights: the enemies in every fight going on, with their numbers, and the saved monsters
+   they're spawned from. A mistake comes back in the address and reopens its dialog, or shows at the top for the quick
+   HP buttons. Enemies are added to a fight from its scene, where they get their tokens. *@
+<PageTitle>Enemies · Sana Solem</PageTitle>
+
+<PageHeader Title="Enemies" />
+
+@if (!_canRun)
+{
+    <p class="empty">Only the DM sees enemies' numbers. You can watch a fight from its scene.</p>
+}
+else
+{
+    @if (_errors.ForPage is { } error)
+    {
+        <p class="form-error desk-error">@error</p>
+    }
+
+    @if (_fights.Count == 0)
+    {
+        <p class="empty">No fights going on. Start one from an encounter scene.</p>
+    }
+    @foreach (var fight in _fights)
+    {
+        <section class="desk-section" id="fight-@fight.ID">
+            <div class="desk-head">
+                <h2>⚔️ @fight.Name</h2>
+                @if (fight.SceneID is { } sceneID)
+                {
+                    <a class="tool desk-new" href="scene/@sceneID">Open @(fight.SceneName ?? "its scene")</a>
+                }
+            </div>
+            @if (fight.Enemies.Count == 0)
+            {
+                <p class="empty">No enemies yet. Add them from the fight's scene.</p>
+            }
+            else
+            {
+                <div class="desk-grid">
+                    @foreach (var enemy in EnemySheet.Ordered(fight.Enemies))
+                    {
+                        @EnemyCard(enemy)
+                    }
+                </div>
+            }
+        </section>
+    }
+
+    <section class="desk-section" id="monsters">
+        <div class="desk-head">
+            <h2>Saved monsters</h2>
+            <button type="button" class="tool desk-new" data-open-dialog="monster-new">+ New monster</button>
+        </div>
+        @if (_monsters.Count == 0)
+        {
+            <p class="empty">No saved monsters yet. Write one up to spawn it into fights from their scenes.</p>
+        }
+        else
+        {
+            <div class="desk-grid">
+                @foreach (var monster in _monsters)
+                {
+                    @MonsterCard(monster)
+                }
+            </div>
+        }
+    </section>
+
+    <Modal Id="monster-new" Title="New monster" Action="api/monsters" SubmitLabel="Save monster" Errors="_errors">
+        @Fields(null)
+    </Modal>
+
+    @foreach (var monster in _monsters)
+    {
+        <Modal Id="@($"monster-edit-{monster.ID}")" Title="@monster.Name" Action="@($"api/monsters/{monster.ID}")" SubmitLabel="Save" Errors="_errors">
+            @Fields(monster)
+            <p class="small muted">Enemies already spawned from it stay as they are.</p>
+        </Modal>
+
+        <ConfirmDialog Id="@($"monster-remove-{monster.ID}")" Title="@($"Forget {monster.Name}?")" Action="@($"api/monsters/{monster.ID}/remove")"
+                       Message="It won't be offered for new fights. Enemies already spawned from it stay."
+                       KeepLabel="Keep it" ConfirmLabel="Forget" />
+    }
+
+    @foreach (var enemy in _fights.SelectMany(f => f.Enemies))
+    {
+        <Modal Id="@($"enemy-edit-{enemy.ID}")" Title="@enemy.Name" Action="@($"api/enemies/{enemy.ID}")" SubmitLabel="Save" Errors="_errors">
+            @Fields(AsMonster(enemy), enemy.CurrentHP)
+        </Modal>
+
+        <ConfirmDialog Id="@($"enemy-remove-{enemy.ID}")" Title="@($"Take {enemy.Name} out of the fight?")" Action="@($"api/enemies/{enemy.ID}/remove")"
+                       Message="What it did stays in the fight's spotlight. Its token stays on the board until you remove it there."
+                       KeepLabel="Keep it" ConfirmLabel="Take out" />
+    }
+}
+
+@code {
+    // Set by the forms when something was wrong: the dialog to reopen, and what to say in it
+    [SupplyParameterFromQuery] public string? Dialog { get; set; }
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+
+    private FormErrors _errors = FormErrors.None;
+    private bool _canRun;
+    private IReadOnlyList<Encounter> _fights = [];
+    private IReadOnlyList<MonsterTemplate> _monsters = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _errors = new(Dialog, Error);
+        _canRun = Viewer.CanRunGame;
+        if (!_canRun)
+            return;
+
+        try
+        {
+            _fights = await Encounters.GetRunningAsync();
+            _monsters = await Encounters.GetMonstersAsync();
+        }
+        catch (Microsoft.Data.Sqlite.SqliteException e) when (e.Message.Contains("no such table") || e.Message.Contains("no such column"))
+        {
+            // The bot hasn't added fights or monsters to its database yet
+        }
+    }
+
+    // An enemy's numbers in the monster form, which it was spawned from
+    private static MonsterTemplate AsMonster(Enemy enemy) => new()
+    {
+        Name = enemy.Name,
+        MaxHP = enemy.MaxHP,
+        Armor = enemy.Armor,
+        Damage = enemy.Damage,
+        Tags = enemy.Tags,
+        Instinct = enemy.Instinct,
+        Moves = enemy.Moves,
+        Notes = enemy.Notes,
+    };
+
+    private RenderFragment EnemyCard(Enemy enemy) =>
+    @<div class="card desk-card @(enemy.Condition == EnemyCondition.Defeated ? "defeated" : null)" id="enemy-@enemy.ID">
+        <div class="member-head">
+            <h2>@enemy.Name</h2>
+            <span class="chip condition @enemy.Condition.ToString().ToLowerInvariant()" title="What the players see">@EnemyConditions.Describe(enemy.Condition)</span>
+        </div>
+        <HealthBar Current="enemy.CurrentHP" Max="enemy.MaxHP" />
+        <HpChangeForm Action="@($"api/enemies/{enemy.ID}/hp")" Name="@enemy.Name" />
+        @Sheet(enemy.Armor, enemy.Damage, enemy.Tags, enemy.Instinct, enemy.Moves, enemy.Notes)
+        <div class="desk-actions">
+            <button type="button" class="tool" data-open-dialog="enemy-edit-@enemy.ID">Edit</button>
+            <button type="button" class="tool" data-open-dialog="enemy-remove-@enemy.ID">Take out</button>
+        </div>
+    </div>;
+
+    private RenderFragment MonsterCard(MonsterTemplate monster) =>
+    @<div class="card desk-card" id="monster-@monster.ID">
+        <div class="member-head">
+            <h2>@monster.Name</h2>
+            <span class="chip"><Icon Name="heart" />@monster.MaxHP HP</span>
+        </div>
+        @Sheet(monster.Armor, monster.Damage, monster.Tags, monster.Instinct, monster.Moves, monster.Notes)
+        <div class="desk-actions">
+            <button type="button" class="tool" data-open-dialog="monster-edit-@monster.ID">Edit</button>
+            <button type="button" class="tool" data-open-dialog="monster-remove-@monster.ID">Forget</button>
+        </div>
+    </div>;
+
+    private static RenderFragment Sheet(int armor, string? damage, string? tags, string? instinct, string? moves, string? notes) =>
+    @<div class="desk-extra">
+        <CombatStats Armor="armor" Damage="@damage" />
+        @if (tags is not null)
+        {
+            <div class="small">@tags</div>
+        }
+        @if (instinct is not null)
+        {
+            <div class="small"><strong>Instinct</strong> @instinct</div>
+        }
+        @if (moves is not null)
+        {
+            <ul class="desk-moves small">
+                @foreach (var move in EnemySheet.SplitMoves(moves))
+                {
+                    <li>@move</li>
+                }
+            </ul>
+        }
+        @if (notes is not null)
+        {
+            <div class="small muted desk-notes">@notes</div>
+        }
+    </div>;
+
+    /// <summary>
+    /// A monster's numbers, filled in with what it has now, or blank for a new one. An enemy in a fight also has its
+    /// current HP, and keeps its name, since its tokens on the board go by it.
+    /// </summary>
+    private RenderFragment Fields(MonsterTemplate? monster, int? currentHp = null) =>
+    @<div class="desk-fields">
+        @if (currentHp is null)
+        {
+            <Field Label="Name">
+                <input class="filter" name="name" value="@monster?.Name" maxlength="@EncounterDesk.MaxNameLength" placeholder="Goblin" required />
+            </Field>
+        }
+        <div class="field-row">
+            @if (currentHp is { } hp)
+            {
+                <Field Label="HP">
+                    <input class="filter" type="number" name="currentHp" value="@hp" min="0" required />
+                </Field>
+            }
+            <Field Label="Max HP">
+                <input class="filter" type="number" name="maxHp" value="@monster?.MaxHP" min="1" placeholder="3" required />
+            </Field>
+            <Field Label="Armor">
+                <input class="filter" type="number" name="armor" value="@(monster?.Armor ?? 0)" min="0" />
+            </Field>
+            <Field Label="Damage">
+                <input class="filter" name="damage" value="@monster?.Damage" maxlength="@EncounterDesk.MaxNameLength" placeholder="d6" />
+            </Field>
+        </div>
+        <Field Label="Tags">
+            <input class="filter" name="tags" value="@monster?.Tags" maxlength="@EncounterDesk.MaxTextLength" placeholder="Horde, Small, Intelligent" />
+        </Field>
+        <Field Label="Instinct">
+            <input class="filter" name="instinct" value="@monster?.Instinct" maxlength="@EncounterDesk.MaxTextLength" placeholder="To overwhelm" />
+        </Field>
+        <Field Label="Moves, one per line">
+            <textarea class="filter" name="moves" maxlength="@EncounterDesk.MaxTextLength" placeholder="@("Charge!\nCall more goblins")">@monster?.Moves</textarea>
+        </Field>
+        <Field Label="Notes">
+            <textarea class="filter" name="notes" maxlength="@EncounterDesk.MaxTextLength">@monster?.Notes</textarea>
+        </Field>
+    </div>;
+}

@@ -492,7 +492,7 @@ document.addEventListener('click', e => {
 if (document.querySelector('dialog[data-open-on-load]')) {
     document.querySelectorAll('dialog[data-open-on-load]').forEach(d => d.showModal());
     const url = new URL(location.href);
-    for (const key of ['error', 'fightError', 'dialog', 'from']) url.searchParams.delete(key);
+    for (const key of ['error', 'dialog', 'from']) url.searchParams.delete(key);
     history.replaceState(history.state, '', url);
 }
 

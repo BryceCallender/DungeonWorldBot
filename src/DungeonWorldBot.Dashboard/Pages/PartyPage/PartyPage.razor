@@ -1,0 +1,219 @@
+@page "/"
+@namespace DungeonWorldBot.Dashboard.Pages
+@using DungeonWorldBot.Dashboard.Models.Rolls
+@using DungeonWorldBot.Dashboard.Services.Rolls
+@using DungeonWorldBot.Rules
+@inject PartyReader PartyReader
+@inject DashboardSettings Settings
+@inject Viewer Viewer
+@inject PortraitStore PortraitStore
+@inject RollReader RollReader
+
+<PageTitle>Party · Sana Solem</PageTitle>
+
+<PageHeader Title="Party" />
+
+@if (_party.Count == 0)
+{
+    <p class="empty">No characters yet. Make one in Discord with /character create.</p>
+}
+else
+{
+    @* Who needs something, worst first; only what applies shows up *@
+    <div class="alerts">
+        <div class="card alert party-hp">
+            <span class="tile-label">Party</span>
+            <HealthBar Current="_party.Sum(c => c.CurrentHP)" Max="_party.Sum(c => c.MaxHP)" />
+        </div>
+        @if (_alerts.Count == 0)
+        {
+            <div class="card alert good">
+                <span class="tile-label">All hale</span>
+                <span class="small muted">Nobody needs attention.</span>
+            </div>
+        }
+        @foreach (var alert in _alerts)
+        {
+            <div class="card alert @alert.Severity">
+                <div class="alert-head">
+                    <span class="tile-label">@alert.Title</span>
+                    <strong>@alert.Who.Count</strong>
+                </div>
+                <span class="small muted">@alert.Hint</span>
+                <div class="resource-chips">
+                    @foreach (var who in alert.Who)
+                    {
+                        @if (who.Url is { } url)
+                        {
+                            <a class="chip @alert.Severity" href="@url">@who.Label</a>
+                        }
+                        else
+                        {
+                            <span class="chip @alert.Severity">@who.Label</span>
+                        }
+                    }
+                </div>
+            </div>
+        }
+    </div>
+
+    <div class="party">
+        @foreach (var c in _party)
+        {
+            <a class="card member classed" style="@Lookup.ColorOf(c.Character.Class.Type)" href="@c.Url">
+                <div class="member-head">
+                    <div>
+                        <div class="member-name">
+                            <h2>@c.Name</h2>
+                            @if (Viewer.Is(c.ID))
+                            {
+                                <span class="chip accent">You</span>
+                            }
+                            @if (_streaks.GetValueOrDefault(c.Character.ID.Value) is { } streak)
+                            {
+                                <span class="chip streak @(streak.Hot ? "hot" : "cold")" title="@streak.Describe()">@streak.Icon @streak.Length</span>
+                            }
+                        </div>
+                        <div class="muted class-line">
+                            <span>Level @c.Level <span class="class-name">@c.ClassName</span></span>
+                            @if (c.Subclass is { } sub)
+                            {
+                                <span class="chip class" title="@sub.Name">@sub.Name</span>
+                            }
+                        </div>
+                    </div>
+                    @if (c.Character.Status is { } status && status != Status.Alive)
+                    {
+                        <span class="chip warn">@status</span>
+                    }
+                </div>
+
+                @* The same for everyone, so these line up across cards *@
+                <HealthBar View="c" />
+
+                <div class="armor-row">
+                    <span title="Physical armor"><Icon Name="shield" />@c.Armor.Physical</span>
+                    <span title="Magical armor"><Icon Name="magic" />@c.Armor.Magical</span>
+                    <span title="Divine armor"><Icon Name="divine" />@c.Armor.Divine</span>
+                    <span title="Damage"><Icon Name="sword" />@c.Damage</span>
+                </div>
+
+                <StatGrid Stats="c.Stats" />
+
+                @* What only some characters have *@
+                @if (Tactic(c) is not null || c.Subclass?.Status is not null || c.ActiveShapes.Count > 0 || c.Picks.Count > 0 || c.Resources.Count > 0 || c.StatPoints > 0)
+                {
+                    <div class="member-extra">
+                        @if (Tactic(c) is { } tactic)
+                        {
+                            <div class="small">@ToHtml(tactic)</div>
+                        }
+
+                        @if (c.Subclass?.Status is { } subclassStatus)
+                        {
+                            <div class="small">@ToHtml(subclassStatus)</div>
+                        }
+
+                        @if (c.ActiveShapes is { Count: > 0 } shapes)
+                        {
+                            <div class="small">🐾 In the shape of <strong>@string.Join(" + ", shapes)</strong></div>
+                        }
+
+                        @if (c.Picks.Count > 0 || c.Resources.Count > 0 || c.StatPoints > 0)
+                        {
+                            <div class="resource-chips">
+                                @foreach (var pick in c.Picks)
+                                {
+                                    <span class="chip class" title="@pick.Feature">@pick.Choice</span>
+                                }
+                                @foreach (var r in c.Resources)
+                                {
+                                    <span class="chip class" title="@r.Summary">@r.Name @r.Value@(r.Max is { } max ? $"/{max}" : "")</span>
+                                }
+                                @if (c.StatPoints > 0)
+                                {
+                                    <span class="chip accent">@Plural(c.StatPoints, "stat point")</span>
+                                }
+                            </div>
+                        }
+                    </div>
+                }
+
+                <div class="member-foot small">
+                    @if (Settings.TrackWeight && c.Character.Inventory is { MaxLoad: > 0 } inventory)
+                    {
+                        <span>🎒 @inventory.CurrentLoad/@inventory.MaxLoad load</span>
+                    }
+                    else
+                    {
+                        <span>🎒 @(c.Character.Inventory?.Items?.Count ?? 0) items</span>
+                    }
+                    <span>🪙 @Coin(c)</span>
+                    <span>🔗 @(c.Character.Bonds?.Count ?? 0) bonds</span>
+                </div>
+            </a>
+        }
+    </div>
+
+    @if (_party.Any(c => c.Character.Bonds is { Count: > 0 }))
+    {
+        <h2 class="section-title">Bonds</h2>
+        <p class="small">Who has a bond with whom. Arrows point from a character to who they have a bond with; a thick line means it goes both ways. Point at someone to see just theirs.</p>
+        <section class="card bonds-card">
+            <BondWeb Party="_party" Portraits="_portraits" />
+        </section>
+    }
+}
+
+@code {
+    private IReadOnlyList<CharacterView> _party = [];
+    private IReadOnlyDictionary<ulong, string> _portraits = new Dictionary<ulong, string>();
+    private Dictionary<ulong, RollStreak> _streaks = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _party = await PartyReader.GetPartyAsync();
+        _portraits = await PortraitStore.UrlsAsync();
+        _streaks = await RollReader.GetStreaksAsync();
+        _alerts = Alerts().Where(a => a.Who.Count > 0).ToList();
+    }
+
+    private List<Alert> _alerts = [];
+
+    private sealed record Who(string Label, string? Url = null);
+
+    private sealed record Alert(string Severity, string Title, string Hint, IReadOnlyList<Who> Who);
+
+    // Worst first; empty ones are dropped
+    private IEnumerable<Alert> Alerts()
+    {
+        var alive = _party.Where(c => c.Character.Status is null or Status.Alive).ToList();
+        var critical = alive.Where(c => c.MaxHP > 0 && c.HealthPercent <= 25).ToList();
+
+        yield return new("critical", "Dead", "Fallen and awaiting what comes next",
+            _party.Where(c => c.Character.Status == Status.Dead).Select(c => new Who(c.Name, c.Url)).ToList());
+        yield return new("critical", "Critical", "At 25% HP or less",
+            critical.Select(Hp).ToList());
+        yield return new("low", "Debilitated", "Rolling at −1 with these stats",
+            _party.Where(c => c.Debilitated.Count > 0)
+                .Select(c => new Who($"{c.Name} · {string.Join(", ", c.Debilitated.Select(s => s.Debility))}", c.Url)).ToList());
+        yield return new("low", "Hurt", "Below max HP",
+            alive.Except(critical).Where(c => c.CurrentHP < c.MaxHP).Select(Hp).ToList());
+        yield return new("muted", "Resting", "Out of the action for now",
+            _party.Where(c => c.Character.Status == Status.Resting).Select(c => new Who(c.Name, c.Url)).ToList());
+        yield return new("accent", "Stat points to spend", "Unspent after leveling",
+            _party.Where(c => c.StatPoints > 0).Select(c => new Who($"{c.Name} · {c.StatPoints}", c.Url)).ToList());
+    }
+
+    private static Who Hp(CharacterView c) => new($"{c.Name} {c.CurrentHP}/{c.MaxHP}", c.Url);
+
+    // Battlemasters only, e.g. "⚔️ **Cautious** (default): +1 to Defy Danger."
+    private static string? Tactic(CharacterView c) =>
+        TacticRules.Current(c.Character) is not null ? TacticRules.Status(c.Character) : null;
+
+    // Kits have called it both "Coin" and "Coins"
+    private static int Coin(CharacterView c) =>
+        (c.Character.Inventory?.Items ?? [])
+            .Where(i => i.Name.StartsWith("Coin", StringComparison.OrdinalIgnoreCase))
+            .Sum(i => i.Amount);
+}

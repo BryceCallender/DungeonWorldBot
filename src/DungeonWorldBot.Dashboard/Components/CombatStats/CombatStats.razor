@@ -1,0 +1,27 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* Someone's armor and damage on a card the DM looks after, like an NPC's or an enemy's, with room for more after *@
+<div class="desk-stats">
+    <span title="Armor"><Icon Name="shield" />@Armor</span>
+    @if (Damage is not null)
+    {
+        <span title="Damage"><Icon Name="sword" />@Damage</span>
+    }
+    @ChildContent
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public int Armor { get; set; }
+
+    /// <summary>
+    /// Their damage die, e.g. "d6", or null when they have none.
+    /// </summary>
+    [Parameter]
+    public string? Damage { get; set; }
+
+    /// <summary>
+    /// More numbers after these, each in its own span, like an NPC's loyalty.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

@@ -1,0 +1,101 @@
+@page "/bestiary"
+@namespace DungeonWorldBot.Dashboard.Pages
+@using DungeonWorldBot.Dashboard.Models.Encounters
+@using DungeonWorldBot.Dashboard.Services.Encounters
+@inject BestiaryReader BestiaryReader
+@inject PartyReader PartyReader
+@inject Viewer Viewer
+
+<PageTitle>Bestiary · Sana Solem</PageTitle>
+
+<PageHeader Title="Bestiary" Description="Every kind of monster the party has fought, and how many fell. Goblin 1 and Goblin 2 count as Goblins." />
+
+@if (_bestiary.Entries.Count == 0)
+{
+    <p class="empty">No fights yet. Monsters show up here once they've been in one.</p>
+}
+else
+{
+    <div class="tiles">
+        <StatTile Label="Kinds met">@_bestiary.Entries.Count</StatTile>
+        <StatTile Label="Monsters slain">@_bestiary.Entries.Sum(e => e.Slain)</StatTile>
+        <StatTile Label="Damage dealt" Note="by the party">@_bestiary.Entries.Sum(e => e.DamageTaken)</StatTile>
+        <StatTile Label="Damage taken" Note="from monsters">@_bestiary.Entries.Sum(e => e.DamageToParty)</StatTile>
+    </div>
+
+    @if (_bestiary.Nemesis is { } nemesis)
+    {
+        <section class="card nemesis">
+            <span class="nemesis-crest" aria-hidden="true">👹</span>
+            <div>
+                <span class="tile-label">The party's nemesis</span>
+                <h2>@nemesis.Name</h2>
+                <p>Has dealt <strong>@nemesis.DamageToParty damage</strong> to the party over @Plural(nemesis.Fights, "fight"), more than anything else that's fought them.@(nemesis.Slain > 0 ? $" {nemesis.Slain} of them have paid for it." : "")</p>
+            </div>
+        </section>
+    }
+
+    <div class="bestiary">
+        @foreach (var e in _bestiary.Entries)
+        {
+            <section class="card beast @(e == _bestiary.Nemesis ? "is-nemesis" : "")">
+                <div class="beast-head">
+                    <span class="beast-crest" aria-hidden="true">@e.Name[..1]</span>
+                    <div>
+                        <h3>@e.Name</h3>
+                        <span class="small muted">First met @e.FirstMet.ToLocalTime().ToString("d MMM yyyy")</span>
+                    </div>
+                    <div class="beast-slain">
+                        <strong>@e.Slain</strong>
+                        <span class="small">slain</span>
+                    </div>
+                </div>
+                <div class="beast-bar" title="@e.Slain of @e.Met slain">
+                    <div style="width: @(e.Met == 0 ? 0 : e.Slain * 100 / e.Met)%"></div>
+                </div>
+                <ul class="beast-facts small">
+                    <li>⚔️ @e.Met met across @Plural(e.Fights, "fight")</li>
+                    @if (e.DamageToParty > 0)
+                    {
+                        <li>💥 Dealt @e.DamageToParty damage to the party</li>
+                    }
+                    @if (e.DamageTaken > 0)
+                    {
+                        <li>🗡️ Took @e.DamageTaken damage from the party</li>
+                    }
+                    @if (e.TopSlayer is { } slayer && _party.PlayedBy(slayer)?.Name is { } name)
+                    {
+                        <li>🏆 @name's favourite prey (@e.TopSlayerDamage damage)</li>
+                    }
+                </ul>
+                @* Saved monsters' details are the DM's *@
+                @if (_canRun && e.Template is { } t && (t.Tags ?? t.Instinct) is not null)
+                {
+                    <div class="beast-secret small">
+                        @if (t.Tags is not null)
+                        {
+                            <div class="muted">@t.Tags</div>
+                        }
+                        @if (t.Instinct is not null)
+                        {
+                            <div><strong>Instinct</strong> @t.Instinct</div>
+                        }
+                    </div>
+                }
+            </section>
+        }
+    </div>
+}
+
+@code {
+    private Bestiary _bestiary = new([], null);
+    private IReadOnlyList<CharacterView> _party = [];
+    private bool _canRun;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _bestiary = await BestiaryReader.GetAsync();
+        _party = await PartyReader.GetPartyAsync();
+        _canRun = Viewer.CanRunGame;
+    }
+}

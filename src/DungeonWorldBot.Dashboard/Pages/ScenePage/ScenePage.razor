@@ -1,0 +1,358 @@
+@page "/scene/{Id}"
+@* The old address, so links already shared in Discord still work *@
+@page "/canvas/{Id}"
+@namespace DungeonWorldBot.Dashboard.Pages
+@using Microsoft.AspNetCore.Components.Forms
+@using DungeonWorldBot.Dashboard.Models.Scenes
+@using DungeonWorldBot.Dashboard.Services.Encounters
+@using DungeonWorldBot.Dashboard.Services.Scenes
+@using DungeonWorldBot.Features.Characters
+@using DungeonWorldBot.Features.Encounters
+@inject CanvasStore CanvasStore
+@inject CanvasPresence Presence
+@inject Viewer Viewer
+@inject IEncounterService Encounters
+@inject ICharacterService Characters
+@inject PartyReader PartyReader
+@inject PortraitStore Portraits
+
+@if (_canvas is not { } c)
+{
+    <PageTitle>Not found · Sana Solem</PageTitle>
+    <p class="empty">No scene with that ID. <a href="scenes">Back to the scenes</a></p>
+    return;
+}
+
+<PageTitle>@c.Name · Sana Solem </PageTitle>
+
+@* Built from Scripts/canvas.ts, with Konva and SignalR bundled in. Modules are deferred, so the page is there when it runs. *@
+<HeadContent>
+    <script type="module" src="@Assets["canvas.js"]"></script>
+</HeadContent>
+
+@* The board's card, and on an encounter scene the fight's timeline in a card of its own beside it *@
+<div class="board-layout">
+<div class="board-page">
+    <header class="board-head">
+        <a class="board-back tool" href="scenes" title="Back to the scenes" aria-label="Back to the scenes"><Icon Name="back" /></a>
+        <div class="board-title">
+            <h1>@c.Name</h1>
+            <span class="board-meta">@c.Kind · edited @c.UpdatedAt.ToString("MMM d")</span>
+        </div>
+        @* The rest of the header is filled in by canvas.ts *@
+        <span class="board-status" data-status><i class="live-dot off"></i><span data-status-text>Connecting…</span></span>
+        <span class="board-here" data-here></span>
+        <span class="board-people" data-people></span>
+        <a class="tool board-split" href="scenes/side-by-side?ids=@Id" title="Show this scene beside others">Side by side</a>
+    </header>
+
+    <div class="board-body">
+        <div class="board-rail" role="toolbar" aria-label="Drawing tools">
+            <button type="button" class="tool" data-tool="pen" title="Pen (P)" aria-label="Pen"><Icon Name="pen" /></button>
+            <button type="button" class="tool" data-tool="erase" title="Eraser (E)" aria-label="Eraser"><Icon Name="eraser" /></button>
+            <button type="button" class="tool on" data-tool="move" title="Move tokens (M)" aria-label="Move tokens"><Icon Name="move" /></button>
+            <button type="button" class="tool" data-tool="text" title="Text (X)" aria-label="Text"><Icon Name="text" /></button>
+            @* The kinds of shape show beside the button while the Shape tool is on *@
+            <span class="shape-tool">
+                <button type="button" class="tool" data-tool="shape" title="Shapes (S); hold Shift for squares, circles and 45° lines" aria-label="Shapes"><Icon Name="shapes" /></button>
+                <span class="shape-picker" role="group" aria-label="Shape">
+                    <button type="button" class="tool on" data-shape="rect" title="Rectangle" aria-label="Rectangle"><Icon Name="rect" /></button>
+                    <button type="button" class="tool" data-shape="ellipse" title="Ellipse" aria-label="Ellipse"><Icon Name="ellipse" /></button>
+                    <button type="button" class="tool" data-shape="line" title="Line" aria-label="Line"><Icon Name="line" /></button>
+                    <button type="button" class="tool" data-shape="arrow" title="Arrow" aria-label="Arrow"><Icon Name="arrow" /></button>
+                </span>
+            </span>
+            <button type="button" class="tool" data-pick="board" title="Add a picture or map (or drop or paste one)" aria-label="Add a picture"><Icon Name="image" /></button>
+
+            <hr />
+            <span class="swatches">
+                @foreach (var color in Colors)
+                {
+                    <button type="button" class="swatch@(color == Colors[0] ? " on" : "")" data-color="@color"
+                            style="--swatch: @color" title="@color" aria-label="Color @color"></button>
+                }
+            </span>
+            @* Any other color; canvas.ts picks it up as it changes *@
+            <label class="tool color-picker" title="Pick any color">
+                <Icon Name="palette" />
+                <input type="color" value="#ffffff" data-custom-color aria-label="Pick any color" />
+            </label>
+            @* How thick the pen and shapes draw, in board units; each dot shows its size. [ and ] step between them *@
+            <span class="widths" role="group" aria-label="Thickness">
+                @foreach (var width in Widths)
+                {
+                    <button type="button" class="width@(width.Size == Widths[3].Size ? " on" : "")" data-width="@width.Size"
+                            style="--dot: @(width.Dot)px" title="@width.Name ([ and ] to change)" aria-label="@width.Name line"></button>
+                }
+            </span>
+            <hr />
+
+            <button type="button" class="tool" data-undo title="Undo your last change (Ctrl+Z)" aria-label="Undo"><Icon Name="undo" /></button>
+
+            @* Pinch or Ctrl/Cmd+scroll zooms, scrolling or Space+drag pans; these are for everyone else *@
+            <span class="board-zoom">
+                <button type="button" class="tool" data-zoom="in" title="Zoom in (Ctrl/Cmd +)" aria-label="Zoom in">+</button>
+                <button type="button" class="tool zoom-level" data-zoom="fit" title="Show everything (Ctrl/Cmd 0)" aria-label="Show everything">100%</button>
+                <button type="button" class="tool" data-zoom="out" title="Zoom out (Ctrl/Cmd −)" aria-label="Zoom out">−</button>
+            </span>
+        </div>
+
+        <div id="container" data-no-live data-canvas-id="@Id" data-has-thumbnail="@(_hasThumbnail ? "true" : null)" data-runs-fights="@(Viewer.CanRunGame ? "true" : null)" data-portraits="@_portraits"></div>
+        @* The fight's spotlight, shown over the top of the board; app.js brings it here from the encounter panel *@
+        <div class="board-ribbon" data-ribbon-host></div>
+
+        @* For the picture buttons, and the token the uploads send back so the server knows they came from this page *@
+        <input type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden data-file />
+        <AntiforgeryToken />
+
+        <aside class="board-side">
+            @if (c.Kind == CanvasKind.Encounter)
+            {
+                <EncounterPanel SceneID="@Id" />
+            }
+            <h2>Tokens</h2>
+            @* Filled in by canvas.ts; clicking one makes it jump so you can find it on the board *@
+            <ol class="token-list" data-tokens></ol>
+            <p class="token-empty" data-tokens-empty>Nothing on the board yet.</p>
+            <button type="button" class="tool token-add" data-tool="token">+ Add token</button>
+            <button type="button" class="tool token-add" data-pick="token">+ Image token</button>
+            @if (c.Kind == CanvasKind.Map)
+            {
+                @* The party's pin, which leaves a trail of where they've been as it's dragged around (canvas.ts) *@
+                <button type="button" class="tool token-add" data-party-pin title="Drag the pin as the party travels; it leaves a trail">🧭 The party's pin</button>
+            }
+        </aside>
+    </div>
+</div>
+@if (c.Kind == CanvasKind.Encounter)
+{
+    @* app.js swaps the card in here as the fight changes, so it's here even before there's one to show *@
+    <div class="board-timeline" data-timeline-host="@Id">
+        <TimelineCard SceneID="@Id" />
+    </div>
+}
+</div>
+
+
+@if (_runsFights)
+{
+    @* The DM's dialogs for the fight, opened from the encounter panel. They live outside the panel, so swapping in a
+       fresh panel can't close one halfway through. A mistake comes back in the address and reopens its dialog. *@
+    <Modal Id="start-fight" Title="Start a fight" Action="@($"api/scenes/{Id}/encounter/start")" SubmitLabel="Start fight" Errors="_errors">
+        <Field Label="Name">
+            <input class="filter" name="name" value="@c.Name" maxlength="@EncounterDesk.MaxNameLength" required autofocus />
+        </Field>
+
+        @* Everyone ticked gets a token on the board; anyone already on it keeps theirs. Anyone picked for another fight
+           going on isn't offered, since they can only be in one at a time. *@
+        @if (_characters.Count > 0)
+        {
+            <fieldset class="pick-list">
+                <legend class="field-label">Party</legend>
+                @foreach (var character in _characters)
+                {
+                    <label class="check">
+                        <input type="checkbox" name="party" value="@character.Name" checked="@(character.Status != Status.Dead)" />
+                        @character.Name
+                        @if (character.Status == Status.Dead)
+                        {
+                            <span class="small muted">dead</span>
+                        }
+                    </label>
+                }
+            </fieldset>
+        }
+        @if (_npcs.Count > 0)
+        {
+            <fieldset class="pick-list">
+                <legend class="field-label">NPCs</legend>
+                @foreach (var npc in _npcs)
+                {
+                    <label class="check">
+                        <input type="checkbox" name="npc" value="@npc.Name" checked="@(npc.CurrentHP > 0)" />
+                        @npc.Name
+                        @if (npc.Role is not null)
+                        {
+                            <span class="small muted">@npc.Role</span>
+                        }
+                    </label>
+                }
+            </fieldset>
+        }
+        <fieldset class="pick-list">
+            <legend class="field-label">Enemies</legend>
+            @foreach (var monster in _monsters)
+            {
+                <label class="pick-count">
+                    <span>@monster.Name <span class="small muted">@monster.MaxHP HP</span></span>
+                    <input type="hidden" name="monster" value="@monster.Name" />
+                    <input class="filter" type="number" name="count" value="0" min="0" max="@EncounterDesk.MaxCount" aria-label="How many @monster.Name" />
+                </label>
+            }
+            @if (_monsters.Count == 0)
+            {
+                <p class="small muted">No saved monsters yet.</p>
+            }
+        </fieldset>
+        <p class="small muted">The bot announces it in game chat with a link to this scene. You can write up new monsters once it's started.</p>
+    </Modal>
+
+    <Modal Id="add-enemies" Title="Add enemies" Action="@($"api/scenes/{Id}/encounter/enemies")" SubmitLabel="Add" FormClass="add-enemies" Errors="_errors">
+
+        <fieldset class="kind-options from-options">
+            <legend class="field-label">From</legend>
+            <label class="kind-option">
+                <input type="radio" name="from" value="saved" checked="@(!AddingNew)" disabled="@(_monsters.Count == 0)" />
+                <span class="kind-text">
+                    <strong>Saved monster</strong>
+                    <span class="small muted">@(_monsters.Count > 0 ? $"{_monsters.Count} saved" : "None saved yet")</span>
+                </span>
+            </label>
+            <label class="kind-option">
+                <input type="radio" name="from" value="new" checked="@AddingNew" />
+                <span class="kind-text">
+                    <strong>New monster</strong>
+                    <span class="small muted">Write one up</span>
+                </span>
+            </label>
+        </fieldset>
+
+        <div class="from-saved">
+            <div class="field-row">
+                <Field Label="Monster">
+                    <select class="filter" name="monster">
+                        @foreach (var monster in _monsters)
+                        {
+                            <option value="@monster.Name">@monster.Name · @monster.MaxHP HP</option>
+                        }
+                    </select>
+                </Field>
+                <Field Label="How many" Class="count">
+                    <input class="filter" type="number" name="count" value="1" min="1" max="@EncounterDesk.MaxCount" />
+                </Field>
+            </div>
+            <p class="small muted">Several are numbered: Goblin 1, Goblin 2…</p>
+        </div>
+
+        <div class="from-new">
+            <Field Label="Name">
+                <input class="filter" name="name" maxlength="@EncounterDesk.MaxNameLength" placeholder="Goblin" />
+            </Field>
+            <div class="field-row">
+                <Field Label="Max HP">
+                    <input class="filter" type="number" name="maxHp" min="1" placeholder="3" />
+                </Field>
+                <Field Label="Armor">
+                    <input class="filter" type="number" name="armor" min="0" value="0" />
+                </Field>
+                <Field Label="Damage">
+                    <input class="filter" name="damage" maxlength="@EncounterDesk.MaxNameLength" placeholder="d6" />
+                </Field>
+            </div>
+            <Field Label="Tags">
+                <input class="filter" name="tags" maxlength="@EncounterDesk.MaxTextLength" placeholder="Horde, Small, Intelligent" />
+            </Field>
+            <Field Label="Instinct">
+                <input class="filter" name="instinct" maxlength="@EncounterDesk.MaxTextLength" placeholder="To overwhelm" />
+            </Field>
+            <Field Label="Moves, one per line">
+                <textarea class="filter" name="moves" maxlength="@EncounterDesk.MaxTextLength" placeholder="@("Charge!\nCall more goblins")"></textarea>
+            </Field>
+            <label class="check">
+                <input type="checkbox" name="save" checked />
+                Save as a monster for later fights
+            </label>
+        </div>
+
+        @* Uploaded by canvas.ts on Add, as "+ Image token" does, which puts its address in pictureUrl *@
+        <Field Label="Picture for their tokens (optional)">
+            <input class="filter" type="file" accept="image/png,image/jpeg,image/webp,image/gif" data-enemy-picture />
+        </Field>
+        <input type="hidden" name="pictureUrl" />
+    </Modal>
+
+    <ConfirmDialog Id="end-fight" Title="End the fight?" Action="@($"api/scenes/{Id}/encounter/end")"
+                   Message="The bot announces it in game chat and removes everyone's temporary armor that lasted for the fight."
+                   KeepLabel="Keep fighting" ConfirmLabel="End fight" Danger="false" Errors="_errors" />
+}
+
+@code {
+    [Parameter] 
+    public string Id { get; set; } = string.Empty;
+
+    // Set by the encounter forms when something was wrong: the dialog to reopen, and what to say in it
+    [SupplyParameterFromQuery] public string? Dialog { get; set; }
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+    [SupplyParameterFromQuery] public string? From { get; set; }
+
+    // Writing up a new monster when there are none to pick, or when that's what went wrong
+    private bool AddingNew => _monsters.Count == 0 || From == "new";
+
+    private FormErrors _errors = FormErrors.None;
+    private bool _runsFights;
+    private IReadOnlyList<MonsterTemplate> _monsters = [];
+    private IReadOnlyList<Character> _characters = [];
+    private IReadOnlyList<Npc> _npcs = [];
+
+    private Canvas? _canvas;
+    private bool _hasThumbnail;
+    private string _portraits = "{}";
+
+    // Ink that reads on the board in both light and dark mode
+    /// <summary>
+    /// A thickness to draw with.
+    /// </summary>
+    /// <param name="Size">How thick, in board units.</param>
+    /// <param name="Dot">How big its dot is on the button, enough to tell them apart without the thick ones filling it.</param>
+    private record Width(int Size, string Name, int Dot);
+
+    // Normal (the second) is what you start with
+    private static readonly Width[] Widths =
+    [
+        new(2, "Thin", 4), new(4, "Normal", 7), new(8, "Bold", 11), new(16, "Marker", 16),
+    ];
+
+    private static readonly string[] Colors =
+    [
+        "#7F77DD", "#D85A30", "#1D9E75", "#378ADD", "#BA7517", "#888780",
+        "#E24B4A", "#D4537E", "#EF9F27", "#639922", "#1A9AA8", "#5F5E5A",
+    ];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (CanvasIds.TryDecode(Id, out var id))
+        {
+            _canvas = await CanvasStore.FindAsync(id);
+            _hasThumbnail = await CanvasStore.HasThumbnailAsync(id);
+        }
+
+        // Characters' pictures by name, for tokens placed with a character's name (see placeToken in canvas.ts)
+        if (_canvas is not null)
+        {
+            var urls = await Portraits.UrlsAsync();
+            _portraits = System.Text.Json.JsonSerializer.Serialize((await Characters.GetCharactersAsync())
+                .Where(ch => urls.ContainsKey(ch.ID.Value))
+                .GroupBy(ch => ch.Name.ToLowerInvariant())
+                .ToDictionary(g => g.Key, g => urls[g.First().ID.Value]));
+        }
+
+        _errors = new(Dialog, Error);
+        _runsFights = _canvas is { Kind: CanvasKind.Encounter, ArchivedAt: null } && Viewer.CanRunGame;
+        if (_runsFights)
+        {
+            _characters = (await Characters.GetCharactersAsync()).OrderBy(ch => ch.Name).ToList();
+            _npcs = await PartyReader.GetNpcsAsync();
+            try
+            {
+                _monsters = await Encounters.GetMonstersAsync();
+                var taken = await Encounters.GetTakenAsync();
+                _characters = _characters.Where(ch => !taken.Characters.Contains(ch.ID)).ToList();
+                _npcs = _npcs.Where(n => !taken.Npcs.Contains(n.ID)).ToList();
+            }
+            catch (Microsoft.Data.Sqlite.SqliteException e) when (e.Message.Contains("no such table"))
+            {
+                // The bot hasn't added monsters, or who's in which fight, to its database yet
+            }
+        }
+    }
+}

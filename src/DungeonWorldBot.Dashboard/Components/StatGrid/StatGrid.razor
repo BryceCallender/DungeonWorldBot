@@ -1,0 +1,48 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* The six stats in a row: a character's modifiers with their scores under them, or just modifiers for anyone who has
+   no scores, like an NPC *@
+<div class="stats">
+    @if (Modifiers is not null)
+    {
+        @foreach (var stat in Enum.GetValues<StatType>())
+        {
+            <div class="stat">
+                <span class="stat-name">@stat.ToString().ToUpper()</span>
+                <span class="stat-mod">@Signed(Modifiers.GetValueOrDefault(stat))</span>
+            </div>
+        }
+    }
+    else
+    {
+        @foreach (var stat in Stats)
+        {
+            var debilitated = stat.Debility is not null && stat.IgnoredBy is null;
+            <div class="stat @(debilitated ? "debilitated" : "")" title="@Tooltip(stat)">
+                <span class="stat-name">@stat.Type.ToString().ToUpper()</span>
+                <span class="stat-mod">@Signed(stat.RollModifier)</span>
+                <span class="stat-value">@stat.Value</span>
+            </div>
+        }
+    }
+</div>
+
+@code {
+    /// <summary>
+    /// A character's stats, with their scores and debilities.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<StatLine> Stats { get; set; } = [];
+
+    /// <summary>
+    /// Just a modifier for each stat, in place of <see cref="Stats"/>, for anyone without scores, like an NPC.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyDictionary<StatType, int>? Modifiers { get; set; }
+
+    private static string Tooltip(StatLine stat) => stat switch
+    {
+        { Debility: { } d, IgnoredBy: { } move } => $"{d}, ignored by {move}",
+        { Debility: { } d } => $"{d}: {Signed(stat.Modifier)} − 1",
+        _ => $"{stat.Value} ({Signed(stat.Modifier)})",
+    };
+}

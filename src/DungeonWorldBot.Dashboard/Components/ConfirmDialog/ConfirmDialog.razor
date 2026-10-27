@@ -1,0 +1,46 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* Asks before doing something that can't be taken back, like sending an NPC away or ending a fight *@
+<Modal Id="@Id" Title="@Title" Action="@Action" SubmitLabel="@ConfirmLabel" CancelLabel="@KeepLabel" Danger="Danger" Errors="Errors">
+    <p class="small muted">@Message</p>
+</Modal>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Id { get; set; } = "";
+
+    /// <summary>
+    /// The question, e.g. "Send Bram away?".
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    /// <summary>
+    /// What happens, and what stays.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Message { get; set; } = "";
+
+    /// <summary>
+    /// Where the form posts once they're sure.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Action { get; set; } = "";
+
+    /// <summary>
+    /// The button that goes ahead, e.g. "Send away".
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string ConfirmLabel { get; set; } = "";
+
+    /// <summary>
+    /// The button that backs out, e.g. "Keep them".
+    /// </summary>
+    [Parameter]
+    public string KeepLabel { get; set; } = "Cancel";
+
+    [Parameter]
+    public bool Danger { get; set; } = true;
+
+    [Parameter]
+    public FormErrors Errors { get; set; } = FormErrors.None;
+}

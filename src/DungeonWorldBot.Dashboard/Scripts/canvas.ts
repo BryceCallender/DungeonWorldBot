@@ -424,7 +424,7 @@ function setTool(next: Tool) {
     if (viewOnly && next !== 'move') return;
     if (next !== 'shape') showShapes(false);
     tool = next;
-    container.dataset.tool = next;                         // for the cursor, in CanvasPage.razor.css
+    container.dataset.tool = next;                         // for the cursor, in ScenePage.razor.css
     document.querySelectorAll<HTMLElement>('.board-rail [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === next));
     tokens.getChildren().forEach(t => t.draggable(canDrag(t)));
     drawing.find('Text, .shape').forEach(t => t.draggable(canDrag(t)));

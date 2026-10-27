@@ -1,0 +1,499 @@
+@page "/character/{Id}"
+@namespace DungeonWorldBot.Dashboard.Pages
+@using Microsoft.AspNetCore.Components.Forms
+@using DungeonWorldBot.Features.Subclasses
+@inject NavigationManager Navigation
+@inject PartyReader PartyReader
+@inject DashboardSettings Settings
+@inject Viewer Viewer
+@inject PortraitStore Portraits
+
+@if (_view is not { } c)
+{
+    <PageTitle>Not found · Sana Solem</PageTitle>
+    <p class="empty">No character with that ID. <a href="">Back to the party</a></p>
+    return;
+}
+
+<PageTitle>@c.Name · Sana Solem</PageTitle>
+
+<a class="back" href="">← Party</a>
+
+<header class="card hero classed" style="@Lookup.ColorOf(c.Character.Class.Type)">
+    <div class="hero-main">
+        @* Backstory, goals and notes have their own page; the link sits with the name, since it's about who they are *@
+        <div class="hero-title">
+            <span class="portrait"><Face Name="@c.Name" Picture="@_portrait" /></span>
+            <h1>@c.Name</h1>
+            <a class="story-link" href="@c.Url/story"><Icon Name="notes" />Story →</a>
+        </div>
+        @* Their tokens on the board show it. app.js shrinks the picture and sends it as soon as one's picked. *@
+        @if (PortraitEndpoints.CanChange(c.Character.ID.Value, Viewer))
+        {
+            <div class="portrait-actions">
+                <form method="post" enctype="multipart/form-data" action="api/characters/@c.ID/portrait">
+                    <AntiforgeryToken />
+                    <label class="portrait-button">
+                        @(_portrait is null ? "Add a picture" : "Change picture")
+                        <input type="file" name="picture" accept="image/png,image/jpeg,image/webp,image/gif" hidden data-portrait />
+                    </label>
+                </form>
+                @if (_portrait is not null)
+                {
+                    <form method="post" action="api/characters/@c.ID/portrait/remove">
+                        <AntiforgeryToken />
+                        <button class="portrait-button">Remove picture</button>
+                    </form>
+                }
+            </div>
+        }
+        <div class="muted">
+            Level @c.Level <a href="@Lookup.ClassUrl(c.Character.Class.Type, c.Slug)" title="See the @c.ClassName class" class="class-name">@c.ClassName</a> · @c.Character.Race · @PartyReader.Spaced(c.Character.Alignment.ToString())
+        </div>
+        <div class="hero-chips">
+            @if (c.Character.Status is { } status && status != Status.Alive)
+            {
+                <span class="chip warn">@status</span>
+            }
+            @if (c.Subclass is { } sub && SubclassLibrary.Find(sub.Name) is { } subclassRules)
+            {
+                <a class="chip class" href="@Lookup.SubclassUrl(subclassRules, c.Slug)">@sub.Name</a>
+            }
+            @if (c.ActiveShapes is { Count: > 0 } shapes)
+            {
+                <span class="chip accent">🐾 @string.Join(" + ", shapes)</span>
+            }
+            @if (c.StatPoints > 0)
+            {
+                <span class="chip accent">@Plural(c.StatPoints, "unspent stat point")</span>
+            }
+        </div>
+        @if (c.Character.Bonds is { Count: > 0 } bonds)
+        {
+            <div class="small bonds">
+                Bonds with
+                @for (var i = 0; i < bonds.Count; i++)
+                {
+                    var bond = bonds[i];
+                    <a href="character/@bond.TargetID.Value">@bond.TargetName</a>@(i < bonds.Count - 1 ? ", " : "")
+                }
+            </div>
+        }
+    </div>
+
+    <div class="hero-vitals">
+        <div class="vital vital-hp">
+            <HealthBar View="c" />
+        </div>
+        <div class="vital armor" title="Physical armor@(c.Armor.Physical != c.Armor.BasePhysical ? $" (base {c.Armor.BasePhysical})" : "")">
+            <span class="tile-label"><Icon Name="shield" />Armor</span>
+            <strong>@c.Armor.Physical</strong>
+            @if (c.Armor.Physical != c.Armor.BasePhysical)
+            {
+                <span class="small">base @c.Armor.BasePhysical</span>
+            }
+        </div>
+        <div class="vital magic" title="Magical armor@(c.Armor.Magical != c.Armor.BaseMagical ? $" (base {c.Armor.BaseMagical})" : "")">
+            <span class="tile-label"><Icon Name="magic" />Magic armor</span>
+            <strong>@c.Armor.Magical</strong>
+            @if (c.Armor.Magical != c.Armor.BaseMagical)
+            {
+                <span class="small">base @c.Armor.BaseMagical</span>
+            }
+        </div>
+        @if (c.Armor.Divine != 0 || c.Armor.BaseDivine != 0)
+        {
+            <div class="vital divine" title="Divine armor: only divine weapons get through@(c.Armor.Divine != c.Armor.BaseDivine ? $" (base {c.Armor.BaseDivine})" : "")">
+                <span class="tile-label"><Icon Name="divine" />Divine armor</span>
+                <strong>@c.Armor.Divine</strong>
+                @if (c.Armor.Divine != c.Armor.BaseDivine)
+                {
+                    <span class="small">base @c.Armor.BaseDivine</span>
+                }
+            </div>
+        }
+        <div class="vital damage">
+            <span class="tile-label"><Icon Name="sword" />Damage</span>
+            <strong>@c.Damage</strong>
+            @if (c.Character.DamageRating != 0)
+            {
+                <span class="small">@Signed(c.Character.DamageRating) from gear</span>
+            }
+        </div>
+    </div>
+
+    @if (c.Armor.Bonuses.Count > 0)
+    {
+        <div class="hero-bonuses">
+            @foreach (var bonus in c.Armor.Bonuses)
+            {
+                <span class="chip">@bonus</span>
+            }
+        </div>
+    }
+</header>
+
+<nav class="jump">
+    <a href="@c.Url#stats">Stats</a>
+    @if (c.Subclass is { } s)
+    {
+        <a href="@c.Url#subclass">@s.Name</a>
+    }
+    @if (c.SpellBooks.Count > 0)
+    {
+        <a href="@c.Url#spells">Spells</a>
+    }
+    @if (c.Character.Transformations is { Count: > 0 })
+    {
+        <a href="@c.Url#shapes">Shapes</a>
+    }
+    <a href="@c.Url#moves">Moves</a>
+    <a href="@c.Url#inventory">Inventory</a>
+</nav>
+
+<div class="sheet">
+    <section class="card" id="stats">
+        <h2>Stats</h2>
+        <StatGrid Stats="c.Stats" />
+        @if (c.Debilitated.Count > 0)
+        {
+            <ul class="plain">
+                @foreach (var stat in c.Debilitated)
+                {
+                    <li>
+                        <span class="chip warn">@stat.Debility</span>
+                        @if (stat.IgnoredBy is not null)
+                        {
+                            <span class="small">ignored by @stat.IgnoredBy</span>
+                        }
+                        else
+                        {
+                            <span class="small">−1 to @stat.Type.ToString().ToUpper() rolls</span>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+
+    @if (c.Resources.Count > 0)
+    {
+        <section class="card">
+            <h2>Resources</h2>
+            <ul class="meters">
+                @foreach (var r in c.Resources)
+                {
+                    <li>
+                        <div class="hp-label">
+                            <span>@r.Name</span>
+                            <strong>@r.Value@(r.Max is { } max ? $" / {max}" : "")</strong>
+                        </div>
+                        @if (r.Max is > 0 and var limit)
+                        {
+                            <div class="bar"><div class="fill class" style="width: @BarWidth(r.Value, limit)%"></div></div>
+                        }
+                        <div class="small">@ToHtml(r.Summary)</div>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+
+    @foreach (var gear in c.Gear)
+    {
+        <section class="card">
+            <h2>@gear.Name</h2>
+            @if (gear.Mode is null)
+            {
+                <p class="empty">No @gear.ModeKind.ToLower() set.</p>
+            }
+            else
+            {
+                <div class="muted">@gear.ModeKind: <strong>@gear.Mode</strong> (@gear.ModeTitle)</div>
+                <p class="small">@ToHtml(gear.Effect)</p>
+            }
+        </section>
+    }
+
+    @if (c.Subclass is { } subclass)
+    {
+        <section class="card wide" id="subclass">
+            <CardHeader Expandable>
+                <TitleContent>@if (SubclassLibrary.Find(subclass.Name) is { } rules) { <a href="@Lookup.SubclassUrl(rules, c.Slug)">@subclass.Name</a> } else { @subclass.Name }</TitleContent>
+                <Subtitle>@subclass.Title</Subtitle>
+            </CardHeader>
+            @if (subclass.Status is not null)
+            {
+                <p class="callout">@ToHtml(subclass.Status)</p>
+            }
+            <ul class="moves">
+                @foreach (var move in subclass.Moves)
+                {
+                    <li class="@(move.Unlocked ? "" : "locked")">
+                        @if (move.Unlocked)
+                        {
+                            <details data-key="@move.Name">
+                                <summary>
+                                    <span class="move-name">@move.Name <span class="chip">Level @move.Level</span></span>
+                                    <span class="preview">@ToHtml(move.Summary)</span>
+                                </summary>
+                                <div class="small">@ToHtml(move.Summary)</div>
+                            </details>
+                        }
+                        else if (move.Hidden && Viewer.IsDungeonMaster)
+                        {
+                            @* Only the DM sees secret moves before they're revealed *@
+                            <details data-key="@move.Name">
+                                <summary>
+                                    <span class="move-name">🔒 @move.Name <span class="chip">Level @move.Level</span> <span class="chip warn">Secret</span></span>
+                                    <span class="preview">@ToHtml(move.Summary)</span>
+                                </summary>
+                                <div class="small">@ToHtml(move.Summary)</div>
+                            </details>
+                        }
+                        else
+                        {
+                            <div class="move-name">
+                                🔒 @(move.Hidden ? "???" : move.Name)
+                                <span class="chip">Level @move.Level</span>
+                            </div>
+                            <div class="small">@(move.Hidden ? "Kept secret until the GM reveals it." : $"Unlocks at level {move.Level}.")</div>
+                        }
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+
+    @foreach (var book in c.SpellBooks)
+    {
+        <section class="card wide" id="spells">
+            <CardHeader Title="@($"{book.List} spells")" Count="book.Spells.Count" Expandable="book.Spells.Count > 0">
+                <Subtitle>Caster level @book.CasterLevel from @book.GrantedBy</Subtitle>
+                <Tools><a class="tool" href="@Lookup.SpellsUrl(c.Slug)#@book.List.ToString().ToLower()">Browse @book.List.ToString().ToLower() spells →</a></Tools>
+            </CardHeader>
+            <div class="hp-label">
+                <span>Spell levels in use</span>
+                <strong class="@(book.OverLimit ? "over" : "")">@book.LevelsUsed / @book.LevelsAllowed</strong>
+            </div>
+            <div class="bar"><div class="fill @(book.OverLimit ? "critical" : "class")" style="width: @BarWidth(book.LevelsUsed, book.LevelsAllowed)%"></div></div>
+            @if (book.OverLimit)
+            {
+                <p class="small over-note">
+                    @Plural(book.LevelsUsed - book.LevelsAllowed, "spell level") over what caster level @book.CasterLevel allows
+                    (spells up to level @book.CasterLevel, @book.LevelsAllowed levels in total).
+                </p>
+            }
+            @if (book.Spells.Count == 0)
+            {
+                <p class="empty">No spells prepared.</p>
+            }
+            <ul class="moves">
+                @foreach (var spell in book.Spells)
+                {
+                    <li>
+                        <details data-key="@spell.Name">
+                            <summary>
+                                <span class="move-name">
+                                    @spell.Name <span class="chip">@spell.LevelLabel</span>
+                                    @foreach (var tag in spell.Tags)
+                                    {
+                                        <span class="chip">@tag</span>
+                                    }
+                                </span>
+                                <span class="preview">@ToHtml(spell.Description)</span>
+                            </summary>
+                            <div class="small">@ToHtml(spell.Description)</div>
+                        </details>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+
+    @if (c.Character.Transformations is { Count: > 0 } forms)
+    {
+        <section class="card wide" id="shapes">
+            <h2>Shapes</h2>
+            <div class="muted">
+                @if (c.ActiveShapes is { Count: > 0 } active)
+                {
+                    <text>In the shape of <strong>@string.Join(" + ", active)</strong></text>
+                }
+                else
+                {
+                    <text>In their own shape</text>
+                }
+            </div>
+            <ul class="moves">
+                @foreach (var form in forms.OrderByDescending(f => f.IsActive).ThenBy(f => f.Name))
+                {
+                    <li class="@(form.IsActive ? "active" : "")">
+                        <details open="@form.IsActive" data-key="@form.Name">
+                            <summary>
+                                <span class="move-name">
+                                    @form.Name
+                                    @if (form.IsActive)
+                                    {
+                                        <span class="chip accent">Active</span>
+                                    }
+                                    <span class="chip">Taken @form.TimesTaken×</span>
+                                </span>
+                                <span class="preview">@ToHtml(form.Description)</span>
+                            </summary>
+                            @if (!string.IsNullOrWhiteSpace(form.Description))
+                            {
+                                <div class="small">@ToHtml(form.Description)</div>
+                            }
+                            @if (!string.IsNullOrWhiteSpace(form.Moves))
+                            {
+                                <div class="small"><strong>Moves (1 hold each):</strong><br>@ToHtml(form.Moves)</div>
+                            }
+                        </details>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+
+    <section class="card wide" id="moves">
+        @if (c.Moves.Count > 0)
+        {
+            <CardHeader Title="Moves & abilities" Count="c.Moves.Count" Expandable>
+                <Tools><input type="search" class="filter" placeholder="Search moves…" aria-label="Search moves" data-filter /></Tools>
+            </CardHeader>
+        }
+        else
+        {
+            <CardHeader Title="Moves & abilities" Count="0" />
+        }
+        @if (c.Moves.Count == 0)
+        {
+            <p class="empty">None yet.</p>
+        }
+        <ul class="moves">
+            @foreach (var move in c.Moves)
+            {
+                <li>
+                    <details data-key="@move.Name">
+                        <summary>
+                            <span class="move-name">
+                                @move.Name
+                                @if (move.MaxUses is { } max)
+                                {
+                                    <span class="chip @(move.Uses == 0 ? "warn" : "")">@move.Uses / @max</span>
+                                }
+                                @if (move.GrantsSpells is { } list)
+                                {
+                                    <a class="chip class" href="@Lookup.SpellsUrl(c.Slug)#@list.ToString().ToLower()">@list spells →</a>
+                                }
+                            </span>
+                            <span class="preview">@ToHtml(move.Description)</span>
+                        </summary>
+                        <div class="small">@ToHtml(move.Description)</div>
+                    </details>
+                </li>
+            }
+        </ul>
+        <p class="empty no-matches" hidden>No moves match.</p>
+    </section>
+
+    <section class="card wide" id="inventory">
+        @if (c.Character.Inventory?.Items is { Count: > 6 } carried)
+        {
+            <CardHeader Title="Inventory" Count="carried.Count" CountOf="item">
+                <Tools><input type="search" class="filter" placeholder="Search items…" aria-label="Search items" data-filter /></Tools>
+            </CardHeader>
+        }
+        else
+        {
+            <CardHeader Title="Inventory" Count="@(c.Character.Inventory?.Items?.Count ?? 0)" CountOf="item" />
+        }
+        @if (c.Character.Inventory is { } inventory)
+        {
+            @if (Settings.TrackWeight && inventory.MaxLoad > 0)
+            {
+                var overloaded = inventory.CurrentLoad > inventory.MaxLoad;
+                <div class="hp-label">
+                    <span>Load</span>
+                    <strong class="@(overloaded ? "over" : "")">@inventory.CurrentLoad / @inventory.MaxLoad</strong>
+                </div>
+                <div class="bar"><div class="fill @(overloaded ? "critical" : "good")" style="width: @BarWidth(inventory.CurrentLoad, inventory.MaxLoad)%"></div></div>
+            }
+            else if (Settings.TrackWeight && inventory.Items?.Sum(i => i.Weight) is > 0 and var weight)
+            {
+                <div class="muted">Carrying @weight weight</div>
+            }
+            @if (inventory.Items is { Count: > 0 } items)
+            {
+                <ul class="items">
+                    @foreach (var item in items.OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase))
+                    {
+                        <li>
+                            <span class="item-name">
+                                @Capitalized(item.Name)
+                                @if (Detail(item) is { Length: > 0 } detail)
+                                {
+                                    <span class="small">@detail</span>
+                                }
+                                @if (item is HexedJars { Contents.Count: > 0 } jars)
+                                {
+                                    <span class="jar-contents">
+                                        @foreach (var content in jars.Contents)
+                                        {
+                                            <span class="chip @(content.Equals("Empty", StringComparison.OrdinalIgnoreCase) ? "" : "accent")">@content</span>
+                                        }
+                                    </span>
+                                }
+                            </span>
+                            <span class="item-meta">
+                                @if (Settings.TrackWeight && item.Weight > 0)
+                                {
+                                    <span class="small" title="Weight">@item.Weight wt</span>
+                                }
+                                @if (item.Amount > 1)
+                                {
+                                    <strong>×@item.Amount</strong>
+                                }
+                            </span>
+                        </li>
+                    }
+                </ul>
+                <p class="empty no-matches" hidden>No items match.</p>
+            }
+            else
+            {
+                <p class="empty">Nothing carried.</p>
+            }
+        }
+    </section>
+</div>
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    private CharacterView? _view;
+    private string? _portrait;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _view = await PartyReader.GetCharacterAsync(Id);
+        _portrait = _view is null ? null : (await Portraits.UrlsAsync()).GetValueOrDefault(_view.Character.ID.Value);
+
+        // Older links use the Discord ID; send them to the address with the character's name
+        if (_view is not null && Id != _view.Slug)
+            Navigation.NavigateTo(_view.Url, replace: true);
+    }
+
+    // Items are often typed in lowercase in Discord
+    private static string Capitalized(string name) =>
+        name.Length == 0 ? name : char.ToUpper(name[0]) + name[1..];
+
+    private static string Detail(Item item) => item switch
+    {
+        Armor armor => $"{armor.ArmorRating} {armor.Type.ToString().ToLower()} armor",
+        Weapon { Damage: not 0 } weapon => $"{Signed(weapon.Damage)} damage",
+        _ => string.Empty,
+    };
+}

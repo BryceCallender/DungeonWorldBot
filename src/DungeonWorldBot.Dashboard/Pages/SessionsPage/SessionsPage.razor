@@ -1,0 +1,73 @@
+@page "/sessions"
+@namespace DungeonWorldBot.Dashboard.Pages
+@using DungeonWorldBot.Dashboard.Models.Sessions
+@using DungeonWorldBot.Dashboard.Services.Sessions
+@inject SessionReader Sessions
+
+<PageTitle>Sessions · Sana Solem</PageTitle>
+
+<PageHeader Title="Sessions" Description="Every game night marked with /session start and /session end in Discord, newest first. Open one for how the dice went over the evening, its awards, fights and every roll." />
+
+@if (_sessions.Count == 0)
+{
+    <p class="empty">No sessions yet. Start one in Discord with /session start, and end it with /session end.</p>
+}
+else
+{
+    <div class="tiles">
+        <StatTile Label="Sessions">@_sessions.Count</StatTile>
+        <StatTile Label="Time played">@SessionBar.Elapsed(TimeSpan.FromTicks(_sessions.Sum(s => s.Length.Ticks)))</StatTile>
+        <StatTile Label="Rolls">@_sessions.Sum(s => s.Recap.Rolls)</StatTile>
+        <StatTile Label="Fights">@_sessions.Sum(s => s.Recap.Fights.Count)</StatTile>
+    </div>
+
+    <ol class="session-list">
+        @foreach (var s in _sessions)
+        {
+            <li>
+                <a class="card session-row @(s.Live ? "live" : "")" href="@s.Url">
+                    <span class="session-number">@s.Number</span>
+                    <div class="session-main">
+                        <strong>@(s.Session.Title ?? $"Session {s.Number}")</strong>
+                        <span class="small muted">
+                            @s.Session.StartedAt.ToLocalTime().ToString("ddd d MMM yyyy, h:mm tt")
+                            @if (s.Live)
+                            {
+                                <span class="chip accent"><i class="live-dot"></i> Going on now · <time datetime="@s.Session.StartedAt.ToString("o")" data-since>@SessionBar.Elapsed(s.Length)</time></span>
+                            }
+                            else
+                            {
+                                <span> · @SessionBar.Elapsed(s.Length)</span>
+                            }
+                        </span>
+                        @if (s.Recap.Fights.Count > 0)
+                        {
+                            <span class="small session-fights">⚔️ @string.Join(", ", s.Recap.Fights)</span>
+                        }
+                    </div>
+                    <div class="session-stats small">
+                        @if (s.Recap.Rolls > 0)
+                        {
+                            <span><strong>@s.Recap.Rolls</strong> rolls</span>
+                            <span><strong>@(s.Recap.Hits * 100 / s.Recap.Rolls)%</strong> hit</span>
+                            @if (s.Recap.Natural12s > 0)
+                            {
+                                <span>✨ <strong>@s.Recap.Natural12s</strong></span>
+                            }
+                        }
+                        else
+                        {
+                            <span class="muted">No rolls@(s.Live ? " yet" : "")</span>
+                        }
+                    </div>
+                </a>
+            </li>
+        }
+    </ol>
+}
+
+@code {
+    private List<SessionSummary> _sessions = [];
+
+    protected override async Task OnInitializedAsync() => _sessions = await Sessions.GetAllAsync();
+}

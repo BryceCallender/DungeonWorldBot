@@ -1,0 +1,56 @@
+.kit-base { margin: .35rem 0 .5rem; }
+
+/* The steps of playing the class on Discord, numbered in the class color */
+.guide-steps {
+    list-style: none;
+    counter-reset: step;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: .75rem;
+    margin: .75rem 0 0;
+    padding: 0;
+}
+
+.guide-steps li {
+    counter-increment: step;
+    padding: .75rem .85rem;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--surface-2);
+}
+
+.guide-steps h3 { margin: 0 0 .35rem; display: flex; align-items: center; gap: .45rem; }
+
+.guide-steps h3::before {
+    content: counter(step);
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 1.45rem;
+    height: 1.45rem;
+    border-radius: 999px;
+    background: var(--class);
+    color: var(--surface);
+    font-size: .8rem;
+}
+
+.guide-steps p { margin: 0 0 .5rem; font-size: .9rem; }
+
+.guide-commands { display: flex; flex-wrap: wrap; gap: .35rem; }
+
+.command {
+    display: inline-flex;
+    align-items: baseline;
+    gap: .3rem;
+    padding: .1rem .45rem .1rem .1rem;
+    border-radius: 6px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    font-size: .8rem;
+}
+
+.command code { background: none; color: var(--class); font-weight: 600; }
+
+.command .pick { color: var(--muted); }
+
+.command .note { font-weight: 600; color: var(--text); }

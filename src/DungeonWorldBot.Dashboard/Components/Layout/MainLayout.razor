@@ -1,7 +1,6 @@
 @inherits LayoutComponentBase
 @inject Viewer Viewer
 @inject NavigationManager Nav
-@using DungeonWorldBot.Dashboard.Encounters
 
 <header class="topbar">
     <a class="brand" href=""><span aria-hidden="true">🎲</span>Sana Solem</a>
@@ -14,7 +13,7 @@
         <span class="nav-sep" aria-hidden="true"></span>
         <NavLink href="bestiary">Bestiary</NavLink>
         @* The DM's own tab, for looking after who the party fights *@
-        @if (EncounterEndpoints.CanRun(Viewer))
+        @if (Viewer.CanRunGame)
         {
             <NavLink href="enemies">Enemies</NavLink>
         }

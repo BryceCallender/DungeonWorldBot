@@ -1,0 +1,210 @@
+@page "/session/{Number:int}"
+@namespace DungeonWorldBot.Dashboard.Pages
+@using DungeonWorldBot.Dashboard.Models.Rolls
+@using DungeonWorldBot.Dashboard.Models.Sessions
+@using DungeonWorldBot.Dashboard.Services.Rolls
+@using DungeonWorldBot.Dashboard.Services.Sessions
+@using DungeonWorldBot.Features.Moves
+@using DungeonWorldBot.Features.Rolls
+@inject SessionReader Sessions
+@inject RollReader RollReader
+@inject PartyReader PartyReader
+@inject DashboardSettings Settings
+
+@* One game night, from /session start to /session end: how the dice went over the evening, who stood out, the fights,
+   and every roll in order. A scrapbook page for the campaign. *@
+@if (_session is not { } s)
+{
+    <PageTitle>Not found · Sana Solem</PageTitle>
+    <p class="empty">No session @Number yet. Sessions are marked with /session start and /session end in Discord. <a href="sessions">All sessions</a></p>
+    return;
+}
+
+<PageTitle>@s.Name · Sana Solem</PageTitle>
+
+<nav class="session-nav">
+    @if (Number > 1)
+    {
+        <a href="session/@(Number - 1)">← Session @(Number - 1)</a>
+    }
+    <a href="sessions">All sessions</a>
+    @if (Number < _count)
+    {
+        <a href="session/@(Number + 1)">Session @(Number + 1) →</a>
+    }
+</nav>
+
+<header class="session-head">
+    <h1>@s.Name</h1>
+    <div class="muted">
+        @s.Session.StartedAt.ToLocalTime().ToString("dddd d MMMM yyyy, h:mm tt")
+        @if (s.Live)
+        {
+            <span class="chip accent"><i class="live-dot"></i> Going on now · <time datetime="@s.Session.StartedAt.ToString("o")" data-since>@SessionBar.Elapsed(s.Length)</time></span>
+        }
+        else
+        {
+            <span> · played for @SessionBar.Elapsed(s.Length)</span>
+        }
+    </div>
+</header>
+
+@if (s.Recap.Rolls == 0)
+{
+    <p class="empty">Nobody has rolled 2d6 in the game chat this session@(s.Live ? " yet" : "").</p>
+}
+else
+{
+    <div class="tiles">
+        <StatTile Label="Rolls">@s.Recap.Rolls</StatTile>
+        <StatTile Label="Hit rate">@(s.Recap.Hits * 100 / s.Recap.Rolls)%</StatTile>
+        <StatTile Label="Misses">@s.Recap.Misses</StatTile>
+        <StatTile Label="Nat 12s">@s.Recap.Natural12s</StatTile>
+        <StatTile Label="Nat 2s">@s.Recap.Natural2s</StatTile>
+        <StatTile Label="Fights">@s.Recap.Fights.Count</StatTile>
+    </div>
+
+    <h2 class="section-title">How the night went</h2>
+    <p class="small">The party's hit rate as the evening went on, with every roll along the bottom: green strong, amber weak, red a miss.</p>
+    <section class="card night-card">@NightChart()</section>
+
+    @if (_awards is { Awards.Count: > 0 } awards)
+    {
+        <h2 class="section-title">Awards</h2>
+        <AwardCards Awards="awards.Awards" Party="_party" />
+    }
+}
+
+@if (_fights.Count > 0)
+{
+    <h2 class="section-title">Fights</h2>
+    <ul class="session-fights">
+        @foreach (var fight in _fights)
+        {
+            <li class="card">
+                <a href="@s.Url/fight/@fight.ID"><strong>⚔️ @fight.Name</strong></a>
+                <span class="small muted">
+                    @fight.StartedAt.ToLocalTime().ToString("h:mm tt")
+                    @(fight.SceneName is { } scene ? $" · on {scene}" : "")
+                    @(fight.EndedAt is null ? " · still going" : "")
+                </span>
+                <a class="small" href="@s.Url/fight/@fight.ID">Replay →</a>
+            </li>
+        }
+    </ul>
+}
+
+@if (_rolls.Count > 0)
+{
+    <h2 class="section-title">Every roll</h2>
+    <div class="card table-card">
+        <table class="roll-log">
+            <thead>
+                <tr><th>Time</th><th>Who</th><th>Move</th><th class="num">Dice</th><th class="num">Total</th><th>Result</th></tr>
+            </thead>
+            <tbody>
+                @foreach (var r in _rolls)
+                {
+                    var dice = MoveDice.Of(r);
+                    <tr>
+                        <td class="muted">@r.MessageID.Timestamp.ToLocalTime().ToString("h:mm tt")</td>
+                        <td>@Who(r.UserID.Value)</td>
+                        <td>@MoveLabel(r.Move, r.Stat?.ToString())</td>
+                        <td class="num">@r.First + @r.Second</td>
+                        <td class="num"><strong class="total-@OutcomeClass(dice.Outcome)">@r.Total</strong></td>
+                        <td>
+                            @Outcome(dice)
+                            @if (r.ChangedReason is { } reason)
+                            {
+                                <span class="changed" title="Rolled a @MoveRoller.Describe(MoveRoller.OutcomeFor(r.Total))">✏️ @reason</span>
+                            }
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int Number { get; set; }
+
+    private SessionSummary? _session;
+    private int _count;
+    private List<RollRecord> _rolls = [];
+    private List<Encounter> _fights = [];
+    private SessionAwards? _awards;
+    private IReadOnlyList<CharacterView> _party = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _session = await Sessions.GetAsync(Number);
+        if (_session is not { } s)
+            return;
+
+        _count = await Sessions.CountAsync();
+        var to = s.Session.EndedAt ?? DateTimeOffset.UtcNow;
+        _rolls = await RollReader.GetRollsAsync(s.Session.StartedAt, to);
+        _awards = await RollReader.GetAwardsAsync(s.Session.StartedAt, to, leaveOut: Settings.DungeonMasterID);
+        _fights = await Sessions.GetFightsAsync(s);
+        _party = await PartyReader.GetPartyAsync();
+    }
+
+    private string Who(ulong userID) =>
+        userID == Settings.DungeonMasterID ? "DM" : _party.PlayedBy(userID)?.Name ?? "Player";
+
+    private static string MoveLabel(string? move, string? stat) =>
+        string.Join(" ", new[] { move, stat is null ? null : $"+{stat.ToUpper()}" }.OfType<string>()) is { Length: > 0 } label ? label : "–";
+
+    private static string Outcome(MoveDice dice) => dice switch
+    {
+        { IsNatural12: true } => "Natural 12!",
+        { IsNatural2: true } => "Snake eyes",
+        { Outcome: MoveOutcome.StrongHit } => "Strong hit",
+        { Outcome: MoveOutcome.WeakHit } => "Weak hit",
+        _ => "Miss",
+    };
+
+    // The party's hit rate so far after each roll, as a line across the evening, with each roll a tick along the bottom
+    private RenderFragment NightChart()
+    {
+        const double width = 720, height = 180, top = 10, bottom = 150, ticks = 168;
+        var party = _rolls.Where(r => r.UserID.Value != Settings.DungeonMasterID).ToList();
+        if (party.Count == 0)
+            return @<p class="small muted">Only the DM rolled.</p>;
+
+        var start = _session!.Session.StartedAt;
+        var span = Math.Max(1, ((_session.Session.EndedAt ?? DateTimeOffset.UtcNow) - start).TotalSeconds);
+        string X(RollRecord r) => Num(Math.Clamp((r.MessageID.Timestamp - start).TotalSeconds / span, 0, 1) * width);
+        double YAt(double rate) => bottom - rate * (bottom - top);
+        string Y(double rate) => Num(YAt(rate));
+
+        var hits = 0;
+        var points = new List<string>();
+        foreach (var (roll, i) in party.Select((r, i) => (r, i)))
+        {
+            if (MoveDice.Of(roll).Outcome != MoveOutcome.Miss)
+                hits++;
+            points.Add($"{X(roll)},{Y(hits / (double)(i + 1))}");
+        }
+
+        return @<svg class="night-chart" viewBox="0 0 @Num(width) @Num(height)" role="img" aria-label="The party's hit rate over the session">
+            @foreach (var rate in new[] { .25, .5, .75 })
+            {
+                @* In a group, since Razor reads a bare <text> in code as its own tag *@
+                <g>
+                    <line class="grid" x1="0" x2="@Num(width)" y1="@Y(rate)" y2="@Y(rate)" />
+                    <text class="axis" x="4" y="@Num(YAt(rate) - 4)">@(rate * 100)%</text>
+                </g>
+            }
+            <polyline points="@string.Join(' ', points)" />
+            @foreach (var roll in party)
+            {
+                <line class="tick @OutcomeClass(MoveDice.Of(roll).Outcome)" x1="@X(roll)" x2="@X(roll)" y1="@Num(ticks - 10)" y2="@Num(ticks)">
+                    <title>@Who(roll.UserID.Value): @roll.Total@(roll.Move is { } move ? $" ({move})" : "")</title>
+                </line>
+            }
+        </svg>;
+    }
+}

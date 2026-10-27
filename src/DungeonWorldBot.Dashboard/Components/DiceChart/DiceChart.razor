@@ -1,0 +1,37 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* Natural 2d6 sums as bars, with a tick where fair dice would land *@
+@using DungeonWorldBot.Dashboard.Models.Rolls
+@using DungeonWorldBot.Features.Moves
+<div class="dice-chart">
+    @* Colored by what the dice alone would get, before modifiers *@
+    @for (var sum = 2; sum <= 12; sum++)
+    {
+        var count = Spread.Sums[sum - 2];
+        var share = Spread.Rolls == 0 ? 0 : count / (double)Spread.Rolls;
+        var expected = DiceSpread.Expected(sum);
+        <div class="dice-col" title="@sum: @Plural(count, "roll") (@Pct(share), fair dice @Pct(expected))">
+            <div class="dice-track">
+                <div class="dice-bar @OutcomeClass(MoveRoller.OutcomeFor(sum))" style="height: @Num(share / _top * 100)%"></div>
+                <div class="dice-expected" style="bottom: @Num(expected / _top * 100)%"></div>
+            </div>
+            <span class="dice-count">@count</span>
+            <span class="dice-sum">@sum</span>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public DiceSpread Spread { get; set; } = null!;
+
+    // The tallest bar or fair-dice tick sets the scale
+    private double _top = 1;
+
+    protected override void OnParametersSet()
+    {
+        var tallest = Spread.Rolls == 0 ? 0 : Spread.Sums.Max() / (double)Spread.Rolls;
+        _top = Math.Max(tallest, DiceSpread.Expected(7)) * 1.05;
+    }
+
+    private static string Pct(double fraction) => fraction.ToString("0%");
+}

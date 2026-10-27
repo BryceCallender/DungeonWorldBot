@@ -1,0 +1,73 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* The top of a card: its title, with how many it holds, a line under it, and its tools at the right, ending with
+   "Expand all" for a card of moves or spells (app.js opens or closes every one in the card) *@
+<div class="card-head">
+    @if (Subtitle is null)
+    {
+        @Heading
+    }
+    else
+    {
+        <div>
+            @Heading
+            <div class="muted">@Subtitle</div>
+        </div>
+    }
+    @if (Tools is not null || Expandable)
+    {
+        <div class="tools">
+            @Tools
+            @if (Expandable)
+            {
+                <button type="button" class="tool" data-expand>Expand all</button>
+            }
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public string? Title { get; set; }
+
+    /// <summary>
+    /// A title with more than text in it, like a link, in place of <see cref="Title"/>.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? TitleContent { get; set; }
+
+    /// <summary>
+    /// How many the card holds, shown small after the title.
+    /// </summary>
+    [Parameter]
+    public int? Count { get; set; }
+
+    /// <summary>
+    /// What it's counting, e.g. "item" for "· 3 items". Left out, the count shows alone.
+    /// </summary>
+    [Parameter]
+    public string? CountOf { get; set; }
+
+    /// <summary>
+    /// A line under the title.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? Subtitle { get; set; }
+
+    /// <summary>
+    /// Anything else at the right, before "Expand all", like a search box or a link.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? Tools { get; set; }
+
+    /// <summary>
+    /// Whether the card holds moves or spells to open and close all at once.
+    /// </summary>
+    [Parameter]
+    public bool Expandable { get; set; }
+
+    private RenderFragment Heading =>
+        @<h2>@(TitleContent ?? (builder => builder.AddContent(0, Title)))@if (Count is { } count)
+        {
+            <span class="small">@($" · {(CountOf is null ? count.ToString() : Plural(count, CountOf))}")</span>
+        }</h2>;
+}

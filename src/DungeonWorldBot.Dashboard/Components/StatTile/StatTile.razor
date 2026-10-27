@@ -1,0 +1,27 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* One number in a page's row of summary tiles (.tiles), like a session's rolls or the bestiary's monsters slain *@
+<div class="card tile">
+    <span class="tile-label">@Label</span>
+    <strong>@ChildContent</strong>
+    @if (Note is not null)
+    {
+        <span class="small">@Note</span>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = "";
+
+    /// <summary>
+    /// The number itself.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// A few words under the number, e.g. "fair dice: 7.0".
+    /// </summary>
+    [Parameter]
+    public string? Note { get; set; }
+}

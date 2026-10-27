@@ -1,0 +1,23 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* A form field with its label above it. The input goes inside, so clicking the label focuses it. *@
+<label class="field @Class">
+    <span class="field-label">@Label</span>
+    @ChildContent
+</label>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = "";
+
+    /// <summary>
+    /// The input, select or textarea.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Another class for the field, e.g. "count" for a narrow number.
+    /// </summary>
+    [Parameter]
+    public string? Class { get; set; }
+}

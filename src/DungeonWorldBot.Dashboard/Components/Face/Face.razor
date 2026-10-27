@@ -1,0 +1,21 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* Someone's face inside a circle: their picture when they have one, else their initial in their colour (--ring, or
+   their class's). The circle itself, its size and border, is whoever's using it: the spotlight ribbon, a fight replay,
+   the character page. *@
+@if (Picture is { } picture)
+{
+    <img src="@picture" alt="" />
+}
+else
+{
+    <span class="face-initial">@(Name.Length > 0 ? Name[..1] : "?")</span>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public string Name { get; set; } = string.Empty;
+
+    /// <summary>Their picture's address, from <see cref="PortraitStore"/>; null for their initial.</summary>
+    [Parameter]
+    public string? Picture { get; set; }
+}

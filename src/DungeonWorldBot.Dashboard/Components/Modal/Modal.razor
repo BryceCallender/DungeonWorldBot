@@ -1,0 +1,72 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* A dialog holding a plain form post, opened by app.js from a button with data-open-dialog="{Id}" and closed by its ×,
+   its cancel button or the backdrop. A mistake sent back for it shows above its buttons and opens it as the page loads. *@
+<dialog id="@Id" class="modal" aria-labelledby="@Id-title" data-open-on-load="@(_error is null ? null : "true")">
+    <form method="post" action="@Action" class="@FormClass">
+        <AntiforgeryToken />
+        <div class="modal-head">
+            <h2 id="@Id-title">@Title</h2>
+            <button type="button" class="modal-close" data-close-dialog aria-label="Close">×</button>
+        </div>
+        @ChildContent
+        @if (_error is not null)
+        {
+            <p class="form-error">@_error</p>
+        }
+        <div class="modal-actions">
+            <button type="button" class="tool" data-close-dialog>@CancelLabel</button>
+            <button class="tool create @(Danger ? "danger" : null)">@SubmitLabel</button>
+        </div>
+    </form>
+</dialog>
+
+@code {
+    /// <summary>
+    /// The dialog's ID, which buttons open it by and form posts send mistakes back for, e.g. "npc-edit-3".
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Id { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = "";
+
+    /// <summary>
+    /// Where the form posts, e.g. api/npcs.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Action { get; set; } = "";
+
+    [Parameter, EditorRequired]
+    public string SubmitLabel { get; set; } = "";
+
+    [Parameter]
+    public string CancelLabel { get; set; } = "Cancel";
+
+    /// <summary>
+    /// Whether submitting removes something, which colors its button.
+    /// </summary>
+    [Parameter]
+    public bool Danger { get; set; }
+
+    /// <summary>
+    /// A mistake the page was sent back with, shown here when it's for this dialog.
+    /// </summary>
+    [Parameter]
+    public FormErrors Errors { get; set; } = FormErrors.None;
+
+    /// <summary>
+    /// A class for the form, for styles or scripts that hook onto it.
+    /// </summary>
+    [Parameter]
+    public string? FormClass { get; set; }
+
+    /// <summary>
+    /// The form's fields, between its title and its buttons.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private string? _error;
+
+    protected override void OnParametersSet() => _error = Errors.For(Id);
+}

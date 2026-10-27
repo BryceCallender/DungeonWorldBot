@@ -1,0 +1,113 @@
+@page "/spells"
+@namespace DungeonWorldBot.Dashboard.Pages
+@using DungeonWorldBot.Features.Spells
+@inject PartyReader PartyReader
+@inject Viewer Viewer
+
+<PageTitle>Spells · Sana Solem</PageTitle>
+
+<PageHeader Title="Spells" Description="Every spell on the bot's lists. Rotes and cantrips are always available and don't count against a caster's spell levels." />
+
+<div data-filter-scope>
+    <nav class="jump">
+        @foreach (var list in Enum.GetValues<SpellList>())
+        {
+            <a href="@Lookup.SpellsUrl(For)#@list.ToString().ToLower()">@list</a>
+        }
+        <input type="search" class="filter jump-filter" placeholder="Search spells…" aria-label="Search spells" data-filter />
+    </nav>
+
+    @if (_character is { } who)
+    {
+        <p class="hero-chips">
+            <span class="chip accent">Showing @who.Name's spells</span>
+            @foreach (var book in who.SpellBooks)
+            {
+                <span class="chip">@book.List level @book.CasterLevel · @book.LevelsUsed / @book.LevelsAllowed in use</span>
+            }
+            <a class="small" href="spells">Clear</a>
+        </p>
+    }
+    else if (_casters.Count > 0)
+    {
+        <p class="small">
+            Show spells for
+            @for (var i = 0; i < _casters.Count; i++)
+            {
+                var p = _casters[i];
+                <a href="@Lookup.SpellsUrl(p.Slug)">@p.Name</a>@(i < _casters.Count - 1 ? ", " : "")
+            }
+        </p>
+    }
+
+    @foreach (var list in Enum.GetValues<SpellList>())
+    {
+        <section class="card wide spell-list" id="@list.ToString().ToLower()" data-filter-group>
+            <CardHeader Title="@($"{list} spells")" Expandable />
+            @foreach (var level in SpellLists.For(list).GroupBy(s => s.Level).OrderBy(g => g.Key))
+            {
+                <div data-filter-group>
+                    <h3>@level.First().LevelLabel@(level.Key == 0 ? "s" : "")</h3>
+                    <ul class="moves">
+                        @foreach (var spell in level.OrderBy(s => s.Name))
+                        {
+                            var has = _known.Contains(spell);
+                            <li class="@(has ? "owned" : "")">
+                                <details data-key="@spell.Qualified">
+                                    <summary>
+                                        <span class="move-name">
+                                            @spell.Name
+                                            @foreach (var tag in spell.Tags)
+                                            {
+                                                <span class="chip">@tag</span>
+                                            }
+                                            @if (has)
+                                            {
+                                                <span class="chip good">✓ Known</span>
+                                            }
+                                            else if (CanLearn(spell))
+                                            {
+                                                <span class="chip accent">Can learn</span>
+                                            }
+                                        </span>
+                                        <span class="preview">@ToHtml(spell.Description)</span>
+                                    </summary>
+                                    <div class="small">@ToHtml(spell.Description)</div>
+                                </details>
+                            </li>
+                        }
+                    </ul>
+                </div>
+            }
+        </section>
+    }
+
+    <p class="empty no-matches" hidden>No spells match.</p>
+</div>
+
+@code {
+    /// <summary>
+    /// A character whose spells to mark, by ID. Defaults to the viewer's own character when they cast spells.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "for")]
+    public string? For { get; set; }
+
+    private CharacterView? _character;
+    private IReadOnlyList<Spell> _known = [];
+    private List<CharacterView> _casters = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        var party = await PartyReader.GetPartyAsync();
+        _casters = party.Where(c => c.SpellBooks.Count > 0).ToList();
+
+        _character = For is not null
+            ? PartyReader.Match(party, For)
+            : _casters.FirstOrDefault(c => Viewer.Is(c.ID));
+        _known = _character?.SpellBooks.SelectMany(b => b.Spells).ToList() ?? [];
+    }
+
+    private bool CanLearn(Spell spell) =>
+        _character?.SpellBooks.FirstOrDefault(b => b.List == spell.List) is { } book
+        && SpellCasting.WhyCannotLearn(spell, book.CasterLevel, _known) is null;
+}

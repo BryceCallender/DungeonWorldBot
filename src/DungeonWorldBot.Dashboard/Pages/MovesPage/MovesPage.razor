@@ -1,0 +1,165 @@
+@page "/moves"
+@namespace DungeonWorldBot.Dashboard.Pages
+@using DungeonWorldBot.Features.Classes
+@using DungeonWorldBot.Features.Moves
+@using DungeonWorldBot.Features.Subclasses
+@inject PartyReader PartyReader
+@inject Viewer Viewer
+
+@* Every move in one place, so one search finds it whatever sheet it's on: the basic moves everyone has, then each
+   class's and subclass's, as /class lookup reads them in Discord *@
+<PageTitle>Moves · Sana Solem</PageTitle>
+
+<PageHeader Title="Moves" Description="The basic moves everyone has, and every move on the class sheets and subclasses. Search finds a move on any of them." />
+
+<div data-filter-scope>
+    <nav class="jump">
+        <a href="@Url("basic")">Basic moves</a>
+        <a href="@Url("classes")">Class moves</a>
+        <a href="@Url("subclasses")">Subclass moves</a>
+        <input type="search" class="filter jump-filter" placeholder="Search moves…" aria-label="Search moves" data-filter />
+    </nav>
+
+    @if (_character is { } who)
+    {
+        <p class="hero-chips">
+            <span class="chip accent">Marking @who.Name's moves</span>
+            <a class="small" href="moves">Clear</a>
+        </p>
+    }
+    else if (_party.Count > 0)
+    {
+        <p class="small">
+            Mark moves for
+            @for (var i = 0; i < _party.Count; i++)
+            {
+                var p = _party[i];
+                <a href="moves?for=@p.Slug">@p.Name</a>@(i < _party.Count - 1 ? ", " : "")
+            }
+        </p>
+    }
+
+    <section class="card wide move-group" id="basic" data-filter-group>
+        <CardHeader Title="Basic moves" Expandable />
+        <ul class="moves">
+            @foreach (var move in BasicMoves.All)
+            {
+                <li>
+                    <details data-key="@move.Name">
+                        <summary>
+                            <span class="move-name">
+                                @move.Name
+                                @if (move.Stat is { } stat)
+                                {
+                                    <span class="chip">+@stat.ToString().ToUpper()</span>
+                                }
+                            </span>
+                            <span class="preview">@move.Trigger</span>
+                        </summary>
+                        <div class="small basic-move">
+                            <p>@move.Trigger@(move.Stat is { } rolled ? $", roll +{rolled.ToString().ToUpper()}" : "").</p>
+                            <dl>
+                                <dt>10+</dt>
+                                <dd>@move.StrongHit</dd>
+                                <dt>7–9</dt>
+                                <dd>@move.WeakHit</dd>
+                                <dt>6-</dt>
+                                <dd>@move.Miss</dd>
+                            </dl>
+                            @if (move.Options is { Count: > 0 } options)
+                            {
+                                <ul>
+                                    @foreach (var option in options)
+                                    {
+                                        <li>@option</li>
+                                    }
+                                </ul>
+                            }
+                        </div>
+                    </details>
+                </li>
+            }
+        </ul>
+    </section>
+
+    <h2 class="section-title" id="classes">Class moves</h2>
+    @foreach (var sheet in ClassSheetLibrary.All.OrderBy(s => PartyReader.ClassName(s.Type)))
+    {
+        <section class="card wide move-group classed" style="@Lookup.ColorOf(sheet.Type)" id="@sheet.Type.ToString().ToLower()" data-filter-group>
+            <CardHeader>
+                <TitleContent><a class="class-name" href="@Lookup.ClassUrl(sheet.Type, _character?.Slug)">@PartyReader.ClassName(sheet.Type)</a></TitleContent>
+                <Tools><span class="small">@sheet.Source</span></Tools>
+            </CardHeader>
+            @Tier("Starting moves", sheet.StartingMoves)
+            @if (sheet.DeathMove is { } death)
+            {
+                @Tier("Death move", [death])
+            }
+            @foreach (var feature in sheet.Features)
+            {
+                @Tier(feature.Name, feature.Options)
+            }
+            @Tier("Levels 2–5", sheet.AdvancedMoves.Where(m => m.Tier == MoveTier.Level2To5).ToList())
+            @Tier("Levels 6–10", sheet.AdvancedMoves.Where(m => m.Tier == MoveTier.Level6To10).ToList())
+            @Tier("Extras", sheet.Extras)
+        </section>
+    }
+
+    <h2 class="section-title" id="subclasses">Subclass moves</h2>
+    @foreach (var subclass in SubclassLibrary.All.OrderBy(s => s.Name))
+    {
+        <section class="card wide move-group" id="@Lookup.Slug(subclass.Name)" data-filter-group>
+            <CardHeader>
+                <TitleContent><a href="@Lookup.SubclassUrl(subclass, _character?.Slug)">@subclass.Name</a></TitleContent>
+                <Tools><span class="small">@subclass.Source</span></Tools>
+            </CardHeader>
+            <ul class="moves">
+                @foreach (var move in subclass.Moves.Where(m => !m.Hidden).OrderBy(m => m.Level))
+                {
+                    <MoveItem Move="move.Move" Label="@($"Level {move.Level}")" Has="_known.Knows(move.Move)" ForCharacter="@_character?.Slug" />
+                }
+            </ul>
+        </section>
+    }
+
+    <p class="empty no-matches" hidden>No moves match.</p>
+</div>
+
+@code {
+    /// <summary>
+    /// A character whose moves to mark, by name. Defaults to the viewer's own character.
+    /// </summary>
+    [SupplyParameterFromQuery(Name = "for")]
+    public string? For { get; set; }
+
+    private IReadOnlyList<CharacterView> _party = [];
+    private CharacterView? _character;
+    private IReadOnlyCollection<string> _known = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _party = await PartyReader.GetPartyAsync();
+        _character = For is not null
+            ? PartyReader.Match(_party, For)
+            : _party.FirstOrDefault(c => Viewer.Is(c.ID));
+        _known = _character is { } c ? ClassSheetLibrary.KnownMoves(c.Character) : [];
+    }
+
+    // Jump links keep the character being marked
+    private string Url(string section) => $"moves{(_character is null ? "" : $"?for={_character.Slug}")}#{section}";
+
+    /// <summary>
+    /// One part of a class sheet's moves, left out when it has none.
+    /// </summary>
+    private RenderFragment Tier(string title, IReadOnlyList<ClassMove> moves) => moves.Count == 0
+        ? @<text></text>
+        : @<div data-filter-group>
+            <h3>@title</h3>
+            <ul class="moves">
+                @foreach (var move in moves)
+                {
+                    <MoveItem Move="move" Has="_known.Knows(move)" ForCharacter="@_character?.Slug" />
+                }
+            </ul>
+        </div>;
+}

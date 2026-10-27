@@ -1,0 +1,177 @@
+@page "/scenes"
+@* The old address, so links already shared in Discord still work *@
+@page "/canvases"
+@namespace DungeonWorldBot.Dashboard.Pages
+@using Microsoft.AspNetCore.Components.Forms
+@using DungeonWorldBot.Dashboard.Models.Scenes
+@using DungeonWorldBot.Dashboard.Services.Scenes
+@inject CanvasStore CanvasStore
+@inject CanvasPresence Presence
+@inject Viewer Viewer
+
+<PageTitle>Scenes · Sana Solem</PageTitle>
+
+<PageHeader Title="@(Archived ? "Archived scenes" : "Scenes")">
+    <ChildContent>
+        @if (!Archived)
+        {
+            @* Plain links, filtered on the server, so they need no script *@
+            <nav class="canvas-filters" aria-label="Show">
+                <a class="chip@(_kind is null ? " on" : "")" href="scenes">All</a>
+                @foreach (var kind in Enum.GetValues<CanvasKind>())
+                {
+                    <a class="chip@(_kind == kind ? " on" : "")" href="scenes?kind=@kind">@KindName(kind)</a>
+                }
+            </nav>
+        }
+    </ChildContent>
+    <Actions>
+        @if (!Archived)
+        {
+            <a class="tool" href="scenes/side-by-side" title="Show several scenes at once">Side by side</a>
+            <button type="button" class="tool" data-open-dialog="new-scene">+ New scene</button>
+        }
+        else
+        {
+            <a class="tool" href="scenes">← Back to scenes</a>
+        }
+    </Actions>
+</PageHeader>
+
+@if (!Archived)
+{
+    <Modal Id="new-scene" Title="New scene" Action="api/canvases" SubmitLabel="Create" Errors="_errors">
+        <Field Label="Name">
+            <input class="filter" name="name" maxlength="@CanvasStore.MaxNameLength" placeholder="Goblin ambush at the ford" required autofocus />
+        </Field>
+
+        <fieldset class="kind-options">
+            <legend class="field-label">Kind</legend>
+            @foreach (var kind in Enum.GetValues<CanvasKind>())
+            {
+                <label class="kind-option">
+                    <input type="radio" name="kind" value="@kind" checked="@(kind == (_kind ?? CanvasKind.Encounter))" />
+                    <span class="kind-icon @KindClass(kind)"><Icon Name="@KindIcon(kind)" /></span>
+                    <span class="kind-text">
+                        <strong>@kind</strong>
+                        <span class="small muted">@KindDescription(kind)</span>
+                    </span>
+                </label>
+            }
+        </fieldset>
+    </Modal>
+}
+
+@if (_canvasList.Count == 0)
+{
+    <p class="empty">
+        @if (Archived) { <text>Nothing's been put away.</text> }
+        else if (_kind is { } kind) { <text>No @KindName(kind).ToLowerInvariant() yet.</text> }
+        else { <text>No scenes yet. Make one for your next encounter or map.</text> }
+    </p>
+}
+else
+{
+    <div class="canvas-grid">
+        @foreach (var c in _canvasList)
+        {
+            var sqid = CanvasIds.Encode(c.ID);
+            var peopleOnCanvas = Presence.On(c.ID);
+
+            <article class="canvas-card">
+                <a class="canvas-link" href="scene/@sqid">
+                    <div class="canvas-thumbnail">
+                        @if (_thumbnails.TryGetValue(c.ID, out var taken))
+                        {
+                            @* The time it was taken is in the URL, so a new picture gets a new address *@
+                            <img src="api/canvases/@sqid/thumbnail?v=@taken.Ticks" alt="" loading="lazy" />
+                        }
+                        else
+                        {
+                            <span class="canvas-placeholder"><Icon Name="@KindIcon(c.Kind)" /></span>
+                        }
+                        @if (peopleOnCanvas.Count > 0)
+                        {
+                            <span class="here" title="@string.Join(", ", peopleOnCanvas.Select(p => p.Name))">● @peopleOnCanvas.Count here</span>
+                        }
+                    </div>
+                    <span class="canvas-name">@c.Name</span>
+                </a>
+
+                <div class="canvas-description">
+                    <span class="chip @KindClass(c.Kind)"><Icon Name="@KindIcon(c.Kind)" /> @c.Kind</span>
+                    @* Shown as "2 minutes ago" by app.js, in the viewer's own time zone *@
+                    <time datetime="@DateTime.SpecifyKind(c.UpdatedAt, DateTimeKind.Utc).ToString("o")" data-ago>@c.UpdatedAt.ToString("MMM d")</time>
+
+                    @* Only for the DM or whoever made it. A native popover, so it closes on Escape or a click elsewhere *@
+                    @if (Viewer.CanManage(c))
+                    {
+                        <button type="button" class="card-menu-button" popovertarget="menu-@sqid" title="More" aria-label="More for @c.Name"><Icon Name="more" /></button>
+                        <div id="menu-@sqid" class="menu-pop card" popover>
+                            <form method="post" action="api/canvases/@sqid/@(Archived ? "restore" : "archive")">
+                                <AntiforgeryToken />
+                                <button title="@(Archived ? "Bring it back to the list" : "Hide it from the list; it's kept")">@(Archived ? "Restore" : "Archive")</button>
+                            </form>
+                            <button type="button" class="delete" data-open-dialog="delete-@sqid" title="Delete it for good">Delete</button>
+                        </div>
+
+                        @* Outside the menu, which hides as the dialog opens *@
+                        <ConfirmDialog Id="@($"delete-{sqid}")" Title="@($"Delete {c.Name}?")" Action="@($"api/canvases/{sqid}/delete")"
+                                       Message="Everything drawn on it and every picture added to it goes too. This can't be undone."
+                                       ConfirmLabel="Delete" />
+                    }
+                </div>
+            </article>
+        }
+    </div>
+}
+
+@if (!Archived && _archivedCount > 0)
+{
+    <p class="archived-link"><a href="scenes?archived=true">Archived (@_archivedCount)</a></p>
+}
+
+@code {
+    [SupplyParameterFromQuery] public string? Kind { get; set; }
+    [SupplyParameterFromQuery] public bool Archived { get; set; }
+    [SupplyParameterFromQuery] public string? Dialog { get; set; }
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+
+    private FormErrors _errors = FormErrors.None;
+
+    private IReadOnlyList<Canvas> _canvasList = [];
+    private Dictionary<int, DateTime> _thumbnails = [];
+    private int _archivedCount;
+    private CanvasKind? _kind;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _errors = new(Dialog, Error);
+        _kind = Enum.TryParse<CanvasKind>(Kind, ignoreCase: true, out var kind) ? kind : null;
+
+        var all = await CanvasStore.ListAsync(Archived);
+        _canvasList = _kind is null ? all : all.Where(c => c.Kind == _kind).ToList();
+        _thumbnails = await CanvasStore.ThumbnailTimesAsync();
+        _archivedCount = Archived ? 0 : await CanvasStore.CountArchivedAsync();
+    }
+
+    private static string KindName(CanvasKind kind) => $"{kind}s";
+
+    private static string KindIcon(CanvasKind kind) => kind switch
+    {
+        CanvasKind.Encounter => "sword",
+        _ => "map",
+    };
+
+    private static string KindDescription(CanvasKind kind) => kind switch
+    {
+        CanvasKind.Encounter => "A board for a fight, which shows beside it while it's going on.",
+        _ => "A place to explore, or anything else worth drawing out.",
+    };
+
+    private static string KindClass(CanvasKind kind) => kind switch
+    {
+        CanvasKind.Encounter => "warn",
+        _ => "good",
+    };
+}

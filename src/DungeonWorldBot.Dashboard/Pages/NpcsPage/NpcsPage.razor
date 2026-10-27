@@ -1,0 +1,209 @@
+@page "/npcs"
+@namespace DungeonWorldBot.Dashboard.Pages
+@using DungeonWorldBot.Dashboard.Services.Npcs
+@using DungeonWorldBot.Features.Characters
+@inject PartyReader PartyReader
+@inject ICharacterService Characters
+@inject Viewer Viewer
+
+@* The NPCs travelling with the party. Players can look; the DM gets everything /dm npc does in Discord, as plain forms.
+   A mistake comes back in the address and reopens its dialog, or shows at the top for the quick HP buttons. *@
+<PageTitle>NPCs · Sana Solem</PageTitle>
+
+<PageHeader Title="NPCs">
+    <Actions>
+        @if (_canRun)
+        {
+            <button type="button" class="tool" data-open-dialog="npc-new">+ New NPC</button>
+        }
+    </Actions>
+</PageHeader>
+
+@if (_canRun && _errors.ForPage is { } error)
+{
+    <p class="form-error desk-error">@error</p>
+}
+
+@if (_npcs.Count == 0)
+{
+    <p class="empty">No NPCs are with the party yet.</p>
+}
+else
+{
+    <div class="desk-grid">
+        @foreach (var npc in _npcs)
+        {
+            @NpcCard(npc)
+        }
+    </div>
+
+    <h2 class="section-title">Loyalty</h2>
+    <p class="small">Who each NPC follows, and how loyal they are: green holds firm, gray is steady, red may walk. Those who follow no one travel with the whole party.</p>
+    <section class="card npc-web-card">
+        <NpcWeb Hirelings="_npcs" Characters="_characters" />
+    </section>
+}
+
+@if (_canRun)
+{
+    <Modal Id="npc-new" Title="New NPC" Action="api/npcs" SubmitLabel="Add to the party" Errors="_errors">
+        @Fields(null)
+    </Modal>
+
+    @foreach (var npc in _npcs)
+    {
+        <Modal Id="@($"npc-edit-{npc.ID}")" Title="@npc.Name" Action="@($"api/npcs/{npc.ID}")" SubmitLabel="Save" Errors="_errors">
+            @Fields(npc)
+        </Modal>
+
+        <ConfirmDialog Id="@($"npc-remove-{npc.ID}")" Title="@($"Send {npc.Name} away?")" Action="@($"api/npcs/{npc.ID}/remove")"
+                       Message="They leave the party and any fight they're in. What they did in fights stays in its spotlight."
+                       KeepLabel="Keep them" ConfirmLabel="Send away" />
+    }
+}
+
+@code {
+    // Set by the forms when something was wrong: the dialog to reopen, and what to say in it
+    [SupplyParameterFromQuery] public string? Dialog { get; set; }
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+
+    private FormErrors _errors = FormErrors.None;
+    private bool _canRun;
+    private IReadOnlyList<Npc> _npcs = [];
+    private IReadOnlyList<Character> _characters = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _errors = new(Dialog, Error);
+        _canRun = Viewer.CanRunGame;
+        _npcs = await PartyReader.GetNpcsAsync();
+        _characters = (await Characters.GetCharactersAsync()).OrderBy(c => c.Name).ToList();
+    }
+
+    private RenderFragment NpcCard(Npc npc) =>
+    @<div class="card desk-card" id="npc-@npc.ID">
+        <div class="member-head">
+            <div>
+                <h2>@npc.Name</h2>
+                <div class="muted desk-line">
+                    <span>@(npc.Role ?? "NPC")</span>
+                    @if (Follows(npc) is { } leader)
+                    {
+                        <span class="chip accent">follows @leader</span>
+                    }
+                </div>
+            </div>
+            @if (npc.CurrentHP == 0)
+            {
+                <span class="chip warn">Down</span>
+            }
+        </div>
+
+        <HealthBar Current="npc.CurrentHP" Max="npc.MaxHP" />
+        @if (_canRun)
+        {
+            <HpChangeForm Action="@($"api/npcs/{npc.ID}/hp")" Name="@npc.Name" />
+        }
+
+        <CombatStats Armor="npc.Armor" Damage="@npc.Damage">
+            <span title="Loyalty">Loyalty @Signed(npc.Loyalty)</span>
+        </CombatStats>
+
+        <StatGrid Modifiers="Enum.GetValues<StatType>().ToDictionary(stat => stat, npc.Modifier)" />
+
+        @if (npc.Skills is not null || npc.Cost is not null || npc.Notes is not null)
+        {
+            <div class="desk-extra small">
+                @if (npc.Skills is not null)
+                {
+                    <div><strong>Skills</strong> @npc.Skills</div>
+                }
+                @if (npc.Cost is not null)
+                {
+                    <div><strong>Cost</strong> @npc.Cost</div>
+                }
+                @if (npc.Notes is not null)
+                {
+                    <div class="muted desk-notes">@npc.Notes</div>
+                }
+            </div>
+        }
+
+        @if (_canRun)
+        {
+            <div class="desk-actions">
+                <button type="button" class="tool" data-open-dialog="npc-edit-@npc.ID">Edit</button>
+                <button type="button" class="tool" data-open-dialog="npc-remove-@npc.ID">Send away</button>
+            </div>
+        }
+    </div>;
+
+    /// <summary>
+    /// Everything about an NPC, filled in with what they have now, or blank for a new one.
+    /// </summary>
+    private RenderFragment Fields(Npc? npc) =>
+    @<div class="desk-fields">
+        <div class="field-row">
+            <Field Label="Name">
+                <input class="filter" name="name" value="@npc?.Name" maxlength="@NpcDesk.MaxNameLength" placeholder="Bram" required />
+            </Field>
+            <Field Label="Role">
+                <input class="filter" name="role" value="@npc?.Role" maxlength="@NpcDesk.MaxNameLength" placeholder="Hireling" />
+            </Field>
+        </div>
+        <div class="field-row">
+            @if (npc is not null)
+            {
+                <Field Label="HP">
+                    <input class="filter" type="number" name="currentHp" value="@npc.CurrentHP" min="0" required />
+                </Field>
+            }
+            <Field Label="Max HP">
+                <input class="filter" type="number" name="maxHp" value="@npc?.MaxHP" min="1" placeholder="6" required />
+            </Field>
+            <Field Label="Armor">
+                <input class="filter" type="number" name="armor" value="@(npc?.Armor ?? 0)" min="0" />
+            </Field>
+            <Field Label="Damage">
+                <input class="filter" name="damage" value="@npc?.Damage" maxlength="@NpcDesk.MaxNameLength" placeholder="d6" />
+            </Field>
+            <Field Label="Loyalty">
+                <input class="filter" type="number" name="loyalty" value="@(npc?.Loyalty ?? 0)" />
+            </Field>
+        </div>
+        <fieldset class="desk-modifiers">
+            <legend class="field-label">Modifiers</legend>
+            @foreach (var stat in Enum.GetValues<StatType>())
+            {
+                <Field Label="@stat.ToString().ToUpper()">
+                    <input class="filter" type="number" name="@stat.ToString().ToLowerInvariant()" value="@(npc?.Modifier(stat) ?? 0)"
+                           min="-@NpcDesk.MaxModifier" max="@NpcDesk.MaxModifier" />
+                </Field>
+            }
+        </fieldset>
+        <Field Label="Skills">
+            <input class="filter" name="skills" value="@npc?.Skills" maxlength="@NpcDesk.MaxTextLength" placeholder="Protector +2, Tracker +1" />
+        </Field>
+        <div class="field-row">
+            <Field Label="Cost">
+                <input class="filter" name="cost" value="@npc?.Cost" maxlength="@NpcDesk.MaxNameLength" placeholder="Money" />
+            </Field>
+            <Field Label="Follows">
+                <select class="filter" name="follows">
+                    <option value="">Nobody in particular</option>
+                    @foreach (var character in _characters)
+                    {
+                        <option value="@character.ID.Value" selected="@(npc?.FollowsID == character.ID)">@character.Name</option>
+                    }
+                </select>
+            </Field>
+        </div>
+        <Field Label="Notes">
+            <textarea class="filter" name="notes" maxlength="@NpcDesk.MaxTextLength">@npc?.Notes</textarea>
+        </Field>
+    </div>;
+
+    // The name of the character they follow, if that player has one
+    private string? Follows(Npc npc) =>
+        npc.FollowsID is { } id ? _characters.FirstOrDefault(c => c.ID == id)?.Name : null;
+}
