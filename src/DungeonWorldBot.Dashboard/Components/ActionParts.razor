@@ -7,6 +7,10 @@
     {
         <span class="roll @(Action.Missed ? "miss" : null)">🎲 @Action.Roll</span>
     }
+    @if (Action.ChangedReason is not null)
+    {
+        <span class="changed">✏️ @Action.ChangedReason</span>
+    }
     @if (Action.Target is not null)
     {
         <span class="target">🎯 @Action.Target</span>

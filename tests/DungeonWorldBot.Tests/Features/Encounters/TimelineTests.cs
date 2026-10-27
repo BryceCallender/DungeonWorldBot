@@ -62,6 +62,29 @@ public sealed class TimelineTests : IDisposable
     }
 
     [Fact]
+    public async Task ChangedRolls_ShowWhyTheyWereChanged()
+    {
+        await using var context = _db.CreateContext();
+        var encounters = new EncounterService(context);
+        var encounter = (await encounters.StartAsync("Ambush"))!;
+        var aria = Hero(1, "Aria");
+        var bram = Hero(2, "Bram");
+
+        var logged = Snowflake.CreateTimestampSnowflake(DateTimeOffset.UtcNow.AddSeconds(1), Constants.DiscordEpoch);
+        var plain = Snowflake.CreateTimestampSnowflake(DateTimeOffset.UtcNow.AddSeconds(2), Constants.DiscordEpoch);
+        context.Rolls.Add(new RollRecord { MessageID = logged, ChannelID = GameChat, UserID = aria.ID, First = 1, Second = 2, Total = 3, Move = "Hack and Slash", ChangedOutcome = MoveOutcome.StrongHit, ChangedReason = "Blessing of Luna" });
+        context.Rolls.Add(new RollRecord { MessageID = plain, ChannelID = GameChat, UserID = bram.ID, First = 1, Second = 2, Total = 3, Move = "Defy Danger", ChangedOutcome = MoveOutcome.WeakHit, ChangedReason = "Lucky charm" });
+        await context.SaveChangesAsync();
+        await encounters.LogAsync(new EncounterAction { Actor = aria.Name, CharacterID = aria.ID, MessageID = logged, Action = "Hack and Slash", Roll = "3 · Strong Hit (10+)" });
+
+        var timeline = await Timeline(context, encounters).GetAsync(encounter, [aria, bram], take: 10);
+
+        Assert.Equal(["Lucky charm", "Blessing of Luna"], timeline.Entries.Select(e => e.Action.ChangedReason));
+        Assert.All(timeline.Entries, e => Assert.False(e.Action.Missed));
+        Assert.Equal("Defy Danger · 3 · Weak Hit (7-9) (changed: Lucky charm)", timeline.Entries[0].Action.Summary);
+    }
+
+    [Fact]
     public async Task ComesAPageAtATime_OlderAfterTheOldestShown()
     {
         await using var context = _db.CreateContext();

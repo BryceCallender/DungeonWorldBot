@@ -36,7 +36,7 @@ public class SpotlightService : ISpotlightService
                 var actions = rolls
                     .Where(r => r.UserID == c.ID)
                     .Select(r => logged.TryGetValue(r.MessageID, out var action)
-                        ? FromLog(action, r.MessageID.Timestamp, IsMiss(r))
+                        ? FromLog(action, r.MessageID.Timestamp, IsMiss(r), r.ChangedReason)
                         : FromRoll(r))
                     .Concat(log
                         .Where(a => a.CharacterID == c.ID && (a.MessageID is not { } id || !rolled.Contains(id)))
@@ -107,14 +107,15 @@ public class SpotlightService : ISpotlightService
             .ToList();
     }
 
-    internal static SpotlightAction FromLog(EncounterAction action, DateTimeOffset at, bool missed) =>
-        new(at, action.Action, action.Roll, action.Target, action.Result, missed);
+    /// <param name="changedReason">Why the roll's outcome was changed, when the action was a roll that was.</param>
+    internal static SpotlightAction FromLog(EncounterAction action, DateTimeOffset at, bool missed, string? changedReason = null) =>
+        new(at, action.Action, action.Roll, action.Target, action.Result, missed, changedReason);
 
     internal static SpotlightAction FromRoll(RollRecord roll)
     {
         var outcome = MoveDice.Of(roll).Outcome;
         return new SpotlightAction(
-            roll.MessageID.Timestamp, roll.Move ?? PlainRoll, $"{roll.Total} · {MoveRoller.Describe(outcome)}", null, null, outcome == MoveOutcome.Miss);
+            roll.MessageID.Timestamp, roll.Move ?? PlainRoll, $"{roll.Total} · {MoveRoller.Describe(outcome)}", null, null, outcome == MoveOutcome.Miss, roll.ChangedReason);
     }
 
     internal static bool IsMiss(RollRecord roll) => MoveDice.Of(roll).Outcome == MoveOutcome.Miss;

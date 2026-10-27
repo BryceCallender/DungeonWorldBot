@@ -28,3 +28,4 @@
 .roll-log .total-strong { color: var(--good); }
 .roll-log .total-weak { color: var(--low); }
 .roll-log .total-miss { color: var(--critical); }
+.roll-log .changed { display: block; font-size: .75rem; color: var(--muted); white-space: normal; }

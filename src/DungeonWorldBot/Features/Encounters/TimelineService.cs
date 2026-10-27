@@ -19,7 +19,7 @@ public class TimelineService : ITimelineService
         var names = party.DistinctBy(c => c.ID).ToDictionary(c => c.ID, c => c.Name);
 
         var fromRolls = log.Rolls.Select(r => log.Logged.TryGetValue(r.MessageID, out var action)
-            ? new TimelineEntry(action.Actor, SpotlightService.FromLog(action, r.MessageID.Timestamp, SpotlightService.IsMiss(r)))
+            ? new TimelineEntry(action.Actor, SpotlightService.FromLog(action, r.MessageID.Timestamp, SpotlightService.IsMiss(r), r.ChangedReason))
             : new TimelineEntry(names.GetValueOrDefault(r.UserID, "Someone"), SpotlightService.FromRoll(r)));
         var fromLog = log.Actions
             .Where(a => a.MessageID is not { } id || !log.Rolled.Contains(id))

@@ -109,7 +109,13 @@ else
                         <td>@(r.Move ?? "–")@(r.Stat is { } stat ? $" +{stat.ToString().ToUpper()}" : "")</td>
                         <td class="num">@r.First + @r.Second</td>
                         <td class="num"><strong class="total-@OutcomeClass(dice.Outcome)">@r.Total</strong></td>
-                        <td>@Outcome(dice)</td>
+                        <td>
+                            @Outcome(dice)
+                            @if (r.ChangedReason is { } reason)
+                            {
+                                <span class="changed" title="Rolled a @MoveRoller.Describe(MoveRoller.OutcomeFor(r.Total))">✏️ @reason</span>
+                            }
+                        </td>
                     </tr>
                 }
             </tbody>
