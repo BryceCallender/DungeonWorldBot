@@ -25,6 +25,6 @@
 .roll-log th { font-size: .72rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .roll-log tbody tr:last-child td { border-bottom: 0; }
 .roll-log .num { text-align: right; font-variant-numeric: tabular-nums; }
-.roll-log tr.strong .outcome { color: var(--good); font-weight: 600; }
-.roll-log tr.weak .outcome { color: var(--low); font-weight: 600; }
-.roll-log tr.miss .outcome { color: var(--critical); font-weight: 600; }
+.roll-log .total-strong { color: var(--good); }
+.roll-log .total-weak { color: var(--low); }
+.roll-log .total-miss { color: var(--critical); }

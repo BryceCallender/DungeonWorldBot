@@ -103,13 +103,13 @@ else
                 @foreach (var r in _rolls)
                 {
                     var dice = MoveDice.Of(r);
-                    <tr class="@OutcomeClass(dice.Outcome)">
+                    <tr>
                         <td class="muted">@r.MessageID.Timestamp.ToLocalTime().ToString("h:mm tt")</td>
                         <td>@Who(r.UserID.Value)</td>
                         <td>@(r.Move ?? "–")@(r.Stat is { } stat ? $" +{stat.ToString().ToUpper()}" : "")</td>
                         <td class="num">@r.First + @r.Second</td>
-                        <td class="num"><strong>@r.Total</strong></td>
-                        <td><span class="outcome">@Outcome(dice)</span></td>
+                        <td class="num"><strong class="total-@OutcomeClass(dice.Outcome)">@r.Total</strong></td>
+                        <td>@Outcome(dice)</td>
                     </tr>
                 }
             </tbody>
