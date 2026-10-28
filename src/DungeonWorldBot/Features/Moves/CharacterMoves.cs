@@ -59,14 +59,12 @@ public class CharacterMoves(IResourceService resourceService)
                 PicksStat: m == BasicMoves.DefyDanger,
                 m.RollsDamage));
 
-        var known = ClassSheetLibrary.KnownMoves(character);
-        var classMoves = RolledClassMoves(character)
-            .Where(f => known.Contains(f.Move.Name, StringComparer.OrdinalIgnoreCase))
-            .Select(f => new CharacterMove(
-                f.Move.Name,
+        var classMoves = KnownRolledClassMoves(character)
+            .Select(m => new CharacterMove(
+                m.Name,
                 IsClassMove: true,
-                f.Move.Roll!.RollsDamage ? MoveAim.Enemy : MoveAim.None,
-                RollsDamage: f.Move.Roll.RollsDamage));
+                m.Roll!.RollsDamage ? MoveAim.Enemy : MoveAim.None,
+                RollsDamage: m.Roll.RollsDamage));
 
         return basic.Concat(classMoves).DistinctBy(m => m.Name, StringComparer.OrdinalIgnoreCase).ToList();
     }
@@ -124,6 +122,18 @@ public class CharacterMoves(IResourceService resourceService)
     }
 
     // Their own class's, their subclass's, and any they learned from other classes
+    /// <summary>
+    /// The rolled class, subclass and other classes' moves the character knows, each once.
+    /// </summary>
+    public static IEnumerable<ClassMove> KnownRolledClassMoves(Character character)
+    {
+        var known = ClassSheetLibrary.KnownMoves(character);
+        return RolledClassMoves(character)
+            .Where(f => known.Contains(f.Move.Name, StringComparer.OrdinalIgnoreCase))
+            .Select(f => f.Move)
+            .DistinctBy(m => m.Name, StringComparer.OrdinalIgnoreCase);
+    }
+
     private static IEnumerable<ForeignMove> RolledClassMoves(Character character)
     {
         if (ClassSheetLibrary.For(character.Class.Type) is not { } sheet)

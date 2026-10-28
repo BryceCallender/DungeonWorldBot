@@ -177,9 +177,9 @@ public partial class DmCommand
             return await ReplyAsync("An Enemy Appears!", $"**{enemy.Name}** joined **{encounter.Name}**.\n{EnemySheet.Summary(enemy)}");
         }
 
-        [Command("hurt")]
+        [Command("damage")]
         [Description("Damage an enemy, reduced by its armor if it's physical")]
-        public async Task<IResult> HurtAsync(
+        public async Task<IResult> DamageAsync(
             [Description(EnemyDescription)]
             [AutocompleteProvider(EnemyAutocomplete.ID)]
             string enemy,

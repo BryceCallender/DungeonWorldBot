@@ -17,7 +17,7 @@ using Remora.Results;
 namespace DungeonWorldBot.Features.Classes;
 
 [Group("class")]
-public partial class ClassCommand(
+public class ClassCommand(
     ICommandContext context,
     FeedbackService feedbackService,
     ICharacterService characterService,
@@ -231,9 +231,9 @@ public partial class ClassCommand(
         return await ReplyAsync("Move Learned!", Truncate(description, 4096));
     }
 
-    [Command("lookup")]
+    [Command("info")]
     [Description("Read any move from a class sheet")]
-    public async Task<IResult> LookupAsync(
+    public async Task<IResult> InfoAsync(
         [Description("The move to look up")]
         [AutocompleteProvider(AnyClassMoveAutocomplete.ID)]
         string move)

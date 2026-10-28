@@ -34,21 +34,21 @@ public static class TacticalGuardian
     /// </summary>
     public const int MaxPool = 20;
 
-    // Read the Room and Perfected Assault are rolled with /subclass guardian, which tracks the pool and the short-rest use, so
+    // Read the Room and Perfected Assault are rolled with /guardian, which tracks the pool and the short-rest use, so
     // they're kept off /move class by dropping their Roll. These keep the definitions for the command.
     private static readonly ClassMove ReadTheRoomMove = Rolled(ReadTheRoom, StatType.Int,
         "When a situation is about to turn violent",
         "You gain a strategy pool: roll a number of d6 equal to your roll. Also ask the GM one strategic question; they'll answer with something true and useful. Explain how you deduce it.",
         "You gain a strategy pool: roll a number of d6 equal to your roll. The GM tells you something true, but it's up to you to interpret and make use of it.",
         "You gain a strategy pool: roll a number of d6 equal to your roll. But you're on your own, and may not have gathered enough to act decisively.",
-        note: "Use /subclass guardian read-the-room");
+        note: "Use /guardian read-the-room");
 
     private static readonly ClassMove PerfectedAssaultMove = Rolled(PerfectedAssault, StatType.Int,
         "When you declare a Perfected Assault, an orchestrated strike where every movement is part of the plan",
         "You and all allies near you each make a single attack with full damage, regardless of weapon or attack type. Enemies are disoriented (-1 ongoing). Each ally may also immediately take a free action (attack, defend, or move) without rolling.",
         "Your strategy lands, but everyone's damage is halved and there's no disorientation. Your allies take +1 forward, but get no free action.",
         "The attack falls apart: your allies hesitate or misfire. Every attack in the assault deals half damage and takes -1 forward. One enemy may immediately attack you or your team, and that attack can't be avoided or reduced by armor.",
-        note: "Once used, you can't use it again until after a short rest. Use /subclass guardian perfected-assault, and restore it with /ability restore");
+        note: "Once used, you can't use it again until after a short rest. Use /guardian perfected-assault, and restore it with /ability restore");
 
     public static MoveDefinition ReadTheRoomRoll => ReadTheRoomMove.Roll!;
     public static MoveDefinition PerfectedAssaultRoll => PerfectedAssaultMove.Roll!;
@@ -66,7 +66,7 @@ public static class TacticalGuardian
                 "Your fusion with light speeds your reactions and thoughts. During combat, when an NPC or another player acts (never on your own " +
                 "turn), replace one die from their roll with a die from your strategy pool. Discard it from the pool and explain plausibly how you " +
                 "influence the encounter, possibly with an ally's help. It can't alter Last Breath, world-level random checks, or similar rolls. " +
-                "Use /subclass guardian one-step-ahead")),
+                "Use /guardian one-step-ahead")),
             new(1, Rolled(FlashstepExchange, StatType.Int,
                 "When you swap places with someone, friend or foe, by bending space and perception with your fused light",
                 "You switch places seamlessly, despite obstacles, distance (near or far), or awareness. Choose one: catch them off guard (they take -1 forward); land in perfect position (take +1 forward); time it perfectly (an ally may act at once with a surprise advantage).",
@@ -78,18 +78,18 @@ public static class TacticalGuardian
                 "Hold the line as long as needed. Choose one: allies within near take +1 forward; raise cover (a shield wall or barrier) giving you and allies there +2 armor until the end of next round; make a light doppelganger to draw enemy aggression.",
                 "You hold, at a cost. Choose one: your position is compromised (the next enemy attack on your side deals +1 damage or adds a debuff); you're exhausted (take -1 forward); an ally you protect falters (they take -1 forward).",
                 "Your defense falters. The GM chooses one: you're overwhelmed (the next attack on your side deals +1 damage, and you're knocked down: -1 forward); your stance weakens (bonus armor drops to 0, ending this round); you leave an opening (an enemy takes +1 forward against your side).",
-                note: "For the fight: +1 magical armor (stacks), and you can take a protected ally's damage instead, halved (rounded down). Use /subclass guardian take-hit")),
+                note: "For the fight: +1 magical armor (stacks), and you can take a protected ally's damage instead, halved (rounded down). Use /guardian take-hit")),
             new(6, new(ShieldedPursuit,
                 "(Passive) You're not just a wall, but a shield and a spear. When you take damage while defending, you may store half of it " +
                 "(rounded down). When you make an attack roll, you can release the stored damage on top of your normal damage, or save it for a " +
-                "later attack. Stored damage can only be released while the battle is happening. Use /subclass guardian take-hit to store it and " +
-                "/subclass guardian release to unleash it")),
+                "later attack. Stored damage can only be released while the battle is happening. Use /guardian take-hit to store it and " +
+                "/guardian release to unleash it")),
             new(9, PerfectedAssaultMove with { Roll = null, Uses = 1 }),
         ])
     {
         Status = Describe,
         StateAbilities = [StrategyPool, StoredDamage],
-        CommandHint = "Use /subclass guardian for Read the Room, your strategy pool, stored damage, and Perfected Assault. Roll Flashstep Exchange and Guardian's Stand with /move class.",
+        CommandHint = "Use /guardian for Read the Room, your strategy pool, stored damage, and Perfected Assault. Roll Flashstep Exchange and Guardian's Stand with /move class.",
     };
 
     /// <summary>

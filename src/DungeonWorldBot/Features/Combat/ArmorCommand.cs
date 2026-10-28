@@ -16,7 +16,7 @@ namespace DungeonWorldBot.Features.Combat;
 
 /// <summary>
 /// Physical, magical and divine armor, and temporary armor from moves like Guardian's Stand or a Lightning barrier.
-/// Damage taken with /character damage or /subclass guardian take-hit is reduced by the armor matching its type.
+/// Damage taken with /character damage or /guardian take-hit is reduced by the armor matching its type.
 /// </summary>
 [Group("armor")]
 public class ArmorCommand(

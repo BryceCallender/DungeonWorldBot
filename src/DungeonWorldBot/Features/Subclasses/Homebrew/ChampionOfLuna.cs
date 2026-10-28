@@ -58,7 +58,7 @@ public static partial class ChampionOfLuna
                 "When you make an attack, you may offer life to Luna to empower the strike. Sacrifice any amount of your current HP; any willing party " +
                 "member may also contribute any amount of theirs. Each 1 HP sacrificed adds +1 damage. After the attack deals damage, roll +CHA. " +
                 "**10+:** All HP sacrificed is recovered. **7-9:** Half of the HP sacrificed is recovered, rounded down. " +
-                "**6-:** None is recovered, and the GM makes a move.\nRecovered HP returns to whoever sacrificed it. Use /subclass luna blood-moon")),
+                "**6-:** None is recovered, and the GM makes a move.\nRecovered HP returns to whoever sacrificed it. Use /luna blood-moon")),
             new(1, new(LunasVow,
                 "When you declare a specific objective in Luna's name, choose one Boon of Luna. You receive its full power; party members travelling " +
                 "and fighting alongside you receive its lesser Echo. Only one Vow at a time. It lasts until the objective is completed, abandoned, or " +
@@ -68,7 +68,7 @@ public static partial class ChampionOfLuna
                 "• **Veil:** See and physically interact with magical constructs and effects, and try to disarm, disrupt or dispel them. " +
                 "*Echo:* Allies near you see hidden magic and recognise when something is being affected by it\n" +
                 "• **Fortune:** +2 to Last Breath. *Echo:* +1 to Last Breath\n" +
-                "Use /subclass luna vow")),
+                "Use /luna vow")),
             new(3, Rolled(Revelation, StatType.Wis,
                 "When you call upon Luna to reveal knowledge that would otherwise be inaccessible, choose Scan (an enemy you can see) or Reveal (a person you can see)",
                 "Ask 3 questions. Luna's answers are truthful.",
@@ -89,11 +89,11 @@ public static partial class ChampionOfLuna
             new(6, new(LunarBarrage,
                 "When you draw your bow and channel Luna's power into your shot, roll +DEX. **10+:** Target up to 3 enemies. **7-9:** Up to 2. " +
                 "**6-:** 1 enemy, but the GM makes a move.\nBefore releasing, roll 1d10 damage. On a 6 or higher, roll another d10 and add it; keep going " +
-                "while each new roll is 6+. Every target takes the full total. Blood Moon can't be used with Lunar Barrage. Use /subclass luna lunar-barrage")),
+                "while each new roll is 6+. Every target takes the full total. Blood Moon can't be used with Lunar Barrage. Use /luna lunar-barrage")),
             new(9, new(LifeForLife,
                 "When you invoke Luna against an enemy whose level is equal to or lower than your own, you may offer your life for theirs. The enemy " +
                 "is instantly killed. You're reduced to 0 HP and must roll Last Breath; no damage is rolled. Boon of Fortune applies to this roll. " +
-                "Use /subclass luna life-for-life")),
+                "Use /luna life-for-life")),
             new(10, new("???",
                 "L̷E̸V̶E̷L̴ 1̵0̸\n▓▒░ █▓̷█̸▓̶░▒▓ ??? ▓▒░█̷▓̸█░▒▓\nU̴N̵L̸O̷C̶K̷: █̸█̴█̶█̵█̷█̸█̵█̶\nS̴T̶A̸T̷U̴S̷: ▓▓▒░ █̴█̸█̴█̷ ░▒▓▓"))
             {
@@ -104,7 +104,7 @@ public static partial class ChampionOfLuna
         Bonuses = VowBonuses,
         Status = c => ActiveVowOf(c) is { } vow ? $"**{vow.BoonName}**: {vow.Objective}" : null,
         StateAbilities = [ActiveVow],
-        CommandHint = "Use /subclass luna for Blood Moon, your Vow, and Luna's other powers. Roll Revelation with /move class.",
+        CommandHint = "Use /luna for Blood Moon, your Vow, and Luna's other powers. Roll Revelation with /move class.",
     };
 
     [GeneratedRegex(@"^\*\*Boon of (?<boon>\w+)(?: \((?<stat>\w+)\))?\*\*\s*\nObjective: (?<objective>.+)$", RegexOptions.Singleline)]

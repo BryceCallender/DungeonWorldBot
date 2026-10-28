@@ -4,32 +4,26 @@
 
 <header class="topbar">
     <a class="brand" href=""><span aria-hidden="true">🎲</span>Sana Solem</a>
-    @* In groups: who's at the table and where they are; what's happened (monsters fought, how the dice went); and the
-       rules to look things up in, folded into a menu since they're read rather than played *@
+    @* In groups: the game as it's played (the party, where they are, and the sessions and dice behind them); who they
+       meet and fight; and the rules to look things up in, the ones reached for mid-play first *@
     <nav>
         <NavLink href="" Match="NavLinkMatch.All" class="@ActiveFor("character/")">Party</NavLink>
-        <NavLink href="npcs">NPCs</NavLink>
         <NavLink href="scenes" class="@ActiveFor("scene/", "canvas/", "fight/")">Scenes</NavLink>
+        <NavLink href="sessions" class="@ActiveFor("session/")">Sessions</NavLink>
+        <NavLink href="stats">Stats</NavLink>
         <span class="nav-sep" aria-hidden="true"></span>
+        <NavLink href="npcs">NPCs</NavLink>
         <NavLink href="bestiary">Bestiary</NavLink>
         @* The DM's own tab, for looking after who the party fights *@
         @if (Viewer.CanRunGame)
         {
             <NavLink href="enemies">Enemies</NavLink>
         }
-        <NavLink href="sessions" class="@ActiveFor("session/")">Sessions</NavLink>
-        <NavLink href="stats">Stats</NavLink>
         <span class="nav-sep" aria-hidden="true"></span>
-        <button type="button" class="nav-more @ActiveFor("classes", "subclasses/", "spells", "moves")" popovertarget="rules-menu">
-            Rules <span aria-hidden="true">▾</span>
-        </button>
-    </nav>
-    @* Outside the nav, which scrolls sideways on a narrow screen and would otherwise clip it *@
-    <div id="rules-menu" class="menu-pop nav-menu" popover>
-        <NavLink href="classes" class="@ActiveFor("subclasses/")">Classes</NavLink>
-        <NavLink href="spells">Spells</NavLink>
         <NavLink href="moves">Moves</NavLink>
-    </div>
+        <NavLink href="spells">Spells</NavLink>
+        <NavLink href="classes" class="@ActiveFor("subclasses/")">Classes</NavLink>
+    </nav>
 
     <div class="viewer">
         @* How the roll feed behaves for you (app.js keeps it in this browser) *@

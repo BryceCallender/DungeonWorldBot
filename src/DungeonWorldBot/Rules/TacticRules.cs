@@ -78,10 +78,10 @@ public static class TacticRules
             return null;
 
         if (move == BasicMoves.HackAndSlash.Name && IsIn(character, Reactive))
-            return $"{character.Name} is in Reactive Tactics and can't Hack and Slash. Counterattack with /move class, or change Tactics with /class tactic change";
+            return $"{character.Name} is in Reactive Tactics and can't Hack and Slash. Counterattack with /move class, or change Tactics with /tactic change";
 
         if (move == Counterattack && !IsIn(character, Reactive))
-            return $"{character.Name} can only Counterattack in Reactive Tactics. Change Tactics with /class tactic change";
+            return $"{character.Name} can only Counterattack in Reactive Tactics. Change Tactics with /tactic change";
 
         return null;
     }

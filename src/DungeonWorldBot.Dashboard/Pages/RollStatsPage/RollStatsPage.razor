@@ -11,7 +11,7 @@
 
 <PageTitle>Roll stats · Sana Solem</PageTitle>
 
-<PageHeader Title="Roll stats" Description="Every 2d6 roll in the game chat, counted by total with modifiers. The totals up top are the party's, without the DM's rolls. Run /stats scan in Discord to add older rolls." />
+<PageHeader Title="Roll stats" Description="Every 2d6 roll in the game chat, counted by total with modifiers. The totals up top are the party's, without the DM's rolls. Run /dice-stats scan in Discord to add older rolls." />
 
 @if (_stats.Count == 0)
 {
@@ -96,7 +96,7 @@ else
     <h2 class="section-title">By move</h2>
     @if (_breakdown.Moves.Count == 0)
     {
-        <p class="empty">No rolls are tied to a move yet. Rolls with /move, or a "." roll labelled with a move's name (like ".str hack and slash"), are counted here. Run /stats scan to fill in older ones.</p>
+        <p class="empty">No rolls are tied to a move yet. Rolls with /move, or a "." roll labelled with a move's name (like ".str hack and slash"), are counted here. Run /dice-stats scan to fill in older ones.</p>
     }
     else
     {

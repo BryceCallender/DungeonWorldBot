@@ -80,7 +80,7 @@ public sealed class SubclassTests : IDisposable
     {
         var druid = NewCharacter(1, "Selene", 3, [new Ability { Name = CircleOfTheEclipse.Name }]);
         Assert.Null(CircleOfTheEclipse.AspectOf(druid));
-        Assert.Contains("/subclass eclipse aspect", CircleOfTheEclipse.Subclass.Status!(druid));
+        Assert.Contains("/eclipse aspect", CircleOfTheEclipse.Subclass.Status!(druid));
 
         druid.Abilities!.Add(new Ability { Name = CircleOfTheEclipse.CurrentAspect, Description = "Moonward" });
         Assert.Equal(EclipseAspect.Moonward, CircleOfTheEclipse.AspectOf(druid));
@@ -217,7 +217,7 @@ public sealed class SubclassTests : IDisposable
         Assert.True(TacticalGuardian.Subclass.AllowedFor(ClassType.Paladin));
         Assert.Same(TacticalGuardian.Subclass, SubclassLibrary.Find("tactical guardian"));
 
-        // Read the Room and Perfected Assault are rolled with /subclass guardian so the pool and the short-rest use are tracked
+        // Read the Room and Perfected Assault are rolled with /guardian so the pool and the short-rest use are tracked
         Assert.Null(TacticalGuardian.Subclass.FindMove(TacticalGuardian.ReadTheRoom)!.Roll);
         Assert.Null(TacticalGuardian.Subclass.FindMove(TacticalGuardian.PerfectedAssault)!.Roll);
         Assert.Equal(1, TacticalGuardian.Subclass.FindMove(TacticalGuardian.PerfectedAssault)!.Uses);

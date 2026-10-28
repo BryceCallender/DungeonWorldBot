@@ -10,7 +10,7 @@ namespace DungeonWorldBot.Tests.Infrastructure;
 public class CommandTreeTests
 {
     // Registered the same way ServiceExtensions.AddCommands does: top-level groups only, nested ones come with them
-    private static CommandTree BuildTree()
+    internal static CommandTree BuildTree()
     {
         var builder = new CommandTreeBuilder();
         var types = typeof(CharacterCommand).Assembly
@@ -23,7 +23,7 @@ public class CommandTreeTests
         return builder.Build();
     }
 
-    private static IEnumerable<string> Paths(IParentNode node, string prefix = "") =>
+    internal static IEnumerable<string> Paths(IParentNode node, string prefix = "") =>
         node.Children.SelectMany(child => child switch
         {
             IParentNode group => Paths(group, $"{prefix}{child.Key} "),
@@ -41,9 +41,12 @@ public class CommandTreeTests
 
     [Theory]
     [InlineData("/subclass join")]
-    [InlineData("/subclass eclipse aspect")]
-    [InlineData("/subclass luna vow")]
-    [InlineData("/subclass guardian read-the-room")]
+    [InlineData("/eclipse aspect")]
+    [InlineData("/luna vow")]
+    [InlineData("/guardian read-the-room")]
+    [InlineData("/tactic change")]
+    [InlineData("/downtime make-camp")]
+    [InlineData("/downtime bolster")]
     [InlineData("/character damage-dice")]
     [InlineData("/character level allocate")]
     [InlineData("/character level points")]
@@ -61,12 +64,23 @@ public class CommandTreeTests
     }
 
     [Theory]
-    [InlineData("eclipse")]
-    [InlineData("luna")]
-    [InlineData("guardian")]
     [InlineData("diag")]
+    [InlineData("stats")]
     public void Tree_DoesNotHaveOldTopLevelGroup(string name)
     {
         Assert.DoesNotContain(BuildTree().Root.Children, c => c.Key == name);
+    }
+
+    [Theory]
+    [InlineData("/subclass luna vow")]
+    [InlineData("/class tactic change")]
+    [InlineData("/move make-camp")]
+    [InlineData("/class lookup")]
+    [InlineData("/spell lookup")]
+    [InlineData("/gear end-combat")]
+    [InlineData("/dm encounter hurt")]
+    public void Tree_DoesNotHaveOldCommand(string path)
+    {
+        Assert.DoesNotContain(path, Paths(BuildTree().Root));
     }
 }

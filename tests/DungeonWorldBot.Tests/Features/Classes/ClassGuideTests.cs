@@ -1,6 +1,7 @@
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Classes;
 using DungeonWorldBot.Features.Classes.Guides;
+using DungeonWorldBot.Tests.Infrastructure;
 
 namespace DungeonWorldBot.Tests.Features.Classes;
 
@@ -62,5 +63,25 @@ public class ClassGuideTests
             .Select(c => c.Pick);
 
         Assert.Empty(missing);
+    }
+
+    [Theory]
+    [MemberData(nameof(SheetClasses))]
+    public void EveryCommandInTheGuideIsInTheCommandTree(ClassType type)
+    {
+        var paths = CommandTreeTests.Paths(CommandTreeTests.BuildTree().Root).ToHashSet();
+        var missing = Commands(type).Select(c => c.Command).Distinct().Where(c => !paths.Contains(c));
+
+        Assert.Empty(missing);
+    }
+
+    [Theory]
+    [InlineData(ClassType.Ranger, "/luna")]
+    [InlineData(ClassType.Druid, "/eclipse aspect")]
+    public void SubclassStepPointsToTheClassesOwnSubclass(ClassType type, string command)
+    {
+        var step = Assert.Single(ClassGuides.For(Sheet(type))!.Steps, s => s.Title == "Subclass");
+
+        Assert.Contains(command, step.Text);
     }
 }

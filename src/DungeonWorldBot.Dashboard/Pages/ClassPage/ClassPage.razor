@@ -101,27 +101,7 @@
                 <CardHeader Title="Playing on Discord">
                     <Subtitle>@guide.Pitch</Subtitle>
                 </CardHeader>
-                <ol class="guide-steps">
-                    @foreach (var step in guide.Steps)
-                    {
-                        <li>
-                            <h3>@step.Title</h3>
-                            <p>@ToHtml(step.Text)</p>
-                            <div class="guide-commands">
-                                @foreach (var command in step.Commands)
-                                {
-                                    <span class="command"><code>@command.Command</code>@if (command.Pick is { } pick)
-                                    {
-                                        <span class="pick">@pick</span>
-                                    }@if (command.Note is { } note)
-                                    {
-                                        <span class="note">@note</span>
-                                    }</span>
-                                }
-                            </div>
-                        </li>
-                    }
-                </ol>
+                <GuideSteps Steps="guide.Steps" />
             </section>
         }
 

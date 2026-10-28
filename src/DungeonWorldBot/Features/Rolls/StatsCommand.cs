@@ -13,7 +13,7 @@ using Remora.Results;
 
 namespace DungeonWorldBot.Features.Rolls;
 
-[Group("stats")]
+[Group("dice-stats")]
 public class StatsCommand(
     ICommandContext context,
     FeedbackService feedbackService,
@@ -42,7 +42,7 @@ public class StatsCommand(
         if (stats.Count == 0)
         {
             return await ReplyAsync("🎲 Roll Stats", user is null
-                ? $"No 2d6 rolls recorded in <#{rollStatsService.GameChatChannelID}> yet. Use /stats scan to count the rolls already there."
+                ? $"No 2d6 rolls recorded in <#{rollStatsService.GameChatChannelID}> yet. Use /dice-stats scan to count the rolls already there."
                 : $"No 2d6 rolls recorded for <@{user.ID}> in <#{rollStatsService.GameChatChannelID}> yet.");
         }
 
@@ -89,8 +89,8 @@ public class StatsCommand(
             return await PostResultAsync(currentChannelID, "🎲 Scan Failed", $"Couldn't read <#{channelID}>: {scan.Error.Message}");
 
         var counted = channelID == gameChat
-            ? "See them with /stats show"
-            : $"They're saved, but only rolls in <#{gameChat}> count toward /stats show";
+            ? "See them with /dice-stats show"
+            : $"They're saved, but only rolls in <#{gameChat}> count toward /dice-stats show";
 
         return await PostResultAsync(currentChannelID, "🎲 Scan Complete",
             $"Found {scan.Entity.Found} 2d6 rolls in <#{channelID}>, {scan.Entity.Added} of them new. {counted}");

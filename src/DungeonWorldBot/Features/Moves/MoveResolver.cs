@@ -19,6 +19,7 @@ namespace DungeonWorldBot.Features.Moves;
 /// <param name="Kind">What the roll is for, when subclass bonuses (like a Boon of Luna) could apply to it.</param>
 /// <param name="Target">The enemy to take the damage off, if the move rolls damage and hits.</param>
 /// <param name="ExtraDamage">Flat damage added to the damage roll, if the move rolls damage.</param>
+/// <param name="Prepared">Whether they spent a Preparation from Bolster for +1. Spend it before resolving.</param>
 public record MoveInput(
     string? ModifierLabel,
     int Modifier,
@@ -26,7 +27,8 @@ public record MoveInput(
     StatType? Stat = null,
     RollKind? Kind = null,
     string? Target = null,
-    int ExtraDamage = 0)
+    int ExtraDamage = 0,
+    bool Prepared = false)
 {
     /// <summary>
     /// A move rolled with one of the character's stats, or null if they don't have it.
@@ -78,6 +80,8 @@ public class MoveResolver(IDiceRoller diceRoller, IDamageService damageService, 
         var subclassBonuses = kind is { } rollKind ? await damageService.BonusesAsync(character, rollKind, input.Stat) : [];
         if (TacticRules.RollBonus(character, move.Name) is not 0 and var tacticBonus)
             subclassBonuses = subclassBonuses.Append(new RollBonus($"{TacticRules.Current(character)!.Name} Tactics", tacticBonus)).ToList();
+        if (input.Prepared)
+            subclassBonuses = subclassBonuses.Append(new RollBonus(SpecialMoveRules.Preparation.Name, 1)).ToList();
         var roll = MoveRoller.Roll(diceRoller, input.Modifier + input.Bonus + (debility?.Penalty ?? 0) + subclassBonuses.Sum(b => b.Amount));
         var outcome = TacticRules.Outcome(character, move.Name, roll.Outcome);
 
@@ -119,7 +123,7 @@ public class MoveResolver(IDiceRoller diceRoller, IDamageService damageService, 
 
         if (isHit && move.Name == TacticRules.ChangeTactics)
         {
-            fields.Add(new EmbedField("New Tactic", $"Now in {TacticRules.Current(character)?.Name ?? "no"} Tactics. Switch with /class tactic change"));
+            fields.Add(new EmbedField("New Tactic", $"Now in {TacticRules.Current(character)?.Name ?? "no"} Tactics. Switch with /tactic change"));
         }
 
         var embed = new Embed(

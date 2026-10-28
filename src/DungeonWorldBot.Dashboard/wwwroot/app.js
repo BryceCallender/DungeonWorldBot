@@ -11,6 +11,27 @@ document.addEventListener('click', e => {
     button.textContent = open ? 'Collapse all' : 'Expand all';
 });
 
+// [data-copy] buttons copy their text, like a command to paste into Discord, and say so for a moment
+document.addEventListener('click', async e => {
+    const button = e.target.closest('[data-copy]');
+    if (!button) return;
+
+    try {
+        await navigator.clipboard.writeText(button.dataset.copy);
+    } catch {
+        // The clipboard API only works over HTTPS or on localhost
+        const text = Object.assign(document.createElement('textarea'), { value: button.dataset.copy });
+        document.body.append(text);
+        text.select();
+        document.execCommand('copy');
+        text.remove();
+    }
+
+    button.classList.add('copied');
+    clearTimeout(button.copiedTimer);
+    button.copiedTimer = setTimeout(() => button.classList.remove('copied'), 1200);
+});
+
 // Search boxes hide the moves or items around them that don't match, searching descriptions too.
 // A box searches its [data-filter-scope], or its card if it has none.
 document.addEventListener('input', e => {

@@ -190,9 +190,9 @@ public class GearCommand(
         return await ReplyAsync($"{character.Name}: {found.Name}", description);
     }
 
-    [Command("end-combat")]
+    [Command("end-fight")]
     [Description("Clear anything your gear only tracks until the end of combat, like Emerald Marks")]
-    public async Task<IResult> EndCombatAsync()
+    public async Task<IResult> EndFightAsync()
     {
         var character = await GetCharacterAsync(null);
         if (character is null)

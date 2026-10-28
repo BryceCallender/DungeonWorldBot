@@ -19,7 +19,7 @@ namespace DungeonWorldBot.Dashboard.Services.Rolls;
 /// </remarks>
 public static class RollFeedEndpoints
 {
-    // More than this many between two changes (a /stats scan of old chat) aren't news, so only the last few show
+    // More than this many between two changes (a /dice-stats scan of old chat) aren't news, so only the last few show
     private const int MaxRolls = 4;
 
     // How far back to look for the streak each new roll puts its roller on

@@ -1,12 +1,13 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Features.Subclasses;
 using DungeonWorldBot.Rules;
 
 namespace DungeonWorldBot.Features.Classes.Guides;
 
 /// <summary>
 /// How to play each class with the bot's commands. Every guide runs the same way: make the character, the basic moves,
-/// the class's rolled moves, then whatever is special about the class, then levelling up. All but the special steps are
-/// built from the sheet.
+/// the class's rolled moves, then whatever is special about the class, then downtime, subclasses and levelling up. All but
+/// the special steps are built from the sheet.
 /// </summary>
 public static class ClassGuides
 {
@@ -130,8 +131,8 @@ public static class ClassGuides
             [
                 Step("Prepare spells",
                     "When you study your spellbook, start over with `/spell clear` and prepare with `/spell learn`: up to your " +
-                    "level+1 in total. Cantrips are always prepared. Browse with `/spell list` and read one with `/spell lookup`.",
-                    Cmd("/spell clear"), Cmd("/spell learn"), Cmd("/spell list"), Cmd("/spell lookup")),
+                    "level+1 in total. Cantrips are always prepared. Browse with `/spell list` and read one with `/spell info`.",
+                    Cmd("/spell clear"), Cmd("/spell learn"), Cmd("/spell list"), Cmd("/spell info")),
                 Step("After you cast",
                     "If you forget a spell on a 7-9 **Cast a Spell**, remove it with `/ability remove`.",
                     Cmd("/spell known"), Cmd("/ability remove")),
@@ -141,12 +142,12 @@ public static class ClassGuides
             "A tactician who plans every fight. The bot applies your active Tactic to your moves for you.",
             [
                 Step("Know your Tactic",
-                    "You start in your Default Tactic. `/class tactic show` shows which one you're in and what it does. " +
+                    "You start in your Default Tactic. `/tactic show` shows which one you're in and what it does. " +
                     "In Reactive you can't Hack and Slash, but you can **Counterattack**.",
-                    Cmd("/class tactic show")),
+                    Cmd("/tactic show")),
                 Step("Switch Tactics",
-                    "After **Change Tactics**, switch with `/class tactic change`. Spending a Gambit gets you back to your default any time.",
-                    Cmd("/class tactic change"), Cmd("/class tactic default")),
+                    "After **Change Tactics**, switch with `/tactic change`. Spending a Gambit gets you back to your default any time.",
+                    Cmd("/tactic change"), Cmd("/tactic default")),
                 Step("Build Gambits",
                     "Whenever you or someone you have a bond with takes outside damage, gain a Gambit. Spend them on your options, " +
                     "and reset them after the battle.",
@@ -240,7 +241,7 @@ public static class ClassGuides
                     Cmd("/inventory show")),
                 Step("Later: Luck",
                     "With **Lucky Charm**, spend 1 Luck to reroll a 6-, and reset it to 3 when you make camp.",
-                    Cmd("/resource spend", "Luck"), Cmd("/resource reset", "Luck")),
+                    Cmd("/resource spend", "Luck"), Cmd("/resource reset", "Luck"), Cmd("/downtime make-camp")),
             ]),
 
         [ClassType.Lantern] = new(
@@ -260,7 +261,7 @@ public static class ClassGuides
                     Cmd("/move hack-and-slash")),
                 Step("Hold together",
                     "When you'd take damage in the suit, mark Stress instead. Unmark one when you make camp.",
-                    Cmd("/resource gain", "Suit Stress"), Cmd("/resource spend", "Suit Stress")),
+                    Cmd("/resource gain", "Suit Stress"), Cmd("/resource spend", "Suit Stress"), Cmd("/downtime make-camp")),
                 Step("Push the button",
                     "The **Big Red Button** is a one-use ability; repair it at camp.",
                     Cmd("/ability use"), Cmd("/ability restore")),
@@ -315,7 +316,7 @@ public static class ClassGuides
         return new ClassGuide(
             sheet.Type,
             written.Pitch,
-            [GettingStarted(sheet), Basics, ClassMoves(sheet), .. written.Steps, LevellingUp(sheet)]);
+            [GettingStarted(sheet), Basics, ClassMoves(sheet), .. written.Steps, Downtime, Subclasses(sheet), LevellingUp(sheet)]);
     }
 
     /// <summary>
@@ -342,7 +343,7 @@ public static class ClassGuides
         return Step("Make your character", text, Cmd("/character create"), Cmd("/class setup"), Cmd("/class sheet"));
     }
 
-    private static readonly GuideStep Basics = Step("Basic moves",
+    internal static readonly GuideStep Basics = Step("Basic moves",
         "Everyone has these. Pick your target on Hack and Slash and Volley so a hit takes your damage off it. " +
         "Defy Danger asks which stat fits how you do it, and Aid rolls with your bonds. Last Breath shows up at 0 HP.",
         Cmd("/move hack-and-slash", note: "+STR"),
@@ -362,16 +363,41 @@ public static class ClassGuides
         {
             return Step("Class moves",
                 "None of your starting moves are rolled: they change what you can do or what your other moves give you. " +
-                "Read them any time with `/class lookup`.",
-                Cmd("/class lookup"), Cmd("/class sheet"));
+                "Read them any time with `/class info`.",
+                Cmd("/class info"), Cmd("/class sheet"));
         }
 
         var text = "Roll these with `/move class` and pick the move; the bot adds the right stat and shows what each result means. " +
-                   "The rest of your moves aren't rolled, so read them with `/class lookup`.";
+                   "The rest of your moves aren't rolled, so read them with `/class info`.";
         if (sheet.Features.Any(f => f.Options.Any(o => o.Roll is not null)))
             text += " You only have the ones you chose.";
 
         return new GuideStep("Class moves", text, rolled.Select(m => Cmd("/move class", m.Name, RollsWith(m))).ToList());
+    }
+
+    internal static readonly GuideStep Downtime = Step("Downtime",
+        "Between fights, `/downtime make-camp` eats a ration and heals half your max HP if you sleep, and `/downtime recover` " +
+        "heals you fully and clears debilities over days of rest. On the road, whoever's on watch or doing a job on the journey rolls it. " +
+        "In town, `/downtime bolster` banks Preparation: spend it for +1 by setting `prepared` on any roll.",
+        Cmd("/downtime make-camp"),
+        Cmd("/downtime take-watch", note: "+WIS"),
+        Cmd("/downtime perilous-journey", note: "+WIS"),
+        Cmd("/downtime recover"),
+        Cmd("/downtime bolster"),
+        Cmd("/downtime supply", note: "+CHA"),
+        Cmd("/downtime carouse"),
+        Cmd("/downtime outstanding-warrants", note: "+CHA"));
+
+    private static GuideStep Subclasses(ClassSheet sheet)
+    {
+        var text = "Take a subclass with `/subclass join`; its moves unlock as you level. `/subclass list` shows the ones you can take, " +
+                   "and `/subclass info` reads one.";
+
+        // The ones open to every class are in /subclass list; only call out the ones made for this class
+        foreach (var subclass in SubclassLibrary.All.Where(s => s.Classes.Contains(sheet.Type)))
+            text += $" **{subclass.Name}** is made for the {sheet.Type}." + (subclass.CommandHint is { } hint ? $" {hint}" : string.Empty);
+
+        return Step("Subclass", text, Cmd("/subclass list"), Cmd("/subclass info"), Cmd("/subclass join"));
     }
 
     private static GuideStep LevellingUp(ClassSheet sheet)

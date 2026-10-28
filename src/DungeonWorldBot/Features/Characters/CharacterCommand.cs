@@ -123,7 +123,10 @@ public class CharacterCommand(
             embedFields.Add(new EmbedField(Name: "Unspent Stat Points", Value: $"{statPoints}. Spend them with /character level allocate"));
         }
 
-        var resources = ClassSheetLibrary.For(character.Class.Type)?.ResourcesFor(ClassSheetLibrary.KnownMoves(character)).ToList() ?? [];
+        // Everyone has Preparation, so it only shows once they've some
+        var resources = ClassSheetLibrary.ResourcesOf(character)
+            .Where(r => !ClassSheetLibrary.CommonResources.Contains(r) || resourceService.GetValue(character, r) > 0)
+            .ToList();
         if (resources.Count > 0)
         {
             embedFields.Add(new EmbedField(Name: "Resources", Value: string.Join(", ", resources.Select(r =>

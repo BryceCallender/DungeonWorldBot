@@ -2,6 +2,7 @@ using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Classes.DungeonWorld;
 using DungeonWorldBot.Features.Classes.GrimWorld;
 using DungeonWorldBot.Features.Classes.InverseWorld;
+using DungeonWorldBot.Features.Moves;
 
 namespace DungeonWorldBot.Features.Classes;
 
@@ -43,6 +44,17 @@ public static class ClassSheetLibrary
 
     /// <returns>The sheet for a class, or null if the class doesn't have one yet.</returns>
     public static ClassSheet? For(ClassType type) => All.FirstOrDefault(s => s.Type == type);
+
+    /// <summary>
+    /// Resources every character has, whatever their class, like Bolster's Preparation.
+    /// </summary>
+    public static IReadOnlyList<ClassResource> CommonResources => [SpecialMoveRules.Preparation];
+
+    /// <summary>
+    /// The resources the character has right now: their class's (for the moves they know), then everyone's.
+    /// </summary>
+    public static IReadOnlyList<ClassResource> ResourcesOf(Character character) =>
+        (For(character.Class.Type)?.ResourcesFor(KnownMoves(character)) ?? []).Concat(CommonResources).ToList();
 
     /// <summary>
     /// The names of every move and ability the character has.

@@ -87,7 +87,7 @@ public class Subclass
     public IReadOnlyList<string> StateAbilities { get; init; } = [];
 
     /// <summary>
-    /// Where to find the subclass's own commands, shown when joining, e.g. "Use /subclass luna for Blood Moon and your Vow".
+    /// Where to find the subclass's own commands, shown when joining, e.g. "Use /luna for Blood Moon and your Vow".
     /// </summary>
     public string? CommandHint { get; init; }
 

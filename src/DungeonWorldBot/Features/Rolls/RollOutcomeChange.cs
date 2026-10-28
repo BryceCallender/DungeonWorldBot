@@ -82,7 +82,7 @@ public static class RollOutcomeChange
     {
         var note = $"Your {MoveRoller.Describe(rolled)} counts as a {MoveRoller.Describe(outcome)}: {reason}\nChanged by <@{changedBy}>.";
         if (move?.RollsDamage == true && outcome != MoveOutcome.Miss && !rolledDamage)
-            note += "\nDamage wasn't rolled. Roll it with /roll damage, and the GM can take it off with /dm encounter hurt.";
+            note += "\nDamage wasn't rolled. Roll it with /roll damage, and the GM can take it off with /dm encounter damage.";
         else if (outcome == MoveOutcome.Miss && rolledDamage)
             note += "\nThe damage above already landed. The GM can undo it with /dm encounter heal.";
         return note;

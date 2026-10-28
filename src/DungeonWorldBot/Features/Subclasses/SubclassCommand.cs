@@ -15,7 +15,7 @@ using Remora.Results;
 namespace DungeonWorldBot.Features.Subclasses;
 
 [Group("subclass")]
-public partial class SubclassCommand(
+public class SubclassCommand(
     ICommandContext context,
     FeedbackService feedbackService,
     ICharacterService characterService,

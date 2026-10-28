@@ -81,9 +81,9 @@ public static class CircleOfTheEclipse
     {
         Status = c => AspectOf(c) is { } aspect
             ? $"{Icon(aspect)} **{aspect}**"
-            : "No aspect chosen. Use /subclass eclipse aspect",
+            : "No aspect chosen. Use /eclipse aspect",
         StateAbilities = [CurrentAspect],
-        CommandHint = "Choose your aspect with /subclass eclipse aspect. Roll Solar Mend and Blinding Radiance with /move class.",
+        CommandHint = "Choose your aspect with /eclipse aspect. Roll Solar Mend and Blinding Radiance with /move class.",
     };
 
     public static EclipseAspect? AspectOf(Character character)

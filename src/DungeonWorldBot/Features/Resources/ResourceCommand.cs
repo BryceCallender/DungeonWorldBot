@@ -40,7 +40,7 @@ public class ResourceCommand(
                 : $"{user.Username} does not have a character.");
         }
 
-        var resources = ClassSheetLibrary.For(character.Class.Type)?.ResourcesFor(ClassSheetLibrary.KnownMoves(character)).ToList() ?? [];
+        var resources = ClassSheetLibrary.ResourcesOf(character);
         if (resources.Count == 0)
             return await ReplyWithErrorAsync($"{character.Name} doesn't have any class resources to track.");
 
@@ -144,7 +144,7 @@ public class ResourceCommand(
         List<ClassResource> toReset;
         if (string.IsNullOrWhiteSpace(name))
         {
-            toReset = ClassSheetLibrary.For(character.Class.Type)?.ResourcesFor(ClassSheetLibrary.KnownMoves(character)).Where(r => r.ResetWithAll).ToList() ?? [];
+            toReset = ClassSheetLibrary.ResourcesOf(character).Where(r => r.ResetWithAll).ToList();
             if (toReset.Count == 0)
                 return await ReplyWithErrorAsync($"{character.Name} doesn't have any class resources to reset.");
         }
@@ -177,6 +177,9 @@ public class ResourceCommand(
             return (null, null, await ReplyWithErrorAsync(NoCharacterMessage));
 
         var sheet = ClassSheetLibrary.For(character.Class.Type);
+        if (ClassSheetLibrary.CommonResources.FirstOrDefault(r => r.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase)) is { } common)
+            return (character, common, null);
+
         var resource = sheet?.FindResource(name);
         if (resource is null)
             return (character, null, await ReplyWithErrorAsync($"The {character.Class.Type} doesn't have a resource called {name}."));

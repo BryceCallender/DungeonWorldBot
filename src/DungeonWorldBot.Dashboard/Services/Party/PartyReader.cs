@@ -151,8 +151,9 @@ public class PartyReader(
         var own = sheet?.ResourcesFor(known) ?? [];
         var casting = SpellCasting.Access(character).Select(a => a.LevelResource);
         var counters = gear.Select(g => g.Mode?.Counter?.Resource).OfType<ClassResource>();
+        var common = ClassSheetLibrary.CommonResources.Where(r => resourceService.GetValue(character, r) > 0);
 
-        return own.Concat(casting).Concat(counters)
+        return own.Concat(casting).Concat(counters).Concat(common)
             .DistinctBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
             .Select(r => new ResourceLine(r.Name, r.Summary, resourceService.GetValue(character, r), resourceService.GetMax(character, r)))
             .ToList();

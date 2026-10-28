@@ -58,9 +58,9 @@ public class SpellCommand(
         return await _feedbackService.SendContextualPaginatedMessageAsync(userId, pages);
     }
 
-    [Command("lookup")]
+    [Command("info")]
     [Description("Read a spell")]
-    public async Task<IResult> LookupAsync(
+    public async Task<IResult> InfoAsync(
         [Description("The spell")]
         [AutocompleteProvider(SpellAutocomplete.ID)]
         string spell)
@@ -169,7 +169,7 @@ public class SpellCommand(
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: $"{character.Name}'s Spells",
-                Description: "Read one with /spell lookup, or cast it with /ability use",
+                Description: "Read one with /spell info, or cast it with /ability use",
                 Fields: fields,
                 Colour: _feedbackService.Theme.Primary
             ),

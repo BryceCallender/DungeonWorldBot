@@ -1,6 +1,7 @@
 @page "/character/{Id}"
 @namespace DungeonWorldBot.Dashboard.Pages
 @using Microsoft.AspNetCore.Components.Forms
+@using DungeonWorldBot.Features.Classes.Guides
 @using DungeonWorldBot.Features.Subclasses
 @inject NavigationManager Navigation
 @inject PartyReader PartyReader
@@ -148,6 +149,7 @@
         <a href="@c.Url#shapes">Shapes</a>
     }
     <a href="@c.Url#moves">Moves</a>
+    <a href="@c.Url#commands">Commands</a>
     <a href="@c.Url#inventory">Inventory</a>
 </nav>
 
@@ -396,6 +398,14 @@
             }
         </ul>
         <p class="empty no-matches" hidden>No moves match.</p>
+    </section>
+
+    @* Not a filter group, so searching the moves leaves these where they are *@
+    <section class="card wide classed" id="commands" style="@Lookup.ColorOf(c.Character.Class.Type)">
+        <CardHeader Title="Commands">
+            <Subtitle>What @c.Name can use on Discord right now</Subtitle>
+        </CardHeader>
+        <GuideSteps Steps="CharacterCommands.For(c.Character)" />
     </section>
 
     <section class="card wide" id="inventory">

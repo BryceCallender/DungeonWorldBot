@@ -47,30 +47,6 @@
 /* A thin line between the groups of tabs */
 .nav-sep { flex: none; align-self: center; width: 1px; height: 1.1rem; margin: 0 .35rem; background: #ff8a3a44; }
 
-/* Rules ▾, looking like the tabs beside it, and lit up like them while you're on one of its pages */
-.nav-more { padding: .35rem .75rem; border: 0; border-radius: 999px; background: none; color: var(--muted); font: inherit; white-space: nowrap; cursor: pointer; }
-.nav-more:hover, .topbar:has(.nav-menu:popover-open) .nav-more { color: var(--text); }
-.nav-more.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-
-/* Its menu: dark like the bar it drops from, placed under its button by app.js */
-.nav-menu {
-    position: fixed;
-    inset: auto;
-    margin: 0;
-    flex-direction: column;
-    gap: .15rem;
-    min-width: 9rem;
-    padding: .35rem;
-    background: #1c130e;
-    border: 1px solid #ff8a3a55;
-    border-radius: 10px;
-    box-shadow: 0 10px 30px -10px rgb(0 0 0 / .6);
-}
-.nav-menu:popover-open { display: flex; }
-.nav-menu ::deep a { padding: .45rem .7rem; border-radius: 6px; color: var(--muted); text-decoration: none; }
-.nav-menu ::deep a:hover { background: rgb(255 140 50 / .12); color: var(--text); }
-.nav-menu ::deep a.active { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
-
 main { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
 /* Scenes side by side want every bit of the width */
 main:has(.side-page) { max-width: none; }

@@ -1,0 +1,33 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@using DungeonWorldBot.Features.Classes.Guides
+@* Numbered steps, each with the slash commands that do it on Discord: a class's guide, or what a character can use *@
+<ol class="guide-steps">
+    @foreach (var step in Steps)
+    {
+        <li>
+            <h3>@step.Title</h3>
+            <p>@ToHtml(step.Text)</p>
+            <div class="guide-commands">
+                @foreach (var command in step.Commands)
+                {
+                    @* Clicking copies the command to paste into Discord, which then asks for the pick *@
+                    <button type="button" class="command" data-copy="@command.Command" title="Copy @command.Command (@Describe(command))"><code>@command.Command</code>@if (command.Pick is { } pick)
+                    {
+                        <span class="pick">@pick</span>
+                    }@if (command.Note is { } note)
+                    {
+                        <span class="note">@note</span>
+                    }</button>
+                }
+            </div>
+        </li>
+    }
+</ol>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<GuideStep> Steps { get; set; } = [];
+
+    private static string Describe(GuideCommand command) =>
+        string.Join(" ", new[] { command.Command, command.Pick, command.Note }.OfType<string>());
+}

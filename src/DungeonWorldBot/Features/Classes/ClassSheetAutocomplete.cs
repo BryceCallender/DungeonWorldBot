@@ -204,7 +204,9 @@ public class ClassResourceAutocomplete(
     public override string Identity => ID;
 
     protected override IEnumerable<Suggestion> OwnClassCandidates(Character character, ClassSheet sheet) =>
-        sheet.ResourcesFor(ClassSheetLibrary.KnownMoves(character)).Select(r => new Suggestion(r.Name, r.Name));
+        ClassSheetLibrary.ResourcesOf(character).Select(r => new Suggestion(r.Name, r.Name));
 
-    protected override IEnumerable<Suggestion> AllClassCandidates() => Labelled(ClassSheetLibrary.All, s => s.Resources.Select(r => r.Name));
+    protected override IEnumerable<Suggestion> AllClassCandidates() =>
+        Labelled(ClassSheetLibrary.All, s => s.Resources.Select(r => r.Name))
+            .Concat(ClassSheetLibrary.CommonResources.Select(r => new Suggestion(r.Name, r.Name)));
 }
