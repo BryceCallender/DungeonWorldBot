@@ -23,36 +23,19 @@ namespace DungeonWorldBot.Features.Shapeshifting;
 /// The forms a shapeshifter knows, the form they're in, and the hold they spend on its moves.
 /// </summary>
 [Group("shapeshift")]
-public class ShapeshiftCommand : DungeonWorldCommandBase
+public class ShapeshiftCommand(
+    ICommandContext context,
+    FeedbackService feedbackService,
+    ICharacterService characterService,
+    ITransformationService transformationService,
+    IResourceService resourceService,
+    IDiceRoller diceRoller,
+    IRollStatsService rollStatsService,
+    IDamageService damageService)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
     private const string BonusDescription = "Any +forward, ongoing bonus, or penalty to add to the roll";
     private const string FormDescription = "One of the forms you know";
-
-    private readonly ICharacterService _characterService;
-    private readonly ITransformationService _transformationService;
-    private readonly IResourceService _resourceService;
-    private readonly IDiceRoller _diceRoller;
-    private readonly IRollStatsService _rollStatsService;
-    private readonly IDamageService _damageService;
-
-    public ShapeshiftCommand(
-        ICommandContext context,
-        FeedbackService feedbackService,
-        ICharacterService characterService,
-        ITransformationService transformationService,
-        IResourceService resourceService,
-        IDiceRoller diceRoller,
-        IRollStatsService rollStatsService,
-        IDamageService damageService)
-        : base(context, feedbackService)
-    {
-        _characterService = characterService;
-        _transformationService = transformationService;
-        _resourceService = resourceService;
-        _diceRoller = diceRoller;
-        _rollStatsService = rollStatsService;
-        _damageService = damageService;
-    }
 
     [Command("learn")]
     [Description("Add a form you can take: a species from your land, or one whose essence you've studied")]
@@ -71,7 +54,7 @@ public class ShapeshiftCommand : DungeonWorldCommandBase
         if (ShapeshiftRules.Find(character, name) is { } existing)
             return await ReplyWithErrorAsync($"{character.Name} already knows the {existing.Name} form. Change it with /shapeshift edit");
 
-        var form = await _transformationService.LearnAsync(character, name, description, moves);
+        var form = await transformationService.LearnAsync(character, name, description, moves);
 
         return await ReplyAsync($"🌿 {character.Name} learns the {form.Name} form",
             $"*The spirit of the {form.Name} lends its shape...*\n\n{ShapeshiftRules.Describe(form)}");
@@ -98,7 +81,7 @@ public class ShapeshiftCommand : DungeonWorldCommandBase
         if (description is null && moves is null)
             return await ReplyWithErrorAsync("Give a new description or moves for the form.");
 
-        await _transformationService.UpdateAsync(known, description, moves);
+        await transformationService.UpdateAsync(known, description, moves);
 
         return await ReplyAsync($"🌿 {character.Name}'s {known.Name} form", ShapeshiftRules.Describe(known));
     }
@@ -120,7 +103,7 @@ public class ShapeshiftCommand : DungeonWorldCommandBase
         if (known.IsActive)
             return await ReplyWithErrorAsync($"{character.Name} is in the {known.Name} form. Return to your natural form with /shapeshift revert first.");
 
-        await _transformationService.ForgetAsync(character, known);
+        await transformationService.ForgetAsync(character, known);
 
         return await ReplyAsync("Form Forgotten", $"{character.Name} can no longer take the {known.Name} form.");
     }
@@ -132,7 +115,7 @@ public class ShapeshiftCommand : DungeonWorldCommandBase
         IUser? user = null)
     {
         var character = user is not null
-            ? await _characterService.GetCharacterFromUserAsync(user.ID)
+            ? await characterService.GetCharacterFromUserAsync(user.ID)
             : await GetOwnCharacterAsync();
 
         if (character is null)
@@ -154,7 +137,7 @@ public class ShapeshiftCommand : DungeonWorldCommandBase
         if (forms.Count > fields.Count)
             fields.Add(new EmbedField("...", $"and {forms.Count - fields.Count} more"));
 
-        var description = ShapeshiftRules.Status(character, _resourceService.Format(character, ShapeshiftRules.Hold));
+        var description = ShapeshiftRules.Status(character, resourceService.Format(character, ShapeshiftRules.Hold));
         if (forms.Count == 0)
             description += "\n\nNo forms yet. Add the animals of your land and the essences you've studied with /shapeshift learn";
 
@@ -186,7 +169,7 @@ public class ShapeshiftCommand : DungeonWorldCommandBase
         if (names.Count > ShapeshiftRules.MaxShapes(character))
             return await ReplyWithErrorAsync($"{character.Name} needs {ShapeshiftRules.Chimera} to merge shapes.");
 
-        var forms = new List<Transformation>();
+        List<Transformation> forms = [];
         foreach (var name in names)
         {
             if (ShapeshiftRules.Find(character, name) is not { } known)
@@ -201,23 +184,23 @@ public class ShapeshiftCommand : DungeonWorldCommandBase
         var (roll, rolledWith) = await RollStatAsync(character, StatType.Wis, bonus);
 
         var hold = ShapeshiftRules.HoldFor(roll.Outcome);
-        var holdParts = new List<string> { hold.ToString() };
+        List<string> holdParts = [hold.ToString()];
         if (ShapeshiftRules.Knows(character, ShapeshiftRules.EmbracingNoForm))
         {
-            var extra = _diceRoller.Roll("1d4").Value;
+            var extra = diceRoller.Roll("1d4").Value;
             hold += extra;
             holdParts.Add($"{ShapeshiftRules.EmbracingNoForm} 1d4 → {extra}");
         }
 
-        await _transformationService.ShiftAsync(character, forms, hold);
+        await transformationService.ShiftAsync(character, forms, hold);
 
         var formName = ShapeshiftRules.FormName(character)!;
-        var fields = new List<IEmbedField>
-        {
+        List<IEmbedField> fields =
+        [
             new EmbedField("Rolled with", rolledWith, IsInline: true),
             new EmbedField(ShapeshiftRules.HoldName, holdParts.Count > 1 ? $"{string.Join(" + ", holdParts)} = **{hold}**" : $"**{hold}**", IsInline: true),
             new EmbedField(MoveRoller.Describe(roll.Outcome), definition.Describe(roll.Outcome)),
-        };
+        ];
 
         fields.AddRange(forms.Select(f => new EmbedField($"🐾 {f.Name}", Truncate(ShapeshiftRules.Describe(f)))));
 
@@ -249,21 +232,21 @@ public class ShapeshiftCommand : DungeonWorldCommandBase
         if (ShapeshiftRules.FormName(character) is not { } formName)
             return await ReplyWithErrorAsync($"{character.Name} is in their natural form. Shapeshift with /shapeshift into");
 
-        var held = _resourceService.GetValue(character, ShapeshiftRules.Hold);
+        var held = resourceService.GetValue(character, ShapeshiftRules.Hold);
         if (held < amount)
             return await ReplyWithErrorAsync($"{character.Name} only has {held} {ShapeshiftRules.HoldName}.");
 
-        var left = await _resourceService.SetValueAsync(character, ShapeshiftRules.Hold, held - amount);
+        var left = await resourceService.SetValueAsync(character, ShapeshiftRules.Hold, held - amount);
 
         var description = $"*The {formName} {(string.IsNullOrWhiteSpace(what) ? "makes its move" : what.Trim())}.*";
-        var fields = new List<IEmbedField>
-        {
-            new EmbedField(ShapeshiftRules.HoldName, $"-{amount} ({_resourceService.Format(character, ShapeshiftRules.Hold)})", IsInline: true),
-        };
+        List<IEmbedField> fields =
+        [
+            new EmbedField(ShapeshiftRules.HoldName, $"-{amount} ({resourceService.Format(character, ShapeshiftRules.Hold)})", IsInline: true),
+        ];
 
         if (left == 0)
         {
-            await _transformationService.RevertAsync(character);
+            await transformationService.RevertAsync(character);
             fields.Add(new EmbedField("Natural form", $"Out of hold, {character.Name} returns to their natural form."));
         }
 
@@ -286,8 +269,8 @@ public class ShapeshiftCommand : DungeonWorldCommandBase
         if (shed && !ShapeshiftRules.Knows(character, ShapeshiftRules.Shed))
             return await ReplyWithErrorAsync($"{character.Name} needs the {ShapeshiftRules.Shed} move to negate damage by reverting.");
 
-        var lost = _resourceService.GetValue(character, ShapeshiftRules.Hold);
-        await _transformationService.RevertAsync(character);
+        var lost = resourceService.GetValue(character, ShapeshiftRules.Hold);
+        await transformationService.RevertAsync(character);
 
         var description = $"*The {formName} falls away, and {character.Name} stands in their own shape.*";
         if (shed)
@@ -306,7 +289,7 @@ public class ShapeshiftCommand : DungeonWorldCommandBase
     {
         var modifier = character.Stats.FirstOrDefault(s => s.StatType == stat)?.Modifier ?? 0;
         var debility = DebilityRules.RollPenalty(character, stat);
-        var bonuses = await _damageService.BonusesAsync(character, RollKind.Stat, stat);
+        var bonuses = await damageService.BonusesAsync(character, RollKind.Stat, stat);
 
         var parts = new List<string> { $"{stat.ToString().ToUpper()} {FormatSigned(modifier)}" };
         if (debility is { } penalty)
@@ -315,7 +298,7 @@ public class ShapeshiftCommand : DungeonWorldCommandBase
         if (bonus != 0)
             parts.Add($"Bonus {FormatSigned(bonus)}");
 
-        var roll = MoveRoller.Roll(_diceRoller, modifier + (debility?.Penalty ?? 0) + bonuses.Sum(b => b.Amount) + bonus);
+        var roll = MoveRoller.Roll(diceRoller, modifier + (debility?.Penalty ?? 0) + bonuses.Sum(b => b.Amount) + bonus);
         return (roll, string.Join(", ", parts));
     }
 
@@ -343,7 +326,7 @@ public class ShapeshiftCommand : DungeonWorldCommandBase
     }
 
     private async Task<Character?> GetOwnCharacterAsync() =>
-        await _characterService.GetCharacterFromUserAsync(GetUserId());
+        await characterService.GetCharacterFromUserAsync(GetUserId());
 
     private async Task<IResult> ReplyWithRollAsync(Character character, string title, string flavour, MoveRoll roll, IReadOnlyList<IEmbedField> fields)
     {
@@ -357,7 +340,7 @@ public class ShapeshiftCommand : DungeonWorldCommandBase
         var reply = await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);
 
         if (reply.IsSuccess && _context.TryGetChannelID(out var channelID))
-            await _rollStatsService.RecordAsync(reply.Entity.ID, channelID, character.ID, roll.Dice, RollLabel.Of(embed) with { Move = ShapeshiftRules.Shapeshifter });
+            await rollStatsService.RecordAsync(reply.Entity.ID, channelID, character.ID, roll.Dice, RollLabel.Of(embed) with { Move = ShapeshiftRules.Shapeshifter });
 
         return reply;
     }

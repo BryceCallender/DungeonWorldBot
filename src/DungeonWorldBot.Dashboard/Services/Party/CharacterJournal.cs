@@ -9,7 +9,8 @@ namespace DungeonWorldBot.Dashboard.Services.Party;
 /// The one part of the bot's database the dashboard writes: a character's backstory, notes and goals, which players
 /// keep here rather than in Discord. Everything else stays read-only.
 /// </summary>
-public class CharacterJournal
+/// <param name="options">Options for opening the bot's database read-write.</param>
+public class CharacterJournal(DbContextOptions<DungeonWorldContext> options)
 {
     public const int MaxTextLength = 4000;
 
@@ -18,14 +19,6 @@ public class CharacterJournal
     /// </summary>
     public const int MaxBackstoryLength = 20000;
     public const int MaxGoalLength = 200;
-
-    private readonly DbContextOptions<DungeonWorldContext> _options;
-
-    /// <param name="options">Options for opening the bot's database read-write.</param>
-    public CharacterJournal(DbContextOptions<DungeonWorldContext> options)
-    {
-        _options = options;
-    }
 
     public Task<bool> SetBackstoryAsync(ulong characterID, string? text) =>
         ChangeAsync(characterID, c => c.Backstory = Text(text));
@@ -85,7 +78,7 @@ public class CharacterJournal
     // A fresh context each time, so a write never picks up anything else and is done before the page reloads
     private async Task<bool> ChangeAsync(ulong characterID, Func<Character, bool> change)
     {
-        await using var db = new DungeonWorldContext(_options);
+        await using var db = new DungeonWorldContext(options);
         var id = new Snowflake(characterID);
         var character = await db.Characters.Include(c => c.Goals).Include(c => c.Notes).FirstOrDefaultAsync(c => c.ID == id);
         if (character is null || !change(character))

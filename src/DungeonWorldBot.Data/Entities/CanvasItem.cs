@@ -1,10 +1,12 @@
-namespace DungeonWorldBot.Dashboard.Models.Scenes;
+namespace DungeonWorldBot.Data.Entities;
 
 /// <summary>
 /// One thing on a canvas: a stroke, a token or some text.
 /// </summary>
 public class CanvasItem
 {
+    public const int MaxIDLength = 64;
+
     /// <summary>
     /// Made by the page that drew it, so it can be drawn, moved or removed before the server has seen it.
     /// </summary>

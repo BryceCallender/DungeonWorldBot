@@ -1,10 +1,10 @@
 using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using DungeonWorldBot.Dashboard.Data;
-using DungeonWorldBot.Dashboard.Models.Scenes;
+using DungeonWorldBot.Data;
 using DungeonWorldBot.Dashboard.Services.Encounters;
 using Microsoft.EntityFrameworkCore;
+using DungeonWorldBot.Data.Entities;
 
 namespace DungeonWorldBot.Dashboard.Services.Scenes;
 
@@ -13,8 +13,8 @@ namespace DungeonWorldBot.Dashboard.Services.Scenes;
 /// </summary>
 public class CanvasStore(CanvasContext db)
 {
-    public const int MaxNameLength = 80;
-    public const int MaxItemIDLength = 64;
+    public const int MaxNameLength = Canvas.MaxNameLength;
+    public const int MaxItemIDLength = CanvasItem.MaxIDLength;
 
     // A long freehand stroke is a few thousand numbers; this leaves plenty of room without letting one item be huge
     public const int MaxItemLength = 256 * 1024;

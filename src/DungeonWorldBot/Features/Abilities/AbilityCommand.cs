@@ -13,26 +13,17 @@ using Remora.Results;
 namespace DungeonWorldBot.Features.Abilities;
 
 [Group("ability")]
-public class AbilityCommand : DungeonWorldCommandBase
+public class AbilityCommand(
+    ICommandContext context,
+    FeedbackService feedbackService,
+    ICharacterService characterService,
+    IAbilityService abilityService)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
     private const string NameDescription = "The name of the ability";
 
     // Discord rejects embeds with more than 25 fields
     private const int MaxFields = 25;
-
-    private readonly ICharacterService _characterService;
-    private readonly IAbilityService _abilityService;
-
-    public AbilityCommand(
-        ICommandContext context,
-        FeedbackService feedbackService,
-        ICharacterService characterService,
-        IAbilityService abilityService)
-        : base(context, feedbackService)
-    {
-        _characterService = characterService;
-        _abilityService = abilityService;
-    }
 
     [Command("add")]
     [Description("Add a class move, spell, or feature to your character")]
@@ -52,10 +43,10 @@ public class AbilityCommand : DungeonWorldCommandBase
         if (string.IsNullOrWhiteSpace(name))
             return await ReplyWithErrorAsync("An ability needs a name.");
 
-        if (_abilityService.FindAbility(character, name) is not null)
+        if (abilityService.FindAbility(character, name) is not null)
             return await ReplyWithErrorAsync($"{character.Name} already has {name.Trim()}.");
 
-        var ability = await _abilityService.AddAbilityAsync(character, name, description, uses);
+        var ability = await abilityService.AddAbilityAsync(character, name, description, uses);
 
         return await ReplyAsync("Ability Added!", $"{character.Name} gained **{ability.ToDisplay()}**");
     }
@@ -68,11 +59,11 @@ public class AbilityCommand : DungeonWorldCommandBase
         if (character is null)
             return await ReplyWithErrorAsync(NoCharacterMessage);
 
-        var ability = _abilityService.FindAbility(character, name);
+        var ability = abilityService.FindAbility(character, name);
         if (ability is null)
             return await ReplyWithErrorAsync($"{character.Name} doesn't have {name}.");
 
-        await _abilityService.RemoveAbilityAsync(character, ability);
+        await abilityService.RemoveAbilityAsync(character, ability);
 
         return await ReplyAsync("Ability Removed", $"{character.Name} no longer has **{ability.Name}**");
     }
@@ -84,7 +75,7 @@ public class AbilityCommand : DungeonWorldCommandBase
         IUser? user = null)
     {
         var character = user is not null
-            ? await _characterService.GetCharacterFromUserAsync(user.ID)
+            ? await characterService.GetCharacterFromUserAsync(user.ID)
             : await GetOwnCharacterAsync();
 
         if (character is null)
@@ -131,11 +122,11 @@ public class AbilityCommand : DungeonWorldCommandBase
         if (character is null)
             return await ReplyWithErrorAsync(NoCharacterMessage);
 
-        var ability = _abilityService.FindAbility(character, name);
+        var ability = abilityService.FindAbility(character, name);
         if (ability is null)
             return await ReplyWithErrorAsync($"{character.Name} doesn't have {name}.");
 
-        if (!await _abilityService.UseAbilityAsync(ability, amount))
+        if (!await abilityService.UseAbilityAsync(ability, amount))
             return await ReplyWithErrorAsync($"{ability.Name} only has {ability.Uses} left. Restore it with /ability restore");
 
         var used = ability.IsLimited
@@ -162,17 +153,17 @@ public class AbilityCommand : DungeonWorldCommandBase
 
         if (string.IsNullOrWhiteSpace(name))
         {
-            await _abilityService.RestoreAllAbilitiesAsync(character);
+            await abilityService.RestoreAllAbilitiesAsync(character);
             return await ReplyAsync("Abilities Restored!", $"All of {character.Name}'s abilities were fully restored");
         }
 
-        var ability = _abilityService.FindAbility(character, name);
+        var ability = abilityService.FindAbility(character, name);
         if (ability is null)
             return await ReplyWithErrorAsync($"{character.Name} doesn't have {name}.");
         if (!ability.IsLimited)
             return await ReplyWithErrorAsync($"{ability.Name} doesn't have limited uses to restore.");
 
-        await _abilityService.RestoreAbilityAsync(ability, amount);
+        await abilityService.RestoreAbilityAsync(ability, amount);
 
         return await ReplyAsync("Ability Restored!", $"{character.Name}'s **{ability.ToDisplay()}**");
     }
@@ -190,13 +181,13 @@ public class AbilityCommand : DungeonWorldCommandBase
         if (character is null)
             return await ReplyWithErrorAsync(NoCharacterMessage);
 
-        var ability = _abilityService.FindAbility(character, name);
+        var ability = abilityService.FindAbility(character, name);
         if (ability is null)
             return await ReplyWithErrorAsync($"{character.Name} doesn't have {name}.");
         if (!ability.IsLimited)
             return await ReplyWithErrorAsync($"{ability.Name} doesn't track uses. Remove it and add it again with uses to start tracking.");
 
-        await _abilityService.SetAbilityUsesAsync(ability, uses);
+        await abilityService.SetAbilityUsesAsync(ability, uses);
 
         return await ReplyAsync("Uses Changed!", $"{character.Name}'s **{ability.ToDisplay()}**");
     }
@@ -214,13 +205,13 @@ public class AbilityCommand : DungeonWorldCommandBase
         if (character is null)
             return await ReplyWithErrorAsync(NoCharacterMessage);
 
-        var ability = _abilityService.FindAbility(character, name);
+        var ability = abilityService.FindAbility(character, name);
         if (ability is null)
             return await ReplyWithErrorAsync($"{character.Name} doesn't have {name}.");
         if (level > character.Level)
             return await ReplyWithErrorAsync($"{character.Name} is only level {character.Level}, so they can't have taken {ability.Name} at level {level}.");
 
-        await _abilityService.SetLevelTakenAsync(ability, level);
+        await abilityService.SetLevelTakenAsync(ability, level);
 
         return await ReplyAsync("Level Taken Set", $"{character.Name} took **{ability.Name}** at level {level}. " +
                                                    "Anything that counts up from it, like a cleric level from Divine Favor, follows from there.");
@@ -231,5 +222,5 @@ public class AbilityCommand : DungeonWorldCommandBase
         ability.LevelTaken is { } level ? $"{ability.Description ?? "—"}\n*Taken at level {level}*" : ability.Description ?? "—";
 
     private async Task<Character?> GetOwnCharacterAsync() =>
-        await _characterService.GetCharacterFromUserAsync(GetUserId());
+        await characterService.GetCharacterFromUserAsync(GetUserId());
 }

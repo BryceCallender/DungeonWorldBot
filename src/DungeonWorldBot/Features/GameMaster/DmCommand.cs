@@ -35,19 +35,15 @@ public partial class DmCommand : CommandGroup
         : Text(value) ?? current;
 
     [Group("stat")]
-    public class StatCommand : CharacterCommandBase
+    public class StatCommand(
+        ICommandContext context,
+        FeedbackService feedbackService,
+        ICharacterService characterService,
+        IGameMasterService gameMaster,
+        ILevelingService leveling,
+        IGameSettingsService settings)
+        : CharacterCommandBase(context, feedbackService, characterService, gameMaster, leveling, settings)
     {
-        public StatCommand(
-            ICommandContext context,
-            FeedbackService feedbackService,
-            ICharacterService characterService,
-            IGameMasterService gameMaster,
-            ILevelingService leveling,
-            IGameSettingsService settings)
-            : base(context, feedbackService, characterService, gameMaster, leveling, settings)
-        {
-        }
-
         [Command("set")]
         [Description("Set any character's stat to a value")]
         public async Task<IResult> ChangeStatAsync(
@@ -111,19 +107,15 @@ public partial class DmCommand : CommandGroup
     }
 
     [Group("level")]
-    public class LevelCommand : CharacterCommandBase
+    public class LevelCommand(
+        ICommandContext context,
+        FeedbackService feedbackService,
+        ICharacterService characterService,
+        IGameMasterService gameMaster,
+        ILevelingService leveling,
+        IGameSettingsService settings)
+        : CharacterCommandBase(context, feedbackService, characterService, gameMaster, leveling, settings)
     {
-        public LevelCommand(
-            ICommandContext context,
-            FeedbackService feedbackService,
-            ICharacterService characterService,
-            IGameMasterService gameMaster,
-            ILevelingService leveling,
-            IGameSettingsService settings)
-            : base(context, feedbackService, characterService, gameMaster, leveling, settings)
-        {
-        }
-
         [Command("set")]
         [Description("Set a character's level, or everyone's")]
         public async Task<IResult> SetLevelAsync(

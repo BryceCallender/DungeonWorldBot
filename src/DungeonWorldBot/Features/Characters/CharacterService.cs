@@ -7,18 +7,11 @@ using Remora.Rest.Core;
 namespace DungeonWorldBot.Features.Characters;
 
 [Scoped<ICharacterService>]
-public class CharacterService : ICharacterService
+public class CharacterService(DungeonWorldContext dungeonWorldContext) : ICharacterService
 {
-    private readonly DungeonWorldContext _dungeonWorldContext;
-
-    public CharacterService(DungeonWorldContext dungeonWorldContext)
-    {
-        _dungeonWorldContext = dungeonWorldContext;
-    }
-
     // One query per table: joining them all at once multiplies every list by every other (tens of thousands of rows)
     private IQueryable<Character> CharactersWithDetails =>
-        _dungeonWorldContext.Characters
+        dungeonWorldContext.Characters
             .AsSplitQuery()
             .Include(c => c.Class)
             .Include(c => c.Health)
@@ -47,14 +40,14 @@ public class CharacterService : ICharacterService
     public Task<List<CharacterName>> GetCharacterNamesAsync()
     {
         // The full sheets join a dozen tables into tens of thousands of rows, which is too slow for autocomplete
-        return _dungeonWorldContext.Characters
+        return dungeonWorldContext.Characters
             .Select(c => new CharacterName(c.Name, c.Class.Type))
             .ToListAsync();
     }
 
     public Task<string?> GetCharacterNameAsync(Snowflake userId)
     {
-        return _dungeonWorldContext.Characters
+        return dungeonWorldContext.Characters
             .Where(c => c.ID == userId)
             .Select(c => c.Name)
             .FirstOrDefaultAsync();
@@ -62,7 +55,7 @@ public class CharacterService : ICharacterService
 
     public Task<List<Character>> GetCharacterAbilitiesAsync()
     {
-        return _dungeonWorldContext.Characters
+        return dungeonWorldContext.Characters
             .AsNoTracking()
             .Include(c => c.Abilities)
             .ToListAsync();
@@ -70,43 +63,40 @@ public class CharacterService : ICharacterService
 
     public async Task AddCharacterAsync(Character character)
     {
-        _dungeonWorldContext.Characters.Add(character);
-        await _dungeonWorldContext.SaveChangesAsync();
+        dungeonWorldContext.Characters.Add(character);
+        await dungeonWorldContext.SaveChangesAsync();
     }
 
     public async Task BondWithAsync(Character character, Character bonder)
     {
-        character.Bonds ??= new List<Bond>();
+        character.Bonds ??= [];
         character.Bonds.Add(new Bond { TargetID = bonder.ID, TargetName = bonder.Name });
 
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
     }
 
     public async Task DamageAsync(Character character, int amount)
     {
         character.Health.CurrentHP = Math.Max(0, character.Health.CurrentHP - amount);
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
     }
 
     public async Task HealAsync(Character character, int amount)
     {
         character.Health.CurrentHP = Math.Min(character.Health.MaxHP, character.Health.CurrentHP + amount);
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
     }
 
     public async Task FullHealAsync(Character character)
     {
         character.Health.CurrentHP = character.Health.MaxHP;
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
     }
 
     public async Task UpdateCharacterStatAsync(Character character, StatType statType, int value)
     {
         var stat = character.Stats?.FirstOrDefault(s => s.StatType == statType);
-        if (stat != null)
-        {
-            stat.Value = value;
-        }
+        stat?.Value = value;
 
         // Max HP is derived from constitution
         if (statType == StatType.Con)
@@ -115,24 +105,24 @@ public class CharacterService : ICharacterService
             character.Health.CurrentHP = Math.Min(character.Health.CurrentHP, character.Health.MaxHP);
         }
 
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
     }
 
     public async Task UpdateCharacterDamageModifierAsync(Character character, string modifier)
     {
         character.DamageModifier = modifier;
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
     }
 
     public async Task AdjustArmorAsync(Character character, int amount)
     {
         character.ArmorRating += amount;
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
     }
 
     public async Task SetLevelAsync(Character character, int level)
     {
         character.Level = level;
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
     }
 }

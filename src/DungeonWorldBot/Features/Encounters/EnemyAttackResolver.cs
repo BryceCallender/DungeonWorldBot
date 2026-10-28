@@ -38,20 +38,9 @@ public record EnemyAttackResult(string? Error, EnemyAttack? Attack)
 /// made from a scene on the dashboard.
 /// </summary>
 [Scoped]
-public class EnemyAttackResolver
+public class EnemyAttackResolver(IDiceRoller diceRoller, IDamageService damageService, INpcService npcService)
 {
     public const string AttackAction = "Attack";
-
-    private readonly IDiceRoller _diceRoller;
-    private readonly IDamageService _damageService;
-    private readonly INpcService _npcService;
-
-    public EnemyAttackResolver(IDiceRoller diceRoller, IDamageService damageService, INpcService npcService)
-    {
-        _diceRoller = diceRoller;
-        _damageService = damageService;
-        _npcService = npcService;
-    }
 
     public async Task<EnemyAttackResult> ResolveAsync(EnemyAttackInput input)
     {
@@ -66,20 +55,20 @@ public class EnemyAttackResolver
         if (dice is null)
             return EnemyAttackResult.Failed($"{attacker.Name} has no damage dice. Give it some with /dm encounter edit, or fill in damage.");
 
-        if (!_diceRoller.TryRoll(dice, out var roll))
+        if (!diceRoller.TryRoll(dice, out var roll))
             return EnemyAttackResult.Failed($"`{dice}` is not a valid amount or dice roll.");
 
         string target, description;
         int taken;
         if (input.Character is { } character)
         {
-            var hit = await _damageService.TakeAsync(character, roll.Value, input.Type, input.Piercing);
+            var hit = await damageService.TakeAsync(character, roll.Value, input.Type, input.Piercing);
             (target, taken, description) = (character.Name, hit.Taken.Taken, hit.Describe(character));
         }
         else
         {
             var npc = input.Npc!;
-            var hit = await _npcService.DamageAsync(npc, roll.Value, input.Type, input.Piercing);
+            var hit = await npcService.DamageAsync(npc, roll.Value, input.Type, input.Piercing);
             (target, taken, description) = (npc.Name, hit.Taken, NpcSheet.DescribeHit(npc, hit));
         }
 

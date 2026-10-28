@@ -14,19 +14,14 @@ namespace DungeonWorldBot.Features.GameMaster;
 public partial class DmCommand
 {
     [Group("npc")]
-    public class NpcCommands : DungeonWorldCommandBase
+    public class NpcCommands(
+        ICommandContext context,
+        FeedbackService feedbackService,
+        INpcService npcService,
+        IGameMasterService gameMaster)
+        : DungeonWorldCommandBase(context, feedbackService)
     {
         private const string NameDescription = "The NPC";
-
-        private readonly INpcService _npcService;
-        private readonly IGameMasterService _gameMaster;
-
-        public NpcCommands(ICommandContext context, FeedbackService feedbackService, INpcService npcService, IGameMasterService gameMaster)
-            : base(context, feedbackService)
-        {
-            _npcService = npcService;
-            _gameMaster = gameMaster;
-        }
 
         [Command("add")]
         [Description("Add an NPC to the party: a hireling, guide, companion or anyone else travelling with them")]
@@ -55,13 +50,13 @@ public partial class DmCommand
             [Description("The player whose character they follow, like a Ranger's animal companion")]
             IUser? follows = null)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
             name = name.Trim();
             if (name.Length == 0)
                 return await ReplyWithErrorAsync("Give the NPC a name.");
-            if (await _npcService.FindAsync(name) is { } existing)
+            if (await npcService.FindAsync(name) is { } existing)
                 return await ReplyWithErrorAsync($"{existing.Name} is already with the party.");
 
             var npc = new Npc
@@ -78,7 +73,7 @@ public partial class DmCommand
                 Notes = Text(notes),
                 FollowsID = follows?.ID,
             };
-            await _npcService.AddAsync(npc);
+            await npcService.AddAsync(npc);
 
             return await ReplyAsync("NPC Joined the Party!", NpcSheet.Title(npc), NpcSheet.Fields(npc));
         }
@@ -122,16 +117,16 @@ public partial class DmCommand
             [Option("follows-nobody")]
             bool followsNobody = false)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
-            var npc = await _npcService.FindAsync(name);
+            var npc = await npcService.FindAsync(name);
             if (npc is null)
                 return await ReplyWithErrorAsync(NpcCommand.NotFound(name));
 
             if (!string.IsNullOrWhiteSpace(rename) && !rename.Trim().Equals(npc.Name, StringComparison.OrdinalIgnoreCase))
             {
-                if (await _npcService.FindAsync(rename) is { } taken)
+                if (await npcService.FindAsync(rename) is { } taken)
                     return await ReplyWithErrorAsync($"{taken.Name} is already with the party.");
             }
 
@@ -159,7 +154,7 @@ public partial class DmCommand
             else if (follows is not null)
                 npc.FollowsID = follows.ID;
 
-            await _npcService.SaveAsync(npc);
+            await npcService.SaveAsync(npc);
 
             return await ReplyAsync("NPC Updated!", NpcSheet.Title(npc), NpcSheet.Fields(npc));
         }
@@ -177,10 +172,10 @@ public partial class DmCommand
             [Description("Wisdom modifier")] [MinValue(-3)] [MaxValue(3)] int? wis = null,
             [Description("Charisma modifier")] [MinValue(-3)] [MaxValue(3)] int? cha = null)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
-            var npc = await _npcService.FindAsync(name);
+            var npc = await npcService.FindAsync(name);
             if (npc is null)
                 return await ReplyWithErrorAsync(NpcCommand.NotFound(name));
 
@@ -195,7 +190,7 @@ public partial class DmCommand
                     npc.SetModifier(stat, modifier);
             }
 
-            await _npcService.SaveAsync(npc);
+            await npcService.SaveAsync(npc);
 
             return await ReplyAsync("NPC Stats Updated!", $"{npc.Name}: {NpcSheet.Stats(npc)}");
         }
@@ -207,19 +202,19 @@ public partial class DmCommand
             [AutocompleteProvider(NpcAutocomplete.ID)]
             string name)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
-            var npc = await _npcService.FindAsync(name);
+            var npc = await npcService.FindAsync(name);
             if (npc is null)
                 return await ReplyWithErrorAsync(NpcCommand.NotFound(name));
 
-            await _npcService.RemoveAsync(npc);
+            await npcService.RemoveAsync(npc);
 
             return await ReplyAsync("NPC Left the Party", $"{npc.Name} is no longer with the party.");
         }
 
         private async Task<Result> ReplyNotGameMasterAsync() =>
-            await ReplyWithErrorAsync($"Only someone with the {_gameMaster.RoleName} role can do that.");
+            await ReplyWithErrorAsync($"Only someone with the {gameMaster.RoleName} role can do that.");
     }
 }

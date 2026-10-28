@@ -4,18 +4,11 @@ using DungeonWorldBot.Infrastructure;
 namespace DungeonWorldBot.Features.Encounters;
 
 [Scoped<ITimelineService>]
-public class TimelineService : ITimelineService
+public class TimelineService(IFightLogService fightLog) : ITimelineService
 {
-    private readonly IFightLogService _fightLog;
-
-    public TimelineService(IFightLogService fightLog)
-    {
-        _fightLog = fightLog;
-    }
-
     public async Task<TimelinePage> GetAsync(Encounter encounter, IEnumerable<Character> party, int take, DateTimeOffset? before = null)
     {
-        var log = await _fightLog.GetAsync(encounter);
+        var log = await fightLog.GetAsync(encounter);
         var names = party.DistinctBy(c => c.ID).ToDictionary(c => c.ID, c => c.Name);
 
         var fromRolls = log.Rolls.Select(r => log.Logged.TryGetValue(r.MessageID, out var action)

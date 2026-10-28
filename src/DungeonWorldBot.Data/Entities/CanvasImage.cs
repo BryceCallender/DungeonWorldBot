@@ -1,4 +1,4 @@
-namespace DungeonWorldBot.Dashboard.Models.Scenes;
+namespace DungeonWorldBot.Data.Entities;
 
 /// <summary>
 /// A picture someone added to a canvas, for an image token or a map. Items point at it by URL.

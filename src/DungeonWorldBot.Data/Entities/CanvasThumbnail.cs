@@ -1,4 +1,4 @@
-namespace DungeonWorldBot.Dashboard.Models.Scenes;
+namespace DungeonWorldBot.Data.Entities;
 
 /// <summary>
 /// A small picture of a whole canvas, for its card on the canvases page. The board takes it after changes.

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using DungeonWorldBot.Dashboard.Models.Encounters;
 using DungeonWorldBot.Dashboard.Models.Scenes;
+using DungeonWorldBot.Data.Entities;
 
 namespace DungeonWorldBot.Dashboard.Services.Scenes;
 

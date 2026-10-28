@@ -1,5 +1,5 @@
 using DungeonWorldBot.Infrastructure;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Remora.Discord.API.Abstractions.Rest;
 using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Extensions;
@@ -7,33 +7,21 @@ using Remora.Discord.Commands.Extensions;
 namespace DungeonWorldBot.Features.GameMaster;
 
 [Scoped<IGameMasterService>]
-public class GameMasterService : IGameMasterService
+public class GameMasterService(ICommandContext context, IDiscordRestGuildAPI guildAPI, IOptions<BotSettings> settings) : IGameMasterService
 {
-    private const string DefaultRoleName = "DM";
-
-    private readonly ICommandContext _context;
-    private readonly IDiscordRestGuildAPI _guildAPI;
-
-    public GameMasterService(ICommandContext context, IDiscordRestGuildAPI guildAPI, IConfiguration configuration)
-    {
-        _context = context;
-        _guildAPI = guildAPI;
-        RoleName = configuration.GetValue<string?>("DungeonMasterRoleName") ?? DefaultRoleName;
-    }
-
-    public string RoleName { get; }
+    public string RoleName { get; } = settings.Value.DungeonMasterRoleName;
 
     public async Task<bool> IsGameMasterAsync(CancellationToken ct = default)
     {
         // Roles only exist in servers, so nobody is the DM in a DM channel
-        if (!_context.TryGetGuildID(out var guildId) || !_context.TryGetUserID(out var userId))
+        if (!context.TryGetGuildID(out var guildId) || !context.TryGetUserID(out var userId))
             return false;
 
-        var member = await _guildAPI.GetGuildMemberAsync(guildId, userId, ct);
+        var member = await guildAPI.GetGuildMemberAsync(guildId, userId, ct);
         if (!member.IsSuccess)
             return false;
 
-        var roles = await _guildAPI.GetGuildRolesAsync(guildId, ct);
+        var roles = await guildAPI.GetGuildRolesAsync(guildId, ct);
         if (!roles.IsSuccess)
             return false;
 

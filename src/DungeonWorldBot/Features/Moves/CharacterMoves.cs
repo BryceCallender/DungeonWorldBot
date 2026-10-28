@@ -43,15 +43,8 @@ public record PreparedMove(string? Error, MoveDefinition? Move = null, MoveInput
 /// The moves a character can make, and what their class moves roll with. Shared by /move and the dashboard's board.
 /// </summary>
 [Scoped]
-public class CharacterMoves
+public class CharacterMoves(IResourceService resourceService)
 {
-    private readonly IResourceService _resourceService;
-
-    public CharacterMoves(IResourceService resourceService)
-    {
-        _resourceService = resourceService;
-    }
-
     /// <summary>
     /// Every basic move, then their rolled class moves. Last Breath only once they're at 0 HP.
     /// </summary>
@@ -108,7 +101,7 @@ public class CharacterMoves
         if (stat is null && classMove.RollsWith is { } rollsWith)
         {
             if (rollsFrom.FindResource(rollsWith) is { } resource)
-                return new PreparedMove(null, definition, new MoveInput(resource.Name, _resourceService.GetValue(character, resource), 0));
+                return new PreparedMove(null, definition, new MoveInput(resource.Name, resourceService.GetValue(character, resource), 0));
 
             if (rollsFrom.ClassStat?.Name.Equals(rollsWith, StringComparison.OrdinalIgnoreCase) == true)
             {

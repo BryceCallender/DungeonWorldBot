@@ -17,27 +17,16 @@ using Remora.Results;
 namespace DungeonWorldBot.Features.Classes;
 
 [Group("class")]
-public partial class ClassCommand : DungeonWorldCommandBase
+public partial class ClassCommand(
+    ICommandContext context,
+    FeedbackService feedbackService,
+    ICharacterService characterService,
+    IAbilityService abilityService,
+    IResourceService resourceService)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
     // Move summaries are long, so keep pages small enough to stay under Discord's embed size limit
     private const int MovesPerPage = 6;
-
-    private readonly ICharacterService _characterService;
-    private readonly IAbilityService _abilityService;
-    private readonly IResourceService _resourceService;
-
-    public ClassCommand(
-        ICommandContext context,
-        FeedbackService feedbackService,
-        ICharacterService characterService,
-        IAbilityService abilityService,
-        IResourceService resourceService)
-        : base(context, feedbackService)
-    {
-        _characterService = characterService;
-        _abilityService = abilityService;
-        _resourceService = resourceService;
-    }
 
     [Command("sheet")]
     [Description("Show a character's class sheet: resources, choices still to make, and advanced moves")]
@@ -46,7 +35,7 @@ public partial class ClassCommand : DungeonWorldCommandBase
         IUser? user = null)
     {
         var character = user is not null
-            ? await _characterService.GetCharacterFromUserAsync(user.ID)
+            ? await characterService.GetCharacterFromUserAsync(user.ID)
             : await GetOwnCharacterAsync();
 
         if (character is null)
@@ -60,7 +49,7 @@ public partial class ClassCommand : DungeonWorldCommandBase
             return await ReplyWithNoSheetAsync(character);
 
         var known = ClassSheetLibrary.KnownMoves(character);
-        var fields = new List<IEmbedField>();
+        List<IEmbedField> fields = [];
 
         var resources = sheet.ResourcesFor(known).ToList();
         if (resources.Count > 0)
@@ -131,10 +120,10 @@ public partial class ClassCommand : DungeonWorldCommandBase
             return await ReplyWithNoSheetAsync(character);
 
         var known = ClassSheetLibrary.KnownMoves(character);
-        var added = new List<string>();
+        List<string> added = [];
         foreach (var move in sheet.GrantedMoves.Where(m => !known.Contains(m.Name, StringComparer.OrdinalIgnoreCase)))
         {
-            await _abilityService.AddAbilityAsync(character, move.Name, move.Summary, move.Uses);
+            await abilityService.AddAbilityAsync(character, move.Name, move.Summary, move.Uses);
             added.Add(move.Name);
         }
 
@@ -159,7 +148,7 @@ public partial class ClassCommand : DungeonWorldCommandBase
     {
         var userId = GetUserId();
 
-        var character = await _characterService.GetCharacterFromUserAsync(userId);
+        var character = await characterService.GetCharacterFromUserAsync(userId);
         if (character is null)
             return await ReplyWithErrorAsync(NoCharacterMessage);
 
@@ -213,26 +202,26 @@ public partial class ClassCommand : DungeonWorldCommandBase
         if (sheet.WhyCannotLearn(classMove, character.Level, ClassSheetLibrary.KnownMoves(character)) is { } problem)
             return await ReplyWithErrorAsync(problem);
 
-        await _abilityService.AddAbilityAsync(character, classMove.Name, classMove.Summary, classMove.Uses);
+        await abilityService.AddAbilityAsync(character, classMove.Name, classMove.Summary, classMove.Uses);
 
         var description = $"{character.Name} learned **{classMove.Name}**\n\n{classMove.Summary}";
         if (classMove.Multiclass is not null)
             description += "\n\nPick the other class's move with /class learn";
-        if (classMove.Replaces is not null && _abilityService.FindAbility(character, classMove.Replaces) is { } replaced)
+        if (classMove.Replaces is not null && abilityService.FindAbility(character, classMove.Replaces) is { } replaced)
         {
-            await _abilityService.RemoveAbilityAsync(character, replaced);
+            await abilityService.RemoveAbilityAsync(character, replaced);
             description += $"\n\n*Replaces {replaced.Name}.*";
         }
 
         if (classMove.Armor != 0)
         {
-            await _characterService.AdjustArmorAsync(character, classMove.Armor);
+            await characterService.AdjustArmorAsync(character, classMove.Armor);
             description += $"\n\nArmor is now {character.ArmorRating}.";
         }
 
         if (classMove.DamageDie is not null)
         {
-            await _characterService.UpdateCharacterDamageModifierAsync(character, classMove.DamageDie);
+            await characterService.UpdateCharacterDamageModifierAsync(character, classMove.DamageDie);
             description += $"\n\nYour damage is now {classMove.DamageDie}.";
         }
 
@@ -307,7 +296,7 @@ public partial class ClassCommand : DungeonWorldCommandBase
             return await ReplyWithErrorAsync(problem);
 
         var summary = $"{foreign.Move.Summary}\n{Multiclassing.SourceNote(foreign.Sheet)}";
-        await _abilityService.AddAbilityAsync(character, foreign.Move.Name, summary, foreign.Move.Uses);
+        await abilityService.AddAbilityAsync(character, foreign.Move.Name, summary, foreign.Move.Uses);
 
         var description = $"{character.Name} learned **{foreign.Move.Name}** from the {foreign.Sheet.Type} sheet\n\n{foreign.Move.Summary}";
         if (foreign.Move.Roll is not null)
@@ -316,7 +305,7 @@ public partial class ClassCommand : DungeonWorldCommandBase
         return await ReplyAsync("Move Learned!", Truncate(description, 4096));
     }
 
-    private string FormatResource(Character character, ClassResource resource) => _resourceService.Format(character, resource);
+    private string FormatResource(Character character, ClassResource resource) => resourceService.Format(character, resource);
 
     private static string MoveHeading(ClassMove move)
     {
@@ -336,7 +325,7 @@ public partial class ClassCommand : DungeonWorldCommandBase
     };
 
     private async Task<Character?> GetOwnCharacterAsync() =>
-        await _characterService.GetCharacterFromUserAsync(GetUserId());
+        await characterService.GetCharacterFromUserAsync(GetUserId());
 
     private Task<Result> ReplyWithNoSheetAsync(Character character) =>
         ReplyWithErrorAsync($"The {character.Class.Type} doesn't have a class sheet in the bot yet. You can still track moves with /ability add");

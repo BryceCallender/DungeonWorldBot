@@ -10,7 +10,12 @@ using DungeonWorldBot.Infrastructure;
 namespace DungeonWorldBot.Features.Leveling;
 
 [Scoped<ILevelingService>]
-public class LevelingService : ILevelingService
+public class LevelingService(
+    ICharacterService characterService,
+    IResourceService resourceService,
+    IGameSettingsService? settings = null,
+    ISubclassService? subclasses = null)
+    : ILevelingService
 {
     /// <summary>
     /// Stats can't be raised above 18 (+3).
@@ -20,52 +25,35 @@ public class LevelingService : ILevelingService
     // Stored like a class resource, but every class has it and it isn't shown with the class resources
     private static readonly ClassResource StatPoints = new("Stat Points", "Gained on level up and spent to raise a stat by 1.") { ResetWithAll = false };
 
-    private readonly ICharacterService _characterService;
-    private readonly IResourceService _resourceService;
-    private readonly IGameSettingsService? _settings;
-    private readonly ISubclassService? _subclasses;
-
-    public LevelingService(
-        ICharacterService characterService,
-        IResourceService resourceService,
-        IGameSettingsService? settings = null,
-        ISubclassService? subclasses = null)
-    {
-        _characterService = characterService;
-        _resourceService = resourceService;
-        _settings = settings;
-        _subclasses = subclasses;
-    }
-
     public async Task ChangeLevelAsync(Character character, int level)
     {
         var previous = character.Level;
         var change = level - previous;
-        await _characterService.SetLevelAsync(character, level);
+        await characterService.SetLevelAsync(character, level);
 
         // Each level reached gives the DM's chosen amount of stat points
-        var points = Enumerable.Range(previous + 1, Math.Max(0, change)).Sum(l => _settings?.StatPointsForLevel(l) ?? 1);
+        var points = Enumerable.Range(previous + 1, Math.Max(0, change)).Sum(l => settings?.StatPointsForLevel(l) ?? 1);
         if (points > 0)
             await GrantStatPointsAsync(character, points);
 
         // Most of these are worked out from the level already. The rest are from moves taken before levels were recorded,
         // and setting them records when the move was taken.
-        foreach (var resource in LevelBasedResources(character).Where(r => !_resourceService.TracksLevel(character, r)))
+        foreach (var resource in LevelBasedResources(character).Where(r => !resourceService.TracksLevel(character, r)))
         {
-            var value = _resourceService.GetValue(character, resource);
-            await _resourceService.SetValueAsync(character, resource, Math.Max(1, value + change));
+            var value = resourceService.GetValue(character, resource);
+            await resourceService.SetValueAsync(character, resource, Math.Max(1, value + change));
         }
 
         // Subclass moves unlock by level. Levelling down keeps them, like advanced moves.
-        if (_subclasses is not null)
-            await _subclasses.GrantUnlockedMovesAsync(character);
+        if (subclasses is not null)
+            await subclasses.GrantUnlockedMovesAsync(character);
     }
 
-    public int GetStatPoints(Character character) => _resourceService.GetValue(character, StatPoints);
+    public int GetStatPoints(Character character) => resourceService.GetValue(character, StatPoints);
 
     public async Task GrantStatPointsAsync(Character character, int amount)
     {
-        await _resourceService.SetValueAsync(character, StatPoints, GetStatPoints(character) + amount);
+        await resourceService.SetValueAsync(character, StatPoints, GetStatPoints(character) + amount);
     }
 
     public async Task<string?> AllocateStatAsync(Character character, StatType statType)
@@ -81,8 +69,8 @@ public class LevelingService : ILevelingService
         if (stat.Value >= MaxStat)
             return $"{statType} is already {stat.Value}. Stats can't go above {MaxStat}.";
 
-        await _characterService.UpdateCharacterStatAsync(character, statType, stat.Value + 1);
-        await _resourceService.SetValueAsync(character, StatPoints, points - 1);
+        await characterService.UpdateCharacterStatAsync(character, statType, stat.Value + 1);
+        await resourceService.SetValueAsync(character, StatPoints, points - 1);
         return null;
     }
 

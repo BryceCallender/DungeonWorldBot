@@ -21,30 +21,17 @@ namespace DungeonWorldBot.Features.Sessions;
 /// recap of how the night went. Anyone at the table can do either.
 /// </summary>
 [Group("session")]
-public class SessionCommand : DungeonWorldCommandBase
+public class SessionCommand(
+    ICommandContext context,
+    FeedbackService feedbackService,
+    ISessionService sessions,
+    ICharacterService characterService,
+    IRollStatsService rollStatsService,
+    RollHistoryScanner scanner,
+    IDiscordRestChannelAPI channelAPI)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
-    private readonly ISessionService _sessions;
-    private readonly ICharacterService _characterService;
-    private readonly IRollStatsService _rollStatsService;
-    private readonly RollHistoryScanner _scanner;
-    private readonly IDiscordRestChannelAPI _channelAPI;
-
-    public SessionCommand(
-        ICommandContext context,
-        FeedbackService feedbackService,
-        ISessionService sessions,
-        ICharacterService characterService,
-        IRollStatsService rollStatsService,
-        RollHistoryScanner scanner,
-        IDiscordRestChannelAPI channelAPI)
-        : base(context, feedbackService)
-    {
-        _sessions = sessions;
-        _characterService = characterService;
-        _rollStatsService = rollStatsService;
-        _scanner = scanner;
-        _channelAPI = channelAPI;
-    }
+    private readonly ISessionService _sessions = sessions;
 
     [Command("start")]
     [Description("Start tonight's session. Rolls from now until /session end count as one game night")]
@@ -81,7 +68,7 @@ public class SessionCommand : DungeonWorldCommandBase
 
         var number = await _sessions.NumberOfAsync(session);
         var recap = await _sessions.RecapAsync(session);
-        var names = (await _characterService.GetCharactersAsync()).ToDictionary(c => c.ID, c => c.Name);
+        var names = (await characterService.GetCharactersAsync()).ToDictionary(c => c.ID, c => c.Name);
 
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
@@ -134,14 +121,14 @@ public class SessionCommand : DungeonWorldCommandBase
         if (!_context.TryGetChannelID(out var currentChannelID))
             throw new NotSupportedException();
 
-        if (_rollStatsService.GameChatChannelID is not { } gameChat)
+        if (rollStatsService.GameChatChannelID is not { } gameChat)
             return await ReplyWithErrorAsync("No game chat channel is set. Add a GameChatChannelId setting with the channel's ID.");
 
         var started = await ReplyAsync("📜 Scanning...", $"Reading <#{gameChat}> for past game nights. I'll post here when it's done.");
         if (!started.IsSuccess)
             return started;
 
-        var scan = await _scanner.ScanAsync(gameChat, CancellationToken);
+        var scan = await scanner.ScanAsync(gameChat, CancellationToken);
         if (!scan.IsSuccess)
             return await PostResultAsync(currentChannelID, "📜 Scan Failed", $"Couldn't read <#{gameChat}>: {scan.Error.Message}");
 
@@ -149,7 +136,7 @@ public class SessionCommand : DungeonWorldCommandBase
         if (added.Count == 0)
             return await PostResultAsync(currentChannelID, "📜 Scan Complete", "No game nights were missing. Every night with rolls is already a session.");
 
-        var lines = new List<string>();
+        List<string> lines = [];
         foreach (var session in added)
             lines.Add($"Session {await _sessions.NumberOfAsync(session)} · <t:{session.StartedAt.ToUnixTimeSeconds()}:D> · {(await _sessions.RecapAsync(session)).Rolls} rolls");
 
@@ -161,7 +148,7 @@ public class SessionCommand : DungeonWorldCommandBase
     // A long scan can outlast the slash command's 15 minute reply window, so the result is posted as its own message
     private async Task<IResult> PostResultAsync(Snowflake channelID, string title, string description)
     {
-        var posted = await _channelAPI.CreateMessageAsync(
+        var posted = await channelAPI.CreateMessageAsync(
             channelID,
             embeds: new[] { new Embed(Title: title, Description: description, Colour: _feedbackService.Theme.Primary) },
             ct: CancellationToken);
@@ -193,11 +180,11 @@ public class SessionCommand : DungeonWorldCommandBase
         if (recap.Rolls == 0)
             return $"Played for {played}. Nobody rolled 2d6 in the game chat.";
 
-        var lines = new List<string>
-        {
+        List<string> lines =
+        [
             $"Played for **{played}** · **{recap.Rolls}** roll{(recap.Rolls == 1 ? "" : "s")} · **{recap.Hits * 100 / recap.Rolls}%** hit",
             $"💀 {recap.Misses} miss{(recap.Misses == 1 ? "" : "es")}",
-        };
+        ];
         if (recap.Natural12s > 0 || recap.Natural2s > 0)
             lines.Add($"✨ {recap.Natural12s} natural 12{(recap.Natural12s == 1 ? "" : "s")} · 🐍 {recap.Natural2s} snake eyes");
         if (recap.Fights.Count > 0)

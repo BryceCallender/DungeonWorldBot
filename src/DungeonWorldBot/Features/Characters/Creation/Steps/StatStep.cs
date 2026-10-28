@@ -9,15 +9,13 @@ namespace DungeonWorldBot.Features.Characters.Creation.Steps;
 /// <summary>
 /// Asks for a stat value, which must be one of the values not yet assigned.
 /// </summary>
-public class StatStep : DialogueStep<int?>
+public class StatStep(
+    FeedbackService feedbackService,
+    string content,
+    IReadOnlyCollection<int> available)
+    : DialogueStep<int?>(feedbackService, content)
 {
-    private readonly IReadOnlyCollection<int> _available;
-
-    public StatStep(FeedbackService feedbackService, string content, IReadOnlyCollection<int> available)
-        : base(feedbackService, content)
-    {
-        _available = available;
-    }
+    private readonly IReadOnlyCollection<int> _available = available;
 
     protected override Embed BuildPrompt() => new()
     {

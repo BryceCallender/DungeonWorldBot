@@ -18,32 +18,21 @@ namespace DungeonWorldBot.Features.Npcs;
 /// Looking after the NPCs travelling with the party. The DM adds and changes them with /dm npc.
 /// </summary>
 [Group("npc")]
-public class NpcCommand : DungeonWorldCommandBase
+public class NpcCommand(
+    ICommandContext context,
+    FeedbackService feedbackService,
+    INpcService npcService,
+    IDiceRoller diceRoller,
+    IEncounterService encounterService)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
     private const string NameDescription = "The NPC";
-
-    private readonly INpcService _npcService;
-    private readonly IDiceRoller _diceRoller;
-    private readonly IEncounterService _encounterService;
-
-    public NpcCommand(
-        ICommandContext context,
-        FeedbackService feedbackService,
-        INpcService npcService,
-        IDiceRoller diceRoller,
-        IEncounterService encounterService)
-        : base(context, feedbackService)
-    {
-        _npcService = npcService;
-        _diceRoller = diceRoller;
-        _encounterService = encounterService;
-    }
 
     [Command("list")]
     [Description("List the NPCs travelling with the party")]
     public async Task<IResult> ListAsync()
     {
-        var npcs = await _npcService.GetAllAsync();
+        var npcs = await npcService.GetAllAsync();
         if (npcs.Count == 0)
             return await ReplyWithErrorAsync("No NPCs are with the party. The DM can add one with /dm npc add.");
 
@@ -62,7 +51,7 @@ public class NpcCommand : DungeonWorldCommandBase
         [AutocompleteProvider(NpcAutocomplete.ID)]
         string name)
     {
-        var npc = await _npcService.FindAsync(name);
+        var npc = await npcService.FindAsync(name);
         if (npc is null)
             return await ReplyWithErrorAsync(NotFound(name));
 
@@ -83,14 +72,14 @@ public class NpcCommand : DungeonWorldCommandBase
         [MinValue(0)]
         int piercing = 0)
     {
-        var npc = await _npcService.FindAsync(name);
+        var npc = await npcService.FindAsync(name);
         if (npc is null)
             return await ReplyWithErrorAsync(NotFound(name));
 
-        if (!_diceRoller.TryRoll(damage, out var roll))
+        if (!diceRoller.TryRoll(damage, out var roll))
             return await ReplyWithErrorAsync($"`{damage}` is not a valid amount or dice roll.");
 
-        var hit = await _npcService.DamageAsync(npc, roll.Value, type, piercing);
+        var hit = await npcService.DamageAsync(npc, roll.Value, type, piercing);
 
         return await ReplyAsync("Damaged!", NpcSheet.DescribeHit(npc, hit));
     }
@@ -104,23 +93,23 @@ public class NpcCommand : DungeonWorldCommandBase
         [Description("Amount to heal. Can be a dice roll or left blank to full heal")]
         string? heal = null)
     {
-        var npc = await _npcService.FindAsync(name);
+        var npc = await npcService.FindAsync(name);
         if (npc is null)
             return await ReplyWithErrorAsync(NotFound(name));
 
         string description;
         if (string.IsNullOrWhiteSpace(heal))
         {
-            await _npcService.HealAsync(npc);
+            await npcService.HealAsync(npc);
             description = $"{npc.Name} was fully healed";
         }
         else
         {
-            if (!_diceRoller.TryRoll(heal, out var roll))
+            if (!diceRoller.TryRoll(heal, out var roll))
                 return await ReplyWithErrorAsync($"`{heal}` is not a valid amount or dice roll.");
 
             var amount = Math.Max(0, roll.Value);
-            await _npcService.HealAsync(npc, amount);
+            await npcService.HealAsync(npc, amount);
             description = $"{npc.Name} was healed for {amount} HP";
         }
 
@@ -142,7 +131,7 @@ public class NpcCommand : DungeonWorldCommandBase
         [AutocompleteProvider(TargetAutocomplete.ID)]
         string? target = null)
     {
-        var npc = await _npcService.FindAsync(name);
+        var npc = await npcService.FindAsync(name);
         if (npc is null)
             return await ReplyWithErrorAsync(NotFound(name));
 
@@ -154,7 +143,7 @@ public class NpcCommand : DungeonWorldCommandBase
         }
 
         var dice = DiceHelper.AddModifier(option.Dice, bonus);
-        if (!_diceRoller.TryRoll(dice, out var roll))
+        if (!diceRoller.TryRoll(dice, out var roll))
             return await ReplyWithErrorAsync($"{npc.Name}'s {option.Name} dice (`{option.Dice}`) can't be rolled. The DM can fix them with /dm npc edit.");
 
         var rolledWith = option.Modifier is { } mod ? $"{option.Name} {NpcSheet.Signed(mod)}" : option.Dice;
@@ -163,7 +152,7 @@ public class NpcCommand : DungeonWorldCommandBase
 
         // Only 2d6 rolls have hit bands; a damage roll is just a number
         var outcome = option.Modifier is null ? null : MoveRoller.OutcomeOf(roll);
-        var fields = new List<IEmbedField> { new EmbedField("Rolled with", rolledWith) };
+        List<IEmbedField> fields = [new EmbedField("Rolled with", rolledWith)];
         if (outcome is { } band)
             fields.Add(new EmbedField(MoveRoller.Describe(band), MoveRoller.GeneralMeaning(band)));
 
@@ -174,14 +163,14 @@ public class NpcCommand : DungeonWorldCommandBase
         {
             if (outcome is null)
             {
-                var hit = await EnemyHit.ApplyAsync(_encounterService, target, roll.Value);
+                var hit = await EnemyHit.ApplyAsync(encounterService, target, roll.Value);
                 fields.Add(hit.Field);
                 aimedAt = hit.Target;
                 result = hit.Result;
             }
             else
             {
-                aimedAt = (await _encounterService.FindEnemyAsync(target))?.Name ?? target.Trim();
+                aimedAt = (await encounterService.FindEnemyAsync(target))?.Name ?? target.Trim();
                 fields.Add(new EmbedField("🎯 Target", aimedAt));
             }
         }
@@ -200,7 +189,7 @@ public class NpcCommand : DungeonWorldCommandBase
         // Does nothing between fights
         if (reply.IsSuccess)
         {
-            await _encounterService.LogAsync(new EncounterAction
+            await encounterService.LogAsync(new EncounterAction
             {
                 Actor = npc.Name,
                 NpcID = npc.ID,

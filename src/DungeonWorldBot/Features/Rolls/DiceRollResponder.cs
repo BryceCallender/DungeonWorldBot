@@ -15,26 +15,14 @@ namespace DungeonWorldBot.Features.Rolls;
 /// <summary>
 /// Rolls dice for chat messages like ".2d6+1 sneak attack" or ".dex+1 dodge the trap".
 /// </summary>
-public class DiceRollResponder : IResponder<IMessageCreate>
+public class DiceRollResponder(
+    IDiscordRestChannelAPI channelAPI,
+    IDiceRoller diceRoller,
+    ICharacterService characterService,
+    IRollStatsService rollStatsService)
+    : IResponder<IMessageCreate>
 {
     private static readonly Color RollColour = Color.Fuchsia;
-
-    private readonly IDiscordRestChannelAPI _channelAPI;
-    private readonly IDiceRoller _diceRoller;
-    private readonly ICharacterService _characterService;
-    private readonly IRollStatsService _rollStatsService;
-
-    public DiceRollResponder(
-        IDiscordRestChannelAPI channelAPI,
-        IDiceRoller diceRoller,
-        ICharacterService characterService,
-        IRollStatsService rollStatsService)
-    {
-        _channelAPI = channelAPI;
-        _diceRoller = diceRoller;
-        _characterService = characterService;
-        _rollStatsService = rollStatsService;
-    }
 
     public async Task<Result> RespondAsync(IMessageCreate gatewayEvent, CancellationToken ct = default)
     {
@@ -53,7 +41,7 @@ public class DiceRollResponder : IResponder<IMessageCreate>
         if (embed is null)
             return Result.FromSuccess();
 
-        var reply = await _channelAPI.CreateMessageAsync(
+        var reply = await channelAPI.CreateMessageAsync(
             gatewayEvent.ChannelID,
             embeds: new[] { embed },
             messageReference: new MessageReference(MessageID: gatewayEvent.ID, FailIfNotExists: false),
@@ -64,14 +52,14 @@ public class DiceRollResponder : IResponder<IMessageCreate>
             return Result.FromError(reply);
 
         if (roll is not null)
-            await _rollStatsService.RecordAsync(reply.Entity.ID, gatewayEvent.ChannelID, gatewayEvent.Author.ID, roll, RollLabel.Of(embed));
+            await rollStatsService.RecordAsync(reply.Entity.ID, gatewayEvent.ChannelID, gatewayEvent.Author.ID, roll, RollLabel.Of(embed));
 
         return Result.FromSuccess();
     }
 
     private (Embed? Embed, DiceResult? Roll) BuildDiceRoll(IMessageCreate message, DiceMessage request)
     {
-        if (!_diceRoller.TryRoll(request.Expression!, out var roll))
+        if (!diceRoller.TryRoll(request.Expression!, out var roll))
             return (null, null);
 
         if (request.Options is not null)
@@ -107,7 +95,7 @@ public class DiceRollResponder : IResponder<IMessageCreate>
     private async Task<(Embed? Embed, DiceResult? Roll)> BuildStatRollAsync(IMessageCreate message, DiceMessage request)
     {
         var statType = request.Stat!.Value;
-        var character = await _characterService.GetCharacterFromUserAsync(message.Author.ID);
+        var character = await characterService.GetCharacterFromUserAsync(message.Author.ID);
         var stat = character?.Stats.FirstOrDefault(s => s.StatType == statType);
 
         if (character is null || stat is null)
@@ -118,7 +106,7 @@ public class DiceRollResponder : IResponder<IMessageCreate>
                 Colour: Color.Red), null);
         }
 
-        var roll = MoveRoller.Roll(_diceRoller, stat.Modifier + request.Bonus);
+        var roll = MoveRoller.Roll(diceRoller, stat.Modifier + request.Bonus);
         var rolledWith = $"{statType.ToString().ToUpper()} {Signed(stat.Modifier)}"
                          + (request.Bonus != 0 ? $", Bonus {Signed(request.Bonus)}" : string.Empty);
 

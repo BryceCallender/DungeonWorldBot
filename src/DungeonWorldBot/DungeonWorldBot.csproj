@@ -1,27 +1,27 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
+        <UserSecretsId>1882c7ab-da04-4805-bb3d-7b904307376b</UserSecretsId>
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="d20tek-dicenotation" Version="5.1.7" />
-      <PackageReference Include="Enums.NET" Version="5.0.0" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
+      <PackageReference Include="d20tek-dicenotation" />
+      <PackageReference Include="Enums.NET" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="10.0.12">
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Tools">
         <PrivateAssets>all</PrivateAssets>
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       </PackageReference>
-      <PackageReference Include="Microsoft.Extensions.Configuration.Json" Version="10.0.12" />
-      <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.12" />
-      <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="10.0.12" />
-      <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
-      <PackageReference Include="Remora.Discord.Hosting" Version="8.0.0" />
-      <PackageReference Include="Remora.Discord.Interactivity" Version="7.0.0" />
-      <PackageReference Include="Remora.Discord.Pagination" Version="6.0.0" />
+      <PackageReference Include="Microsoft.Extensions.Configuration.Json" />
+      <PackageReference Include="Microsoft.Extensions.Hosting" />
+      <PackageReference Include="Microsoft.Extensions.Logging.Console" />
+      <PackageReference Include="Remora.Discord.Hosting" />
+      <PackageReference Include="Remora.Discord.Interactivity" />
+      <PackageReference Include="Remora.Discord.Pagination" />
     </ItemGroup>
 
     <ItemGroup>

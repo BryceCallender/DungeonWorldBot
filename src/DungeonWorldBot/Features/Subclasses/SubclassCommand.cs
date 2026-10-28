@@ -15,25 +15,14 @@ using Remora.Results;
 namespace DungeonWorldBot.Features.Subclasses;
 
 [Group("subclass")]
-public partial class SubclassCommand : DungeonWorldCommandBase
+public partial class SubclassCommand(
+    ICommandContext context,
+    FeedbackService feedbackService,
+    ICharacterService characterService,
+    ISubclassService subclassService,
+    IGameMasterService gameMaster)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
-    private readonly ICharacterService _characterService;
-    private readonly ISubclassService _subclassService;
-    private readonly IGameMasterService _gameMaster;
-
-    public SubclassCommand(
-        ICommandContext context,
-        FeedbackService feedbackService,
-        ICharacterService characterService,
-        ISubclassService subclassService,
-        IGameMasterService gameMaster)
-        : base(context, feedbackService)
-    {
-        _characterService = characterService;
-        _subclassService = subclassService;
-        _gameMaster = gameMaster;
-    }
-
     [Command("list")]
     [Description("List every subclass and which classes can take it")]
     public async Task<IResult> ListAsync()
@@ -139,7 +128,7 @@ public partial class SubclassCommand : DungeonWorldCommandBase
                 : $"{character.Name} is already a {current.Name}. Leave it first with /subclass leave");
         }
 
-        var learned = await _subclassService.JoinAsync(character, found);
+        var learned = await subclassService.JoinAsync(character, found);
 
         var description = $"{character.Name} is now a **{found.Name}**, *{found.Title}*.";
         if (learned.Count > 0)
@@ -170,27 +159,27 @@ public partial class SubclassCommand : DungeonWorldCommandBase
         if (SubclassLibrary.Of(character) is not { } current)
             return await ReplyWithErrorAsync($"{character.Name} doesn't have a subclass.");
 
-        await _subclassService.LeaveAsync(character, current);
+        await subclassService.LeaveAsync(character, current);
         return await ReplyAsync("Subclass Left", $"{character.Name} is no longer a {current.Name}, and lost its moves.", character);
     }
 
     /// <returns>An error if the user is acting on someone else's character without being the DM.</returns>
     private async Task<IResult?> CheckOthersAsync(IUser? user)
     {
-        if (user is null || !_context.TryGetUserID(out var self) || user.ID == self || await _gameMaster.IsGameMasterAsync(CancellationToken))
+        if (user is null || !_context.TryGetUserID(out var self) || user.ID == self || await gameMaster.IsGameMasterAsync(CancellationToken))
             return null;
 
-        return await ReplyWithErrorAsync($"Only someone with the {_gameMaster.RoleName} role can change someone else's subclass.");
+        return await ReplyWithErrorAsync($"Only someone with the {gameMaster.RoleName} role can change someone else's subclass.");
     }
 
     private async Task<Character?> GetCharacterAsync(IUser? user)
     {
         if (user is not null)
-            return await _characterService.GetCharacterFromUserAsync(user.ID);
+            return await characterService.GetCharacterFromUserAsync(user.ID);
 
         var userId = GetUserId();
 
-        return await _characterService.GetCharacterFromUserAsync(userId);
+        return await characterService.GetCharacterFromUserAsync(userId);
     }
 
     private async Task<IResult> ReplyAsync(string title, string description, Character character)

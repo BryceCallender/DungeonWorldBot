@@ -14,26 +14,15 @@ using Remora.Results;
 namespace DungeonWorldBot.Features.Debilities;
 
 [Group("debility")]
-public class DebilityCommand : DungeonWorldCommandBase
+public class DebilityCommand(
+    ICommandContext context,
+    FeedbackService feedbackService,
+    ICharacterService characterService,
+    IDebilityService debilityService,
+    IGameMasterService gameMaster)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
     private const string UserDescription = "DM only: the player whose character to change. Leave blank for your own.";
-
-    private readonly ICharacterService _characterService;
-    private readonly IDebilityService _debilityService;
-    private readonly IGameMasterService _gameMaster;
-
-    public DebilityCommand(
-        ICommandContext context,
-        FeedbackService feedbackService,
-        ICharacterService characterService,
-        IDebilityService debilityService,
-        IGameMasterService gameMaster)
-        : base(context, feedbackService)
-    {
-        _characterService = characterService;
-        _debilityService = debilityService;
-        _gameMaster = gameMaster;
-    }
 
     [Command("add")]
     [Description("Mark a debility: -1 to rolls with its stat until it's removed")]
@@ -47,7 +36,7 @@ public class DebilityCommand : DungeonWorldCommandBase
         if (character is null)
             return error!;
 
-        if (!await _debilityService.AddAsync(character, debility))
+        if (!await debilityService.AddAsync(character, debility))
             return await ReplyWithErrorAsync($"{character.Name} is already {debility}.");
 
         var description = $"{character.Name} is now **{DebilityRules.Describe(debility)}**: -1 to rolls with {DebilityRules.StatFor(debility).ToString().ToUpper()}.";
@@ -73,7 +62,7 @@ public class DebilityCommand : DungeonWorldCommandBase
         if (character is null)
             return error!;
 
-        if (!await _debilityService.RemoveAsync(character, debility))
+        if (!await debilityService.RemoveAsync(character, debility))
             return await ReplyWithErrorAsync($"{character.Name} isn't {debility}.");
 
         return await ReplyAsync("Debility Cleared", $"{character.Name} is no longer {debility}.\n\n{Summary(character)}");
@@ -89,7 +78,7 @@ public class DebilityCommand : DungeonWorldCommandBase
         if (character is null)
             return error!;
 
-        var removed = await _debilityService.ClearAsync(character);
+        var removed = await debilityService.ClearAsync(character);
         return await ReplyAsync("Debilities Cleared", removed.Count > 0
             ? $"{character.Name} is no longer {string.Join(", ", removed)}."
             : $"{character.Name} had no debilities.");
@@ -102,7 +91,7 @@ public class DebilityCommand : DungeonWorldCommandBase
         IUser? user = null)
     {
         var character = user is not null
-            ? await _characterService.GetCharacterFromUserAsync(user.ID)
+            ? await characterService.GetCharacterFromUserAsync(user.ID)
             : await GetOwnCharacterAsync();
 
         if (character is null)
@@ -131,11 +120,11 @@ public class DebilityCommand : DungeonWorldCommandBase
     /// <returns>The character, or null and an error already sent (changing someone else's needs the DM role).</returns>
     private async Task<(Character?, IResult?)> FindCharacterAsync(IUser? user)
     {
-        if (user is not null && _context.TryGetUserID(out var self) && user.ID != self && !await _gameMaster.IsGameMasterAsync(CancellationToken))
-            return (null, await ReplyWithErrorAsync($"Only someone with the {_gameMaster.RoleName} role can change someone else's debilities."));
+        if (user is not null && _context.TryGetUserID(out var self) && user.ID != self && !await gameMaster.IsGameMasterAsync(CancellationToken))
+            return (null, await ReplyWithErrorAsync($"Only someone with the {gameMaster.RoleName} role can change someone else's debilities."));
 
         var character = user is not null
-            ? await _characterService.GetCharacterFromUserAsync(user.ID)
+            ? await characterService.GetCharacterFromUserAsync(user.ID)
             : await GetOwnCharacterAsync();
 
         if (character is null)
@@ -145,5 +134,5 @@ public class DebilityCommand : DungeonWorldCommandBase
     }
 
     private async Task<Character?> GetOwnCharacterAsync() =>
-        await _characterService.GetCharacterFromUserAsync(GetUserId());
+        await characterService.GetCharacterFromUserAsync(GetUserId());
 }

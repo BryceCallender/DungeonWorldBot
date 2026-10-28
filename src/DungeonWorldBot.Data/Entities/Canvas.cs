@@ -1,10 +1,12 @@
-namespace DungeonWorldBot.Dashboard.Models.Scenes;
+namespace DungeonWorldBot.Data.Entities;
 
 /// <summary>
 /// A scene: a board the table draws on together, for an encounter or a map.
 /// </summary>
 public class Canvas
 {
+    public const int MaxNameLength = 80;
+
     public int ID { get; set; }
     public required string Name { get; set; }
     public CanvasKind Kind { get; set; }

@@ -50,7 +50,7 @@ public class SessionReader(ISessionService sessions, DungeonWorldContext context
         await Safely(async () =>
         {
             var all = await sessions.GetAllAsync();
-            var summaries = new List<SessionSummary>();
+            List<SessionSummary> summaries = [];
             // Numbered by the order they started in, as the bot numbers them
             foreach (var (session, i) in all.Select((s, i) => (s, i)))
                 summaries.Add(new SessionSummary(session, i + 1, await sessions.RecapAsync(session)));

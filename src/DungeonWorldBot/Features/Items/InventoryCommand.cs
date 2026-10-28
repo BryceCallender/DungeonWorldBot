@@ -16,23 +16,14 @@ using Remora.Discord.Pagination.Extensions;
 namespace DungeonWorldBot.Features.Items;
 
 [Group("inventory")]
-public class InventoryCommand : DungeonWorldCommandBase
+public class InventoryCommand(
+    ICommandContext context,
+    FeedbackService feedbackService,
+    ICharacterService characterService,
+    IInventoryService inventoryService)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
-    private readonly ICharacterService _characterService;
-    private readonly IInventoryService _inventoryService;
-
     private const int PAGE_SIZE = 20;
-
-    public InventoryCommand(
-        ICommandContext context,
-        FeedbackService feedbackService,
-        ICharacterService characterService, 
-        IInventoryService inventoryService)
-        : base(context, feedbackService)
-    {
-        _characterService = characterService;
-        _inventoryService = inventoryService;
-    }
 
     [Command("show")]
     [Description("Shows a paginated list of all your inventory items")]
@@ -40,12 +31,12 @@ public class InventoryCommand : DungeonWorldCommandBase
     {
         var userId = GetUserId();
         
-        var character = await _characterService.GetCharacterFromUserAsync(userId);
+        var character = await characterService.GetCharacterFromUserAsync(userId);
 
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to view its inventory. Try using /character create");
 
-        var items = character.Inventory?.Items ?? new List<Item>();
+        var items = character.Inventory?.Items ?? [];
         var coinAmount = items
             .Where(i => i.Name.Equals("Coins", StringComparison.OrdinalIgnoreCase))
             .Sum(i => i.Amount);
@@ -84,7 +75,7 @@ public class InventoryCommand : DungeonWorldCommandBase
     {
         var userId = GetUserId();
         
-        var character = await _characterService.GetCharacterFromUserAsync(userId);
+        var character = await characterService.GetCharacterFromUserAsync(userId);
 
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to add to its inventory. Try using /character create");
@@ -99,7 +90,7 @@ public class InventoryCommand : DungeonWorldCommandBase
         else
             character.Inventory.Items.Add(new Item { Name = itemName.ToLower(), Amount = amount });
 
-        await _inventoryService.SaveInventoryAsync();
+        await inventoryService.SaveInventoryAsync();
 
         return await _feedbackService.SendContextualMessageAsync(new FeedbackMessage($"You have successfully added {amount} {itemName.ToLower()} to your inventory", Color.Green));
     }
@@ -110,7 +101,7 @@ public class InventoryCommand : DungeonWorldCommandBase
     {
         var userId = GetUserId();
         
-        var character = await _characterService.GetCharacterFromUserAsync(userId);
+        var character = await characterService.GetCharacterFromUserAsync(userId);
 
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to remove from its inventory. Try using /character create");
@@ -140,7 +131,7 @@ public class InventoryCommand : DungeonWorldCommandBase
             return await ReplyWithErrorAsync($"You do not have {itemName} in your inventory");
         }
 
-        await _inventoryService.SaveInventoryAsync();
+        await inventoryService.SaveInventoryAsync();
 
         if (amount < 0)
             return await _feedbackService.SendContextualMessageAsync(new FeedbackMessage($"You have successfully removed {itemName.ToLower()} from your inventory", Color.Green));
@@ -154,7 +145,7 @@ public class InventoryCommand : DungeonWorldCommandBase
     {
         var userId = GetUserId();
         
-        var character = await _characterService.GetCharacterFromUserAsync(userId);
+        var character = await characterService.GetCharacterFromUserAsync(userId);
 
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to add to its inventory. Try using /character create");
@@ -169,7 +160,7 @@ public class InventoryCommand : DungeonWorldCommandBase
         else
             character.Inventory.Items.Add(new Item { Name = "Coins", Amount = amount });
 
-        await _inventoryService.SaveInventoryAsync();
+        await inventoryService.SaveInventoryAsync();
 
         return await _feedbackService.SendContextualMessageAsync(new FeedbackMessage($"You have successfully added {amount} coins to your inventory", Color.Green));
     }
@@ -180,7 +171,7 @@ public class InventoryCommand : DungeonWorldCommandBase
     {
         var userId = GetUserId();
         
-        var character = await _characterService.GetCharacterFromUserAsync(userId);
+        var character = await characterService.GetCharacterFromUserAsync(userId);
 
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to add to its inventory. Try using /character create");
@@ -204,7 +195,7 @@ public class InventoryCommand : DungeonWorldCommandBase
         else
             return await ReplyWithErrorAsync($"You do not have any coins in your inventory");
 
-        await _inventoryService.SaveInventoryAsync();
+        await inventoryService.SaveInventoryAsync();
 
         return await _feedbackService.SendContextualMessageAsync(new FeedbackMessage($"You have successfully paid {amount} coins from your inventory", Color.Green));
     }
@@ -223,11 +214,11 @@ public class InventoryCommand : DungeonWorldCommandBase
         if (user.ID == userId)
             return await ReplyWithErrorAsync("You cannot give coins to yourself");
 
-        var character = await _characterService.GetCharacterFromUserAsync(userId);
+        var character = await characterService.GetCharacterFromUserAsync(userId);
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to give coins. Try using /character create");
 
-        var recipient = await _characterService.GetCharacterFromUserAsync(user.ID);
+        var recipient = await characterService.GetCharacterFromUserAsync(user.ID);
         if (recipient is null)
             return await ReplyWithErrorAsync($"{user.Username} does not have a character");
 
@@ -253,7 +244,7 @@ public class InventoryCommand : DungeonWorldCommandBase
         else
             recipientCoins.Amount += amount;
 
-        await _inventoryService.SaveInventoryAsync();
+        await inventoryService.SaveInventoryAsync();
 
         return await _feedbackService.SendContextualMessageAsync(new FeedbackMessage($"{character.Name} gave {amount} coins to {recipient.Name}", Color.Green));
     }

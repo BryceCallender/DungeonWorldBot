@@ -1,8 +1,8 @@
 using DungeonWorldBot.Dashboard.Models.Auth;
-using DungeonWorldBot.Dashboard.Models.Scenes;
 using DungeonWorldBot.Dashboard.Services.Encounters;
 using DungeonWorldBot.Dashboard.Services.Shared;
 using DungeonWorldBot.Data;
+using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Encounters;
 using Microsoft.AspNetCore.Mvc;
 

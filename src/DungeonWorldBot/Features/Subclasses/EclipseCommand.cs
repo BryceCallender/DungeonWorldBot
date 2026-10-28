@@ -34,29 +34,16 @@ public partial class SubclassCommand
     /// The Circle of the Eclipse's aspect. Its rolled moves are rolled with /move class.
     /// </summary>
     [Group("eclipse")]
-    public class EclipseCommand : DungeonWorldCommandBase
+    public class EclipseCommand(
+        ICommandContext context,
+        FeedbackService feedbackService,
+        ICharacterService characterService,
+        IAbilityService abilityService,
+        IResourceService resourceService,
+        ITransformationService transformationService)
+        : DungeonWorldCommandBase(context, feedbackService)
     {
         private const string ShapeshiftHold = "Shapeshift Hold";
-
-        private readonly ICharacterService _characterService;
-        private readonly IAbilityService _abilityService;
-        private readonly IResourceService _resourceService;
-        private readonly ITransformationService _transformationService;
-
-        public EclipseCommand(
-            ICommandContext context,
-            FeedbackService feedbackService,
-            ICharacterService characterService,
-            IAbilityService abilityService,
-            IResourceService resourceService,
-            ITransformationService transformationService)
-            : base(context, feedbackService)
-        {
-            _characterService = characterService;
-            _abilityService = abilityService;
-            _resourceService = resourceService;
-            _transformationService = transformationService;
-        }
 
         [Command("aspect")]
         [Description("Attune yourself to the Sunward or Moonward aspect")]
@@ -68,7 +55,7 @@ public partial class SubclassCommand
         {
             var userId = GetUserId();
 
-            var character = await _characterService.GetCharacterFromUserAsync(userId);
+            var character = await characterService.GetCharacterFromUserAsync(userId);
             if (character is null)
                 return await ReplyWithErrorAsync("No character exists. Try making one with /character create");
 
@@ -79,7 +66,7 @@ public partial class SubclassCommand
             if (current == aspect)
                 return await ReplyWithErrorAsync($"{character.Name} is already {aspect}.");
 
-            var fields = new List<IEmbedField>();
+            List<IEmbedField> fields = [];
 
             // Your first aspect is simply chosen. Changing it later has a cost.
             if (current is not null)
@@ -87,16 +74,16 @@ public partial class SubclassCommand
                 if (how == AspectChange.SpendHold)
                 {
                     var hold = Druid.Sheet.FindResource(ShapeshiftHold)!;
-                    var held = _resourceService.GetValue(character, hold);
+                    var held = resourceService.GetValue(character, hold);
                     if (held < 1)
                         return await ReplyWithErrorAsync($"{character.Name} has no {ShapeshiftHold} to spend.");
 
-                    await _resourceService.SetValueAsync(character, hold, held - 1);
-                    fields.Add(new EmbedField(ShapeshiftHold, _resourceService.Format(character, hold), IsInline: true));
+                    await resourceService.SetValueAsync(character, hold, held - 1);
+                    fields.Add(new EmbedField(ShapeshiftHold, resourceService.Format(character, hold), IsInline: true));
 
                     if (held == 1 && ShapeshiftRules.FormName(character) is { } form)
                     {
-                        await _transformationService.RevertAsync(character);
+                        await transformationService.RevertAsync(character);
                         fields.Add(new EmbedField("Natural form", $"Out of hold, {character.Name} returns from {form} to their natural form."));
                     }
                 }
@@ -109,10 +96,10 @@ public partial class SubclassCommand
                 }, IsInline: true));
             }
 
-            if (_abilityService.FindAbility(character, CircleOfTheEclipse.CurrentAspect) is { } ability)
-                await _abilityService.SetDescriptionAsync(ability, aspect.ToString());
+            if (abilityService.FindAbility(character, CircleOfTheEclipse.CurrentAspect) is { } ability)
+                await abilityService.SetDescriptionAsync(ability, aspect.ToString());
             else
-                await _abilityService.AddAbilityAsync(character, CircleOfTheEclipse.CurrentAspect, aspect.ToString(), null);
+                await abilityService.AddAbilityAsync(character, CircleOfTheEclipse.CurrentAspect, aspect.ToString(), null);
 
             var moves = CircleOfTheEclipse.AspectMoves(aspect, character.Level).ToList();
             if (moves.Count > 0)

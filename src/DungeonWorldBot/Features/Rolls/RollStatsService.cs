@@ -4,38 +4,28 @@ using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Infrastructure;
 using d20Tek.DiceNotation.Results;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 using Remora.Rest.Core;
 
 namespace DungeonWorldBot.Features.Rolls;
 
 [Scoped<IRollStatsService>]
-public class RollStatsService : IRollStatsService
+public class RollStatsService(DungeonWorldContext dungeonWorldContext, IOptions<BotSettings>? settings = null) : IRollStatsService
 {
     /// <summary>
-    /// The campaign's game chat, used unless the GameChatChannelId setting says otherwise.
+    /// The campaign's game chat, used unless <see cref="BotSettings.GameChatChannelID"/> says otherwise.
     /// </summary>
     public const ulong DefaultGameChatChannelID = 1325143775139467325;
 
-    private readonly DungeonWorldContext _dungeonWorldContext;
-
-    public RollStatsService(DungeonWorldContext dungeonWorldContext, IConfiguration? configuration = null)
-    {
-        _dungeonWorldContext = dungeonWorldContext;
-
-        // Without configuration (as in tests) there's no game chat, so nothing counts
-        if (configuration is not null)
-            GameChatChannelID = new Snowflake(configuration.GetValue<ulong?>("GameChatChannelId") ?? DefaultGameChatChannelID);
-    }
-
-    public Snowflake? GameChatChannelID { get; }
+    // Without settings (as in tests) there's no game chat, so nothing counts
+    public Snowflake? GameChatChannelID { get; } = settings is null ? null : new Snowflake(settings.Value.GameChatChannelID);
 
     public async Task RecordAsync(Snowflake messageID, Snowflake channelID, Snowflake userID, DiceResult roll, RollLabel? label = null)
     {
         if (MoveDice.From(roll) is not { } dice)
             return;
 
-        _dungeonWorldContext.Rolls.Add(new RollRecord
+        dungeonWorldContext.Rolls.Add(new RollRecord
         {
             MessageID = messageID,
             ChannelID = channelID,
@@ -49,7 +39,7 @@ public class RollStatsService : IRollStatsService
             Stat = label?.Stat,
         });
 
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
     }
 
     public async Task<int> AddMissingAsync(IReadOnlyList<RollRecord> rolls)
@@ -58,7 +48,7 @@ public class RollStatsService : IRollStatsService
             return 0;
 
         var ids = rolls.Select(r => r.MessageID).ToList();
-        var existing = await _dungeonWorldContext.Rolls
+        var existing = await dungeonWorldContext.Rolls
             .Where(r => ids.Contains(r.MessageID))
             .ToDictionaryAsync(r => r.MessageID);
 
@@ -74,21 +64,21 @@ public class RollStatsService : IRollStatsService
         }
 
         var missing = rolls.Where(r => !existing.ContainsKey(r.MessageID)).ToList();
-        _dungeonWorldContext.Rolls.AddRange(missing);
-        await _dungeonWorldContext.SaveChangesAsync();
+        dungeonWorldContext.Rolls.AddRange(missing);
+        await dungeonWorldContext.SaveChangesAsync();
 
         return missing.Count;
     }
 
     public async Task ChangeOutcomeAsync(Snowflake messageID, MoveOutcome? outcome, string reason, Snowflake changedBy)
     {
-        if (await _dungeonWorldContext.Rolls.FindAsync(messageID) is not { } roll)
+        if (await dungeonWorldContext.Rolls.FindAsync(messageID) is not { } roll)
             return;
 
         roll.ChangedOutcome = outcome;
         roll.ChangedReason = outcome is null ? null : reason;
         roll.ChangedBy = outcome is null ? null : changedBy;
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
     }
 
     public async Task<List<PlayerRollStats>> GetStatsAsync()
@@ -97,7 +87,7 @@ public class RollStatsService : IRollStatsService
         if (GameChatChannelID is not { } gameChat)
             return [];
 
-        var rolls = await _dungeonWorldContext.Rolls.AsNoTracking().Where(r => r.ChannelID == gameChat).ToListAsync();
+        var rolls = await dungeonWorldContext.Rolls.AsNoTracking().Where(r => r.ChannelID == gameChat).ToListAsync();
 
         return rolls
             .GroupBy(r => r.UserID)

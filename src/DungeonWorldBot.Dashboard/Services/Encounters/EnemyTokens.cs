@@ -1,6 +1,5 @@
 using System.Text.Json;
 using DungeonWorldBot.Dashboard.Models.Encounters;
-using DungeonWorldBot.Dashboard.Models.Scenes;
 using DungeonWorldBot.Dashboard.Services.Scenes;
 using DungeonWorldBot.Data.Entities;
 using Microsoft.AspNetCore.SignalR;

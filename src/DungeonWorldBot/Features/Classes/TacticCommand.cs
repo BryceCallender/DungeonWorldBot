@@ -22,25 +22,14 @@ public partial class ClassCommand
     /// The Battlemaster's active Tactic. Its effects are applied to their moves and damage automatically.
     /// </summary>
     [Group("tactic")]
-    public class TacticCommand : DungeonWorldCommandBase
+    public class TacticCommand(
+        ICommandContext context,
+        FeedbackService feedbackService,
+        ICharacterService characterService,
+        IAbilityService abilityService,
+        IResourceService resourceService)
+        : DungeonWorldCommandBase(context, feedbackService)
     {
-        private readonly ICharacterService _characterService;
-        private readonly IAbilityService _abilityService;
-        private readonly IResourceService _resourceService;
-
-        public TacticCommand(
-            ICommandContext context,
-            FeedbackService feedbackService,
-            ICharacterService characterService,
-            IAbilityService abilityService,
-            IResourceService resourceService)
-            : base(context, feedbackService)
-        {
-            _characterService = characterService;
-            _abilityService = abilityService;
-            _resourceService = resourceService;
-        }
-
         [Command("show")]
         [Description("See which Tactic you're in")]
         public async Task<IResult> ShowAsync(
@@ -48,8 +37,8 @@ public partial class ClassCommand
             IUser? user = null)
         {
             var character = user is not null
-                ? await _characterService.GetCharacterFromUserAsync(user.ID)
-                : await _characterService.GetCharacterFromUserAsync(GetUserId());
+                ? await characterService.GetCharacterFromUserAsync(user.ID)
+                : await characterService.GetCharacterFromUserAsync(GetUserId());
             if (character is null)
                 return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
 
@@ -100,12 +89,12 @@ public partial class ClassCommand
             var spent = string.Empty;
             if (!free)
             {
-                var gambits = _resourceService.GetValue(character, TacticRules.Gambit);
+                var gambits = resourceService.GetValue(character, TacticRules.Gambit);
                 if (gambits < 1)
                     return await ReplyWithErrorAsync($"{character.Name} has no Gambits to spend. Use free to return anyway if the GM allows it.");
 
-                await _resourceService.SetValueAsync(character, TacticRules.Gambit, gambits - 1);
-                spent = $"\n\nSpent 1 Gambit · {_resourceService.Format(character, TacticRules.Gambit)} left";
+                await resourceService.SetValueAsync(character, TacticRules.Gambit, gambits - 1);
+                spent = $"\n\nSpent 1 Gambit · {resourceService.Format(character, TacticRules.Gambit)} left";
             }
 
             await SetActiveAsync(character, fallback);
@@ -123,25 +112,25 @@ public partial class ClassCommand
         /// </summary>
         private async Task SetActiveAsync(Character character, Tactic tactic)
         {
-            var ability = _abilityService.FindAbility(character, TacticRules.ActiveTactic);
+            var ability = abilityService.FindAbility(character, TacticRules.ActiveTactic);
             if (tactic == TacticRules.Default(character))
             {
                 if (ability is not null)
-                    await _abilityService.RemoveAbilityAsync(character, ability);
+                    await abilityService.RemoveAbilityAsync(character, ability);
             }
             else if (ability is null)
             {
-                await _abilityService.AddAbilityAsync(character, TacticRules.ActiveTactic, tactic.Name, null);
+                await abilityService.AddAbilityAsync(character, TacticRules.ActiveTactic, tactic.Name, null);
             }
             else
             {
-                await _abilityService.SetDescriptionAsync(ability, tactic.Name);
+                await abilityService.SetDescriptionAsync(ability, tactic.Name);
             }
         }
 
         private async Task<(Character? Character, string? Error)> GetTacticianAsync()
         {
-            var character = await _characterService.GetCharacterFromUserAsync(GetUserId());
+            var character = await characterService.GetCharacterFromUserAsync(GetUserId());
             if (character is null)
                 return (null, NoCharacterMessage);
 

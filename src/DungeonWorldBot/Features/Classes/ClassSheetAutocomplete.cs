@@ -18,20 +18,17 @@ public readonly record struct Suggestion(string Value, string Label);
 /// Suggests class sheet names as the player types, from their own class when they have a character with a class
 /// sheet, and from every class otherwise.
 /// </summary>
-public abstract class ClassSheetAutocomplete : IAutocompleteProvider
+public abstract class ClassSheetAutocomplete(
+    ContextInjectionService? contextInjection,
+    ICharacterService? characterService)
+    : IAutocompleteProvider
 {
     // Discord shows at most 25 suggestions, each up to 100 characters
     private const int MaxSuggestions = 25;
     private const int MaxLength = 100;
 
-    private readonly ContextInjectionService? _contextInjection;
-    private readonly ICharacterService? _characterService;
-
-    protected ClassSheetAutocomplete(ContextInjectionService? contextInjection, ICharacterService? characterService)
-    {
-        _contextInjection = contextInjection;
-        _characterService = characterService;
-    }
+    private readonly ContextInjectionService? _contextInjection = contextInjection;
+    private readonly ICharacterService? _characterService = characterService;
 
     public abstract string Identity { get; }
 
@@ -106,7 +103,9 @@ public abstract class ClassSheetAutocomplete : IAutocompleteProvider
 /// <summary>
 /// Moves the player can learn: their own sheet's, plus other classes' when a move like Special Trick allows it.
 /// </summary>
-public class ClassMoveAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
+public class ClassMoveAutocomplete(
+    ContextInjectionService? contextInjection = null,
+    ICharacterService? characterService = null)
     : ClassSheetAutocomplete(contextInjection, characterService)
 {
     public const string ID = "class-move";
@@ -136,7 +135,9 @@ public class ClassMoveAutocomplete(ContextInjectionService? contextInjection = n
 /// <summary>
 /// Moves from every class sheet and subclass, for looking things up.
 /// </summary>
-public class AnyClassMoveAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
+public class AnyClassMoveAutocomplete(
+    ContextInjectionService? contextInjection = null,
+    ICharacterService? characterService = null)
     : ClassSheetAutocomplete(contextInjection, characterService)
 {
     public const string ID = "any-class-move";
@@ -171,7 +172,9 @@ public class AnyClassMoveAutocomplete(ContextInjectionService? contextInjection 
 /// <summary>
 /// Rolled moves the player can make: their own class's, their subclass's, plus any rolled moves they learned from other classes.
 /// </summary>
-public class RolledClassMoveAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
+public class RolledClassMoveAutocomplete(
+    ContextInjectionService? contextInjection = null,
+    ICharacterService? characterService = null)
     : ClassSheetAutocomplete(contextInjection, characterService)
 {
     public const string ID = "rolled-class-move";
@@ -191,7 +194,9 @@ public class RolledClassMoveAutocomplete(ContextInjectionService? contextInjecti
         Labelled(ClassSheetLibrary.All, s => s.AllMoves.Where(m => m.Roll is not null).Select(m => m.Name));
 }
 
-public class ClassResourceAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
+public class ClassResourceAutocomplete(
+    ContextInjectionService? contextInjection = null,
+    ICharacterService? characterService = null)
     : ClassSheetAutocomplete(contextInjection, characterService)
 {
     public const string ID = "class-resource";

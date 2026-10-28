@@ -87,7 +87,7 @@ public static class EnemySheet
 
     private static string Details(Enemy enemy)
     {
-        var lines = new List<string> { Summary(enemy) };
+        List<string> lines = [Summary(enemy)];
         if (enemy.Instinct is not null)
             lines.Add($"*Instinct:* {enemy.Instinct}");
         if (enemy.Moves is not null)
@@ -102,12 +102,12 @@ public static class EnemySheet
 
     public static IReadOnlyList<IEmbedField> Fields(MonsterTemplate monster)
     {
-        var fields = new List<IEmbedField>
-        {
+        List<IEmbedField> fields =
+        [
             new EmbedField("HP", monster.MaxHP.ToString(), true),
             new EmbedField("Armor", monster.Armor.ToString(), true),
             new EmbedField("Damage", monster.Damage ?? "—", true),
-        };
+        ];
 
         if (monster.Tags is not null)
             fields.Add(new EmbedField("Tags", monster.Tags));

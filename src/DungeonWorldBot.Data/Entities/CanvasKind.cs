@@ -1,4 +1,4 @@
-namespace DungeonWorldBot.Dashboard.Models.Scenes;
+namespace DungeonWorldBot.Data.Entities;
 
 public enum CanvasKind
 {

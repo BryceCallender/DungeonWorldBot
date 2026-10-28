@@ -69,34 +69,23 @@ public record MoveResolution(Character Character, MoveDefinition Move, Embed Emb
 /// Check <see cref="TacticRules.WhyCannotMake"/> first: this rolls whatever it's given.
 /// </remarks>
 [Scoped]
-public class MoveResolver
+public class MoveResolver(IDiceRoller diceRoller, IDamageService damageService, IEncounterService encounterService)
 {
-    private readonly IDiceRoller _diceRoller;
-    private readonly IDamageService _damageService;
-    private readonly IEncounterService _encounterService;
-
-    public MoveResolver(IDiceRoller diceRoller, IDamageService damageService, IEncounterService encounterService)
-    {
-        _diceRoller = diceRoller;
-        _damageService = damageService;
-        _encounterService = encounterService;
-    }
-
     public async Task<MoveResolution> ResolveAsync(Character character, MoveDefinition move, MoveInput input)
     {
         var debility = input.Stat is { } rolled ? DebilityRules.RollPenalty(character, rolled) : null;
         var kind = input.Kind ?? (input.Stat is not null ? RollKind.Stat : null);
-        var subclassBonuses = kind is { } rollKind ? await _damageService.BonusesAsync(character, rollKind, input.Stat) : [];
+        var subclassBonuses = kind is { } rollKind ? await damageService.BonusesAsync(character, rollKind, input.Stat) : [];
         if (TacticRules.RollBonus(character, move.Name) is not 0 and var tacticBonus)
             subclassBonuses = subclassBonuses.Append(new RollBonus($"{TacticRules.Current(character)!.Name} Tactics", tacticBonus)).ToList();
-        var roll = MoveRoller.Roll(_diceRoller, input.Modifier + input.Bonus + (debility?.Penalty ?? 0) + subclassBonuses.Sum(b => b.Amount));
+        var roll = MoveRoller.Roll(diceRoller, input.Modifier + input.Bonus + (debility?.Penalty ?? 0) + subclassBonuses.Sum(b => b.Amount));
         var outcome = TacticRules.Outcome(character, move.Name, roll.Outcome);
 
-        var fields = new List<IEmbedField>();
+        List<IEmbedField> fields = [];
 
         if (input.ModifierLabel is not null || input.Bonus != 0 || debility is not null || subclassBonuses.Count > 0)
         {
-            var parts = new List<string>();
+            List<string> parts = [];
             if (input.ModifierLabel is not null)
                 parts.Add($"{input.ModifierLabel} {FormatSigned(input.Modifier)}");
             if (debility is { } penalty)
@@ -145,14 +134,14 @@ public class MoveResolver
 
     private async Task<DamageDealt> RollDamageAsync(Character character, string move, string? target, int extra)
     {
-        if (await _damageService.RollAsync(character, move, extra) is not { } damage)
+        if (await damageService.RollAsync(character, move, extra) is not { } damage)
             return new DamageDealt([new EmbedField("Damage", $"Couldn't roll `{character.DamageModifier ?? character.Class.Damage}`. Fix it with /character damage-dice")]);
 
         var fields = new List<IEmbedField> { new EmbedField("Damage", $"{damage.Expression} → **{damage.Total}**{damage.Details}") };
         if (string.IsNullOrWhiteSpace(target))
             return new DamageDealt(fields, Result: $"💥 {damage.Total} damage");
 
-        var hit = await EnemyHit.ApplyAsync(_encounterService, target, damage.Total);
+        var hit = await EnemyHit.ApplyAsync(encounterService, target, damage.Total);
         fields.Add(hit.Field);
         return new DamageDealt(fields, hit.Target, hit.Result ?? $"💥 {damage.Total} damage", hit.Taken);
     }

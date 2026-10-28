@@ -10,19 +10,12 @@ namespace DungeonWorldBot.Dashboard.Services.Live;
 /// catches every committed write in any journal mode, and only once it's committed, so a refresh never lands halfway
 /// through one. Each file is checked too, in case it's swapped for another copy, which needs a fresh connection.
 /// </remarks>
-public class DatabaseWatcher : BackgroundService
+public class DatabaseWatcher(IEnumerable<string> databasePaths, ILogger<DatabaseWatcher> logger) : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(1);
 
-    private readonly IReadOnlyList<string> _paths;
-    private readonly ILogger<DatabaseWatcher> _logger;
+    private readonly IReadOnlyList<string> _paths = databasePaths.ToList();
     private TaskCompletionSource _next = NewSignal();
-
-    public DatabaseWatcher(IEnumerable<string> databasePaths, ILogger<DatabaseWatcher> logger)
-    {
-        _paths = databasePaths.ToList();
-        _logger = logger;
-    }
 
     /// <summary>
     /// Completes the next time the database changes.
@@ -80,7 +73,7 @@ public class DatabaseWatcher : BackgroundService
         catch (SqliteException e)
         {
             // Missing or locked for a moment: try again next tick
-            _logger.LogDebug(e, "Couldn't check {Path} for changes", watched.Path);
+            logger.LogDebug(e, "Couldn't check {Path} for changes", watched.Path);
             watched.Connection?.Dispose();
             watched.Connection = null;
             watched.LastVersion = null;

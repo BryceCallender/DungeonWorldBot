@@ -4,6 +4,7 @@ using DungeonWorldBot.Dashboard.Models.Encounters;
 using DungeonWorldBot.Dashboard.Models.Scenes;
 using DungeonWorldBot.Dashboard.Services.Encounters;
 using DungeonWorldBot.Data;
+using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Encounters;
 using Microsoft.AspNetCore.SignalR;
 

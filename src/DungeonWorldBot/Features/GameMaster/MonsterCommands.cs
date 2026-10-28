@@ -18,19 +18,14 @@ public partial class DmCommand
     /// Monsters written up once, to put into fights with /dm encounter add.
     /// </summary>
     [Group("monster")]
-    public class MonsterCommands : DungeonWorldCommandBase
+    public class MonsterCommands(
+        ICommandContext context,
+        FeedbackService feedbackService,
+        IEncounterService encounterService,
+        IGameMasterService gameMaster)
+        : DungeonWorldCommandBase(context, feedbackService)
     {
         private const string MonsterDescription = "The monster";
-
-        private readonly IEncounterService _encounterService;
-        private readonly IGameMasterService _gameMaster;
-
-        public MonsterCommands(ICommandContext context, FeedbackService feedbackService, IEncounterService encounterService, IGameMasterService gameMaster)
-            : base(context, feedbackService)
-        {
-            _encounterService = encounterService;
-            _gameMaster = gameMaster;
-        }
 
         [Command("save")]
         [Description("Write up a monster, or change one already saved. Only what you fill in changes on an existing one")]
@@ -56,13 +51,13 @@ public partial class DmCommand
             [Description("Anything else worth remembering. " + ClearHint)]
             string? notes = null)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
             if (Text(name) is not { } trimmed)
                 return await ReplyWithErrorAsync("Give the monster a name.");
 
-            var monster = await _encounterService.FindMonsterAsync(trimmed);
+            var monster = await encounterService.FindMonsterAsync(trimmed);
             var isNew = monster is null;
             if (monster is null)
             {
@@ -82,7 +77,7 @@ public partial class DmCommand
             monster.Moves = Change(monster.Moves, moves);
             monster.Notes = Change(monster.Notes, notes);
 
-            await _encounterService.SaveMonsterAsync(monster);
+            await encounterService.SaveMonsterAsync(monster);
 
             return await ReplyAsync(isNew ? "Monster Saved!" : "Monster Updated!", monster.Name, EnemySheet.Fields(monster));
         }
@@ -96,14 +91,14 @@ public partial class DmCommand
             [Description("What to save it as, if not its name in the fight")]
             string? name = null)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
-            if (await _encounterService.FindEnemyAsync(enemy) is not { } source)
+            if (await encounterService.FindEnemyAsync(enemy) is not { } source)
                 return await ReplyWithErrorAsync(EncounterCommands.NotFound(enemy));
 
             var saveAs = Text(name) ?? source.Name;
-            if (await _encounterService.FindMonsterAsync(saveAs) is { } existing)
+            if (await encounterService.FindMonsterAsync(saveAs) is { } existing)
                 return await ReplyWithErrorAsync($"{existing.Name} is already saved. Change it with /dm monster save, or pick another name.");
 
             var monster = new MonsterTemplate
@@ -117,7 +112,7 @@ public partial class DmCommand
                 Moves = source.Moves,
                 Notes = source.Notes,
             };
-            await _encounterService.SaveMonsterAsync(monster);
+            await encounterService.SaveMonsterAsync(monster);
 
             return await ReplyAsync("Monster Saved!", monster.Name, EnemySheet.Fields(monster));
         }
@@ -126,10 +121,10 @@ public partial class DmCommand
         [Description("List the saved monsters")]
         public async Task<IResult> ListAsync()
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
-            var monsters = await _encounterService.GetMonstersAsync();
+            var monsters = await encounterService.GetMonstersAsync();
             if (monsters.Count == 0)
                 return await ReplyWithErrorAsync("No monsters saved yet. Write one up with /dm monster save.");
 
@@ -148,10 +143,10 @@ public partial class DmCommand
             [AutocompleteProvider(MonsterAutocomplete.ID)]
             string name)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
-            if (await _encounterService.FindMonsterAsync(name) is not { } monster)
+            if (await encounterService.FindMonsterAsync(name) is not { } monster)
                 return await ReplyWithErrorAsync(NotFound(name));
 
             return await ReplyAsync(monster.Name, string.Empty, EnemySheet.Fields(monster));
@@ -164,13 +159,13 @@ public partial class DmCommand
             [AutocompleteProvider(MonsterAutocomplete.ID)]
             string name)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
-            if (await _encounterService.FindMonsterAsync(name) is not { } monster)
+            if (await encounterService.FindMonsterAsync(name) is not { } monster)
                 return await ReplyWithErrorAsync(NotFound(name));
 
-            await _encounterService.RemoveMonsterAsync(monster);
+            await encounterService.RemoveMonsterAsync(monster);
 
             return await ReplyAsync("Monster Deleted", $"{monster.Name} is no longer saved.");
         }
@@ -178,6 +173,6 @@ public partial class DmCommand
         private static string NotFound(string name) => $"There's no saved monster called {name}. See /dm monster list";
 
         private async Task<Result> ReplyNotGameMasterAsync() =>
-            await ReplyWithErrorAsync($"Only someone with the {_gameMaster.RoleName} role can do that.");
+            await ReplyWithErrorAsync($"Only someone with the {gameMaster.RoleName} role can do that.");
     }
 }

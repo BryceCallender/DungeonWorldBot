@@ -10,24 +10,16 @@ using d20Tek.DiceNotation.Results;
 namespace DungeonWorldBot.Features.Combat;
 
 [Scoped<IDamageService>]
-public class DamageService : IDamageService
+public class DamageService(
+    ICharacterService characterService,
+    IDiceRoller diceRoller,
+    IGearService gearService,
+    IArmorService armorService)
+    : IDamageService
 {
     public const string ExtraOption = "extra-damage";
     public const string ExtraDescription = "Extra damage the bot isn't tracking, added to the roll (e.g. 2, or -1)";
     public const string ExtraSource = "Extra";
-
-    private readonly ICharacterService _characterService;
-    private readonly IDiceRoller _diceRoller;
-    private readonly IGearService _gearService;
-    private readonly IArmorService _armorService;
-
-    public DamageService(ICharacterService characterService, IDiceRoller diceRoller, IGearService gearService, IArmorService armorService)
-    {
-        _characterService = characterService;
-        _diceRoller = diceRoller;
-        _gearService = gearService;
-        _armorService = armorService;
-    }
 
     public async Task<DamageRoll?> RollAsync(Character character, string move, int extra = 0)
     {
@@ -35,16 +27,16 @@ public class DamageService : IDamageService
         var baseDice = character.DamageModifier ?? character.Class.Damage;
         var tactic = TacticRules.ExtraDamage(character);
         var expression = DiceHelper.AddModifier(tactic is not null ? $"{baseDice}+{tactic}" : baseDice, bonuses.Sum(b => b.Amount));
-        if (!_diceRoller.TryRoll(expression, out var dice))
+        if (!diceRoller.TryRoll(expression, out var dice))
             return null;
 
-        var notes = new List<string>();
+        List<string> notes = [];
         if (tactic is not null)
             notes.Add($"{TacticRules.Current(character)!.Name} Tactics: +{tactic} damage");
 
         // Reckless Aggression: in Aggressive Tactics, roll twice and keep the better. Gear applies once, to the kept roll,
         // so effects like counters don't trigger for the discarded one
-        if (TacticRules.RollsDamageTwice(character) && _diceRoller.TryRoll(expression, out var second))
+        if (TacticRules.RollsDamageTwice(character) && diceRoller.TryRoll(expression, out var second))
         {
             var kept = second.Value > dice.Value ? second : dice;
             notes.Add($"{TacticRules.RecklessAggression}: rolled {dice.Value} and {second.Value}, kept **{kept.Value}**");
@@ -58,10 +50,10 @@ public class DamageService : IDamageService
     }
 
     public Task<GearDamage> ApplyGearAsync(Character character, string move, IReadOnlyList<(int Sides, int Value)> dice) =>
-        _gearService.ApplyToDamageAsync(character, move, dice);
+        gearService.ApplyToDamageAsync(character, move, dice);
 
     public async Task<IReadOnlyList<RollBonus>> BonusesAsync(Character character, RollKind kind, StatType? stat = null) =>
-        SubclassLibrary.Bonuses(character, await _characterService.GetCharacterAbilitiesAsync(), kind, stat);
+        SubclassLibrary.Bonuses(character, await characterService.GetCharacterAbilitiesAsync(), kind, stat);
 
     public async Task<IReadOnlyList<RollBonus>> DamageBonusesAsync(Character character, int extra = 0)
     {
@@ -77,14 +69,14 @@ public class DamageService : IDamageService
     {
         // Reckless Tactics: the Battlemaster takes +1d4 from every hit
         string? reckless = null;
-        if (amount > 0 && TacticRules.ExtraDamage(character) is { } extra && _diceRoller.TryRoll(extra, out var extraRoll))
+        if (amount > 0 && TacticRules.ExtraDamage(character) is { } extra && diceRoller.TryRoll(extra, out var extraRoll))
         {
             amount += extraRoll.Value;
             reckless = $"{TacticRules.Current(character)!.Name} Tactics: +{extraRoll.Value} ({extra}) damage taken";
         }
 
         // Modifiers can push a roll below zero ("1d4-3"), which shouldn't heal anyone
-        return new PlayerHit(await _armorService.TakeDamageAsync(character, amount, type, piercing), reckless);
+        return new PlayerHit(await armorService.TakeDamageAsync(character, amount, type, piercing), reckless);
     }
 
     /// <summary>

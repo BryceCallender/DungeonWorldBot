@@ -8,22 +8,13 @@ using Remora.Rest.Core;
 namespace DungeonWorldBot.Features.Encounters;
 
 [Scoped<ISpotlightService>]
-public class SpotlightService : ISpotlightService
+public class SpotlightService(IFightLogService fightLog, INpcService npcService) : ISpotlightService
 {
     private const string PlainRoll = "Roll";
 
-    private readonly IFightLogService _fightLog;
-    private readonly INpcService _npcService;
-
-    public SpotlightService(IFightLogService fightLog, INpcService npcService)
-    {
-        _fightLog = fightLog;
-        _npcService = npcService;
-    }
-
     public async Task<Spotlight> GetAsync(Encounter encounter, IEnumerable<Character> party)
     {
-        var fight = await _fightLog.GetAsync(encounter);
+        var fight = await fightLog.GetAsync(encounter);
         var log = fight.Actions;
         var rolls = fight.Rolls;
         var logged = fight.Logged;
@@ -49,7 +40,7 @@ public class SpotlightService : ISpotlightService
             .Where(a => InFight(encounter, a))
             .ToList();
 
-        var allies = (await _npcService.GetAllAsync())
+        var allies = (await npcService.GetAllAsync())
             .Where(n => n.CurrentHP > 0)
             .Select(n => new Actor(n.Name, null, log.Where(a => a.NpcID == n.ID).Select(a => FromLog(a, a.At, missed: false)).ToList(), n.ID))
             .Where(a => InFight(encounter, a))

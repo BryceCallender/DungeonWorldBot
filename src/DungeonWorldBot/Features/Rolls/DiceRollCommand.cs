@@ -19,33 +19,23 @@ using Remora.Results;
 namespace DungeonWorldBot.Features.Rolls;
 
 [Group("roll")]
-public class DiceRollCommand : DungeonWorldCommandBase
+public class DiceRollCommand(
+    ICommandContext context,
+    FeedbackService feedbackService,
+    ICharacterService characterService,
+    IDiceRoller diceRoller,
+    IRollStatsService rollStatsService,
+    IDamageService damageService)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
-    private readonly ICharacterService _characterService;
-    private readonly IDiceRoller _diceRoller;
-    private readonly IRollStatsService _rollStatsService;
-    private readonly IDamageService _damageService;
     
-    public DiceRollCommand(
-        ICommandContext context,
-        FeedbackService feedbackService,
-        ICharacterService characterService,
-        IDiceRoller diceRoller,
-        IRollStatsService rollStatsService,
-        IDamageService damageService)
-        : base(context, feedbackService)
-    {
-        _characterService = characterService;
-        _diceRoller = diceRoller;
-        _rollStatsService = rollStatsService;
-        _damageService = damageService;
-    }
+
     
     [Command("die")]
     [Description("Roll a dice like d6 or 2d6. Defaults to a 2d6")]
     public async Task<IResult> RollDiceAsync(string value = "2d6")
     {
-        if (!_diceRoller.TryRoll(value, out var result))
+        if (!diceRoller.TryRoll(value, out var result))
             return await ReplyWithErrorAsync($"`{value}` is not a valid dice roll.");
 
         return await ReplyWithRoll(result);
@@ -57,7 +47,7 @@ public class DiceRollCommand : DungeonWorldCommandBase
     {
         var userID = GetUserId();
     
-        var character = await _characterService.GetCharacterFromUserAsync(userID);
+        var character = await characterService.GetCharacterFromUserAsync(userID);
     
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to roll on stats. Try using /character create");
@@ -68,12 +58,12 @@ public class DiceRollCommand : DungeonWorldCommandBase
 
         // Everything that changes the roll, like /move: the stat's debility and subclass bonuses (a Boon of Aptitude or
         // its Echo from a party member)
-        var bonuses = new List<RollBonus> { new(statType.ToString().ToUpper(), stat.Modifier) };
+        List<RollBonus> bonuses = [new(statType.ToString().ToUpper(), stat.Modifier)];
         if (DebilityRules.RollPenalty(character, statType) is { } penalty)
             bonuses.Add(new RollBonus(penalty.Debility.ToString(), penalty.Penalty));
-        bonuses.AddRange(await _damageService.BonusesAsync(character, RollKind.Stat, statType));
+        bonuses.AddRange(await damageService.BonusesAsync(character, RollKind.Stat, statType));
 
-        if (!_diceRoller.TryRoll(DiceHelper.AddModifier(value, bonuses.Sum(b => b.Amount)), out var result))
+        if (!diceRoller.TryRoll(DiceHelper.AddModifier(value, bonuses.Sum(b => b.Amount)), out var result))
             return await ReplyWithErrorAsync($"`{value}` is not a valid dice roll.");
 
         return await ReplyWithRoll(result, statType.ToString(), RolledWith(bonuses));
@@ -85,25 +75,25 @@ public class DiceRollCommand : DungeonWorldCommandBase
     {
         var userID = GetUserId();
         
-        var character = await _characterService.GetCharacterFromUserAsync(userID);
+        var character = await characterService.GetCharacterFromUserAsync(userID);
         
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to roll for damage. Try using /character create");
     
         var damageDice = character.DamageModifier ?? character.Class.Damage;
-        var bonuses = await _damageService.DamageBonusesAsync(character);
+        var bonuses = await damageService.DamageBonusesAsync(character);
 
         // "2", "+2", "-1" or "d4": anything without a sign is added
         modifiers = modifiers.Trim();
         var extra = modifiers.Length > 0 && modifiers[0] is not ('+' or '-') ? $"+{modifiers}" : modifiers;
         var rollString = DiceHelper.AddModifier(damageDice, bonuses.Sum(b => b.Amount)) + extra;
         
-        if (!_diceRoller.TryRoll(rollString, out var result))
+        if (!diceRoller.TryRoll(rollString, out var result))
             return await ReplyWithErrorAsync($"`{rollString}` is not a valid dice roll.");
 
         // Gear that changes any damage (like a Sapphire reroll) still applies. It isn't for a particular move, so gear
         // only used for some moves doesn't.
-        var gear = await _damageService.ApplyGearAsync(character, string.Empty, DamageService.DamageDice(result));
+        var gear = await damageService.ApplyGearAsync(character, string.Empty, DamageService.DamageDice(result));
 
         var parts = bonuses.Select(b => $"{b.Source} {FormatSigned(b.Amount)}").Prepend(damageDice).ToList();
         if (modifiers.Length > 0)
@@ -126,7 +116,7 @@ public class DiceRollCommand : DungeonWorldCommandBase
     {
         var outcome = MoveRoller.OutcomeOf(roll);
 
-        var fields = new List<IEmbedField>();
+        List<IEmbedField> fields = [];
         if (rolledWith is not null)
             fields.Add(rolledWith);
         if (outcome is { } band)
@@ -141,7 +131,7 @@ public class DiceRollCommand : DungeonWorldCommandBase
     
         var reply = await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);
         if (reply.IsSuccess && _context.TryGetUserID(out var userID) && _context.TryGetChannelID(out var channelID))
-            await _rollStatsService.RecordAsync(reply.Entity.ID, channelID, userID, roll, RollLabel.Of(embed));
+            await rollStatsService.RecordAsync(reply.Entity.ID, channelID, userID, roll, RollLabel.Of(embed));
 
         return reply;
     }

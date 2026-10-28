@@ -15,25 +15,14 @@ namespace DungeonWorldBot.Features.Encounters;
 /// The fight as the players see it. The DM runs it with /dm encounter.
 /// </summary>
 [Group("encounter")]
-public class EncounterCommand : DungeonWorldCommandBase
+public class EncounterCommand(
+    ICommandContext context,
+    FeedbackService feedbackService,
+    IEncounterService encounterService,
+    ISpotlightService spotlightService,
+    ICharacterService characterService)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
-    private readonly IEncounterService _encounterService;
-    private readonly ISpotlightService _spotlightService;
-    private readonly ICharacterService _characterService;
-
-    public EncounterCommand(
-        ICommandContext context,
-        FeedbackService feedbackService,
-        IEncounterService encounterService,
-        ISpotlightService spotlightService,
-        ICharacterService characterService)
-        : base(context, feedbackService)
-    {
-        _encounterService = encounterService;
-        _spotlightService = spotlightService;
-        _characterService = characterService;
-    }
-
     private const string NoFight = "No fight is going on.";
     private const string FightDescription = "Which fight, when there's more than one going on. Yours, if you leave it blank";
 
@@ -62,9 +51,9 @@ public class EncounterCommand : DungeonWorldCommandBase
         if (picked.Encounter is not { } encounter)
             return await ReplyWithErrorAsync(picked.Error!);
 
-        var spotlight = await _spotlightService.GetAsync(encounter, await _characterService.GetCharactersAsync());
+        var spotlight = await spotlightService.GetAsync(encounter, await characterService.GetCharactersAsync());
 
-        var fields = new List<IEmbedField>();
+        List<IEmbedField> fields = [];
         if (spotlight.Party.Count > 0)
             fields.Add(new EmbedField("Party", Truncate(string.Join('\n', spotlight.Party.Select(Line)), 1024)));
         if (spotlight.Allies.Count > 0)
@@ -83,10 +72,10 @@ public class EncounterCommand : DungeonWorldCommandBase
     /// </summary>
     private async Task<FightChoice> PickAsync(string? fight)
     {
-        var yours = string.IsNullOrWhiteSpace(fight) && await _characterService.GetCharacterFromUserAsync(GetUserId()) is { } character
-            ? await _encounterService.GetForAsync(character.ID)
+        var yours = string.IsNullOrWhiteSpace(fight) && await characterService.GetCharacterFromUserAsync(GetUserId()) is { } character
+            ? await encounterService.GetForAsync(character.ID)
             : null;
-        return await FightChoice.PickAsync(_encounterService, fight, NoFight, yours);
+        return await FightChoice.PickAsync(encounterService, fight, NoFight, yours);
     }
 
     /// <summary>

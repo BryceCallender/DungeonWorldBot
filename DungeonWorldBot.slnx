@@ -1,0 +1,11 @@
+<Solution>
+  <Configurations>
+    <Platform Name="Any CPU" />
+    <Platform Name="x64" />
+    <Platform Name="x86" />
+  </Configurations>
+  <Project Path="src/DungeonWorldBot.Dashboard/DungeonWorldBot.Dashboard.csproj" />
+  <Project Path="src/DungeonWorldBot.Data/DungeonWorldBot.Data.csproj" />
+  <Project Path="src/DungeonWorldBot/DungeonWorldBot.csproj" />
+  <Project Path="tests/DungeonWorldBot.Tests/DungeonWorldBot.Tests.csproj" />
+</Solution>

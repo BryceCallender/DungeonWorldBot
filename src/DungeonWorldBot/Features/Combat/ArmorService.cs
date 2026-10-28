@@ -8,15 +8,8 @@ using Remora.Rest.Core;
 namespace DungeonWorldBot.Features.Combat;
 
 [Scoped<IArmorService>]
-public class ArmorService : IArmorService
+public class ArmorService(DungeonWorldContext dungeonWorldContext) : IArmorService
 {
-    private readonly DungeonWorldContext _dungeonWorldContext;
-
-    public ArmorService(DungeonWorldContext dungeonWorldContext)
-    {
-        _dungeonWorldContext = dungeonWorldContext;
-    }
-
     public async Task<DamageTaken> TakeDamageAsync(Character character, int damage, DamageType type, int piercing = 0)
     {
         damage = Math.Max(0, damage);
@@ -27,7 +20,7 @@ public class ArmorService : IArmorService
         // Armor that lasts until hit still counts against the hit that breaks it
         var broken = damage > 0 ? Remove(character, b => b.Duration == ArmorDuration.UntilHit) : [];
 
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
         return new DamageTaken(damage, type, armor, piercing, taken, broken);
     }
 
@@ -46,45 +39,44 @@ public class ArmorService : IArmorService
                 break;
         }
 
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
     }
 
     public async Task AddBonusAsync(Character character, string source, ArmorType type, int amount, ArmorDuration duration)
     {
-        character.ArmorBonuses ??= new List<ArmorBonus>();
+        character.ArmorBonuses ??= [];
         character.ArmorBonuses.Add(new ArmorBonus { Source = source, Type = type, Amount = amount, Duration = duration });
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
     }
 
     public async Task<IReadOnlyList<ArmorBonus>> RemoveBonusesAsync(Character character, string? source = null)
     {
         var removed = Remove(character, b => source is null || string.Equals(b.Source, source.Trim(), StringComparison.OrdinalIgnoreCase));
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
         return removed;
     }
 
     public async Task<IReadOnlyList<ArmorBonus>> EndFightAsync(Character character)
     {
         var removed = Remove(character, b => b.Duration != ArmorDuration.UntilRemoved);
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
         return removed;
     }
 
     public async Task<IReadOnlyList<(string Name, IReadOnlyList<ArmorBonus> Removed)>> EndFightForAllAsync() =>
-        await EndFightForAsync(await _dungeonWorldContext.Characters.Include(c => c.ArmorBonuses).ToListAsync());
+        await EndFightForAsync(await dungeonWorldContext.Characters.Include(c => c.ArmorBonuses).ToListAsync());
 
     public async Task<IReadOnlyList<(string Name, IReadOnlyList<ArmorBonus> Removed)>> EndFightForAsync(IReadOnlyCollection<Snowflake> characters)
     {
         var ids = characters.ToHashSet();
         // Few enough to sort out here, which saves teaching SQLite to compare Discord IDs
-        var all = await _dungeonWorldContext.Characters.Include(c => c.ArmorBonuses).ToListAsync();
+        var all = await dungeonWorldContext.Characters.Include(c => c.ArmorBonuses).ToListAsync();
         return await EndFightForAsync(all.Where(c => ids.Contains(c.ID)).ToList());
     }
 
     private async Task<IReadOnlyList<(string Name, IReadOnlyList<ArmorBonus> Removed)>> EndFightForAsync(List<Character> characters)
     {
-
-        var cleared = new List<(string Name, IReadOnlyList<ArmorBonus> Removed)>();
+        List<(string Name, IReadOnlyList<ArmorBonus> Removed)> cleared = [];
         foreach (var character in characters)
         {
             var removed = Remove(character, b => b.Duration != ArmorDuration.UntilRemoved);
@@ -92,7 +84,7 @@ public class ArmorService : IArmorService
                 cleared.Add((character.Name, removed));
         }
 
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
         return cleared;
     }
 
@@ -102,7 +94,7 @@ public class ArmorService : IArmorService
         foreach (var bonus in removed)
         {
             character.ArmorBonuses!.Remove(bonus);
-            _dungeonWorldContext.Remove(bonus);
+            dungeonWorldContext.Remove(bonus);
         }
 
         return removed;

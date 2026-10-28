@@ -19,30 +19,15 @@ namespace DungeonWorldBot.Dashboard.Services.Party;
 /// <summary>
 /// Reads the party out of the bot's database and works out what the bot would show for each character.
 /// </summary>
-public class PartyReader
+public class PartyReader(
+    ICharacterService characterService,
+    IResourceService resourceService,
+    ILevelingService levelingService,
+    INpcService npcService,
+    IEncounterService encounterService)
 {
-    private readonly ICharacterService _characterService;
-    private readonly IResourceService _resourceService;
-    private readonly ILevelingService _levelingService;
-    private readonly INpcService _npcService;
-    private readonly IEncounterService _encounterService;
-
-    public PartyReader(
-        ICharacterService characterService,
-        IResourceService resourceService,
-        ILevelingService levelingService,
-        INpcService npcService,
-        IEncounterService encounterService)
-    {
-        _characterService = characterService;
-        _resourceService = resourceService;
-        _levelingService = levelingService;
-        _npcService = npcService;
-        _encounterService = encounterService;
-    }
-
     public async Task<IReadOnlyList<CharacterView>> GetPartyAsync() =>
-        (await _characterService.GetCharactersAsync())
+        (await characterService.GetCharactersAsync())
             .OrderBy(c => c.Name)
             .Select(Describe)
             .ToList();
@@ -54,7 +39,7 @@ public class PartyReader
     {
         try
         {
-            return await _npcService.GetAllAsync();
+            return await npcService.GetAllAsync();
         }
         catch (SqliteException e) when (e.Message.Contains("no such table"))
         {
@@ -71,7 +56,7 @@ public class PartyReader
     {
         try
         {
-            return await _encounterService.GetOnSceneAsync(sceneID);
+            return await encounterService.GetOnSceneAsync(sceneID);
         }
         catch (SqliteException e) when (e.Message.Contains("no such table") || e.Message.Contains("no such column"))
         {
@@ -92,7 +77,7 @@ public class PartyReader
             : party.FirstOrDefault(c => c.ID == nameOrId || c.Slug == Lookup.Slug(nameOrId));
 
     public async Task<CharacterView?> GetCharacterAsync(ulong id) =>
-        await _characterService.GetCharacterFromUserAsync(new Snowflake(id)) is { } character ? Describe(character) : null;
+        await characterService.GetCharacterFromUserAsync(new Snowflake(id)) is { } character ? Describe(character) : null;
 
     private CharacterView Describe(Character character)
     {
@@ -120,7 +105,7 @@ public class PartyReader
             character.DamageModifier ?? character.Class.Damage,
             Stats(character),
             Armor(character),
-            _levelingService.GetStatPoints(character),
+            levelingService.GetStatPoints(character),
             Resources(character, sheet, known, gear),
             subclass is null ? null : DescribeSubclass(character, subclass, known),
             SpellBooks(character, spells),
@@ -169,7 +154,7 @@ public class PartyReader
 
         return own.Concat(casting).Concat(counters)
             .DistinctBy(r => r.Name, StringComparer.OrdinalIgnoreCase)
-            .Select(r => new ResourceLine(r.Name, r.Summary, _resourceService.GetValue(character, r), _resourceService.GetMax(character, r)))
+            .Select(r => new ResourceLine(r.Name, r.Summary, resourceService.GetValue(character, r), resourceService.GetMax(character, r)))
             .ToList();
     }
 
@@ -198,7 +183,7 @@ public class PartyReader
             .Select(a => new SpellBook(
                 a.List,
                 a.GrantedBy,
-                _resourceService.GetValue(character, a.LevelResource),
+                resourceService.GetValue(character, a.LevelResource),
                 SpellCasting.LevelsUsed(known, a.List),
                 known.Where(s => s.List == a.List).OrderBy(s => s.Level).ThenBy(s => s.Name).ToList()))
             .ToList();

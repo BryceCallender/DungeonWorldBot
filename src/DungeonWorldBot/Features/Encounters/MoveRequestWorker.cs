@@ -16,7 +16,7 @@ namespace DungeonWorldBot.Features.Encounters;
 /// <remarks>
 /// Each is marked taken before it's rolled, so a move is never made twice, even if something goes wrong partway.
 /// </remarks>
-public class MoveRequestWorker : BackgroundService
+public class MoveRequestWorker(IServiceScopeFactory scopes, ILogger<MoveRequestWorker> logger) : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(1);
 
@@ -26,15 +26,6 @@ public class MoveRequestWorker : BackgroundService
     public static readonly TimeSpan GiveUpAfter = TimeSpan.FromMinutes(1);
 
     public const string TooLate = "The bot wasn't around to roll it in time. Try again.";
-
-    private readonly IServiceScopeFactory _scopes;
-    private readonly ILogger<MoveRequestWorker> _logger;
-
-    public MoveRequestWorker(IServiceScopeFactory scopes, ILogger<MoveRequestWorker> logger)
-    {
-        _scopes = scopes;
-        _logger = logger;
-    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -51,7 +42,7 @@ public class MoveRequestWorker : BackgroundService
             catch (Exception e)
             {
                 // The database busy or mid-migration: the next look will likely do
-                _logger.LogWarning(e, "Couldn't check for moves made on the dashboard");
+                logger.LogWarning(e, "Couldn't check for moves made on the dashboard");
             }
 
             await Task.Delay(Interval, stoppingToken).ContinueWith(_ => { }, CancellationToken.None);
@@ -61,7 +52,7 @@ public class MoveRequestWorker : BackgroundService
     private async Task RollWaitingAsync(CancellationToken ct)
     {
         List<int> waiting;
-        await using (var scope = _scopes.CreateAsyncScope())
+        await using (var scope = scopes.CreateAsyncScope())
         {
             waiting = await scope.ServiceProvider.GetRequiredService<DungeonWorldContext>().MoveRequests
                 .Where(r => r.ResolvedAt == null)
@@ -77,7 +68,7 @@ public class MoveRequestWorker : BackgroundService
 
     private async Task RollAsync(int id, CancellationToken ct)
     {
-        await using var scope = _scopes.CreateAsyncScope();
+        await using var scope = scopes.CreateAsyncScope();
         var services = scope.ServiceProvider;
         var context = services.GetRequiredService<DungeonWorldContext>();
 
@@ -113,7 +104,7 @@ public class MoveRequestWorker : BackgroundService
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
-            _logger.LogWarning(e, "Couldn't roll move {ID} made on the dashboard", id);
+            logger.LogWarning(e, "Couldn't roll move {ID} made on the dashboard", id);
             request.Error = "Something went wrong rolling it. Check game chat before trying again.";
             await context.SaveChangesAsync(ct);
             return;
@@ -134,7 +125,7 @@ public class MoveRequestWorker : BackgroundService
         var sent = await services.GetRequiredService<IDiscordRestChannelAPI>().CreateMessageAsync(gameChat, embeds: new[] { move.Embed }, ct: ct);
         if (!sent.IsSuccess)
         {
-            _logger.LogWarning("Couldn't tell game chat about a move made on the dashboard: {Reason}", sent.Error.Message);
+            logger.LogWarning("Couldn't tell game chat about a move made on the dashboard: {Reason}", sent.Error.Message);
             return;
         }
 

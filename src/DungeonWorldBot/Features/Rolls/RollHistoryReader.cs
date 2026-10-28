@@ -9,18 +9,12 @@ namespace DungeonWorldBot.Features.Rolls;
 /// Finds the 2d6 rolls in a channel's history by reading the bot's roll embeds and working out who rolled each one.
 /// Feed it messages oldest first; it remembers recent "." messages across batches to match them with older replies.
 /// </summary>
-public partial class RollHistoryReader
+public partial class RollHistoryReader(Snowflake channelID)
 {
     // Old "." rolls weren't replies, so they're matched with the roll message that came soon after
     private static readonly TimeSpan DotRollWindow = TimeSpan.FromMinutes(2);
 
-    private readonly Snowflake _channelID;
     private readonly LinkedList<IMessage> _pendingDotRolls = new();
-
-    public RollHistoryReader(Snowflake channelID)
-    {
-        _channelID = channelID;
-    }
 
     // ".2d6", ".d20 + 1" as the old responder took them
     [GeneratedRegex(@"^\.\s*\d*\s*[dD]\s*\d")]
@@ -51,7 +45,7 @@ public partial class RollHistoryReader
             yield return new RollRecord
             {
                 MessageID = message.ID,
-                ChannelID = _channelID,
+                ChannelID = channelID,
                 UserID = userID,
                 First = dice.First,
                 Second = dice.Second,

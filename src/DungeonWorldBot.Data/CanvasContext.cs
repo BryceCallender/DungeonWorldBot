@@ -1,12 +1,11 @@
-using DungeonWorldBot.Dashboard.Models.Scenes;
-using DungeonWorldBot.Dashboard.Services.Scenes;
+using DungeonWorldBot.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 
-namespace DungeonWorldBot.Dashboard.Data;
+namespace DungeonWorldBot.Data;
 
 /// <summary>
-/// The dashboard's own database, for canvases and characters' pictures. Kept apart from the bot's, which the dashboard
-/// only ever reads (bar a few things it writes on purpose).
+/// The dashboard's own database, for canvases. Kept apart from the bot's, which the dashboard only ever reads (bar a few
+/// things it writes on purpose). The bot reads this one in turn, to offer encounter scenes.
 /// </summary>
 public class CanvasContext(DbContextOptions<CanvasContext> options) : DbContext(options)
 {
@@ -24,7 +23,7 @@ public class CanvasContext(DbContextOptions<CanvasContext> options) : DbContext(
 
         modelBuilder.Entity<Canvas>(canvas =>
         {
-            canvas.Property(c => c.Name).HasMaxLength(CanvasStore.MaxNameLength);
+            canvas.Property(c => c.Name).HasMaxLength(Canvas.MaxNameLength);
             canvas.Property(c => c.Kind).HasConversion<string>();
             canvas.HasIndex(c => c.UpdatedAt);
         });
@@ -33,7 +32,7 @@ public class CanvasContext(DbContextOptions<CanvasContext> options) : DbContext(
         {
             // Pages make the IDs, so they're only unique within a canvas
             item.HasKey(i => new { i.CanvasID, i.ID });
-            item.Property(i => i.ID).HasMaxLength(CanvasStore.MaxItemIDLength);
+            item.Property(i => i.ID).HasMaxLength(CanvasItem.MaxIDLength);
             item.Property(i => i.Type).HasConversion<string>();
             item.HasOne(i => i.Canvas).WithMany(c => c.Items).OnDelete(DeleteBehavior.Cascade);
         });

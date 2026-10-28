@@ -12,18 +12,12 @@ namespace DungeonWorldBot.Infrastructure;
 /// <summary>
 /// What every command group shares: who ran the command and replying to them.
 /// </summary>
-public abstract class DungeonWorldCommandBase : CommandGroup
+public abstract class DungeonWorldCommandBase(ICommandContext context, FeedbackService feedbackService) : CommandGroup
 {
     protected const string NoCharacterMessage = "No character exists. Try making one with /character create";
 
-    protected readonly ICommandContext _context;
-    protected readonly FeedbackService _feedbackService;
-
-    protected DungeonWorldCommandBase(ICommandContext context, FeedbackService feedbackService)
-    {
-        _context = context;
-        _feedbackService = feedbackService;
-    }
+    protected readonly ICommandContext _context = context;
+    protected readonly FeedbackService _feedbackService = feedbackService;
 
     /// <summary>
     /// The ID of the user who ran the command.
@@ -48,7 +42,7 @@ public abstract class DungeonWorldCommandBase : CommandGroup
             new Embed(
                 Title: Truncate(title, 256),
                 Description: Truncate(description, 4096),
-                Fields: fields?.ToList() ?? new List<IEmbedField>(),
+                Fields: fields?.ToList() ?? [],
                 Colour: _feedbackService.Theme.Primary
             ),
             ct: CancellationToken

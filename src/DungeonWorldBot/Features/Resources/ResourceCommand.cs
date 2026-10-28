@@ -14,23 +14,14 @@ using Remora.Results;
 namespace DungeonWorldBot.Features.Resources;
 
 [Group("resource")]
-public class ResourceCommand : DungeonWorldCommandBase
+public class ResourceCommand(
+    ICommandContext context,
+    FeedbackService feedbackService,
+    ICharacterService characterService,
+    IResourceService resourceService)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
     private const string NameDescription = "The resource, e.g. Gambit, Control, Power, Thirst or Wrath";
-
-    private readonly ICharacterService _characterService;
-    private readonly IResourceService _resourceService;
-
-    public ResourceCommand(
-        ICommandContext context,
-        FeedbackService feedbackService,
-        ICharacterService characterService,
-        IResourceService resourceService)
-        : base(context, feedbackService)
-    {
-        _characterService = characterService;
-        _resourceService = resourceService;
-    }
 
     [Command("show")]
     [Description("Show a character's class resources")]
@@ -39,7 +30,7 @@ public class ResourceCommand : DungeonWorldCommandBase
         IUser? user = null)
     {
         var character = user is not null
-            ? await _characterService.GetCharacterFromUserAsync(user.ID)
+            ? await characterService.GetCharacterFromUserAsync(user.ID)
             : await GetOwnCharacterAsync();
 
         if (character is null)
@@ -77,12 +68,12 @@ public class ResourceCommand : DungeonWorldCommandBase
         if (error is not null)
             return error;
 
-        var before = _resourceService.GetValue(character!, resource!);
-        var after = await _resourceService.SetValueAsync(character!, resource!, before + amount);
+        var before = resourceService.GetValue(character!, resource!);
+        var after = await resourceService.SetValueAsync(character!, resource!, before + amount);
 
         var description = $"{character!.Name} gained {after - before} {resource!.Name} ({Format(character, resource)})";
         if (after - before < amount)
-            description += $"\n{resource.Name} can't go above {_resourceService.GetMax(character, resource)}.";
+            description += $"\n{resource.Name} can't go above {resourceService.GetMax(character, resource)}.";
 
         if (after > before && resource.GainNote is not null)
             description += $"\n\n{resource.GainNote}";
@@ -104,11 +95,11 @@ public class ResourceCommand : DungeonWorldCommandBase
         if (error is not null)
             return error;
 
-        var current = _resourceService.GetValue(character!, resource!);
+        var current = resourceService.GetValue(character!, resource!);
         if (current < amount)
             return await ReplyWithErrorAsync($"{character!.Name} only has {current} {resource!.Name}.");
 
-        await _resourceService.SetValueAsync(character!, resource!, current - amount);
+        await resourceService.SetValueAsync(character!, resource!, current - amount);
 
         return await ReplyAsync($"-{amount} {resource!.Name}", $"{character!.Name} spent {amount} {resource.Name} ({Format(character, resource)})");
     }
@@ -127,8 +118,8 @@ public class ResourceCommand : DungeonWorldCommandBase
         if (error is not null)
             return error;
 
-        var before = _resourceService.GetValue(character!, resource!);
-        var after = await _resourceService.SetValueAsync(character!, resource!, value);
+        var before = resourceService.GetValue(character!, resource!);
+        var after = await resourceService.SetValueAsync(character!, resource!, value);
 
         var description = $"{character!.Name}'s {resource!.Name} is now {Format(character, resource)}";
         if (after > before && resource.GainNote is not null)
@@ -167,7 +158,7 @@ public class ResourceCommand : DungeonWorldCommandBase
 
         foreach (var resource in toReset)
         {
-            await _resourceService.SetValueAsync(character, resource, _resourceService.GetResetValue(character, resource));
+            await resourceService.SetValueAsync(character, resource, resourceService.GetResetValue(character, resource));
         }
 
         var notes = toReset.Where(r => r.ResetNote is not null).Select(r => r.ResetNote!).ToList();
@@ -176,7 +167,7 @@ public class ResourceCommand : DungeonWorldCommandBase
         return await ReplyAsync("Resources Reset", notes.Count > 0 ? $"{summary}\n\n{string.Join('\n', notes)}" : summary);
     }
 
-    private string Format(Character character, ClassResource resource) => _resourceService.Format(character, resource);
+    private string Format(Character character, ClassResource resource) => resourceService.Format(character, resource);
 
     /// <returns>The character and resource, or an error that has already been sent to the player.</returns>
     private async Task<(Character? Character, ClassResource? Resource, IResult? Error)> FindAsync(string name, Character? character = null)
@@ -197,5 +188,5 @@ public class ResourceCommand : DungeonWorldCommandBase
     }
 
     private async Task<Character?> GetOwnCharacterAsync() =>
-        await _characterService.GetCharacterFromUserAsync(GetUserId());
+        await characterService.GetCharacterFromUserAsync(GetUserId());
 }

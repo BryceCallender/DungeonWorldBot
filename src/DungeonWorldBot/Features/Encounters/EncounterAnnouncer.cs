@@ -12,21 +12,12 @@ namespace DungeonWorldBot.Features.Encounters;
 /// Tells game chat about fights started or ended on the dashboard. The dashboard can't reach Discord, so it only
 /// marks them in the database, and this notices them a moment later.
 /// </summary>
-public class EncounterAnnouncer : BackgroundService
+public class EncounterAnnouncer(IServiceScopeFactory scopes, ILogger<EncounterAnnouncer> logger) : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(3);
 
     // When Discord won't take the message (no access to the channel, an outage), try again less often
     private static readonly TimeSpan Backoff = TimeSpan.FromSeconds(30);
-
-    private readonly IServiceScopeFactory _scopes;
-    private readonly ILogger<EncounterAnnouncer> _logger;
-
-    public EncounterAnnouncer(IServiceScopeFactory scopes, ILogger<EncounterAnnouncer> logger)
-    {
-        _scopes = scopes;
-        _logger = logger;
-    }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
@@ -45,7 +36,7 @@ public class EncounterAnnouncer : BackgroundService
             catch (Exception e)
             {
                 // The database busy or mid-migration: the next look will likely do
-                _logger.LogWarning(e, "Couldn't check for fights to announce");
+                logger.LogWarning(e, "Couldn't check for fights to announce");
                 delay = Backoff;
             }
 
@@ -56,7 +47,7 @@ public class EncounterAnnouncer : BackgroundService
     /// <returns>False if Discord refused a message, so the next try should wait longer.</returns>
     private async Task<bool> AnnounceAsync(CancellationToken ct)
     {
-        await using var scope = _scopes.CreateAsyncScope();
+        await using var scope = scopes.CreateAsyncScope();
         var services = scope.ServiceProvider;
         var encounters = services.GetRequiredService<IEncounterService>();
 
@@ -102,7 +93,7 @@ public class EncounterAnnouncer : BackgroundService
         if (sent.IsSuccess)
             return true;
 
-        _logger.LogWarning("Couldn't announce a fight in game chat: {Reason}", sent.Error.Message);
+        logger.LogWarning("Couldn't announce a fight in game chat: {Reason}", sent.Error.Message);
         return false;
     }
 }

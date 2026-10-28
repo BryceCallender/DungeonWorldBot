@@ -17,13 +17,11 @@ namespace DungeonWorldBot.Features.Rolls;
 /// Right-click a roll → Apps → Change outcome, for when something the bot doesn't track makes it a hit (or a miss).
 /// Asks which result it should count as with buttons, then why, handled by <see cref="ChangeOutcomeInteractions"/>.
 /// </summary>
-public class ChangeOutcomeCommand : DungeonWorldCommandBase
+public class ChangeOutcomeCommand(
+    ICommandContext context,
+    FeedbackService feedbackService)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
-    public ChangeOutcomeCommand(ICommandContext context, FeedbackService feedbackService)
-        : base(context, feedbackService)
-    {
-    }
-
     // Context menu commands take a single parameter, which Remora requires to be called "message"
     [Command("Change outcome")]
     [CommandType(ApplicationCommandType.Message)]

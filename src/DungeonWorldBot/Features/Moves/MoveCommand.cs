@@ -21,33 +21,18 @@ using Remora.Results;
 namespace DungeonWorldBot.Features.Moves;
 
 [Group("move")]
-public class MoveCommand : DungeonWorldCommandBase
+public class MoveCommand(
+    ICommandContext context,
+    FeedbackService feedbackService,
+    ICharacterService characterService,
+    CharacterMoves characterMoves,
+    IRollStatsService rollStatsService,
+    IEncounterService encounterService,
+    MoveResolver moveResolver)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
     private const string BonusDescription = "Any +forward, ongoing bonus, or penalty to add to the roll";
     private const string TargetDescription = "The enemy you're attacking, to take your damage off it on a hit";
-
-    private readonly ICharacterService _characterService;
-    private readonly CharacterMoves _characterMoves;
-    private readonly IRollStatsService _rollStatsService;
-    private readonly IEncounterService _encounterService;
-    private readonly MoveResolver _moveResolver;
-
-    public MoveCommand(
-        ICommandContext context,
-        FeedbackService feedbackService,
-        ICharacterService characterService,
-        CharacterMoves characterMoves,
-        IRollStatsService rollStatsService,
-        IEncounterService encounterService,
-        MoveResolver moveResolver)
-        : base(context, feedbackService)
-    {
-        _characterService = characterService;
-        _characterMoves = characterMoves;
-        _rollStatsService = rollStatsService;
-        _encounterService = encounterService;
-        _moveResolver = moveResolver;
-    }
 
     [Command("hack-and-slash")]
     [Description("Attack an enemy in melee (+STR)")]
@@ -105,7 +90,7 @@ public class MoveCommand : DungeonWorldCommandBase
             return await ReplyWithErrorAsync("You must have a character to make moves. Try using /character create");
 
         var bonds = character.Bonds?.Count(b => b.TargetID == user.ID) ?? 0;
-        var ally = await _characterService.GetCharacterNameAsync(user.ID) ?? user.Username;
+        var ally = await characterService.GetCharacterNameAsync(user.ID) ?? user.Username;
         return await ReplyWithMoveAsync(character, BasicMoves.AidOrInterfere, $"Bond with {user.Username}", bonds, bonus, ally: ally);
     }
 
@@ -136,7 +121,7 @@ public class MoveCommand : DungeonWorldCommandBase
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to make moves. Try using /character create");
 
-        var prepared = _characterMoves.PrepareClassMove(character, move, stat);
+        var prepared = characterMoves.PrepareClassMove(character, move, stat);
         if (prepared.Error is { } error)
             return await ReplyWithErrorAsync(error);
 
@@ -179,7 +164,7 @@ public class MoveCommand : DungeonWorldCommandBase
         if (TacticRules.WhyCannotMake(character, move.Name) is { } forbidden)
             return await ReplyWithErrorAsync(forbidden);
 
-        var resolution = await _moveResolver.ResolveAsync(
+        var resolution = await moveResolver.ResolveAsync(
             character,
             move,
             new MoveInput(modifierLabel, modifier, bonus, stat, kind, target, extraDamage));
@@ -190,14 +175,14 @@ public class MoveCommand : DungeonWorldCommandBase
             return reply;
 
         if (_context.TryGetChannelID(out var channelID))
-            await _rollStatsService.RecordAsync(reply.Entity.ID, channelID, character.ID, resolution.Roll.Dice, RollLabel.Of(resolution.Embed));
+            await rollStatsService.RecordAsync(reply.Entity.ID, channelID, character.ID, resolution.Roll.Dice, RollLabel.Of(resolution.Embed));
 
         // Does nothing between fights
-        await _encounterService.LogAsync(resolution.ToAction(reply.Entity.ID, ally));
+        await encounterService.LogAsync(resolution.ToAction(reply.Entity.ID, ally));
 
         return reply;
     }
 
     private async Task<Character?> GetOwnCharacterAsync() =>
-        await _characterService.GetCharacterFromUserAsync(GetUserId());
+        await characterService.GetCharacterFromUserAsync(GetUserId());
 }

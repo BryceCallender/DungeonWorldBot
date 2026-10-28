@@ -13,7 +13,7 @@ namespace DungeonWorldBot.Dashboard.Services.Rolls;
 /// <summary>
 /// Reads the raw game chat rolls, for the dice spreads the bot's own roll stats don't work out.
 /// </summary>
-public class RollReader
+public class RollReader(DungeonWorldContext context, IRollStatsService rollStats)
 {
     /// <inheritdoc cref="SessionService.Gap"/>
     public static readonly TimeSpan SessionGap = SessionService.Gap;
@@ -31,15 +31,6 @@ public class RollReader
 
     // Fewer rolls than this in a night is too few to call anyone's dice hot or cold
     private const int AwardRolls = 3;
-
-    private readonly DungeonWorldContext _context;
-    private readonly IRollStatsService _rollStats;
-
-    public RollReader(DungeonWorldContext context, IRollStatsService rollStats)
-    {
-        _context = context;
-        _rollStats = rollStats;
-    }
 
     /// <param name="leaveOut">Someone whose rolls count only on their own, like the DM.</param>
     public async Task<RollSpreads> GetSpreadsAsync(ulong? leaveOut = null)
@@ -86,11 +77,11 @@ public class RollReader
     /// </summary>
     public async Task<Dictionary<ulong, RollStreak>> GetStreaksAsync()
     {
-        if (_rollStats.GameChatChannelID is not { } gameChat)
+        if (rollStats.GameChatChannelID is not { } gameChat)
             return new Dictionary<ulong, RollStreak>();
 
         // EF won't order by IDs stored as ulong in SQLite, though the column is a plain INTEGER that sorts fine
-        var recent = await _context.Rolls
+        var recent = await context.Rolls
             .FromSql($"SELECT * FROM Rolls WHERE ChannelID = {gameChat.Value} ORDER BY MessageID DESC LIMIT {StreakRolls}")
             .AsNoTracking()
             .ToListAsync();
@@ -202,7 +193,7 @@ public class RollReader
     // byPlayer is never empty, since a session has at least one roll
     private static List<Award> DiceAwards(List<PlayerDice> byPlayer)
     {
-        var awards = new List<Award>();
+        List<Award> awards = [];
 
         var steady = byPlayer.Where(p => p.Dice.Count >= AwardRolls).ToList();
         if (steady.Count > 0)
@@ -241,7 +232,7 @@ public class RollReader
 
         int Damage(EncounterAction a) => FightDamage.Of(a.Result);
 
-        var awards = new List<Award>();
+        List<Award> awards = [];
 
         var dealt = actions
             .Where(a => a.CharacterID is not null)
@@ -252,7 +243,7 @@ public class RollReader
             awards.Add(new Award("💥", "Heavy hitter", dealt.Player, $"dealt {dealt.Damage} damage"));
 
         // Enemies' attacks name who they hit
-        var party = await _context.Characters.AsNoTracking().Select(c => new { c.ID, c.Name }).ToListAsync();
+        var party = await context.Characters.AsNoTracking().Select(c => new { c.ID, c.Name }).ToListAsync();
         ulong? CharacterNamed(string name) =>
             party.FirstOrDefault(c => string.Equals(c.Name, name, StringComparison.OrdinalIgnoreCase)) is { } c ? c.ID.Value : null;
 
@@ -274,7 +265,7 @@ public class RollReader
         try
         {
             // SQLite can't compare times, so they're filtered here
-            return (await _context.EncounterActions.AsNoTracking().Where(a => a.Result != null).ToListAsync())
+            return (await context.EncounterActions.AsNoTracking().Where(a => a.Result != null).ToListAsync())
                 .Where(a => a.At >= from && a.At <= to)
                 .ToList();
         }
@@ -289,7 +280,7 @@ public class RollReader
     {
         try
         {
-            return await _context.Sessions.AsNoTracking().OrderBy(s => s.ID).ToListAsync();
+            return await context.Sessions.AsNoTracking().OrderBy(s => s.ID).ToListAsync();
         }
         catch (SqliteException e) when (e.Message.Contains("no such table"))
         {
@@ -302,7 +293,7 @@ public class RollReader
     private static List<RollSession> SessionGroups(IEnumerable<RollRecord> rolls, List<GameSession> recorded)
     {
         var marked = recorded.Select((session, i) => MarkedSession.Of(session, i + 1)).ToList();
-        var guessed = new List<RollSession>();
+        List<RollSession> guessed = [];
         RollSession? current = null;
 
         foreach (var roll in rolls.OrderBy(r => r.MessageID.Value))
@@ -354,10 +345,10 @@ public class RollReader
     // The game chat's rolls, besides leaveOut's. Null when there's no game chat: like the bot's stats, only its rolls count.
     private async Task<List<RollRecord>?> GameChatRollsAsync(ulong? leaveOut = null)
     {
-        if (_rollStats.GameChatChannelID is not { } gameChat)
+        if (rollStats.GameChatChannelID is not { } gameChat)
             return null;
 
-        var rolls = await _context.Rolls.AsNoTracking().Where(r => r.ChannelID == gameChat).ToListAsync();
+        var rolls = await context.Rolls.AsNoTracking().Where(r => r.ChannelID == gameChat).ToListAsync();
         return rolls.Where(r => r.UserID.Value != leaveOut).ToList();
     }
 

@@ -2,15 +2,14 @@
 
 
     <ItemGroup>
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12">
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
         <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         <PrivateAssets>all</PrivateAssets>
       </PackageReference>
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
-      <!-- Overrides the older SQLite bundle EF Core references (GHSA-2m69-gcr7-jv3q) -->
-      <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
-      <PackageReference Include="Remora.Discord.API" Version="81.0.0" />
-      <PackageReference Include="Sqids" Version="3.2.1" />
+      <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+      <PackageReference Include="SQLitePCLRaw.bundle_e_sqlite3" />
+      <PackageReference Include="Remora.Discord.API" />
+      <PackageReference Include="Sqids" />
     </ItemGroup>
 
 </Project>

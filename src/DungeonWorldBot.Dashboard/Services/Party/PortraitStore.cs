@@ -9,16 +9,9 @@ namespace DungeonWorldBot.Dashboard.Services.Party;
 /// <summary>
 /// Characters' pictures, kept on their rows in the bot's database (see <see cref="CharacterPortrait"/>).
 /// </summary>
-public class PortraitStore
+/// <param name="options">Options for opening the bot's database read-write.</param>
+public class PortraitStore(DbContextOptions<DungeonWorldContext> options)
 {
-    private readonly DbContextOptions<DungeonWorldContext> _options;
-
-    /// <param name="options">Options for opening the bot's database read-write.</param>
-    public PortraitStore(DbContextOptions<DungeonWorldContext> options)
-    {
-        _options = options;
-    }
-
     /// <summary>
     /// Where a character's picture is served, with when it was set so a new one gets a new address.
     /// </summary>
@@ -26,7 +19,7 @@ public class PortraitStore
 
     public async Task<CharacterPortrait?> FindAsync(ulong characterID)
     {
-        await using var db = new DungeonWorldContext(_options);
+        await using var db = new DungeonWorldContext(options);
         var id = new Snowflake(characterID);
         return await db.Set<CharacterPortrait>().AsNoTracking().FirstOrDefaultAsync(p => p.CharacterID == id);
     }
@@ -36,7 +29,7 @@ public class PortraitStore
     /// </summary>
     public async Task<Dictionary<ulong, string>> UrlsAsync()
     {
-        await using var db = new DungeonWorldContext(_options);
+        await using var db = new DungeonWorldContext(options);
         return (await db.Set<CharacterPortrait>().Select(p => new { p.CharacterID, p.UpdatedAt }).ToListAsync())
             .ToDictionary(p => p.CharacterID.Value, p => Url(p.CharacterID.Value, p.UpdatedAt));
     }
@@ -101,7 +94,7 @@ public class PortraitStore
     // Through the character, since the picture shares their row: setting or clearing it updates that row's columns
     private async Task ChangeAsync(ulong characterID, Action<Character> change)
     {
-        await using var db = new DungeonWorldContext(_options);
+        await using var db = new DungeonWorldContext(options);
         var id = new Snowflake(characterID);
         if (await db.Characters.Include(c => c.Portrait).FirstOrDefaultAsync(c => c.ID == id) is not { } character)
             return;

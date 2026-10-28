@@ -4,12 +4,8 @@ using Remora.Rest.Core;
 
 namespace DungeonWorldBot.Data;
 
-public class DungeonWorldContext : DbContext
+public class DungeonWorldContext(DbContextOptions<DungeonWorldContext> options) : DbContext(options)
 {
-    public DungeonWorldContext(DbContextOptions<DungeonWorldContext> options) : base(options)
-    {
-    }
-
     public DbSet<Character> Characters => Set<Character>();
 
     public DbSet<RollRecord> Rolls => Set<RollRecord>();
@@ -173,8 +169,8 @@ public class DungeonWorldContext : DbContext
         var arthur = new Snowflake(226053129337044992);
         var steve = new Snowflake(289281614767194113);
         
-        var characters = new List<Character>
-        {
+        List<Character> characters =
+        [
             new()
             { 
                 ID = zephyr, 
@@ -677,7 +673,7 @@ public class DungeonWorldContext : DbContext
                 Alignment = Alignment.NeutralGood,
                 Race = Race.Human
             }
-        };
+        ];
         
         Characters.AddRange(characters);
         

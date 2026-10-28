@@ -14,30 +14,17 @@ using Remora.Results;
 namespace DungeonWorldBot.Features.Rolls;
 
 [Group("stats")]
-public class StatsCommand : DungeonWorldCommandBase
+public class StatsCommand(
+    ICommandContext context,
+    FeedbackService feedbackService,
+    ICharacterService characterService,
+    IRollStatsService rollStatsService,
+    IDiscordRestChannelAPI channelAPI,
+    RollHistoryScanner scanner)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
     // Discord rejects embeds with more than 25 fields
     private const int MaxFields = 25;
-
-    private readonly ICharacterService _characterService;
-    private readonly IRollStatsService _rollStatsService;
-    private readonly IDiscordRestChannelAPI _channelAPI;
-    private readonly RollHistoryScanner _scanner;
-
-    public StatsCommand(
-        ICommandContext context,
-        FeedbackService feedbackService,
-        ICharacterService characterService,
-        IRollStatsService rollStatsService,
-        IDiscordRestChannelAPI channelAPI,
-        RollHistoryScanner scanner)
-        : base(context, feedbackService)
-    {
-        _scanner = scanner;
-        _characterService = characterService;
-        _rollStatsService = rollStatsService;
-        _channelAPI = channelAPI;
-    }
 
     [Command("show")]
     [Description("Show how everyone's 2d6 rolls in the game chat have gone: hits, misses, nat 12s, nat 2s, modifiers")]
@@ -45,21 +32,21 @@ public class StatsCommand : DungeonWorldCommandBase
         [Description("Only show this player's stats")]
         IUser? user = null)
     {
-        if (_rollStatsService.GameChatChannelID is null)
+        if (rollStatsService.GameChatChannelID is null)
             return await ReplyWithNoGameChatAsync();
 
-        var stats = await _rollStatsService.GetStatsAsync();
+        var stats = await rollStatsService.GetStatsAsync();
         if (user is not null)
             stats = stats.Where(s => s.UserID == user.ID).ToList();
 
         if (stats.Count == 0)
         {
             return await ReplyAsync("🎲 Roll Stats", user is null
-                ? $"No 2d6 rolls recorded in <#{_rollStatsService.GameChatChannelID}> yet. Use /stats scan to count the rolls already there."
-                : $"No 2d6 rolls recorded for <@{user.ID}> in <#{_rollStatsService.GameChatChannelID}> yet.");
+                ? $"No 2d6 rolls recorded in <#{rollStatsService.GameChatChannelID}> yet. Use /stats scan to count the rolls already there."
+                : $"No 2d6 rolls recorded for <@{user.ID}> in <#{rollStatsService.GameChatChannelID}> yet.");
         }
 
-        var characters = (await _characterService.GetCharactersAsync()).ToDictionary(c => c.ID);
+        var characters = (await characterService.GetCharactersAsync()).ToDictionary(c => c.ID);
 
         var fields = stats
             .Take(MaxFields)
@@ -71,7 +58,7 @@ public class StatsCommand : DungeonWorldCommandBase
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: "🎲 Roll Stats",
-                Description: $"Every 2d6 roll made through the bot in <#{_rollStatsService.GameChatChannelID}>, counted by total with modifiers.",
+                Description: $"Every 2d6 roll made through the bot in <#{rollStatsService.GameChatChannelID}>, counted by total with modifiers.",
                 Fields: fields,
                 Colour: _feedbackService.Theme.Primary
             ),
@@ -88,7 +75,7 @@ public class StatsCommand : DungeonWorldCommandBase
         if (!_context.TryGetChannelID(out var currentChannelID))
             throw new NotSupportedException();
 
-        if (_rollStatsService.GameChatChannelID is not { } gameChat)
+        if (rollStatsService.GameChatChannelID is not { } gameChat)
             return await ReplyWithNoGameChatAsync();
 
         var channelID = channel?.ID ?? gameChat;
@@ -97,7 +84,7 @@ public class StatsCommand : DungeonWorldCommandBase
         if (!started.IsSuccess)
             return started;
 
-        var scan = await _scanner.ScanAsync(channelID, CancellationToken);
+        var scan = await scanner.ScanAsync(channelID, CancellationToken);
         if (!scan.IsSuccess)
             return await PostResultAsync(currentChannelID, "🎲 Scan Failed", $"Couldn't read <#{channelID}>: {scan.Error.Message}");
 
@@ -122,7 +109,7 @@ public class StatsCommand : DungeonWorldCommandBase
     // A long scan can outlast the slash command's 15 minute reply window, so the result is posted as its own message
     private async Task<IResult> PostResultAsync(Snowflake channelID, string title, string description)
     {
-        var posted = await _channelAPI.CreateMessageAsync(
+        var posted = await channelAPI.CreateMessageAsync(
             channelID,
             embeds: new[] { new Embed(Title: title, Description: description, Colour: _feedbackService.Theme.Primary) },
             ct: CancellationToken);

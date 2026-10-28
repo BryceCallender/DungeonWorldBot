@@ -6,18 +6,13 @@ using Remora.Discord.Commands.Feedback.Services;
 
 namespace DungeonWorldBot.Features.Characters.Creation.Steps;
 
-public class TextStep : DialogueStep<string>
+public class TextStep(
+    FeedbackService feedbackService,
+    string content,
+    int minLength,
+    int maxLength)
+    : DialogueStep<string>(feedbackService, content)
 {
-    private readonly int _minLength;
-    private readonly int _maxLength;
-
-    public TextStep(FeedbackService feedbackService, string content, int minLength, int maxLength)
-        : base(feedbackService, content)
-    {
-        _minLength = minLength;
-        _maxLength = maxLength;
-    }
-
     protected override Embed BuildPrompt() => new()
     {
         Title = "Character Creation",
@@ -26,8 +21,8 @@ public class TextStep : DialogueStep<string>
         Fields = new List<IEmbedField>
         {
             new EmbedField("To Cancel the Character Creation", CancelHint),
-            new EmbedField("Min Length:", $"{_minLength} characters"),
-            new EmbedField("Max Length:", $"{_maxLength} characters"),
+            new EmbedField("Min Length:", $"{minLength} characters"),
+            new EmbedField("Max Length:", $"{maxLength} characters"),
         },
     };
 
@@ -36,15 +31,15 @@ public class TextStep : DialogueStep<string>
         value = null;
         problem = null;
 
-        if (input.Length < _minLength)
+        if (input.Length < minLength)
         {
-            problem = $"Your input is {_minLength - input.Length} characters too short";
+            problem = $"Your input is {minLength - input.Length} characters too short";
             return false;
         }
 
-        if (input.Length > _maxLength)
+        if (input.Length > maxLength)
         {
-            problem = $"Your input is {input.Length - _maxLength} characters too long";
+            problem = $"Your input is {input.Length - maxLength} characters too long";
             return false;
         }
 

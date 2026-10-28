@@ -12,10 +12,10 @@ public static class CharacterSheet
     /// </summary>
     public static List<IEmbedField> NewCharacterFields(Character character)
     {
-        var fields = new List<IEmbedField>
-        {
+        List<IEmbedField> fields =
+        [
             new EmbedField("Race", character.Race.ToString(), IsInline: false),
-        };
+        ];
 
         fields.AddRange(character.Stats.Select(s => new EmbedField(s.StatType.ToString(), s.Value.ToString(), IsInline: true)));
 

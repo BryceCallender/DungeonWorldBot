@@ -7,15 +7,8 @@ using DungeonWorldBot.Infrastructure;
 namespace DungeonWorldBot.Features.Resources;
 
 [Scoped<IResourceService>]
-public class ResourceService : IResourceService
+public class ResourceService(DungeonWorldContext dungeonWorldContext) : IResourceService
 {
-    private readonly DungeonWorldContext _dungeonWorldContext;
-
-    public ResourceService(DungeonWorldContext dungeonWorldContext)
-    {
-        _dungeonWorldContext = dungeonWorldContext;
-    }
-
     public int GetValue(Character character, ClassResource resource)
     {
         return LevelBasedValue(character, resource)
@@ -54,7 +47,7 @@ public class ResourceService : IResourceService
                 // Setting the level moves when the ability was taken, which also fills it in for abilities from before it was recorded
                 value = Math.Clamp(value, 1, character.Level);
                 ability.LevelTaken = character.Level - value + 1;
-                await _dungeonWorldContext.SaveChangesAsync();
+                await dungeonWorldContext.SaveChangesAsync();
                 return value;
             }
         }
@@ -67,12 +60,12 @@ public class ResourceService : IResourceService
         if (stored is null)
         {
             stored = new CharacterResource { Name = resource.Name };
-            character.Resources ??= new List<CharacterResource>();
+            character.Resources ??= [];
             character.Resources.Add(stored);
         }
 
         stored.Value = value;
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
         return value;
     }
 

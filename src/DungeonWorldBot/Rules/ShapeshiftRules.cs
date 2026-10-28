@@ -77,7 +77,7 @@ public static class ShapeshiftRules
 
     public static string Describe(Transformation form)
     {
-        var parts = new List<string>();
+        List<string> parts = [];
         if (form.Description is not null)
             parts.Add(form.Description);
         parts.Add(form.Moves is not null ? $"**Moves:** {form.Moves}" : "*No moves yet. Ask the GM, then add them with /shapeshift edit*");

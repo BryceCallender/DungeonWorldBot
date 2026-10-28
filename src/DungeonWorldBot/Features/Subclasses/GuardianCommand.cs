@@ -26,35 +26,18 @@ public partial class SubclassCommand
     /// Assault's short-rest limit. Flashstep Exchange and Guardian's Stand are rolled with /move class.
     /// </summary>
     [Group("guardian")]
-    public class GuardianCommand : DungeonWorldCommandBase
+    public class GuardianCommand(
+        ICommandContext context,
+        FeedbackService feedbackService,
+        ICharacterService characterService,
+        IAbilityService abilityService,
+        IDiceRoller diceRoller,
+        IRollStatsService rollStatsService,
+        IDamageService damageService,
+        IArmorService armorService)
+        : DungeonWorldCommandBase(context, feedbackService)
     {
         private const string BonusDescription = "Any +forward, ongoing bonus, or penalty to add to the roll";
-
-        private readonly ICharacterService _characterService;
-        private readonly IAbilityService _abilityService;
-        private readonly IDiceRoller _diceRoller;
-        private readonly IRollStatsService _rollStatsService;
-        private readonly IDamageService _damageService;
-        private readonly IArmorService _armorService;
-
-        public GuardianCommand(
-            ICommandContext context,
-            FeedbackService feedbackService,
-            ICharacterService characterService,
-            IAbilityService abilityService,
-            IDiceRoller diceRoller,
-            IRollStatsService rollStatsService,
-            IDamageService damageService,
-            IArmorService armorService)
-            : base(context, feedbackService)
-        {
-            _characterService = characterService;
-            _abilityService = abilityService;
-            _diceRoller = diceRoller;
-            _rollStatsService = rollStatsService;
-            _damageService = damageService;
-            _armorService = armorService;
-        }
 
         [Command("read-the-room")]
         [Description("A fight is about to break out: roll +INT and gain a strategy pool of d6s equal to your roll")]
@@ -68,17 +51,17 @@ public partial class SubclassCommand
             var (roll, rolledWith) = await RollStatAsync(character, StatType.Int, bonus);
 
             var size = TacticalGuardian.PoolSize(roll.Dice.Value);
-            var pool = Enumerable.Range(0, size).Select(_ => _diceRoller.Roll("1d6").Value).ToList();
+            var pool = Enumerable.Range(0, size).Select(_ => diceRoller.Roll("1d6").Value).ToList();
             await SetPoolAsync(character, pool);
 
-            var fields = new List<IEmbedField>
-            {
+            List<IEmbedField> fields =
+            [
                 new EmbedField("Rolled with", rolledWith, IsInline: true),
                 new EmbedField(MoveRoller.Describe(roll.Outcome), definition.Describe(roll.Outcome)),
                 new EmbedField($"Strategy pool ({pool.Count}d6)", TacticalGuardian.FormatPool(pool) +
                     (size == TacticalGuardian.MaxPool && roll.Dice.Value > size ? $"\nCapped at {TacticalGuardian.MaxPool} dice." : string.Empty) +
                     "\nSpend dice with /subclass guardian one-step-ahead"),
-            };
+            ];
 
             return await ReplyWithRollAsync(character, $"🔆 {character.Name}: {TacticalGuardian.ReadTheRoom}",
                 "*The light sharpens every detail of the room...*", roll, fields);
@@ -123,11 +106,11 @@ public partial class SubclassCommand
             if (character is null)
                 return await ReplyWithErrorAsync(error!);
 
-            var fields = new List<IEmbedField>
-            {
+            List<IEmbedField> fields =
+            [
                 new EmbedField("Strategy pool", TacticalGuardian.FormatPool(TacticalGuardian.PoolOf(character))),
-            };
-            if (_abilityService.FindAbility(character, TacticalGuardian.ShieldedPursuit) is not null)
+            ];
+            if (abilityService.FindAbility(character, TacticalGuardian.ShieldedPursuit) is not null)
                 fields.Add(new EmbedField("Stored damage", TacticalGuardian.StoredDamageOf(character).ToString()));
 
             return await ReplyAsync($"{character.Name}'s Strategy", "*Every die a plan, every plan a step ahead.*", fields);
@@ -152,18 +135,18 @@ public partial class SubclassCommand
             if (character is null)
                 return await ReplyWithErrorAsync(error!);
 
-            var hit = await _armorService.TakeDamageAsync(character, TacticalGuardian.DamageTaken(damage, forAlly), type, piercing);
+            var hit = await armorService.TakeDamageAsync(character, TacticalGuardian.DamageTaken(damage, forAlly), type, piercing);
             var taken = hit.Taken;
 
-            var fields = new List<IEmbedField>
-            {
+            List<IEmbedField> fields =
+            [
                 new EmbedField("Damage taken", (forAlly ? $"{damage} halved → {hit.Damage}\n" : string.Empty) + DamageRules.Describe(hit) +
                     (hit.Broken.Count > 0 ? $"\n*Broken: {string.Join(", ", hit.Broken.Select(b => b.Source))}*" : string.Empty) +
                     $"\nHP: {character.Health.CurrentHP}/{character.Health.MaxHP}" +
                     (character.Health.CurrentHP == 0 ? " · at 0 HP, roll /move last-breath" : string.Empty)),
-            };
+            ];
 
-            if (_abilityService.FindAbility(character, TacticalGuardian.ShieldedPursuit) is not null)
+            if (abilityService.FindAbility(character, TacticalGuardian.ShieldedPursuit) is not null)
             {
                 var stored = TacticalGuardian.Stores(taken);
                 var total = TacticalGuardian.StoredDamageOf(character) + stored;
@@ -201,7 +184,7 @@ public partial class SubclassCommand
             }
             else
             {
-                if (await _damageService.RollAsync(character, TacticalGuardian.ShieldedPursuit, extraDamage) is not { } rolled)
+                if (await damageService.RollAsync(character, TacticalGuardian.ShieldedPursuit, extraDamage) is not { } rolled)
                     return await ReplyWithErrorAsync("Couldn't roll your damage. Fix it with /character damage-dice");
 
                 damageText = $"{rolled.Expression} → {rolled.Total} + {stored} stored → **{rolled.Total + stored}**" + rolled.Details;
@@ -226,7 +209,7 @@ public partial class SubclassCommand
             await SetPoolAsync(character, []);
             await SetStoredDamageAsync(character, 0);
 
-            var cleared = new List<string>();
+            List<string> cleared = [];
             if (pool.Count > 0)
                 cleared.Add($"{pool.Count} unspent strategy di{(pool.Count == 1 ? "e" : "ce")}");
             if (stored > 0)
@@ -244,19 +227,19 @@ public partial class SubclassCommand
             if (character is null)
                 return await ReplyWithErrorAsync(error!);
 
-            var ability = _abilityService.FindAbility(character, TacticalGuardian.PerfectedAssault)!;
-            if (ability.IsLimited && !await _abilityService.UseAbilityAsync(ability, 1))
+            var ability = abilityService.FindAbility(character, TacticalGuardian.PerfectedAssault)!;
+            if (ability.IsLimited && !await abilityService.UseAbilityAsync(ability, 1))
                 return await ReplyWithErrorAsync($"{character.Name} has already used {TacticalGuardian.PerfectedAssault}. After a short rest, restore it with /ability restore");
 
             var definition = TacticalGuardian.PerfectedAssaultRoll;
             var (roll, rolledWith) = await RollStatAsync(character, StatType.Int, bonus);
 
-            var fields = new List<IEmbedField>
-            {
+            List<IEmbedField> fields =
+            [
                 new EmbedField("Rolled with", rolledWith, IsInline: true),
                 new EmbedField(MoveRoller.Describe(roll.Outcome), definition.Describe(roll.Outcome)),
                 new EmbedField("Uses", $"{ability.ToDisplay()}. Restore it after a short rest with /ability restore"),
-            };
+            ];
 
             return await ReplyWithRollAsync(character, $"✨ {character.Name}: {TacticalGuardian.PerfectedAssault}",
                 "*Every movement and attack becomes part of an orchestrated masterpiece...*", roll, fields);
@@ -273,19 +256,19 @@ public partial class SubclassCommand
         /// </summary>
         private async Task SetStateAsync(Character character, string name, string? value)
         {
-            var ability = _abilityService.FindAbility(character, name);
+            var ability = abilityService.FindAbility(character, name);
             if (value is null)
             {
                 if (ability is not null)
-                    await _abilityService.RemoveAbilityAsync(character, ability);
+                    await abilityService.RemoveAbilityAsync(character, ability);
             }
             else if (ability is null)
             {
-                await _abilityService.AddAbilityAsync(character, name, value, null);
+                await abilityService.AddAbilityAsync(character, name, value, null);
             }
             else
             {
-                await _abilityService.SetDescriptionAsync(ability, value);
+                await abilityService.SetDescriptionAsync(ability, value);
             }
         }
 
@@ -297,7 +280,7 @@ public partial class SubclassCommand
         {
             var modifier = character.Stats.FirstOrDefault(s => s.StatType == stat)?.Modifier ?? 0;
             var debility = DebilityRules.RollPenalty(character, stat);
-            var bonuses = await _damageService.BonusesAsync(character, RollKind.Stat, stat);
+            var bonuses = await damageService.BonusesAsync(character, RollKind.Stat, stat);
 
             var parts = new List<string> { $"{stat.ToString().ToUpper()} {FormatSigned(modifier)}" };
             if (debility is { } penalty)
@@ -306,7 +289,7 @@ public partial class SubclassCommand
             if (bonus != 0)
                 parts.Add($"Bonus {FormatSigned(bonus)}");
 
-            var roll = MoveRoller.Roll(_diceRoller, modifier + (debility?.Penalty ?? 0) + bonuses.Sum(b => b.Amount) + bonus);
+            var roll = MoveRoller.Roll(diceRoller, modifier + (debility?.Penalty ?? 0) + bonuses.Sum(b => b.Amount) + bonus);
             return (roll, string.Join(", ", parts));
         }
 
@@ -317,14 +300,14 @@ public partial class SubclassCommand
         {
             var userId = GetUserId();
 
-            var character = await _characterService.GetCharacterFromUserAsync(userId);
+            var character = await characterService.GetCharacterFromUserAsync(userId);
             if (character is null)
                 return (null, "No character exists. Try making one with /character create");
 
             if (SubclassLibrary.Of(character) != TacticalGuardian.Subclass)
                 return (null, $"{character.Name} isn't a {TacticalGuardian.Name}. See /subclass info {TacticalGuardian.Name}");
 
-            if (_abilityService.FindAbility(character, move) is null)
+            if (abilityService.FindAbility(character, move) is null)
             {
                 var level = TacticalGuardian.Subclass.Moves.FirstOrDefault(m => m.Move.Name == move)?.Level;
                 return (null, $"{character.Name} hasn't unlocked {move} yet" + (level is not null ? $" (level {level})." : "."));
@@ -345,7 +328,7 @@ public partial class SubclassCommand
             var reply = await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);
 
             if (reply.IsSuccess && _context.TryGetChannelID(out var channelID))
-                await _rollStatsService.RecordAsync(reply.Entity.ID, channelID, character.ID, roll.Dice, RollLabel.Of(embed));
+                await rollStatsService.RecordAsync(reply.Entity.ID, channelID, character.ID, roll.Dice, RollLabel.Of(embed));
 
             return reply;
         }

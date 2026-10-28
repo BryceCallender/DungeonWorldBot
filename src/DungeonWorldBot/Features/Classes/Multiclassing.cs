@@ -60,7 +60,7 @@ public static partial class Multiclassing
     /// </summary>
     public static IReadOnlyList<ForeignMove> KnownForeignMoves(Character character, ClassSheet own)
     {
-        var known = new List<ForeignMove>();
+        List<ForeignMove> known = [];
 
         foreach (var ability in character.Abilities?.OrderBy(a => a.ID) ?? Enumerable.Empty<Ability>())
         {

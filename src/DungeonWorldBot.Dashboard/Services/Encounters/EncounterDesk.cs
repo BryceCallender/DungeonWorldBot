@@ -14,19 +14,12 @@ namespace DungeonWorldBot.Dashboard.Services.Encounters;
 /// fights going on, and keeping the saved monsters. The bot's own rules do the work, and the bot announces the
 /// start and end in game chat when it notices them.
 /// </summary>
-public class EncounterDesk
+/// <param name="options">Options for opening the bot's database read-write.</param>
+public class EncounterDesk(DbContextOptions<DungeonWorldContext> options)
 {
     public const int MaxNameLength = FormText.MaxNameLength;
     public const int MaxTextLength = FormText.MaxTextLength;
     public const int MaxCount = 20;
-
-    private readonly DbContextOptions<DungeonWorldContext> _options;
-
-    /// <param name="options">Options for opening the bot's database read-write.</param>
-    public EncounterDesk(DbContextOptions<DungeonWorldContext> options)
-    {
-        _options = options;
-    }
 
     /// <summary>
     /// Starts a fight on the scene with who the DM picked, and copies of saved monsters already in it.
@@ -39,7 +32,7 @@ public class EncounterDesk
         if (monsters.FirstOrDefault(m => m.Count is < 0 or > MaxCount) is { } tooMany)
             return Added.Failed($"Start with between 0 and {MaxCount} of {tooMany.Name}.");
 
-        await using var context = new DungeonWorldContext(_options);
+        await using var context = new DungeonWorldContext(options);
         var service = new EncounterService(context);
 
         // Every monster checked before the fight starts, so a mistake doesn't leave it half set up
@@ -58,7 +51,7 @@ public class EncounterDesk
         if (await service.StartAsync(fightName, scene, roster: roster) is not { } encounter)
             return Added.Failed("Couldn't start the fight. Try again.");
 
-        var spawned = new List<Enemy>();
+        List<Enemy> spawned = [];
         foreach (var (template, count) in templates)
             spawned.AddRange(await service.SpawnAsync(encounter, template, count));
 
@@ -75,7 +68,7 @@ public class EncounterDesk
         if (count is < 1 or > MaxCount)
             return Added.Failed($"Add between 1 and {MaxCount} at a time.");
 
-        await using var context = new DungeonWorldContext(_options);
+        await using var context = new DungeonWorldContext(options);
         var service = new EncounterService(context);
         if (await FightOnAsync(service, sceneID) is not { } encounter)
             return Added.Failed(NoFight);
@@ -96,7 +89,7 @@ public class EncounterDesk
         if (Problem(details.MaxHP, details.Armor) is { } problem)
             return Added.Failed(problem);
 
-        await using var context = new DungeonWorldContext(_options);
+        await using var context = new DungeonWorldContext(options);
         var service = new EncounterService(context);
         if (await FightOnAsync(service, sceneID) is not { } encounter)
             return Added.Failed(NoFight);
@@ -127,7 +120,7 @@ public class EncounterDesk
     /// </summary>
     public async Task<MoveAsked> RequestMoveAsync(MoveRequest request)
     {
-        await using var context = new DungeonWorldContext(_options);
+        await using var context = new DungeonWorldContext(options);
 
         // SQLite can't compare times, so the few waiting are checked here
         var waiting = await context.MoveRequests
@@ -149,7 +142,7 @@ public class EncounterDesk
     /// </summary>
     public async Task<string?> EndAsync(string sceneID)
     {
-        await using var context = new DungeonWorldContext(_options);
+        await using var context = new DungeonWorldContext(options);
         var service = new EncounterService(context);
         if (await FightOnAsync(service, sceneID) is not { } encounter)
             return NoFight;
@@ -166,7 +159,7 @@ public class EncounterDesk
         if (amount < 1)
             return "Give an amount of at least 1.";
 
-        await using var context = new DungeonWorldContext(_options);
+        await using var context = new DungeonWorldContext(options);
         var service = new EncounterService(context);
         if (await FightingAsync(context, enemyID) is not { } enemy)
             return NoEnemy;
@@ -186,7 +179,7 @@ public class EncounterDesk
         if (Problem(details.MaxHP, details.Armor) is { } problem)
             return problem;
 
-        await using var context = new DungeonWorldContext(_options);
+        await using var context = new DungeonWorldContext(options);
         var service = new EncounterService(context);
         if (await FightingAsync(context, enemyID) is not { } enemy)
             return NoEnemy;
@@ -205,7 +198,7 @@ public class EncounterDesk
     /// </summary>
     public async Task<string?> RemoveEnemyAsync(int enemyID)
     {
-        await using var context = new DungeonWorldContext(_options);
+        await using var context = new DungeonWorldContext(options);
         if (await FightingAsync(context, enemyID) is not { } enemy)
             return NoEnemy;
 
@@ -224,7 +217,7 @@ public class EncounterDesk
         if (Problem(details.MaxHP, details.Armor) is { } problem)
             return problem;
 
-        await using var context = new DungeonWorldContext(_options);
+        await using var context = new DungeonWorldContext(options);
         var service = new EncounterService(context);
 
         MonsterTemplate monster;
@@ -248,7 +241,7 @@ public class EncounterDesk
 
     public async Task<string?> RemoveMonsterAsync(int monsterID)
     {
-        await using var context = new DungeonWorldContext(_options);
+        await using var context = new DungeonWorldContext(options);
         if (await context.MonsterTemplates.FirstOrDefaultAsync(m => m.ID == monsterID) is not { } monster)
             return NoMonster;
 

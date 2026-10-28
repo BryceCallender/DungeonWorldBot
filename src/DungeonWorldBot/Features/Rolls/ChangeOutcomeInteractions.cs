@@ -17,7 +17,13 @@ namespace DungeonWorldBot.Features.Rolls;
 /// The buttons <see cref="ChangeOutcomeCommand"/> asks with, then the form asking why. Each carries the roll message's ID
 /// as its state, and the button's name says which result it changes to.
 /// </summary>
-public class ChangeOutcomeInteractions : InteractionGroup
+public class ChangeOutcomeInteractions(
+    IInteractionContext context,
+    IDiscordRestChannelAPI channelAPI,
+    IDiscordRestInteractionAPI interactionAPI,
+    IEncounterService encounterService,
+    IRollStatsService rollStatsService)
+    : InteractionGroup
 {
     public const string StrongHit = "change-outcome-strong-hit";
     public const string WeakHit = "change-outcome-weak-hit";
@@ -25,26 +31,6 @@ public class ChangeOutcomeInteractions : InteractionGroup
 
     // The form's text box, bound to the parameter of the same name
     private const string ReasonInput = "reason";
-
-    private readonly IInteractionContext _context;
-    private readonly IDiscordRestChannelAPI _channelAPI;
-    private readonly IDiscordRestInteractionAPI _interactionAPI;
-    private readonly IEncounterService _encounterService;
-    private readonly IRollStatsService _rollStatsService;
-
-    public ChangeOutcomeInteractions(
-        IInteractionContext context,
-        IDiscordRestChannelAPI channelAPI,
-        IDiscordRestInteractionAPI interactionAPI,
-        IEncounterService encounterService,
-        IRollStatsService rollStatsService)
-    {
-        _context = context;
-        _channelAPI = channelAPI;
-        _interactionAPI = interactionAPI;
-        _encounterService = encounterService;
-        _rollStatsService = rollStatsService;
-    }
 
     // A form has to be the interaction's first response, so Remora mustn't answer for us
     [Button(StrongHit)]
@@ -92,31 +78,31 @@ public class ChangeOutcomeInteractions : InteractionGroup
                 }),
             });
 
-        return await _interactionAPI.CreateInteractionResponseAsync(
-            _context.Interaction.ID,
-            _context.Interaction.Token,
+        return await interactionAPI.CreateInteractionResponseAsync(
+            context.Interaction.ID,
+            context.Interaction.Token,
             new InteractionResponse(InteractionCallbackType.Modal, new(form)),
             ct: CancellationToken);
     }
 
     private async Task<Result> ChangeAsync(string state, MoveOutcome outcome, string reason)
     {
-        if (!Snowflake.TryParse(state, out var messageID) || !_context.TryGetChannelID(out var channelID) || !_context.TryGetUserID(out var userID))
+        if (!Snowflake.TryParse(state, out var messageID) || !context.TryGetChannelID(out var channelID) || !context.TryGetUserID(out var userID))
             return await AnswerAsync("Couldn't find that roll.");
 
-        var message = await _channelAPI.GetChannelMessageAsync(channelID, messageID.Value, CancellationToken);
+        var message = await channelAPI.GetChannelMessageAsync(channelID, messageID.Value, CancellationToken);
         if (!message.IsSuccess || message.Entity.Embeds.FirstOrDefault() is not { } embed || RollOutcomeChange.Of(embed) is null)
             return await AnswerAsync("Couldn't find that roll. It may have been deleted.");
 
         var change = RollOutcomeChange.Apply(embed, outcome, reason.Trim(), userID);
-        var edited = await _channelAPI.EditMessageAsync(channelID, messageID.Value, embeds: new[] { change.Embed }, ct: CancellationToken);
+        var edited = await channelAPI.EditMessageAsync(channelID, messageID.Value, embeds: new[] { change.Embed }, ct: CancellationToken);
         if (!edited.IsSuccess)
             return await AnswerAsync($"Couldn't change the roll: {edited.Error.Message}");
 
-        await _rollStatsService.ChangeOutcomeAsync(messageID.Value, change.Changed ? outcome : null, reason.Trim(), userID);
+        await rollStatsService.ChangeOutcomeAsync(messageID.Value, change.Changed ? outcome : null, reason.Trim(), userID);
 
         // Does nothing for rolls outside a fight
-        await _encounterService.ChangeOutcomeAsync(messageID.Value, MoveRoller.Describe(outcome));
+        await encounterService.ChangeOutcomeAsync(messageID.Value, MoveRoller.Describe(outcome));
 
         return await AnswerAsync(change.Changed
             ? $"Changed to a {MoveRoller.Describe(outcome)}: {reason.Trim()}"
@@ -125,9 +111,9 @@ public class ChangeOutcomeInteractions : InteractionGroup
 
     // Replaces the buttons, so the same roll isn't changed twice by accident
     private async Task<Result> AnswerAsync(string content) =>
-        await _interactionAPI.CreateInteractionResponseAsync(
-            _context.Interaction.ID,
-            _context.Interaction.Token,
+        await interactionAPI.CreateInteractionResponseAsync(
+            context.Interaction.ID,
+            context.Interaction.Token,
             new InteractionResponse(
                 InteractionCallbackType.UpdateMessage,
                 new(new InteractionMessageCallbackData(Content: content, Components: Array.Empty<IMessageComponent>()))),

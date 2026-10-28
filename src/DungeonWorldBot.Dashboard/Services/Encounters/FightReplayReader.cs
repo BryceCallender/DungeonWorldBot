@@ -76,7 +76,7 @@ public class FightReplayReader(DungeonWorldContext context, PartyReader party, P
         var pictures = await portraits.UrlsAsync();
         var actions = fight.Actions.OrderBy(a => a.ID).ToList();
 
-        var fighters = new List<ReplayFighter>();
+        List<ReplayFighter> fighters = [];
         ReplayFighter Add(ReplayFighter f)
         {
             if (fighters.FirstOrDefault(x => x.Key == f.Key) is { } known)

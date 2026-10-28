@@ -13,19 +13,10 @@ public record RollScan(int Found, int Added);
 /// Reads a channel's whole history for the bot's 2d6 rolls and records the ones that are missing. Safe to run again.
 /// </summary>
 [Scoped]
-public class RollHistoryScanner
+public class RollHistoryScanner(IDiscordRestChannelAPI channelAPI, IRollStatsService rollStatsService)
 {
     // The most messages Discord hands back per request
     private const int PageSize = 100;
-
-    private readonly IDiscordRestChannelAPI _channelAPI;
-    private readonly IRollStatsService _rollStatsService;
-
-    public RollHistoryScanner(IDiscordRestChannelAPI channelAPI, IRollStatsService rollStatsService)
-    {
-        _channelAPI = channelAPI;
-        _rollStatsService = rollStatsService;
-    }
 
     public async Task<Result<RollScan>> ScanAsync(Snowflake channelID, CancellationToken ct = default)
     {
@@ -36,7 +27,7 @@ public class RollHistoryScanner
 
         while (true)
         {
-            var page = await _channelAPI.GetChannelMessagesAsync(channelID, after: after, limit: PageSize, ct: ct);
+            var page = await channelAPI.GetChannelMessagesAsync(channelID, after: after, limit: PageSize, ct: ct);
             if (!page.IsSuccess)
                 return Result<RollScan>.FromError(page);
 
@@ -48,7 +39,7 @@ public class RollHistoryScanner
             var rolls = reader.Read(messages).ToList();
 
             found += rolls.Count;
-            added += await _rollStatsService.AddMissingAsync(rolls);
+            added += await rollStatsService.AddMissingAsync(rolls);
             after = messages[^1].ID;
 
             if (page.Entity.Count < PageSize)

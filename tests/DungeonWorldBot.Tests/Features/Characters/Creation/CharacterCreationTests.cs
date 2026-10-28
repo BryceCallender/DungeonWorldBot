@@ -11,7 +11,7 @@ public class CharacterCreationTests
 
     private static ClassKit Kit(ClassType type) => ClassKits.All.Single(k => k.Type == type);
 
-    private CharacterDraft DraftWithChoices(ClassType type, params int[] choices)
+    private CharacterDraft DraftWithChoices(ClassType type, params ReadOnlySpan<int> choices)
     {
         var draft = new CharacterDraft();
         draft.SetClass(Kit(type), _dice);

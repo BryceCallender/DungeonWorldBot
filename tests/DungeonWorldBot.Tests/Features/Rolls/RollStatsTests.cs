@@ -3,7 +3,8 @@ using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Rolls;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
+using DungeonWorldBot.Infrastructure;
+using Microsoft.Extensions.Options;
 using Remora.Discord.API.Objects;
 using Remora.Rest.Core;
 
@@ -117,7 +118,7 @@ public class RollStatsTests
     [Fact]
     public void GameChat_DefaultsToTheCampaignChannel()
     {
-        var empty = new ConfigurationBuilder().Build();
+        var empty = Options.Create(new BotSettings());
 
         Assert.Equal(new Snowflake(RollStatsService.DefaultGameChatChannelID), new RollStatsService(null!, empty).GameChatChannelID);
         Assert.Equal(new Snowflake(222), new RollStatsService(null!, GameChat(222)).GameChatChannelID);
@@ -252,6 +253,5 @@ public class RollStatsTests
         Assert.DoesNotContain(back.Embed.Fields.Value, f => f.Name == RollOutcomeChange.FieldName);
     }
 
-    private static IConfiguration GameChat(ulong channelID) =>
-        new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["GameChatChannelId"] = channelID.ToString() }).Build();
+    private static IOptions<BotSettings> GameChat(ulong channelID) => Options.Create(new BotSettings { GameChatChannelID = channelID });
 }

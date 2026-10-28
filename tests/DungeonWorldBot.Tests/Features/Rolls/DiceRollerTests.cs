@@ -127,7 +127,7 @@ public class DiceRollerTests
     public void SecureDieRoller_StaysInRangeAndReachesEveryFace(int sides)
     {
         var roller = new SecureDieRoller();
-        var seen = new HashSet<int>();
+        HashSet<int> seen = [];
         var rolls = Math.Max(sides * 40, 1000);
 
         for (var i = 0; i < rolls; i++)

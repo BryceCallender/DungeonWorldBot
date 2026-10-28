@@ -10,15 +10,13 @@ namespace DungeonWorldBot.Features.Characters.Creation.Steps;
 /// <summary>
 /// Shows a numbered list of options and returns the zero-based index of the one the user picked.
 /// </summary>
-public class MenuStep : DialogueStep<int?>
+public class MenuStep(
+    FeedbackService feedbackService,
+    string content,
+    IReadOnlyList<string> options)
+    : DialogueStep<int?>(feedbackService, content)
 {
-    protected readonly IReadOnlyList<string> Options;
-
-    public MenuStep(FeedbackService feedbackService, string content, IReadOnlyList<string> options)
-        : base(feedbackService, content)
-    {
-        Options = options;
-    }
+    protected readonly IReadOnlyList<string> Options = options;
 
     public static string FormatOptions(IReadOnlyList<string> options)
     {

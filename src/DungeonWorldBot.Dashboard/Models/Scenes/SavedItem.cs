@@ -1,4 +1,5 @@
 using System.Text.Json;
+using DungeonWorldBot.Data.Entities;
 
 namespace DungeonWorldBot.Dashboard.Models.Scenes;
 

@@ -41,10 +41,10 @@ public static class DiceHelper
         var kept = dice.Where(d => d.AppliesToResultCalculation).ToList();
         var dropped = dice.Where(d => !d.AppliesToResultCalculation).ToList();
 
-        var columns = new List<(string Operator, string Die, string Value)>
-        {
+        List<(string Operator, string Die, string Value)> columns =
+        [
             ("", DieName(kept[0]), $"{kept[0].Value}"),
-        };
+        ];
 
         foreach (var die in kept.Skip(1))
         {

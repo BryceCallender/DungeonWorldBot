@@ -6,24 +6,17 @@ using DungeonWorldBot.Rules;
 namespace DungeonWorldBot.Features.Debilities;
 
 [Scoped<IDebilityService>]
-public class DebilityService : IDebilityService
+public class DebilityService(DungeonWorldContext dungeonWorldContext) : IDebilityService
 {
-    private readonly DungeonWorldContext _dungeonWorldContext;
-
-    public DebilityService(DungeonWorldContext dungeonWorldContext)
-    {
-        _dungeonWorldContext = dungeonWorldContext;
-    }
-
     public async Task<bool> AddAsync(Character character, DebilityType debility)
     {
         if (DebilityRules.Has(character, debility))
             return false;
 
-        character.Debilities ??= new List<Debility>();
+        character.Debilities ??= [];
         character.Debilities.Add(new Debility { StatType = DebilityRules.StatFor(debility), Modifier = DebilityRules.Penalty });
 
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
         return true;
     }
 
@@ -37,10 +30,10 @@ public class DebilityService : IDebilityService
         foreach (var entry in matching)
         {
             character.Debilities!.Remove(entry);
-            _dungeonWorldContext.Remove(entry);
+            dungeonWorldContext.Remove(entry);
         }
 
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
         return true;
     }
 
@@ -50,10 +43,10 @@ public class DebilityService : IDebilityService
         foreach (var entry in character.Debilities?.ToList() ?? [])
         {
             character.Debilities!.Remove(entry);
-            _dungeonWorldContext.Remove(entry);
+            dungeonWorldContext.Remove(entry);
         }
 
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
         return removed;
     }
 }

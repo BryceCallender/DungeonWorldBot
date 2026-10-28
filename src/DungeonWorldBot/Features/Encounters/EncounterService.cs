@@ -8,17 +8,10 @@ using Remora.Rest.Core;
 namespace DungeonWorldBot.Features.Encounters;
 
 [Scoped<IEncounterService>]
-public class EncounterService : IEncounterService
+public class EncounterService(DungeonWorldContext context) : IEncounterService
 {
-    private readonly DungeonWorldContext _context;
-
-    public EncounterService(DungeonWorldContext context)
-    {
-        _context = context;
-    }
-
     public Task<List<Encounter>> GetRunningAsync() =>
-        _context.Encounters
+        context.Encounters
             .Include(e => e.Enemies)
             .Include(e => e.Participants)
             .Where(e => e.EndedAt == null)
@@ -26,7 +19,7 @@ public class EncounterService : IEncounterService
             .ToListAsync();
 
     public Task<Encounter?> GetOnSceneAsync(string sceneID) =>
-        _context.Encounters
+        context.Encounters
             .Include(e => e.Enemies)
             .Include(e => e.Participants)
             .FirstOrDefaultAsync(e => e.EndedAt == null && e.SceneID == sceneID);
@@ -53,7 +46,7 @@ public class EncounterService : IEncounterService
 
     public async Task<EncounterRoster> GetTakenAsync()
     {
-        var picked = await _context.EncounterParticipants.Where(p => p.Encounter.EndedAt == null).ToListAsync();
+        var picked = await context.EncounterParticipants.Where(p => p.Encounter.EndedAt == null).ToListAsync();
         return new EncounterRoster(
             picked.Where(p => p.CharacterID is not null).Select(p => p.CharacterID!.Value).ToList(),
             picked.Where(p => p.NpcID is not null).Select(p => p.NpcID!.Value).ToList());
@@ -82,8 +75,8 @@ public class EncounterService : IEncounterService
                     .Concat(roster.Npcs.Except(taken.Npcs).Select(id => new EncounterParticipant { NpcID = id }))
                     .ToList(),
         };
-        _context.Encounters.Add(encounter);
-        await _context.SaveChangesAsync();
+        context.Encounters.Add(encounter);
+        await context.SaveChangesAsync();
         return encounter;
     }
 
@@ -97,12 +90,12 @@ public class EncounterService : IEncounterService
             encounter.EndAnnouncedAt = encounter.EndedAt;
         }
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 
     public async Task<IReadOnlyList<Snowflake>> LeavingAsync(Encounter ended)
     {
-        var picked = (await _context.EncounterParticipants
+        var picked = (await context.EncounterParticipants
                 .Where(p => p.EncounterID == ended.ID && p.CharacterID != null)
                 .Select(p => p.CharacterID)
                 .ToListAsync())
@@ -111,18 +104,18 @@ public class EncounterService : IEncounterService
         if (picked.Count > 0)
             return picked;
 
-        var elsewhere = (await _context.EncounterParticipants
+        var elsewhere = (await context.EncounterParticipants
                 .Where(p => p.EncounterID != ended.ID && p.Encounter.EndedAt == null && p.CharacterID != null)
                 .Select(p => p.CharacterID)
                 .ToListAsync())
             .Select(id => id!.Value)
             .ToHashSet();
-        return (await _context.Characters.Select(c => c.ID).ToListAsync()).Where(id => !elsewhere.Contains(id)).ToList();
+        return (await context.Characters.Select(c => c.ID).ToListAsync()).Where(id => !elsewhere.Contains(id)).ToList();
     }
 
     public async Task<List<Encounter>> GetUnannouncedAsync()
     {
-        var waiting = await _context.Encounters
+        var waiting = await context.Encounters
             .Include(e => e.Enemies)
             .Where(e => e.AnnouncedAt == null || (e.EndedAt != null && e.EndAnnouncedAt == null))
             .ToListAsync();
@@ -131,25 +124,25 @@ public class EncounterService : IEncounterService
         return waiting.OrderBy(e => e.ID).ToList();
     }
 
-    public async Task SaveAsync(Encounter encounter) => await _context.SaveChangesAsync();
+    public async Task SaveAsync(Encounter encounter) => await context.SaveChangesAsync();
 
     public Task<Enemy?> FindEnemyAsync(string name)
     {
         var trimmed = name.Trim();
         // The column compares without case, so this matches "goblin 2" to "Goblin 2"
-        return _context.Enemies.FirstOrDefaultAsync(e => e.Encounter.EndedAt == null && e.Name == trimmed);
+        return context.Enemies.FirstOrDefaultAsync(e => e.Encounter.EndedAt == null && e.Name == trimmed);
     }
 
     public async Task AddEnemyAsync(Encounter encounter, Enemy enemy)
     {
         encounter.Enemies.Add(enemy);
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 
     public async Task<IReadOnlyList<Enemy>> SpawnAsync(Encounter encounter, MonsterTemplate monster, int count = 1)
     {
         // Numbered across every fight going on, so a name only ever means one enemy
-        var taken = await _context.Enemies.Where(e => e.Encounter.EndedAt == null).Select(e => e.Name).ToListAsync();
+        var taken = await context.Enemies.Where(e => e.Encounter.EndedAt == null).Select(e => e.Name).ToListAsync();
         var names = SpawnNames(taken.Concat(encounter.Enemies.Select(e => e.Name)), monster.Name, count);
         var spawned = names.Select(name => new Enemy
         {
@@ -165,7 +158,7 @@ public class EncounterService : IEncounterService
         }).ToList();
 
         encounter.Enemies.AddRange(spawned);
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
         return spawned;
     }
 
@@ -195,13 +188,13 @@ public class EncounterService : IEncounterService
     public async Task SaveAsync(Enemy enemy)
     {
         enemy.CurrentHP = Math.Clamp(enemy.CurrentHP, 0, enemy.MaxHP);
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 
     public async Task RemoveAsync(Enemy enemy)
     {
-        _context.Enemies.Remove(enemy);
-        await _context.SaveChangesAsync();
+        context.Enemies.Remove(enemy);
+        await context.SaveChangesAsync();
     }
 
     public async Task<ArmoredHit> DamageAsync(Enemy enemy, int amount, DamageType type = DamageType.Physical, int piercing = 0)
@@ -209,7 +202,7 @@ public class EncounterService : IEncounterService
         var hit = DamageRules.Hit(amount, enemy.Armor, type, piercing);
 
         enemy.CurrentHP = Math.Max(0, enemy.CurrentHP - hit.Taken);
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
 
         return hit;
     }
@@ -219,7 +212,7 @@ public class EncounterService : IEncounterService
         enemy.CurrentHP = amount is { } heal
             ? Math.Min(enemy.MaxHP, enemy.CurrentHP + Math.Max(0, heal))
             : enemy.MaxHP;
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 
     public async Task LogAsync(EncounterAction action)
@@ -230,21 +223,21 @@ public class EncounterService : IEncounterService
         action.EncounterID = id;
         if (action.At == default)
             action.At = DateTimeOffset.UtcNow;
-        _context.EncounterActions.Add(action);
-        await _context.SaveChangesAsync();
+        context.EncounterActions.Add(action);
+        await context.SaveChangesAsync();
     }
 
     // Rolls are logged as "9 · Weak Hit (7-9)", and the dice stay what they were
     public async Task ChangeOutcomeAsync(Snowflake messageID, string outcome)
     {
-        var actions = await _context.EncounterActions.Where(a => a.MessageID == messageID).ToListAsync();
+        var actions = await context.EncounterActions.Where(a => a.MessageID == messageID).ToListAsync();
         foreach (var action in actions)
         {
             var total = action.Roll?.Split(" · ")[0];
             action.Roll = total is null ? outcome : $"{total} · {outcome}";
         }
 
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 
     /// <summary>
@@ -253,7 +246,7 @@ public class EncounterService : IEncounterService
     private async Task<int?> FightOfAsync(EncounterAction action)
     {
         if (action.EnemyID is { } enemyID)
-            return await _context.Enemies.Where(e => e.ID == enemyID && e.Encounter.EndedAt == null).Select(e => (int?)e.EncounterID).FirstOrDefaultAsync();
+            return await context.Enemies.Where(e => e.ID == enemyID && e.Encounter.EndedAt == null).Select(e => (int?)e.EncounterID).FirstOrDefaultAsync();
         if (action.Target is { } target && await FindEnemyAsync(target) is { } aimedAt)
             return aimedAt.EncounterID;
         return (await GetForAsync(action.CharacterID, action.NpcID))?.ID;
@@ -261,26 +254,26 @@ public class EncounterService : IEncounterService
 
     // SQLite can't sort by DateTimeOffset, but IDs go up in the order things happened
     public Task<List<EncounterAction>> GetActionsAsync(Encounter encounter) =>
-        _context.EncounterActions.AsNoTracking().Where(a => a.EncounterID == encounter.ID).OrderBy(a => a.ID).ToListAsync();
+        context.EncounterActions.AsNoTracking().Where(a => a.EncounterID == encounter.ID).OrderBy(a => a.ID).ToListAsync();
 
-    public Task<List<MonsterTemplate>> GetMonstersAsync() => _context.MonsterTemplates.OrderBy(m => m.Name).ToListAsync();
+    public Task<List<MonsterTemplate>> GetMonstersAsync() => context.MonsterTemplates.OrderBy(m => m.Name).ToListAsync();
 
     public Task<MonsterTemplate?> FindMonsterAsync(string name)
     {
         var trimmed = name.Trim();
-        return _context.MonsterTemplates.FirstOrDefaultAsync(m => m.Name == trimmed);
+        return context.MonsterTemplates.FirstOrDefaultAsync(m => m.Name == trimmed);
     }
 
     public async Task SaveMonsterAsync(MonsterTemplate monster)
     {
-        if (_context.Entry(monster).State == EntityState.Detached)
-            _context.MonsterTemplates.Add(monster);
-        await _context.SaveChangesAsync();
+        if (context.Entry(monster).State == EntityState.Detached)
+            context.MonsterTemplates.Add(monster);
+        await context.SaveChangesAsync();
     }
 
     public async Task RemoveMonsterAsync(MonsterTemplate monster)
     {
-        _context.MonsterTemplates.Remove(monster);
-        await _context.SaveChangesAsync();
+        context.MonsterTemplates.Remove(monster);
+        await context.SaveChangesAsync();
     }
 }

@@ -31,18 +31,11 @@ namespace DungeonWorldBot.Infrastructure;
 /// Acts as a Discord plugin for interactive messages.
 /// </summary>
 [Scoped]
-public class InteractivityService
+public class InteractivityService(IDiscordRestChannelAPI channelAPI)
 {
     /// <summary>
     /// Holds the Discord channel API.
     /// </summary>
-    private readonly IDiscordRestChannelAPI _channelAPI;
-
-    public InteractivityService(
-        IDiscordRestChannelAPI channelAPI)
-    {
-        _channelAPI = channelAPI;
-    }
 
     /// <summary>
     /// Gets the next message sent in the given channel.
@@ -65,7 +58,7 @@ public class InteractivityService
         while (now <= timeoutTime)
         {
             now = DateTimeOffset.UtcNow;
-            var getMessage = await _channelAPI.GetChannelMessagesAsync
+            var getMessage = await channelAPI.GetChannelMessagesAsync
             (
                 channelID,
                 after: lastMessageID,

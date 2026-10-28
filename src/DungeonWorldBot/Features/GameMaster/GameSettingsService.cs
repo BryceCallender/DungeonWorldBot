@@ -1,6 +1,6 @@
 using DungeonWorldBot.Infrastructure;
 using System.Text.Json;
-using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Options;
 
 namespace DungeonWorldBot.Features.GameMaster;
 
@@ -8,23 +8,16 @@ namespace DungeonWorldBot.Features.GameMaster;
 /// Keeps the DM's settings in a small JSON file (game-settings.json by default) rather than the database.
 /// </summary>
 [Singleton<IGameSettingsService>]
-public class GameSettingsService : IGameSettingsService
+public class GameSettingsService(IOptions<BotSettings>? settings = null, string? path = null) : IGameSettingsService
 {
-    private const string DefaultPath = "game-settings.json";
-
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
 
     // Settings are shared by every command, so reads and writes take turns
     private static readonly SemaphoreSlim FileLock = new(1, 1);
 
-    private readonly string _path;
+    private readonly string _path = path ?? (settings?.Value ?? new BotSettings()).GameSettingsPath;
 
     private volatile CachedSettings? _cached;
-
-    public GameSettingsService(IConfiguration? configuration = null, string? path = null)
-    {
-        _path = path ?? configuration?.GetValue<string?>("GameSettingsPath") ?? DefaultPath;
-    }
 
     private class Settings
     {

@@ -32,32 +32,17 @@ public partial class SubclassCommand
     /// The Champion of Luna's moves that need more than a plain roll. Revelation is rolled with /move class.
     /// </summary>
     [Group("luna")]
-    public class LunaCommand : DungeonWorldCommandBase
+    public class LunaCommand(
+        ICommandContext context,
+        FeedbackService feedbackService,
+        ICharacterService characterService,
+        IAbilityService abilityService,
+        IDiceRoller diceRoller,
+        IRollStatsService rollStatsService,
+        IDamageService damageService)
+        : DungeonWorldCommandBase(context, feedbackService)
     {
         private const string BonusDescription = "Any +forward, ongoing bonus, or penalty to add to the roll";
-
-        private readonly ICharacterService _characterService;
-        private readonly IAbilityService _abilityService;
-        private readonly IDiceRoller _diceRoller;
-        private readonly IRollStatsService _rollStatsService;
-        private readonly IDamageService _damageService;
-
-        public LunaCommand(
-            ICommandContext context,
-            FeedbackService feedbackService,
-            ICharacterService characterService,
-            IAbilityService abilityService,
-            IDiceRoller diceRoller,
-            IRollStatsService rollStatsService,
-            IDamageService damageService)
-            : base(context, feedbackService)
-        {
-            _characterService = characterService;
-            _abilityService = abilityService;
-            _diceRoller = diceRoller;
-            _rollStatsService = rollStatsService;
-            _damageService = damageService;
-        }
 
         [Command("vow")]
         [Description("Declare an objective in Luna's name and choose a Boon of Luna")]
@@ -80,7 +65,7 @@ public partial class SubclassCommand
                 return await ReplyWithErrorAsync("Choose the stat a Boon of Aptitude raises with the stat option.");
 
             var vow = new LunaVow(boon, boon == LunaBoon.Aptitude ? stat : null, objective.Trim());
-            await _abilityService.AddAbilityAsync(character, ChampionOfLuna.ActiveVow, ChampionOfLuna.Store(vow), null);
+            await abilityService.AddAbilityAsync(character, ChampionOfLuna.ActiveVow, ChampionOfLuna.Store(vow), null);
 
             var (champion, echo) = ChampionOfLuna.Describe(vow);
             return await ReplyAsync(
@@ -102,11 +87,11 @@ public partial class SubclassCommand
             if (character is null)
                 return await ReplyWithErrorAsync(error!);
 
-            if (_abilityService.FindAbility(character, ChampionOfLuna.ActiveVow) is not { } ability)
+            if (abilityService.FindAbility(character, ChampionOfLuna.ActiveVow) is not { } ability)
                 return await ReplyWithErrorAsync($"{character.Name} has no active Vow.");
 
             var vow = ChampionOfLuna.ActiveVowOf(character);
-            await _abilityService.RemoveAbilityAsync(character, ability);
+            await abilityService.RemoveAbilityAsync(character, ability);
 
             var how = ending switch
             {
@@ -141,13 +126,13 @@ public partial class SubclassCommand
             if (character is null)
                 return await ReplyWithErrorAsync(error!);
 
-            var offerings = new List<(Character Character, int HP)>();
+            List<(Character Character, int HP)> offerings = [];
             if (sacrifice > 0)
                 offerings.Add((character, sacrifice));
 
             if (ally is not null && allySacrifice > 0)
             {
-                var allyCharacter = await _characterService.GetCharacterFromUserAsync(ally.ID);
+                var allyCharacter = await characterService.GetCharacterFromUserAsync(ally.ID);
                 if (allyCharacter is null)
                     return await ReplyWithErrorAsync($"{ally.Username} does not have a character.");
                 if (allyCharacter.ID == character.ID)
@@ -163,10 +148,10 @@ public partial class SubclassCommand
                 return await ReplyWithErrorAsync($"{tooMuch.Character.Name} only has {tooMuch.Character.Health.CurrentHP} HP to give.");
 
             var totalSacrificed = offerings.Sum(o => o.HP);
-            var fields = new List<IEmbedField>
-            {
+            List<IEmbedField> fields =
+            [
                 new EmbedField("Offered to Luna", string.Join('\n', offerings.Select(o => $"{o.Character.Name}: {o.HP} HP"))),
-            };
+            ];
 
             // The empowered strike
             string damageText;
@@ -179,7 +164,7 @@ public partial class SubclassCommand
             }
             else
             {
-                if (await _damageService.RollAsync(character, ChampionOfLuna.BloodMoon, extraDamage) is not { } rolled)
+                if (await damageService.RollAsync(character, ChampionOfLuna.BloodMoon, extraDamage) is not { } rolled)
                     return await ReplyWithErrorAsync("Couldn't roll your damage. Fix it with /character damage-dice");
 
                 damageText = $"{rolled.Expression} → {rolled.Total} + {totalSacrificed} sacrificed → **{rolled.Total + totalSacrificed}**" + rolled.Details;
@@ -188,7 +173,7 @@ public partial class SubclassCommand
             fields.Add(new EmbedField("Damage", damageText));
 
             foreach (var (who, hp) in offerings)
-                await _characterService.DamageAsync(who, hp);
+                await characterService.DamageAsync(who, hp);
 
             // Then Luna decides how much comes back
             var (roll, rolledWith) = await RollStatAsync(character, StatType.Cha, bonus);
@@ -201,12 +186,12 @@ public partial class SubclassCommand
                 _ => "Luna keeps it all. None of the HP is recovered, and the GM makes a move.",
             }));
 
-            var recovered = new List<string>();
+            List<string> recovered = [];
             foreach (var (who, hp) in offerings)
             {
                 var back = ChampionOfLuna.Recovered(hp, roll.Outcome);
                 if (back > 0)
-                    await _characterService.HealAsync(who, back);
+                    await characterService.HealAsync(who, back);
 
                 recovered.Add($"{who.Name}: +{back} HP ({who.Health.CurrentHP}/{who.Health.MaxHP})" +
                               (who.Health.CurrentHP == 0 ? " · at 0 HP, roll /move last-breath" : string.Empty));
@@ -229,9 +214,9 @@ public partial class SubclassCommand
                 return await ReplyWithErrorAsync(error!);
 
             // The damage builds before the arrow is released
-            var dice = ChampionOfLuna.RollBarrage(() => _diceRoller.Roll("1d10").Value);
-            var damageBonuses = await _damageService.DamageBonusesAsync(character, extraDamage);
-            var gear = await _damageService.ApplyGearAsync(character, ChampionOfLuna.LunarBarrage, dice.Select(d => (10, d)).ToList());
+            var dice = ChampionOfLuna.RollBarrage(() => diceRoller.Roll("1d10").Value);
+            var damageBonuses = await damageService.DamageBonusesAsync(character, extraDamage);
+            var gear = await damageService.ApplyGearAsync(character, ChampionOfLuna.LunarBarrage, dice.Select(d => (10, d)).ToList());
             var flat = damageBonuses.Sum(b => b.Amount) + gear.Bonus;
             var total = Math.Max(0, dice.Sum() + flat);
 
@@ -243,13 +228,13 @@ public partial class SubclassCommand
                              (flat != 0 ? $"\n{dice.Sum()} {(flat > 0 ? "+" : "-")} {Math.Abs(flat)}" : string.Empty) +
                              $"\n**{total}** to each target" + Includes(damageBonuses) + string.Concat(gear.Notes.Select(n => $"\n{n}"));
 
-            var fields = new List<IEmbedField>
-            {
+            List<IEmbedField> fields =
+            [
                 new EmbedField("Rolled with", rolledWith, IsInline: true),
                 new EmbedField(MoveRoller.Describe(roll.Outcome),
                     $"Target up to {targets} enem{(targets == 1 ? "y" : "ies")}." + (roll.Outcome == MoveOutcome.Miss ? " The GM makes a move." : string.Empty)),
                 new EmbedField("Damage", damageText),
-            };
+            ];
 
             return await ReplyWithRollAsync(character, $"🌙 {character.Name}: {ChampionOfLuna.LunarBarrage}",
                 "*Luna's power builds within the arrow...*", roll, fields);
@@ -270,13 +255,13 @@ public partial class SubclassCommand
             if (enemyLevel > character.Level)
                 return await ReplyWithErrorAsync($"Luna won't trade for an enemy above your level ({character.Level}).");
 
-            await _characterService.DamageAsync(character, character.Health.CurrentHP);
+            await characterService.DamageAsync(character, character.Health.CurrentHP);
 
             var bonuses = await BonusesAsync(character, RollKind.LastBreath);
-            var roll = MoveRoller.Roll(_diceRoller, bonuses.Sum(b => b.Amount));
+            var roll = MoveRoller.Roll(diceRoller, bonuses.Sum(b => b.Amount));
             var lastBreath = BasicMoves.LastBreath;
 
-            var fields = new List<IEmbedField>();
+            List<IEmbedField> fields = [];
             if (bonuses.Count > 0)
                 fields.Add(new EmbedField("Rolled with", string.Join(", ", bonuses.Select(b => $"{b.Source} {FormatSigned(b.Amount)}")), IsInline: true));
             fields.Add(new EmbedField("The enemy", "is instantly killed. No damage is rolled."));
@@ -303,12 +288,12 @@ public partial class SubclassCommand
             if (bonus != 0)
                 parts.Add($"Bonus {FormatSigned(bonus)}");
 
-            var roll = MoveRoller.Roll(_diceRoller, modifier + (debility?.Penalty ?? 0) + bonuses.Sum(b => b.Amount) + bonus);
+            var roll = MoveRoller.Roll(diceRoller, modifier + (debility?.Penalty ?? 0) + bonuses.Sum(b => b.Amount) + bonus);
             return (roll, string.Join(", ", parts));
         }
 
         private Task<IReadOnlyList<RollBonus>> BonusesAsync(Character character, RollKind kind, StatType? stat = null) =>
-            _damageService.BonusesAsync(character, kind, stat);
+            damageService.BonusesAsync(character, kind, stat);
 
         private static string Includes(IReadOnlyList<RollBonus> bonuses) =>
             bonuses.Count > 0 ? $"\nIncludes {string.Join(", ", bonuses.Select(b => $"{b.Source} {FormatSigned(b.Amount)}"))}" : string.Empty;
@@ -320,14 +305,14 @@ public partial class SubclassCommand
         {
             var userId = GetUserId();
 
-            var character = await _characterService.GetCharacterFromUserAsync(userId);
+            var character = await characterService.GetCharacterFromUserAsync(userId);
             if (character is null)
                 return (null, "No character exists. Try making one with /character create");
 
             if (SubclassLibrary.Of(character) != ChampionOfLuna.Subclass)
                 return (null, $"{character.Name} isn't a {ChampionOfLuna.Name}. See /subclass info {ChampionOfLuna.Name}");
 
-            if (_abilityService.FindAbility(character, move) is null)
+            if (abilityService.FindAbility(character, move) is null)
             {
                 var level = ChampionOfLuna.Subclass.Moves.FirstOrDefault(m => m.Move.Name == move)?.Level;
                 return (null, $"{character.Name} hasn't unlocked {move} yet" + (level is not null ? $" (level {level})." : "."));
@@ -348,7 +333,7 @@ public partial class SubclassCommand
             var reply = await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);
 
             if (reply.IsSuccess && _context.TryGetChannelID(out var channelID))
-                await _rollStatsService.RecordAsync(reply.Entity.ID, channelID, character.ID, roll.Dice, RollLabel.Of(embed));
+                await rollStatsService.RecordAsync(reply.Entity.ID, channelID, character.ID, roll.Dice, RollLabel.Of(embed));
 
             return reply;
         }

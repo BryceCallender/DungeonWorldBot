@@ -20,28 +20,15 @@ namespace DungeonWorldBot.Features.Gear;
 /// Homebrew gear with its own rules, like the Gem-Aspected Bow.
 /// </summary>
 [Group("gear")]
-public class GearCommand : DungeonWorldCommandBase
+public class GearCommand(
+    ICommandContext context,
+    FeedbackService feedbackService,
+    ICharacterService characterService,
+    IGearService gearService,
+    IDamageService damageService,
+    IGameMasterService gameMaster)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
-    private readonly ICharacterService _characterService;
-    private readonly IGearService _gearService;
-    private readonly IDamageService _damageService;
-    private readonly IGameMasterService _gameMaster;
-
-    public GearCommand(
-        ICommandContext context,
-        FeedbackService feedbackService,
-        ICharacterService characterService,
-        IGearService gearService,
-        IDamageService damageService,
-        IGameMasterService gameMaster)
-        : base(context, feedbackService)
-    {
-        _characterService = characterService;
-        _gearService = gearService;
-        _damageService = damageService;
-        _gameMaster = gameMaster;
-    }
-
     [Command("list")]
     [Description("List every piece of custom gear")]
     public async Task<IResult> ListAsync()
@@ -108,7 +95,7 @@ public class GearCommand : DungeonWorldCommandBase
         if (GearRules.Owned(character).Any(o => o.Gear == found))
             return await ReplyWithErrorAsync($"{character.Name} already has the {found.Name}.");
 
-        await _gearService.GiveAsync(character, found);
+        await gearService.GiveAsync(character, found);
         return await ReplyAsync($"{character.Name} gains the {found.Name}!",
             $"{found.Summary}\n\nChoose a {found.ModeKind.ToLower()} with /gear socket");
     }
@@ -132,7 +119,7 @@ public class GearCommand : DungeonWorldCommandBase
         if (GearLibrary.Find(gear) is not { } found || GearRules.Owned(character).All(o => o.Gear != found))
             return await ReplyWithErrorAsync($"{character.Name} doesn't have {gear}.");
 
-        await _gearService.RemoveAsync(character, found);
+        await gearService.RemoveAsync(character, found);
         return await ReplyAsync("Gear Removed", $"{character.Name} no longer has the {found.Name}.");
     }
 
@@ -155,7 +142,7 @@ public class GearCommand : DungeonWorldCommandBase
         if (owned.Mode == newMode)
             return await ReplyWithErrorAsync($"The {owned.Gear.Name} already has {newMode.Name} socketed.");
 
-        await _gearService.SetModeAsync(character, owned.Gear, newMode);
+        await gearService.SetModeAsync(character, owned.Gear, newMode);
 
         var description = $"*{newMode.Visual}*\n\n**{newMode.Title}:** {newMode.Effect}";
         if (owned.Mode?.Counter is { } lost && owned.Mode.Counter != newMode.Counter)
@@ -188,11 +175,11 @@ public class GearCommand : DungeonWorldCommandBase
         if (active?.Mode?.Counter is not { } found)
             return await ReplyWithErrorAsync($"{character.Name} has nothing socketed that tracks {counter}.");
 
-        var before = _gearService.GetCounter(character, found);
+        var before = gearService.GetCounter(character, found);
         if (before + change < 0)
             return await ReplyWithErrorAsync($"{character.Name} only has {before} {found.Name}.");
 
-        var after = await _gearService.SetCounterAsync(character, found, before + change);
+        var after = await gearService.SetCounterAsync(character, found, before + change);
         var max = found.Max is { } m ? $"/{m}" : string.Empty;
         var description = $"{found.Name}: {before} → **{after}{max}**";
         if (after != before + change)
@@ -211,14 +198,14 @@ public class GearCommand : DungeonWorldCommandBase
         if (character is null)
             return await ReplyWithErrorAsync(NoCharacterMessage);
 
-        var cleared = new List<string>();
+        List<string> cleared = [];
         foreach (var counter in GearRules.Owned(character).SelectMany(o => o.Gear.Modes).Select(m => m.Counter).OfType<GearCounter>()
                      .Where(c => c.ClearsAfterCombat).Distinct())
         {
-            if (_gearService.GetCounter(character, counter) == 0)
+            if (gearService.GetCounter(character, counter) == 0)
                 continue;
 
-            await _gearService.SetCounterAsync(character, counter, 0);
+            await gearService.SetCounterAsync(character, counter, 0);
             cleared.Add(counter.Name);
         }
 
@@ -238,7 +225,7 @@ public class GearCommand : DungeonWorldCommandBase
         if (owned?.Mode?.Action is not { } action)
             return await ReplyWithErrorAsync($"Nothing {character.Name} has socketed gives a special attack. Topaz gives the bow Opportunist's Volley.");
 
-        if (await _damageService.RollAsync(character, action.Name, extraDamage) is not { } damage)
+        if (await damageService.RollAsync(character, action.Name, extraDamage) is not { } damage)
             return await ReplyWithErrorAsync("Couldn't roll your damage. Fix it with /character damage-dice");
 
         var dealt = action.HalfDamage ? GearRules.Half(damage.Total) : damage.Total;
@@ -274,26 +261,26 @@ public class GearCommand : DungeonWorldCommandBase
 
         var status = $"**{mode.Name}: {mode.Title}**\n{mode.Effect}";
         if (mode.Counter is { } counter)
-            status += $"\n**{counter.Name}:** {_gearService.GetCounter(character, counter)}{(counter.Max is { } max ? $"/{max}" : string.Empty)}";
+            status += $"\n**{counter.Name}:** {gearService.GetCounter(character, counter)}{(counter.Max is { } max ? $"/{max}" : string.Empty)}";
         return status;
     }
 
     /// <returns>An error if the user is acting on someone else's character without being the DM.</returns>
     private async Task<IResult?> CheckOthersAsync(IUser? user)
     {
-        if (user is null || !_context.TryGetUserID(out var self) || user.ID == self || await _gameMaster.IsGameMasterAsync(CancellationToken))
+        if (user is null || !_context.TryGetUserID(out var self) || user.ID == self || await gameMaster.IsGameMasterAsync(CancellationToken))
             return null;
 
-        return await ReplyWithErrorAsync($"Only someone with the {_gameMaster.RoleName} role can change someone else's gear.");
+        return await ReplyWithErrorAsync($"Only someone with the {gameMaster.RoleName} role can change someone else's gear.");
     }
 
     private async Task<Character?> GetCharacterAsync(IUser? user)
     {
         if (user is not null)
-            return await _characterService.GetCharacterFromUserAsync(user.ID);
+            return await characterService.GetCharacterFromUserAsync(user.ID);
 
         var userId = GetUserId();
 
-        return await _characterService.GetCharacterFromUserAsync(userId);
+        return await characterService.GetCharacterFromUserAsync(userId);
     }
 }

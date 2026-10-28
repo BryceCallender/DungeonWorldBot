@@ -187,7 +187,7 @@ public static partial class ChampionOfLuna
     /// <returns>Every d10 rolled, in order.</returns>
     public static IReadOnlyList<int> RollBarrage(Func<int> rollD10)
     {
-        var rolls = new List<int>();
+        List<int> rolls = [];
         do
         {
             rolls.Add(rollD10());

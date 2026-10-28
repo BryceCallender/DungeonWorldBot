@@ -7,6 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
 using Remora.Discord.API.Abstractions.Gateway.Commands;
 using Remora.Discord.Commands.Services;
 using Remora.Discord.Gateway;
@@ -49,20 +50,12 @@ public class Program
     }
     
     private static IHostBuilder CreateHostBuilder(string[] args) => Host.CreateDefaultBuilder(args)
+        // The default builder only reads user secrets in Development, and the bot runs as Production. Where none are
+        // set (like on the Pi), the token comes from appsettings.json or the environment as before.
+        .ConfigureAppConfiguration(c => c.AddUserSecrets<Program>(optional: true))
         .AddDiscordService
         (
-            services =>
-            {
-                var configuration = services.GetRequiredService<IConfiguration>();
-
-                return configuration.GetValue<string?>("REMORA_BOT_TOKEN") ??
-                       throw new InvalidOperationException
-                       (
-                           "No bot token has been provided. Set the REMORA_BOT_TOKEN environment variable to a " +
-                           "valid token."
-                       );
-            }
-        )
+            services => services.GetRequiredService<IOptions<BotSettings>>().Value.BotToken!)
         .ConfigureServices
         (
             (context, services) =>
@@ -72,8 +65,16 @@ public class Program
                     g.Intents |= GatewayIntents.MessageContent;
                     g.Intents |= GatewayIntents.DirectMessages;
                 });
+                services.AddBotSettings()
+                    .Validate
+                    (
+                        s => !string.IsNullOrWhiteSpace(s.BotToken),
+                        "No bot token has been provided. Set the REMORA_BOT_TOKEN environment variable to a valid token."
+                    )
+                    .ValidateOnStart();
                 services
                     .AddSqlite<DungeonWorldContext>(context.Configuration.GetConnectionString("DungeonWorldConnectionString"))
+                    .AddSqlite<CanvasContext>($"Data Source={CanvasDatabasePath(context)};Mode=ReadOnly")
                     .AddAttributedServices(typeof(Program).Assembly)
                     .AddRemoraServices()
                     .AddHostedService<EncounterAnnouncer>()
@@ -88,4 +89,12 @@ public class Program
                 .AddFilter("System.Net.Http.HttpClient.*.ClientHandler", LogLevel.Warning)
                 .AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning)
         );
+
+    /// <summary>
+    /// The dashboard's canvases.db, which the bot only reads for its encounter scenes. Set CanvasDatabasePath if it's
+    /// somewhere other than beside the dashboard.
+    /// </summary>
+    private static string CanvasDatabasePath(HostBuilderContext context) => Path.GetFullPath(
+        context.Configuration.GetValue<string?>("CanvasDatabasePath")
+        ?? Path.Combine(context.HostingEnvironment.ContentRootPath, "..", "DungeonWorldBot.Dashboard", "canvases.db"));
 }

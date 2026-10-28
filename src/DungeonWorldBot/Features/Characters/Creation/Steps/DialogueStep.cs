@@ -17,20 +17,14 @@ public readonly record struct StepResult<T>(bool IsCancelled, T? Value)
 /// Asks the user a question in their DMs and keeps asking until they give a valid answer,
 /// type /cancel, or stop responding.
 /// </summary>
-public abstract class DialogueStep<T>
+public abstract class DialogueStep<T>(FeedbackService feedbackService, string content)
 {
     private static readonly TimeSpan ResponseTimeout = TimeSpan.FromMinutes(1);
 
     protected const string CancelHint = "Type the /cancel command";
 
-    protected readonly FeedbackService FeedbackService;
-    protected readonly string Content;
-
-    protected DialogueStep(FeedbackService feedbackService, string content)
-    {
-        FeedbackService = feedbackService;
-        Content = content;
-    }
+    protected readonly FeedbackService FeedbackService = feedbackService;
+    protected readonly string Content = content;
 
     protected abstract Embed BuildPrompt();
 

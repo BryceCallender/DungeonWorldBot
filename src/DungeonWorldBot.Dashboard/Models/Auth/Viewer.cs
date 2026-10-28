@@ -1,6 +1,6 @@
 using System.Security.Claims;
-using DungeonWorldBot.Dashboard.Models.Scenes;
 using DungeonWorldBot.Dashboard.Services.Auth;
+using DungeonWorldBot.Data.Entities;
 
 namespace DungeonWorldBot.Dashboard.Models.Auth;
 

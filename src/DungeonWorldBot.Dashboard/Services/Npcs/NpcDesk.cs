@@ -10,21 +10,14 @@ namespace DungeonWorldBot.Dashboard.Services.Npcs;
 /// <summary>
 /// The DM looking after the NPCs travelling with the party, as /dm npc does in Discord. The bot's own rules do the work.
 /// </summary>
-public class NpcDesk
+/// <param name="options">Options for opening the bot's database read-write.</param>
+public class NpcDesk(DbContextOptions<DungeonWorldContext> options)
 {
     public const int MaxNameLength = FormText.MaxNameLength;
     public const int MaxTextLength = FormText.MaxTextLength;
 
     // NPCs are written with modifiers, as /dm npc stats takes them
     public const int MaxModifier = 3;
-
-    private readonly DbContextOptions<DungeonWorldContext> _options;
-
-    /// <param name="options">Options for opening the bot's database read-write.</param>
-    public NpcDesk(DbContextOptions<DungeonWorldContext> options)
-    {
-        _options = options;
-    }
 
     /// <summary>
     /// Adds an NPC to the party, or changes one already with it.
@@ -45,7 +38,7 @@ public class NpcDesk
                 return $"{stat.ToString().ToUpper()} goes from -{MaxModifier} to +{MaxModifier}.";
         }
 
-        await using var context = new DungeonWorldContext(_options);
+        await using var context = new DungeonWorldContext(options);
         var service = new NpcService(context);
 
         Npc npc;
@@ -95,7 +88,7 @@ public class NpcDesk
         if (amount < 1)
             return "Give an amount of at least 1.";
 
-        await using var context = new DungeonWorldContext(_options);
+        await using var context = new DungeonWorldContext(options);
         var service = new NpcService(context);
         if (await context.Npcs.FirstOrDefaultAsync(n => n.ID == npcID) is not { } npc)
             return NoNpc;
@@ -112,7 +105,7 @@ public class NpcDesk
     /// </summary>
     public async Task<string?> RemoveAsync(int npcID)
     {
-        await using var context = new DungeonWorldContext(_options);
+        await using var context = new DungeonWorldContext(options);
         if (await context.Npcs.FirstOrDefaultAsync(n => n.ID == npcID) is not { } npc)
             return NoNpc;
 

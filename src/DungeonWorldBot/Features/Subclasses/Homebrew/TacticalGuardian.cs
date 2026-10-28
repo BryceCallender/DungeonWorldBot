@@ -145,7 +145,7 @@ public static class TacticalGuardian
 
     private static string? Describe(Character character)
     {
-        var parts = new List<string>();
+        List<string> parts = [];
         if (PoolOf(character) is { Count: > 0 } pool)
             parts.Add($"**Strategy pool:** {FormatPool(pool)}");
         if (StoredDamageOf(character) is > 0 and var stored)

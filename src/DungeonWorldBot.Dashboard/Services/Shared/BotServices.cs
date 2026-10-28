@@ -7,6 +7,7 @@ using DungeonWorldBot.Features.Npcs;
 using DungeonWorldBot.Features.Resources;
 using DungeonWorldBot.Features.Rolls;
 using DungeonWorldBot.Features.Sessions;
+using DungeonWorldBot.Infrastructure;
 
 namespace DungeonWorldBot.Dashboard.Services.Shared;
 
@@ -22,6 +23,8 @@ public static class BotServices
     public static IServiceCollection AddBotServices(this IServiceCollection services, DashboardDatabases databases)
     {
         services.AddSqlite<DungeonWorldContext>($"Data Source={databases.GamePath};Mode=ReadOnly");
+        // Roll stats needs the game chat, set the same way as for the bot
+        services.AddBotSettings();
 
         services.AddScoped<ICharacterService, CharacterService>();
         services.AddScoped<IResourceService, ResourceService>();

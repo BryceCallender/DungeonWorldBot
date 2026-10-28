@@ -5,15 +5,8 @@ using DungeonWorldBot.Infrastructure;
 namespace DungeonWorldBot.Features.Abilities;
 
 [Scoped<IAbilityService>]
-public class AbilityService : IAbilityService
+public class AbilityService(DungeonWorldContext dungeonWorldContext) : IAbilityService
 {
-    private readonly DungeonWorldContext _dungeonWorldContext;
-
-    public AbilityService(DungeonWorldContext dungeonWorldContext)
-    {
-        _dungeonWorldContext = dungeonWorldContext;
-    }
-
     public Ability? FindAbility(Character character, string name)
     {
         return character.Abilities?.FirstOrDefault(a => a.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase));
@@ -30,18 +23,18 @@ public class AbilityService : IAbilityService
             LevelTaken = character.Level,
         };
 
-        character.Abilities ??= new List<Ability>();
+        character.Abilities ??= [];
         character.Abilities.Add(ability);
 
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
         return ability;
     }
 
     public async Task RemoveAbilityAsync(Character character, Ability ability)
     {
         character.Abilities?.Remove(ability);
-        _dungeonWorldContext.Remove(ability);
-        await _dungeonWorldContext.SaveChangesAsync();
+        dungeonWorldContext.Remove(ability);
+        await dungeonWorldContext.SaveChangesAsync();
     }
 
     public async Task<bool> UseAbilityAsync(Ability ability, int amount)
@@ -53,7 +46,7 @@ public class AbilityService : IAbilityService
             return false;
 
         ability.Uses -= amount;
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
         return true;
     }
 
@@ -66,7 +59,7 @@ public class AbilityService : IAbilityService
         ability.Uses = amount is null
             ? Math.Max(max, ability.Uses)
             : Math.Max(ability.Uses, Math.Min(max, ability.Uses + amount.Value));
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
     }
 
     public async Task RestoreAllAbilitiesAsync(Character character)
@@ -77,25 +70,25 @@ public class AbilityService : IAbilityService
                 ability.Uses = Math.Max(max, ability.Uses);
         }
 
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
     }
 
     public async Task SetAbilityUsesAsync(Ability ability, int uses)
     {
         // Not clamped to the max: hold can stack above the usual amount, and restoring brings it back to the max
         ability.Uses = uses;
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
     }
 
     public async Task SetLevelTakenAsync(Ability ability, int level)
     {
         ability.LevelTaken = level;
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
     }
 
     public async Task SetDescriptionAsync(Ability ability, string? description)
     {
         ability.Description = string.IsNullOrWhiteSpace(description) ? null : description.Trim();
-        await _dungeonWorldContext.SaveChangesAsync();
+        await dungeonWorldContext.SaveChangesAsync();
     }
 }

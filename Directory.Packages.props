@@ -1,0 +1,41 @@
+<Project>
+
+    <PropertyGroup>
+        <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+        <!-- EF Core, Microsoft.Extensions and Microsoft.Data.Sqlite ship together, so they move as one -->
+        <DotNetPackagesVersion>10.0.14</DotNetPackagesVersion>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageVersion Include="Microsoft.Data.Sqlite" Version="$(DotNetPackagesVersion)" />
+        <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="$(DotNetPackagesVersion)" />
+        <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(DotNetPackagesVersion)" />
+        <PackageVersion Include="Microsoft.EntityFrameworkCore.Tools" Version="$(DotNetPackagesVersion)" />
+        <PackageVersion Include="Microsoft.Extensions.Configuration.Json" Version="$(DotNetPackagesVersion)" />
+        <PackageVersion Include="Microsoft.Extensions.Hosting" Version="$(DotNetPackagesVersion)" />
+        <PackageVersion Include="Microsoft.Extensions.Logging.Console" Version="$(DotNetPackagesVersion)" />
+        <!-- Overrides the older SQLite bundle EF Core references (GHSA-2m69-gcr7-jv3q) -->
+        <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="3.0.5" />
+    </ItemGroup>
+
+    <ItemGroup Label="Discord">
+        <PackageVersion Include="Remora.Discord.API" Version="81.0.0" />
+        <PackageVersion Include="Remora.Discord.Hosting" Version="8.0.0" />
+        <PackageVersion Include="Remora.Discord.Interactivity" Version="7.0.0" />
+        <PackageVersion Include="Remora.Discord.Pagination" Version="6.0.0" />
+    </ItemGroup>
+
+    <ItemGroup Label="Other libraries">
+        <PackageVersion Include="d20tek-dicenotation" Version="5.1.8" />
+        <PackageVersion Include="Enums.NET" Version="5.0.0" />
+        <PackageVersion Include="Sqids" Version="3.2.1" />
+    </ItemGroup>
+
+    <ItemGroup Label="Tests">
+        <PackageVersion Include="coverlet.collector" Version="10.1.0" />
+        <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.11.0" />
+        <PackageVersion Include="xunit" Version="2.9.3" />
+        <PackageVersion Include="xunit.runner.visualstudio" Version="4.0.1" />
+    </ItemGroup>
+
+</Project>

@@ -13,7 +13,12 @@ namespace DungeonWorldBot.Features.Characters.Creation;
 /// Walks a player through creating a character over DMs.
 /// </summary>
 [Scoped]
-public class CharacterCreationDialogue
+public class CharacterCreationDialogue(
+    FeedbackService feedbackService,
+    InteractivityService interactivity,
+    IDiscordRestUserAPI userAPI,
+    IDiceRoller dice,
+    IConfiguration configuration)
 {
     private enum Section { Name, Race, Class, Stats, Alignment, Gear, ClassChoices, Done }
 
@@ -29,32 +34,18 @@ public class CharacterCreationDialogue
         ("No Editing", Section.Done),
     ];
 
-    private readonly FeedbackService _feedbackService;
-    private readonly InteractivityService _interactivity;
-    private readonly IDiscordRestUserAPI _userAPI;
-    private readonly IDiceRoller _dice;
-    private readonly bool _trackWeight;
+    // Fields rather than parameters, since each Session reads them through its dialogue
+    private readonly FeedbackService _feedbackService = feedbackService;
+    private readonly InteractivityService _interactivity = interactivity;
+    private readonly IDiceRoller _dice = dice;
 
-    public CharacterCreationDialogue(
-        FeedbackService feedbackService,
-        InteractivityService interactivity,
-        IDiscordRestUserAPI userAPI,
-        IDiceRoller dice,
-        IConfiguration configuration)
-    {
-        _feedbackService = feedbackService;
-        _interactivity = interactivity;
-        _userAPI = userAPI;
-        _dice = dice;
-
-        // Off unless the TrackWeight setting turns it on, since the table doesn't count weight
-        _trackWeight = configuration.GetValue("TrackWeight", false);
-    }
+    // Off unless the TrackWeight setting turns it on, since the table doesn't count weight
+    private readonly bool _trackWeight = configuration.GetValue("TrackWeight", false);
 
     /// <returns>The finished (unsaved) character, or null if the player cancelled or stopped responding.</returns>
     public async Task<Character?> RunAsync(Snowflake userId, CancellationToken ct = default)
     {
-        var getDM = await _userAPI.CreateDMAsync(userId, ct);
+        var getDM = await userAPI.CreateDMAsync(userId, ct);
         if (!getDM.IsSuccess)
             return null;
 
@@ -217,7 +208,7 @@ public class CharacterCreationDialogue
         private async Task<List<T>?> AskPicksAsync<T>(string prompt, IReadOnlyList<T> options, Func<T, string> label, int count)
         {
             var remaining = options.ToList();
-            var picks = new List<T>();
+            List<T> picks = [];
 
             for (var i = 0; i < count && remaining.Count > 0; i++)
             {

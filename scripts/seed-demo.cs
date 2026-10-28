@@ -14,7 +14,7 @@
 //
 // (The path is from the Dashboard's folder, which dotnet run works from.)
 
-#:package Microsoft.Data.Sqlite@10.0.12
+#:package Microsoft.Data.Sqlite
 
 using System.Globalization;
 using System.Runtime.CompilerServices;

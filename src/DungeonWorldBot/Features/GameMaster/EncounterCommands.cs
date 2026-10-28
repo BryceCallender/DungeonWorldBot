@@ -24,42 +24,21 @@ public partial class DmCommand
     /// Running a fight: starting it, putting monsters in, hurting them, and ending it.
     /// </summary>
     [Group("encounter")]
-    public class EncounterCommands : DungeonWorldCommandBase
+    public class EncounterCommands(
+        ICommandContext context,
+        FeedbackService feedbackService,
+        IEncounterService encounterService,
+        IArmorService armorService,
+        IDiceRoller diceRoller,
+        IGameMasterService gameMaster,
+        SceneDirectory scenes,
+        ICharacterService characterService,
+        EnemyAttackResolver enemyAttackResolver,
+        INpcService npcService)
+        : DungeonWorldCommandBase(context, feedbackService)
     {
         private const string EnemyDescription = "The enemy";
         private const string NoFight = "No fight is going on. Start one with /dm encounter start.";
-
-        private readonly IEncounterService _encounterService;
-        private readonly IArmorService _armorService;
-        private readonly IDiceRoller _diceRoller;
-        private readonly IGameMasterService _gameMaster;
-        private readonly SceneDirectory _scenes;
-        private readonly ICharacterService _characterService;
-        private readonly EnemyAttackResolver _enemyAttackResolver;
-        private readonly INpcService _npcService;
-
-        public EncounterCommands(
-            ICommandContext context,
-            FeedbackService feedbackService,
-            IEncounterService encounterService,
-            IArmorService armorService,
-            IDiceRoller diceRoller,
-            IGameMasterService gameMaster,
-            SceneDirectory scenes,
-            ICharacterService characterService,
-            EnemyAttackResolver enemyAttackResolver,
-            INpcService npcService)
-            : base(context, feedbackService)
-        {
-            _encounterService = encounterService;
-            _armorService = armorService;
-            _diceRoller = diceRoller;
-            _gameMaster = gameMaster;
-            _scenes = scenes;
-            _characterService = characterService;
-            _enemyAttackResolver = enemyAttackResolver;
-            _npcService = npcService;
-        }
 
         [Command("start")]
         [Description("Start a fight. Add monsters to it with /dm encounter add, or on its scene")]
@@ -70,23 +49,23 @@ public partial class DmCommand
             [AutocompleteProvider(SceneAutocomplete.ID)]
             string? scene = null)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
             if (Text(name) is not { } trimmed)
                 return await ReplyWithErrorAsync("Give the fight a name.");
 
             SceneLink? link = null;
-            if (Text(scene) is { } wanted && (link = await _scenes.FindAsync(wanted)) is null)
+            if (Text(scene) is { } wanted && (link = await scenes.FindAsync(wanted)) is null)
                 return await ReplyWithErrorAsync($"There's no encounter scene called {wanted} on the dashboard.");
 
-            if (await _encounterService.FindRunningAsync(trimmed) is { } sameName)
+            if (await encounterService.FindRunningAsync(trimmed) is { } sameName)
                 return await ReplyWithErrorAsync($"{sameName.Name} is already going on. Give this fight another name.");
-            if (link is not null && await _encounterService.GetOnSceneAsync(link.ID) is { } onScene)
+            if (link is not null && await encounterService.GetOnSceneAsync(link.ID) is { } onScene)
                 return await ReplyWithErrorAsync($"{onScene.Name} is still going on {link.Name}. End it with /dm encounter end first.");
 
             // This reply is the announcement, so the bot doesn't make another
-            if (await _encounterService.StartAsync(trimmed, link, announced: true) is not { } encounter)
+            if (await encounterService.StartAsync(trimmed, link, announced: true) is not { } encounter)
                 return await ReplyWithErrorAsync("Couldn't start the fight. Try again.");
 
             return await _feedbackService.SendContextualEmbedAsync(EncounterAnnouncements.Started(encounter), ct: CancellationToken);
@@ -99,15 +78,15 @@ public partial class DmCommand
             [AutocompleteProvider(FightAutocomplete.ID)]
             string? fight = null)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
             var picked = await PickAsync(fight);
             if (picked.Encounter is not { } encounter)
                 return await ReplyWithErrorAsync(picked.Error!);
 
-            await _encounterService.EndAsync(encounter, announced: true);
-            var cleared = await _armorService.EndFightForAsync(await _encounterService.LeavingAsync(encounter));
+            await encounterService.EndAsync(encounter, announced: true);
+            var cleared = await armorService.EndFightForAsync(await encounterService.LeavingAsync(encounter));
 
             return await _feedbackService.SendContextualEmbedAsync(
                 EncounterAnnouncements.Ended(encounter, ArmorCommand.DescribeCleared(cleared)), ct: CancellationToken);
@@ -127,17 +106,17 @@ public partial class DmCommand
             [AutocompleteProvider(FightAutocomplete.ID)]
             string? fight = null)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
             var picked = await PickAsync(fight);
             if (picked.Encounter is not { } encounter)
                 return await ReplyWithErrorAsync(picked.Error!);
 
-            if (await _encounterService.FindMonsterAsync(monster) is not { } template)
+            if (await encounterService.FindMonsterAsync(monster) is not { } template)
                 return await ReplyWithErrorAsync($"There's no saved monster called {monster}. See /dm monster list");
 
-            var spawned = await _encounterService.SpawnAsync(encounter, template, count);
+            var spawned = await encounterService.SpawnAsync(encounter, template, count);
 
             return await ReplyAsync("Enemies Appear!",
                 $"{string.Join(", ", spawned.Select(e => $"**{e.Name}**"))} joined **{encounter.Name}**.\n{EnemySheet.Summary(template)}");
@@ -169,7 +148,7 @@ public partial class DmCommand
             [AutocompleteProvider(FightAutocomplete.ID)]
             string? fight = null)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
             var picked = await PickAsync(fight);
@@ -178,7 +157,7 @@ public partial class DmCommand
 
             if (Text(name) is not { } trimmed)
                 return await ReplyWithErrorAsync("Give the enemy a name.");
-            if (await _encounterService.FindEnemyAsync(trimmed) is { } existing)
+            if (await encounterService.FindEnemyAsync(trimmed) is { } existing)
                 return await ReplyWithErrorAsync($"{existing.Name} is already in a fight.");
 
             var enemy = new Enemy
@@ -193,7 +172,7 @@ public partial class DmCommand
                 Moves = Text(moves),
                 Notes = Text(notes),
             };
-            await _encounterService.AddEnemyAsync(encounter, enemy);
+            await encounterService.AddEnemyAsync(encounter, enemy);
 
             return await ReplyAsync("An Enemy Appears!", $"**{enemy.Name}** joined **{encounter.Name}**.\n{EnemySheet.Summary(enemy)}");
         }
@@ -212,16 +191,16 @@ public partial class DmCommand
             [MinValue(0)]
             int piercing = 0)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
-            if (await _encounterService.FindEnemyAsync(enemy) is not { } target)
+            if (await encounterService.FindEnemyAsync(enemy) is not { } target)
                 return await ReplyWithErrorAsync(NotFound(enemy));
 
-            if (!_diceRoller.TryRoll(damage, out var roll))
+            if (!diceRoller.TryRoll(damage, out var roll))
                 return await ReplyWithErrorAsync($"`{damage}` is not a valid amount or dice roll.");
 
-            var hit = await _encounterService.DamageAsync(target, roll.Value, type, piercing);
+            var hit = await encounterService.DamageAsync(target, roll.Value, type, piercing);
 
             return await ReplyAsync("Hit!", DescribeHit(target, hit));
         }
@@ -247,27 +226,27 @@ public partial class DmCommand
             [MinValue(0)]
             int piercing = 0)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
             if ((user is null) == (Text(npc) is null))
                 return await ReplyWithErrorAsync("Pick who it attacks: a player with user, or an NPC with npc.");
 
-            if (await _encounterService.FindEnemyAsync(enemy) is not { } attacker)
+            if (await encounterService.FindEnemyAsync(enemy) is not { } attacker)
                 return await ReplyWithErrorAsync(NotFound(enemy));
 
             Character? character = null;
             Npc? ally = null;
-            if (user is not null && (character = await _characterService.GetCharacterFromUserAsync(user.ID)) is null)
+            if (user is not null && (character = await characterService.GetCharacterFromUserAsync(user.ID)) is null)
                 return await ReplyWithErrorAsync($"{user.Username} does not have a character.");
-            if (Text(npc) is { } npcName && (ally = await _npcService.FindAsync(npcName)) is null)
+            if (Text(npc) is { } npcName && (ally = await npcService.FindAsync(npcName)) is null)
                 return await ReplyWithErrorAsync(NpcCommand.NotFound(npcName));
 
-            var attacked = await _enemyAttackResolver.ResolveAsync(new EnemyAttackInput(attacker, character, ally, move, damage, type, piercing));
+            var attacked = await enemyAttackResolver.ResolveAsync(new EnemyAttackInput(attacker, character, ally, move, damage, type, piercing));
             if (attacked.Attack is not { } attack)
                 return await ReplyWithErrorAsync(attacked.Error!);
 
-            await _encounterService.LogAsync(attack.Action);
+            await encounterService.LogAsync(attack.Action);
             return await ReplyAsync(attack.Title, attack.Description);
         }
 
@@ -280,22 +259,22 @@ public partial class DmCommand
             [Description("Amount to heal. Can be a dice roll or left blank to full heal")]
             string? heal = null)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
-            if (await _encounterService.FindEnemyAsync(enemy) is not { } target)
+            if (await encounterService.FindEnemyAsync(enemy) is not { } target)
                 return await ReplyWithErrorAsync(NotFound(enemy));
 
             if (string.IsNullOrWhiteSpace(heal))
             {
-                await _encounterService.HealAsync(target);
+                await encounterService.HealAsync(target);
             }
             else
             {
-                if (!_diceRoller.TryRoll(heal, out var roll))
+                if (!diceRoller.TryRoll(heal, out var roll))
                     return await ReplyWithErrorAsync($"`{heal}` is not a valid amount or dice roll.");
 
-                await _encounterService.HealAsync(target, roll.Value);
+                await encounterService.HealAsync(target, roll.Value);
             }
 
             return await ReplyAsync("Healed!", $"{target.Name} is at {target.CurrentHP}/{target.MaxHP} HP · {EnemySheet.Condition(target)}");
@@ -330,15 +309,15 @@ public partial class DmCommand
             [Description("Anything else worth remembering. " + ClearHint)]
             string? notes = null)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
-            if (await _encounterService.FindEnemyAsync(enemy) is not { } target)
+            if (await encounterService.FindEnemyAsync(enemy) is not { } target)
                 return await ReplyWithErrorAsync(NotFound(enemy));
 
             if (Text(rename) is { } newName && !newName.Equals(target.Name, StringComparison.OrdinalIgnoreCase))
             {
-                if (await _encounterService.FindEnemyAsync(newName) is { } taken)
+                if (await encounterService.FindEnemyAsync(newName) is { } taken)
                     return await ReplyWithErrorAsync($"{taken.Name} is already in a fight.");
             }
 
@@ -357,7 +336,7 @@ public partial class DmCommand
             target.Moves = Change(target.Moves, moves);
             target.Notes = Change(target.Notes, notes);
 
-            await _encounterService.SaveAsync(target);
+            await encounterService.SaveAsync(target);
 
             return await ReplyAsync("Enemy Updated!", $"**{target.Name}**\n{EnemySheet.Summary(target)}");
         }
@@ -369,13 +348,13 @@ public partial class DmCommand
             [AutocompleteProvider(EnemyAutocomplete.ID)]
             string enemy)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
-            if (await _encounterService.FindEnemyAsync(enemy) is not { } target)
+            if (await encounterService.FindEnemyAsync(enemy) is not { } target)
                 return await ReplyWithErrorAsync(NotFound(enemy));
 
-            await _encounterService.RemoveAsync(target);
+            await encounterService.RemoveAsync(target);
 
             return await ReplyAsync("Enemy Removed", $"{target.Name} is out of the fight.");
         }
@@ -387,7 +366,7 @@ public partial class DmCommand
             [AutocompleteProvider(FightAutocomplete.ID)]
             string? fight = null)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
                 return await ReplyNotGameMasterAsync();
 
             var picked = await PickAsync(fight);
@@ -417,9 +396,9 @@ public partial class DmCommand
 
         public static string NotFound(string name) => $"There's no enemy called {name} in a fight. See /dm encounter show";
 
-        private Task<FightChoice> PickAsync(string? fight) => FightChoice.PickAsync(_encounterService, fight, NoFight);
+        private Task<FightChoice> PickAsync(string? fight) => FightChoice.PickAsync(encounterService, fight, NoFight);
 
         private async Task<Result> ReplyNotGameMasterAsync() =>
-            await ReplyWithErrorAsync($"Only someone with the {_gameMaster.RoleName} role can do that.");
+            await ReplyWithErrorAsync($"Only someone with the {gameMaster.RoleName} role can do that.");
     }
 }

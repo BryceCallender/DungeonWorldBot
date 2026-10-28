@@ -16,27 +16,19 @@ namespace DungeonWorldBot.Features.Characters;
 /// What /character, /character level, and the DM's /dm stat and /dm level commands share: finding characters and
 /// replying about levels and stat points.
 /// </summary>
-public abstract class CharacterCommandBase : DungeonWorldCommandBase
+public abstract class CharacterCommandBase(
+    ICommandContext context,
+    FeedbackService feedbackService,
+    ICharacterService characterService,
+    IGameMasterService gameMaster,
+    ILevelingService leveling,
+    IGameSettingsService settings)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
-    protected readonly ICharacterService _characterService;
-    protected readonly IGameMasterService _gameMaster;
-    protected readonly ILevelingService _leveling;
-    protected readonly IGameSettingsService _settings;
-
-    protected CharacterCommandBase(
-        ICommandContext context,
-        FeedbackService feedbackService,
-        ICharacterService characterService,
-        IGameMasterService gameMaster,
-        ILevelingService leveling,
-        IGameSettingsService settings)
-        : base(context, feedbackService)
-    {
-        _characterService = characterService;
-        _gameMaster = gameMaster;
-        _leveling = leveling;
-        _settings = settings;
-    }
+    protected readonly ICharacterService _characterService = characterService;
+    protected readonly IGameMasterService _gameMaster = gameMaster;
+    protected readonly ILevelingService _leveling = leveling;
+    protected readonly IGameSettingsService _settings = settings;
 
     protected async Task<Character?> GetCharacterAsync(IUser? user) =>
         user is null ? await GetOwnCharacterAsync() : await _characterService.GetCharacterFromUserAsync(user.ID);

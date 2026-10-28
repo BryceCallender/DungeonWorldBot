@@ -1,7 +1,6 @@
 using DungeonWorldBot.Dashboard.Components;
 using DungeonWorldBot.Dashboard.Models.Auth;
 using DungeonWorldBot.Dashboard.Models.Encounters;
-using DungeonWorldBot.Dashboard.Models.Scenes;
 using DungeonWorldBot.Dashboard.Services.Party;
 using DungeonWorldBot.Dashboard.Services.Scenes;
 using DungeonWorldBot.Data;

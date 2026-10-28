@@ -2,7 +2,8 @@ using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Rolls;
 using DungeonWorldBot.Features.Sessions;
-using Microsoft.Extensions.Configuration;
+using DungeonWorldBot.Infrastructure;
+using Microsoft.Extensions.Options;
 using Remora.Discord.API;
 using Remora.Rest.Core;
 
@@ -17,9 +18,7 @@ public sealed class SessionTests : IDisposable
     public void Dispose() => _db.Dispose();
 
     private static SessionService Service(DungeonWorldContext context) =>
-        new(context, new RollStatsService(context, new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?> { ["GameChatChannelId"] = GameChat.Value.ToString() })
-            .Build()));
+        new(context, new RollStatsService(context, Options.Create(new BotSettings { GameChatChannelID = GameChat.Value })));
 
     // A roll made at a moment, as its message ID says
     private static RollRecord Roll(DateTimeOffset at, ulong player, int first, int second, int total, Snowflake? channel = null) => new()

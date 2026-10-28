@@ -3,7 +3,8 @@ using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Encounters;
 using DungeonWorldBot.Features.Npcs;
 using DungeonWorldBot.Features.Rolls;
-using Microsoft.Extensions.Configuration;
+using DungeonWorldBot.Infrastructure;
+using Microsoft.Extensions.Options;
 using Remora.Discord.API;
 using Remora.Rest.Core;
 
@@ -20,8 +21,7 @@ public sealed class SpotlightTests : IDisposable
     private static SpotlightService Spotlight(DungeonWorldContext context, EncounterService encounters) =>
         new(new FightLogService(context, new RollStatsService(context, GameChatConfig()), encounters), new NpcService(context));
 
-    private static IConfiguration GameChatConfig() =>
-        new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> { ["GameChatChannelId"] = GameChat.Value.ToString() }).Build();
+    private static IOptions<BotSettings> GameChatConfig() => Options.Create(new BotSettings { GameChatChannelID = GameChat.Value });
 
     private static Character Hero(ulong id, string name) => new() { ID = DiscordSnowflake.New(id), Name = name, Status = Status.Alive };
 

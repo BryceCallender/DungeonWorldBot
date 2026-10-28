@@ -98,8 +98,8 @@ public partial record MoveDice(int First, int Second, int Total, MoveOutcome? Ch
             if (!names.Success || !values.Success || names.Groups["name"].Captures.Count != values.Groups["value"].Captures.Count)
                 continue;
 
-            var faces = new List<string>();
-            var rolled = new List<int>();
+            List<string> faces = [];
+            List<int> rolled = [];
             foreach (var (name, value) in names.Groups["name"].Captures.Zip(values.Groups["value"].Captures))
             {
                 if (DieName().Match(name.Value) is not { Success: true } die)
@@ -129,8 +129,8 @@ public partial record MoveDice(int First, int Second, int Total, MoveOutcome? Ch
         if (terms.Length != groups.Count)
             return null;
 
-        var faces = new List<string>();
-        var rolled = new List<int>();
+        List<string> faces = [];
+        List<int> rolled = [];
         foreach (var (term, group) in terms.Zip(groups))
         {
             if (LegacyDiceTerm().Match(term) is not { Success: true } dice)

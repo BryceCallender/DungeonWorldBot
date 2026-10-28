@@ -9,7 +9,7 @@ public class TacticTests
 {
     private static Character Battlemaster(string? defaultTactic, string? active = null, bool knowsTactics = true)
     {
-        var abilities = new List<Ability>();
+        List<Ability> abilities = [];
         if (knowsTactics)
             abilities.Add(new Ability { Name = TacticRules.Tactics });
         if (defaultTactic is not null)

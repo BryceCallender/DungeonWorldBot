@@ -19,27 +19,16 @@ namespace DungeonWorldBot.Features.Combat;
 /// Damage taken with /character damage or /subclass guardian take-hit is reduced by the armor matching its type.
 /// </summary>
 [Group("armor")]
-public class ArmorCommand : DungeonWorldCommandBase
+public class ArmorCommand(
+    ICommandContext context,
+    FeedbackService feedbackService,
+    ICharacterService characterService,
+    IArmorService armorService,
+    IGameMasterService gameMaster)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
     private const string UserDescription = "The player whose character to change. Leave blank for your own.";
     private const string DefaultSource = "Bonus armor";
-
-    private readonly ICharacterService _characterService;
-    private readonly IArmorService _armorService;
-    private readonly IGameMasterService _gameMaster;
-
-    public ArmorCommand(
-        ICommandContext context,
-        FeedbackService feedbackService,
-        ICharacterService characterService,
-        IArmorService armorService,
-        IGameMasterService gameMaster)
-        : base(context, feedbackService)
-    {
-        _characterService = characterService;
-        _armorService = armorService;
-        _gameMaster = gameMaster;
-    }
 
     [Command("show")]
     [Description("Show a character's physical, magical and divine armor, and any temporary armor")]
@@ -65,15 +54,15 @@ public class ArmorCommand : DungeonWorldCommandBase
         [Description(UserDescription)]
         IUser? user = null)
     {
-        if (user is not null && _context.TryGetUserID(out var self) && user.ID != self && !await _gameMaster.IsGameMasterAsync(CancellationToken))
-            return await ReplyWithErrorAsync($"Only someone with the {_gameMaster.RoleName} role can set someone else's armor.");
+        if (user is not null && _context.TryGetUserID(out var self) && user.ID != self && !await gameMaster.IsGameMasterAsync(CancellationToken))
+            return await ReplyWithErrorAsync($"Only someone with the {gameMaster.RoleName} role can set someone else's armor.");
 
         var character = await GetCharacterAsync(user);
         if (character is null)
             return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
 
         var before = DamageRules.BaseArmor(character, type);
-        await _armorService.SetArmorAsync(character, type, value);
+        await armorService.SetArmorAsync(character, type, value);
 
         return await ReplyAsync("Armor Changed",
             $"{character.Name}'s {DamageRules.Describe(type)} armor: {before} → **{value}**\n\n{DamageRules.Summary(character)}");
@@ -101,7 +90,7 @@ public class ArmorCommand : DungeonWorldCommandBase
         List<Character> characters;
         if (party)
         {
-            characters = await _characterService.GetCharactersAsync();
+            characters = await characterService.GetCharactersAsync();
         }
         else
         {
@@ -113,7 +102,7 @@ public class ArmorCommand : DungeonWorldCommandBase
 
         source = string.IsNullOrWhiteSpace(source) ? DefaultSource : source.Trim();
         foreach (var character in characters)
-            await _armorService.AddBonusAsync(character, source, type, amount, duration);
+            await armorService.AddBonusAsync(character, source, type, amount, duration);
 
         var bonus = $"{(amount >= 0 ? "+" : "")}{amount} {DamageRules.Describe(type)} armor from {source} ({DamageRules.Describe(duration)})";
         return await ReplyAsync("Armor Added", characters.Count == 1
@@ -133,7 +122,7 @@ public class ArmorCommand : DungeonWorldCommandBase
         if (character is null)
             return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
 
-        var removed = await _armorService.RemoveBonusesAsync(character, string.IsNullOrWhiteSpace(source) ? null : source);
+        var removed = await armorService.RemoveBonusesAsync(character, string.IsNullOrWhiteSpace(source) ? null : source);
         if (removed.Count == 0)
         {
             return await ReplyWithErrorAsync(string.IsNullOrWhiteSpace(source)
@@ -149,18 +138,18 @@ public class ArmorCommand : DungeonWorldCommandBase
     [Description("The fight is over: remove everyone's temporary armor that lasted for the fight or until hit")]
     public async Task<IResult> EndFightAsync()
     {
-        var cleared = await _armorService.EndFightForAllAsync();
+        var cleared = await armorService.EndFightForAllAsync();
         return await ReplyAsync("Fight Over", DescribeCleared(cleared));
     }
 
     private async Task<Character?> GetCharacterAsync(IUser? user)
     {
         if (user is not null)
-            return await _characterService.GetCharacterFromUserAsync(user.ID);
+            return await characterService.GetCharacterFromUserAsync(user.ID);
 
         var userId = GetUserId();
 
-        return await _characterService.GetCharacterFromUserAsync(userId);
+        return await characterService.GetCharacterFromUserAsync(userId);
     }
 
     /// <summary>

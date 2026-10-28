@@ -25,32 +25,19 @@ using Remora.Results;
 namespace DungeonWorldBot.Features.Characters;
 
 [Group("character")]
-public class CharacterCommand : CharacterCommandBase
+public class CharacterCommand(
+    ICommandContext context,
+    FeedbackService feedbackService,
+    ICharacterService characterService,
+    CharacterCreationDialogue creationDialogue,
+    IDiceRoller diceRoller,
+    IResourceService resourceService,
+    IGameMasterService gameMaster,
+    ILevelingService leveling,
+    IGameSettingsService settings,
+    IDamageService damageService)
+    : CharacterCommandBase(context, feedbackService, characterService, gameMaster, leveling, settings)
 {
-    private readonly CharacterCreationDialogue _creationDialogue;
-    private readonly IDiceRoller _diceRoller;
-    private readonly IResourceService _resourceService;
-    private readonly IDamageService _damageService;
-
-    public CharacterCommand(
-        ICommandContext context,
-        FeedbackService feedbackService,
-        ICharacterService characterService,
-        CharacterCreationDialogue creationDialogue,
-        IDiceRoller diceRoller,
-        IResourceService resourceService,
-        IGameMasterService gameMaster,
-        ILevelingService leveling,
-        IGameSettingsService settings,
-        IDamageService damageService)
-        : base(context, feedbackService, characterService, gameMaster, leveling, settings)
-    {
-        _creationDialogue = creationDialogue;
-        _diceRoller = diceRoller;
-        _resourceService = resourceService;
-        _damageService = damageService;
-    }
-
     [Command("create")]
     [Description("Create your character for the campaign")]
     public async Task<IResult> CreateCharacterAsync()
@@ -65,7 +52,7 @@ public class CharacterCommand : CharacterCommandBase
         await _feedbackService.SendContextualNeutralAsync("Check your DMs to create your character!", ct: CancellationToken);
         await _feedbackService.SendPrivateMessageAsync(userId, new FeedbackMessage("No character exists, starting character creation.", Color.Green), ct: CancellationToken);
 
-        var character = await _creationDialogue.RunAsync(userId, CancellationToken);
+        var character = await creationDialogue.RunAsync(userId, CancellationToken);
         if (character is null)
         {
             await _feedbackService.SendPrivateMessageAsync(userId, new FeedbackMessage("Character creation was cancelled.", Color.Orange), ct: CancellationToken);
@@ -113,7 +100,7 @@ public class CharacterCommand : CharacterCommandBase
                 : $"No character is named {name}.");
         }
 
-        var embedFields = new List<IEmbedField>();
+        List<IEmbedField> embedFields = [];
 
         embedFields.AddRange(character.Stats.Select(s => new EmbedField(Name: s.StatType.ToString(), Value: $"{s.Value} ({(s.Modifier >= 0 ? "+" : string.Empty)}{s.Modifier})", true)));
 
@@ -140,7 +127,7 @@ public class CharacterCommand : CharacterCommandBase
         if (resources.Count > 0)
         {
             embedFields.Add(new EmbedField(Name: "Resources", Value: string.Join(", ", resources.Select(r =>
-                $"{r.Name} {_resourceService.Format(character, r)}"))));
+                $"{r.Name} {resourceService.Format(character, r)}"))));
         }
 
         var gear = GearRules.Owned(character);
@@ -148,12 +135,12 @@ public class CharacterCommand : CharacterCommandBase
         {
             embedFields.Add(new EmbedField(Name: "Gear", Value: string.Join('\n', gear.Select(g =>
                 $"{g.Gear.Name}: {g.Mode?.Name ?? $"no {g.Gear.ModeKind.ToLower()}"}" +
-                (g.Mode?.Counter is { } counter ? $" ({counter.Name} {_resourceService.Format(character, counter.Resource)})" : string.Empty)))));
+                (g.Mode?.Counter is { } counter ? $" ({counter.Name} {resourceService.Format(character, counter.Resource)})" : string.Empty)))));
         }
 
         if (ShapeshiftRules.CanShapeshift(character))
         {
-            embedFields.Add(new EmbedField(Name: "Form", Value: ShapeshiftRules.Status(character, _resourceService.Format(character, ShapeshiftRules.Hold))));
+            embedFields.Add(new EmbedField(Name: "Form", Value: ShapeshiftRules.Status(character, resourceService.Format(character, ShapeshiftRules.Hold))));
         }
 
         if (TacticRules.UsesTactics(character))
@@ -220,12 +207,12 @@ public class CharacterCommand : CharacterCommandBase
             return await ReplyWithErrorAsync($"{user.Username} does not have a character.");
         }
 
-        if (!_diceRoller.TryRoll(damage, out var roll))
+        if (!diceRoller.TryRoll(damage, out var roll))
         {
             return await ReplyWithErrorAsync($"`{damage}` is not a valid amount or dice roll.");
         }
 
-        var hit = await _damageService.TakeAsync(character, roll.Value, type, piercing);
+        var hit = await damageService.TakeAsync(character, roll.Value, type, piercing);
 
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
@@ -259,7 +246,7 @@ public class CharacterCommand : CharacterCommandBase
         }
         else
         {
-            if (!_diceRoller.TryRoll(heal, out var roll))
+            if (!diceRoller.TryRoll(heal, out var roll))
             {
                 return await ReplyWithErrorAsync($"`{heal}` is not a valid amount or dice roll.");
             }
@@ -291,7 +278,7 @@ public class CharacterCommand : CharacterCommandBase
             return await ReplyWithErrorAsync(NoCharacterMessage);
         }
 
-        if (!_diceRoller.TryRoll(newModifier, out _))
+        if (!diceRoller.TryRoll(newModifier, out _))
         {
             return await ReplyWithErrorAsync($"`{newModifier}` is not a valid dice roll.");
         }
@@ -312,19 +299,15 @@ public class CharacterCommand : CharacterCommandBase
     /// Spending the stat points the DM gives out when the party levels up. Levels and points per level are set under /dm level.
     /// </summary>
     [Group("level")]
-    public class LevelCommand : CharacterCommandBase
+    public class LevelCommand(
+        ICommandContext context,
+        FeedbackService feedbackService,
+        ICharacterService characterService,
+        IGameMasterService gameMaster,
+        ILevelingService leveling,
+        IGameSettingsService settings)
+        : CharacterCommandBase(context, feedbackService, characterService, gameMaster, leveling, settings)
     {
-        public LevelCommand(
-            ICommandContext context,
-            FeedbackService feedbackService,
-            ICharacterService characterService,
-            IGameMasterService gameMaster,
-            ILevelingService leveling,
-            IGameSettingsService settings)
-            : base(context, feedbackService, characterService, gameMaster, leveling, settings)
-        {
-        }
-
         [Command("allocate")]
         [Description("Spend a stat point from levelling up to raise a stat by 1 (max 18)")]
         public async Task<IResult> AllocateStatAsync(

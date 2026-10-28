@@ -16,27 +16,16 @@ using Remora.Results;
 namespace DungeonWorldBot.Features.Spells;
 
 [Group("spell")]
-public class SpellCommand : DungeonWorldCommandBase
+public class SpellCommand(
+    ICommandContext context,
+    FeedbackService feedbackService,
+    ICharacterService characterService,
+    IAbilityService abilityService,
+    IResourceService resourceService)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
     // Spell text is long, so keep pages small enough to stay under Discord's embed size limit
     private const int SpellsPerPage = 6;
-
-    private readonly ICharacterService _characterService;
-    private readonly IAbilityService _abilityService;
-    private readonly IResourceService _resourceService;
-
-    public SpellCommand(
-        ICommandContext context,
-        FeedbackService feedbackService,
-        ICharacterService characterService,
-        IAbilityService abilityService,
-        IResourceService resourceService)
-        : base(context, feedbackService)
-    {
-        _characterService = characterService;
-        _abilityService = abilityService;
-        _resourceService = resourceService;
-    }
 
     [Command("list")]
     [Description("List the spells on a spell list, optionally just one level")]
@@ -125,7 +114,7 @@ public class SpellCommand : DungeonWorldCommandBase
                     "If your GM has given you the spell another way, use ignore-limits.");
             }
 
-            var casterLevel = _resourceService.GetValue(character, listAccess.LevelResource);
+            var casterLevel = resourceService.GetValue(character, listAccess.LevelResource);
             if (SpellCasting.WhyCannotLearn(chosen, casterLevel, known) is { } problem)
                 return await ReplyWithErrorAsync(problem);
         }
@@ -134,7 +123,7 @@ public class SpellCommand : DungeonWorldCommandBase
             return await ReplyWithErrorAsync($"You already have {chosen.Name}.");
         }
 
-        await _abilityService.AddAbilityAsync(character, chosen.Name, $"{chosen.Heading}. {chosen.Description}\n{SpellCasting.ListNote(chosen.List)}", maxUses: null);
+        await abilityService.AddAbilityAsync(character, chosen.Name, $"{chosen.Heading}. {chosen.Description}\n{SpellCasting.ListNote(chosen.List)}", maxUses: null);
 
         var description = $"{character.Name} learned **{chosen.Name}** ({chosen.Heading})\n\n{chosen.Description}";
         if (listAccess is not null)
@@ -150,7 +139,7 @@ public class SpellCommand : DungeonWorldCommandBase
         IUser? user = null)
     {
         var character = user is not null
-            ? await _characterService.GetCharacterFromUserAsync(user.ID)
+            ? await characterService.GetCharacterFromUserAsync(user.ID)
             : await GetOwnCharacterAsync();
 
         if (character is null)
@@ -201,8 +190,8 @@ public class SpellCommand : DungeonWorldCommandBase
         var toRemove = SpellCasting.KnownSpells(character).Where(s => s.List == list && !s.IsFree).ToList();
         foreach (var spell in toRemove)
         {
-            if (_abilityService.FindAbility(character, spell.Name) is { } ability)
-                await _abilityService.RemoveAbilityAsync(character, ability);
+            if (abilityService.FindAbility(character, spell.Name) is { } ability)
+                await abilityService.RemoveAbilityAsync(character, ability);
         }
 
         return await ReplyAsync("Spells Cleared", toRemove.Count > 0
@@ -212,7 +201,7 @@ public class SpellCommand : DungeonWorldCommandBase
 
     private string SpellLevelsLine(Character character, CasterAccess access)
     {
-        var casterLevel = _resourceService.GetValue(character, access.LevelResource);
+        var casterLevel = resourceService.GetValue(character, access.LevelResource);
         var used = SpellCasting.LevelsUsed(SpellCasting.KnownSpells(character), access.List);
         return $"{access.List} level {casterLevel}, {used}/{casterLevel + 1} spell levels used";
     }
@@ -220,13 +209,13 @@ public class SpellCommand : DungeonWorldCommandBase
     /// <returns>A line about the player's own casting from this list, or null if they can't cast from it.</returns>
     private async Task<string?> CasterSummaryAsync(Remora.Rest.Core.Snowflake userId, SpellList list)
     {
-        var character = await _characterService.GetCharacterFromUserAsync(userId);
+        var character = await characterService.GetCharacterFromUserAsync(userId);
         if (character is null || SpellCasting.Access(character).FirstOrDefault(a => a.List == list) is not { } access)
             return null;
 
-        return $"{SpellLevelsLine(character, access)}. You can learn spells up to level {_resourceService.GetValue(character, access.LevelResource)} with /spell learn";
+        return $"{SpellLevelsLine(character, access)}. You can learn spells up to level {resourceService.GetValue(character, access.LevelResource)} with /spell learn";
     }
 
     private async Task<Character?> GetOwnCharacterAsync() =>
-        await _characterService.GetCharacterFromUserAsync(GetUserId());
+        await characterService.GetCharacterFromUserAsync(GetUserId());
 }

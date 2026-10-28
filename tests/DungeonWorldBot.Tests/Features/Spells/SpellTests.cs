@@ -38,7 +38,7 @@ public class SpellTests
     [Fact]
     public void Learning_RespectsCasterLevelAndTotal()
     {
-        var known = new List<Spell> { Spell(SpellList.Cleric, "Cure Light Wounds"), Spell(SpellList.Cleric, "Magic Weapon") };
+        List<Spell> known = [Spell(SpellList.Cleric, "Cure Light Wounds"), Spell(SpellList.Cleric, "Magic Weapon")];
 
         // Caster level 1 allows 2 spell levels, and both are used
         Assert.Contains("2 of 2", SpellCasting.WhyCannotLearn(Spell(SpellList.Cleric, "Sanctuary"), 1, known));

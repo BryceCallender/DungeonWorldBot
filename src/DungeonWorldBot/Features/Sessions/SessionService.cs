@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace DungeonWorldBot.Features.Sessions;
 
 [Scoped<ISessionService>]
-public class SessionService : ISessionService
+public class SessionService(DungeonWorldContext context, IRollStatsService rollStats) : ISessionService
 {
     /// <summary>
     /// A break in rolling this long means the next roll is a new session, so a game that runs past midnight is one session.
@@ -18,25 +18,16 @@ public class SessionService : ISessionService
     // Fewer rolls than this on their own aren't a game night, just someone trying the bot
     public const int MinimumBackfillRolls = 5;
 
-    private readonly DungeonWorldContext _context;
-    private readonly IRollStatsService _rollStats;
-
-    public SessionService(DungeonWorldContext context, IRollStatsService rollStats)
-    {
-        _context = context;
-        _rollStats = rollStats;
-    }
-
     public Task<GameSession?> GetCurrentAsync() =>
-        _context.Sessions.Where(s => s.EndedAt == null).OrderByDescending(s => s.ID).FirstOrDefaultAsync();
+        context.Sessions.Where(s => s.EndedAt == null).OrderByDescending(s => s.ID).FirstOrDefaultAsync();
 
     // SQLite can't order by dates stored as text with an offset, but sessions are only ever added in order, so IDs do
-    public Task<List<GameSession>> GetAllAsync() => _context.Sessions.OrderBy(s => s.ID).ToListAsync();
+    public Task<List<GameSession>> GetAllAsync() => context.Sessions.OrderBy(s => s.ID).ToListAsync();
 
     public Task<GameSession?> GetPreviousAsync(GameSession session) =>
-        _context.Sessions.Where(s => s.ID < session.ID).OrderByDescending(s => s.ID).FirstOrDefaultAsync();
+        context.Sessions.Where(s => s.ID < session.ID).OrderByDescending(s => s.ID).FirstOrDefaultAsync();
 
-    public async Task<int> NumberOfAsync(GameSession session) => await _context.Sessions.CountAsync(s => s.ID <= session.ID);
+    public async Task<int> NumberOfAsync(GameSession session) => await context.Sessions.CountAsync(s => s.ID <= session.ID);
 
     public async Task<GameSession?> StartAsync(string? title = null)
     {
@@ -48,8 +39,8 @@ public class SessionService : ISessionService
             Title = Tidy(title),
             StartedAt = DateTimeOffset.UtcNow,
         };
-        _context.Sessions.Add(session);
-        await _context.SaveChangesAsync();
+        context.Sessions.Add(session);
+        await context.SaveChangesAsync();
         return session;
     }
 
@@ -59,14 +50,14 @@ public class SessionService : ISessionService
             return null;
 
         session.EndedAt = DateTimeOffset.UtcNow;
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
         return session;
     }
 
     public async Task RenameAsync(GameSession session, string? title)
     {
         session.Title = Tidy(title);
-        await _context.SaveChangesAsync();
+        await context.SaveChangesAsync();
     }
 
     public async Task<SessionRecap> RecapAsync(GameSession session)
@@ -75,14 +66,14 @@ public class SessionService : ISessionService
         var to = session.EndedAt ?? DateTimeOffset.UtcNow;
 
         // When a roll was made comes from its message ID, which SQL can't read, so they're sorted out here
-        var rolls = _rollStats.GameChatChannelID is { } gameChat
-            ? (await _context.Rolls.AsNoTracking().Where(r => r.ChannelID == gameChat).ToListAsync())
+        var rolls = rollStats.GameChatChannelID is { } gameChat
+            ? (await context.Rolls.AsNoTracking().Where(r => r.ChannelID == gameChat).ToListAsync())
                 .Where(r => r.MessageID.Timestamp >= from && r.MessageID.Timestamp <= to)
                 .ToList()
             : [];
         var dice = rolls.Select(r => MoveDice.Of(r)).ToList();
 
-        var fights = (await _context.Encounters.AsNoTracking().OrderBy(e => e.ID).Select(e => new { e.Name, e.StartedAt }).ToListAsync())
+        var fights = (await context.Encounters.AsNoTracking().OrderBy(e => e.ID).Select(e => new { e.Name, e.StartedAt }).ToListAsync())
             .Where(e => e.StartedAt >= from && e.StartedAt <= to)
             .Select(e => e.Name)
             .ToList();
@@ -106,16 +97,16 @@ public class SessionService : ISessionService
 
     public async Task<List<GameSession>> BackfillAsync()
     {
-        if (_rollStats.GameChatChannelID is not { } gameChat)
+        if (rollStats.GameChatChannelID is not { } gameChat)
             return [];
 
-        var marked = await _context.Sessions.AsNoTracking().OrderBy(s => s.ID).ToListAsync();
-        var rolledAt = (await _context.Rolls.AsNoTracking().Where(r => r.ChannelID == gameChat).Select(r => r.MessageID).ToListAsync())
+        var marked = await context.Sessions.AsNoTracking().OrderBy(s => s.ID).ToListAsync();
+        var rolledAt = (await context.Rolls.AsNoTracking().Where(r => r.ChannelID == gameChat).Select(r => r.MessageID).ToListAsync())
             .Select(id => id.Timestamp)
             .Order()
             .ToList();
 
-        var nights = new List<List<DateTimeOffset>>();
+        List<List<DateTimeOffset>> nights = [];
         List<DateTimeOffset>? night = null;
         foreach (var at in rolledAt)
         {
@@ -142,13 +133,13 @@ public class SessionService : ISessionService
         // Sessions are numbered by ID, so they're all written again in the order they started. Nothing else points at
         // a session's ID.
         var all = marked.Concat(added).OrderBy(s => s.StartedAt).ToList();
-        await using var transaction = await _context.Database.BeginTransactionAsync();
-        await _context.Sessions.ExecuteDeleteAsync();
-        _context.ChangeTracker.Clear();
+        await using var transaction = await context.Database.BeginTransactionAsync();
+        await context.Sessions.ExecuteDeleteAsync();
+        context.ChangeTracker.Clear();
         for (var i = 0; i < all.Count; i++)
             all[i].ID = i + 1;
-        _context.Sessions.AddRange(all);
-        await _context.SaveChangesAsync();
+        context.Sessions.AddRange(all);
+        await context.SaveChangesAsync();
         await transaction.CommitAsync();
 
         return added;

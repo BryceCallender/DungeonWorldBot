@@ -46,14 +46,14 @@ public static class NpcSheet
 
     public static IReadOnlyList<IEmbedField> Fields(Npc npc)
     {
-        var fields = new List<IEmbedField>
-        {
+        List<IEmbedField> fields =
+        [
             new EmbedField("HP", $"{npc.CurrentHP}/{npc.MaxHP}", true),
             new EmbedField("Armor", npc.Armor.ToString(), true),
             new EmbedField("Damage", npc.Damage ?? "—", true),
             new EmbedField("Loyalty", Signed(npc.Loyalty), true),
             new EmbedField("Stats", Stats(npc)),
-        };
+        ];
 
         if (npc.FollowsID is { } follows)
             fields.Add(new EmbedField("Follows", $"<@{follows.Value}>", true));

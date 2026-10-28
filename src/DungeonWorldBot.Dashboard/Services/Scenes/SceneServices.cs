@@ -1,6 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using DungeonWorldBot.Dashboard.Data;
+using DungeonWorldBot.Data;
 using DungeonWorldBot.Dashboard.Models.Shared;
 using DungeonWorldBot.Dashboard.Services.Party;
 using Microsoft.EntityFrameworkCore;

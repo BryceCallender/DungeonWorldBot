@@ -12,16 +12,8 @@ namespace DungeonWorldBot.Features.GameMaster;
 public partial class DmCommand
 {
     [Group("diag")]
-    public class DiagnosticCommands : CommandGroup
+    public class DiagnosticCommands(FeedbackService feedbackService) : CommandGroup
     {
-        private readonly FeedbackService _feedbackService;
-
-        public DiagnosticCommands(
-            FeedbackService feedbackService)
-        {
-            _feedbackService = feedbackService;
-        }
-
         [Command("temp")]
         public async Task<IResult> GetPiTemperature()
         {
@@ -51,7 +43,7 @@ public partial class DmCommand
 
             var tempF = (tempC * (9 / 5.0)) + 32;
 
-            return await _feedbackService.SendContextualEmbedAsync(
+            return await feedbackService.SendContextualEmbedAsync(
                 new Embed(
                     Title: $"Temperature",
                     Description: "Current temp of raspberry pi",
@@ -60,7 +52,7 @@ public partial class DmCommand
                         new EmbedField("°C", Math.Truncate(tempC).ToString(CultureInfo.InvariantCulture), true),
                         new EmbedField("°F", Math.Truncate(tempF).ToString(CultureInfo.InvariantCulture), true)
                     },
-                    Colour: _feedbackService.Theme.Secondary
+                    Colour: feedbackService.Theme.Secondary
                 ),
                 ct: CancellationToken
             );
