@@ -1,0 +1,10 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@using DungeonWorldBot.Data.Entities
+@* A class's icon from its sheet, drawn in the current text color (the picture is only its shape), so it takes the
+   class color beside a .class-name *@
+<span class="class-icon" style="--icon: url('/images/classes/@(Type).png')" aria-hidden="true"></span>
+
+@code {
+    [Parameter, EditorRequired]
+    public ClassType Type { get; set; }
+}

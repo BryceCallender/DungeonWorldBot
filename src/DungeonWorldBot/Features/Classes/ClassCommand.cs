@@ -96,15 +96,17 @@ public class ClassCommand(
             (advanced.Count > 0 ? string.Join(", ", advanced.Select(m => m.Name)) : "None yet") +
             (picksLeft > 0 ? $"\n{picksLeft} to pick. See /class moves" : string.Empty)));
 
+        var icon = ImageHelper.ClassIcon(character.Class.Type);
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: $"{character.Name}: The {character.Class.Type}",
-                Thumbnail: ImageHelper.ClassThumbnail(character.Class.Type),
+                Thumbnail: icon.Thumbnail,
                 Description: $"{sheet.Source} class sheet, level {character.Level}. Full move text is on /ability list.",
                 Fields: fields,
                 Colour: _feedbackService.Theme.Primary
             ),
-            ct: CancellationToken
+            icon.Options,
+            CancellationToken
         );
     }
 

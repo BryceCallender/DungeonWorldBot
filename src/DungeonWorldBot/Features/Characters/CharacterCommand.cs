@@ -29,7 +29,7 @@ public class CharacterCommand(
     ICommandContext context,
     FeedbackService feedbackService,
     ICharacterService characterService,
-    CharacterCreationDialogue creationDialogue,
+    CharacterCreationDialog creationDialog,
     IDiceRoller diceRoller,
     IResourceService resourceService,
     IGameMasterService gameMaster,
@@ -52,23 +52,24 @@ public class CharacterCommand(
         await _feedbackService.SendContextualNeutralAsync("Check your DMs to create your character!", ct: CancellationToken);
         await _feedbackService.SendPrivateMessageAsync(userId, new FeedbackMessage("No character exists, starting character creation.", Color.Green), ct: CancellationToken);
 
-        var character = await creationDialogue.RunAsync(userId, CancellationToken);
+        var character = await creationDialog.RunAsync(userId, CancellationToken);
         if (character is null)
         {
-            await _feedbackService.SendPrivateMessageAsync(userId, new FeedbackMessage("Character creation was cancelled.", Color.Orange), ct: CancellationToken);
+            await _feedbackService.SendPrivateMessageAsync(userId, new FeedbackMessage("Character creation was canceled.", Color.Orange), ct: CancellationToken);
             return Result.FromSuccess();
         }
 
         await _characterService.AddCharacterAsync(character);
 
+        var icon = ImageHelper.ClassIcon(character.Class.Type);
         await _feedbackService.SendPrivateEmbedAsync(userId, new Embed
         {
             Title = character.Name,
-            Thumbnail = ImageHelper.ClassThumbnail(character.Class.Type),
+            Thumbnail = icon.Thumbnail,
             Description = $"{character.Class.Type}: Level 1",
             Fields = CharacterSheet.NewCharacterFields(character),
             Colour = _feedbackService.Theme.Primary
-        }, ct: CancellationToken);
+        }, icon.Options, CancellationToken);
 
         await _feedbackService.SendPrivateEmbedAsync(userId, new Embed
         {
@@ -157,15 +158,17 @@ public class CharacterCommand(
             embedFields.Add(new EmbedField(Name: subclass.Name, Value: subclassStatus));
         }
 
+        var icon = ImageHelper.ClassIcon(character.Class.Type);
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: character.Name,
-                Thumbnail: ImageHelper.ClassThumbnail(character.Class.Type),
+                Thumbnail: icon.Thumbnail,
                 Description: $"{character.Class.Type}{(subclass is not null ? $" · {subclass.Name}" : string.Empty)}: Level {character.Level}",
                 Fields: embedFields,
                 Colour: ClassSheetLibrary.For(character.Class.Type)?.Color.Discord ?? _feedbackService.Theme.Primary
             ),
-            ct: CancellationToken
+            icon.Options,
+            CancellationToken
         );
     }
 
@@ -312,7 +315,7 @@ public class CharacterCommand(
         : CharacterCommandBase(context, feedbackService, characterService, gameMaster, leveling, settings)
     {
         [Command("allocate")]
-        [Description("Spend a stat point from levelling up to raise a stat by 1 (max 18)")]
+        [Description("Spend a stat point from leveling up to raise a stat by 1 (max 18)")]
         public async Task<IResult> AllocateStatAsync(
             [Description("The stat to raise")]
             StatType stat)

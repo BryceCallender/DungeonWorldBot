@@ -87,7 +87,7 @@
     {
         <section class="card wide move-group classed" style="@Lookup.ColorOf(sheet.Type)" id="@sheet.Type.ToString().ToLower()" data-filter-group>
             <CardHeader>
-                <TitleContent><a class="class-name" href="@Lookup.ClassUrl(sheet.Type, _character?.Slug)">@PartyReader.ClassName(sheet.Type)</a></TitleContent>
+                <TitleContent><a class="class-name" href="@Lookup.ClassUrl(sheet.Type, _character?.Slug)"><ClassIcon Type="sheet.Type" />@PartyReader.ClassName(sheet.Type)</a></TitleContent>
                 <Tools><span class="small">@sheet.Source</span></Tools>
             </CardHeader>
             @Tier("Starting moves", sheet.StartingMoves)

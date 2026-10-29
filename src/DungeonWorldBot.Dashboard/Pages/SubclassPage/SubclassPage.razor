@@ -34,7 +34,7 @@ else
             }
             @foreach (var type in subclass.Classes)
             {
-                <a class="chip class classed" style="@Lookup.ColorOf(type)" href="@Lookup.ClassUrl(type)">@PartyReader.ClassName(type)</a>
+                <a class="chip class classed" style="@Lookup.ColorOf(type)" href="@Lookup.ClassUrl(type)"><ClassIcon Type="type" />@PartyReader.ClassName(type)</a>
             }
             @if (_character is { } who)
             {

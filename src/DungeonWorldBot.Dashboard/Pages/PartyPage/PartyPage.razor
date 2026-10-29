@@ -75,7 +75,7 @@ else
                             }
                         </div>
                         <div class="muted class-line">
-                            <span>Level @c.Level <span class="class-name">@c.ClassName</span></span>
+                            <span>Level @c.Level <span class="class-name"><ClassIcon Type="c.Character.Class.Type" />@c.ClassName</span></span>
                             @if (c.Subclass is { } sub)
                             {
                                 <span class="chip class" title="@sub.Name">@sub.Name</span>

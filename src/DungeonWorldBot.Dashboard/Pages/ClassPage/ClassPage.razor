@@ -20,7 +20,7 @@
 <div data-filter-scope>
     <header class="card hero classed" style="@Lookup.ColorOf(sheet.Type)">
         <div class="hero-main">
-            <h1 class="class-name">@PartyReader.ClassName(sheet.Type)</h1>
+            <h1 class="class-name"><ClassIcon Type="sheet.Type" />@PartyReader.ClassName(sheet.Type)</h1>
             <div class="muted">@sheet.Source</div>
             @if (_character is { } who)
             {

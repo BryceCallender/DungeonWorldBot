@@ -49,7 +49,7 @@
             </div>
         }
         <div class="muted">
-            Level @c.Level <a href="@Lookup.ClassUrl(c.Character.Class.Type, c.Slug)" title="See the @c.ClassName class" class="class-name">@c.ClassName</a> · @c.Character.Race · @PartyReader.Spaced(c.Character.Alignment.ToString())
+            Level @c.Level <a href="@Lookup.ClassUrl(c.Character.Class.Type, c.Slug)" title="See the @c.ClassName class" class="class-name"><ClassIcon Type="c.Character.Class.Type" />@c.ClassName</a> · @c.Character.Race · @PartyReader.Spaced(c.Character.Alignment.ToString())
         </div>
         <div class="hero-chips">
             @if (c.Character.Status is { } status && status != Status.Alive)

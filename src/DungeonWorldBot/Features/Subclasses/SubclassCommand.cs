@@ -184,14 +184,16 @@ public class SubclassCommand(
 
     private async Task<IResult> ReplyAsync(string title, string description, Character character)
     {
+        var icon = ImageHelper.ClassIcon(character.Class.Type);
         return await _feedbackService.SendContextualEmbedAsync(
             new Embed(
                 Title: title,
-                Thumbnail: ImageHelper.ClassThumbnail(character.Class.Type),
+                Thumbnail: icon.Thumbnail,
                 Description: Truncate(description, 4096),
                 Colour: _feedbackService.Theme.Primary
             ),
-            ct: CancellationToken
+            icon.Options,
+            CancellationToken
         );
     }
 }

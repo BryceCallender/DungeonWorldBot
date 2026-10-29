@@ -1,30 +1,38 @@
 using DungeonWorldBot.Data.Entities;
+using OneOf;
 using Remora.Discord.API.Abstractions.Objects;
+using Remora.Discord.API.Abstractions.Rest;
 using Remora.Discord.API.Objects;
+using Remora.Discord.Commands.Feedback.Messages;
 using Remora.Rest.Core;
 
 namespace DungeonWorldBot.Infrastructure;
 
+/// <summary>
+/// A class's icon for an embed: the thumbnail pointing at the attached picture, and the options that attach it.
+/// Both go on the same message, or Discord shows no thumbnail.
+/// </summary>
+public record ClassIcon(Optional<IEmbedThumbnail> Thumbnail, FeedbackMessageOptions? Options);
+
 public static class ImageHelper
 {
-    /// <summary>
-    /// The class's picture for an embed, or nothing if the class doesn't have one (Discord rejects empty image links).
-    /// </summary>
-    public static Optional<IEmbedThumbnail> ClassThumbnail(ClassType type) =>
-        ClassToImgurLink(type) is { } link ? new EmbedThumbnail(link) : default(Optional<IEmbedThumbnail>);
+    // Each class's icon from its sheet, on its color, sent along with the embed rather than linked from elsewhere
+    private static readonly string IconFolder = Path.Combine(AppContext.BaseDirectory, "Assets", "Classes");
 
-    public static string? ClassToImgurLink(ClassType type)
+    /// <summary>
+    /// The class's icon, or nothing if it has no picture (Discord rejects links to attachments that aren't there).
+    /// </summary>
+    public static ClassIcon ClassIcon(ClassType type)
     {
-        return type switch
-        {
-            ClassType.Ranger => "https://imgur.com/UjUwwgL.png",
-            ClassType.Paladin => "https://imgur.com/YsGk6lh.png",
-            ClassType.Channeler => "https://imgur.com/4yUbQDo.png",
-            ClassType.Necromancer => "https://imgur.com/bhYjiUH.png",
-            ClassType.Slayer => "https://imgur.com/xmsUnY8.png",
-            ClassType.Battlemaster => "https://imgur.com/0VLMlA7.png",
-            ClassType.Druid => "https://imgur.com/nsGQTuy.png",
-            _ => null
-        };
+        var fileName = $"{type}.png";
+        var path = Path.Combine(IconFolder, fileName);
+        if (!File.Exists(path))
+            return new ClassIcon(default, null);
+
+        // Read in full, since the message is sent after this returns and nothing would close an open file
+        var picture = new MemoryStream(File.ReadAllBytes(path));
+        return new ClassIcon(
+            new EmbedThumbnail($"attachment://{fileName}"),
+            new FeedbackMessageOptions(Attachments: new OneOf<FileData, IPartialAttachment>[] { new FileData(fileName, picture) }));
     }
 }
