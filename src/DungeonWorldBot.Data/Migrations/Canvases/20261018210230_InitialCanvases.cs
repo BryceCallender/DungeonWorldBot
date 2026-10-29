@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace DungeonWorldBot.Dashboard.Canvases.Migrations
+namespace DungeonWorldBot.Data.Migrations.Canvases
 {
     /// <inheritdoc />
     public partial class InitialCanvases : Migration

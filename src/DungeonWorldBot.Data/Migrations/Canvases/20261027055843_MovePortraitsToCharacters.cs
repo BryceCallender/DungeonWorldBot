@@ -3,13 +3,20 @@ using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
 
-namespace DungeonWorldBot.Dashboard.Canvases.Migrations
+namespace DungeonWorldBot.Data.Migrations.Canvases
 {
     /// <inheritdoc />
-    public partial class CharacterPortraits : Migration
+    public partial class MovePortraitsToCharacters : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
+        {
+            migrationBuilder.DropTable(
+                name: "CharacterPortraits");
+        }
+
+        /// <inheritdoc />
+        protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.CreateTable(
                 name: "CharacterPortraits",
@@ -24,13 +31,6 @@ namespace DungeonWorldBot.Dashboard.Canvases.Migrations
                 {
                     table.PrimaryKey("PK_CharacterPortraits", x => x.CharacterID);
                 });
-        }
-
-        /// <inheritdoc />
-        protected override void Down(MigrationBuilder migrationBuilder)
-        {
-            migrationBuilder.DropTable(
-                name: "CharacterPortraits");
         }
     }
 }
