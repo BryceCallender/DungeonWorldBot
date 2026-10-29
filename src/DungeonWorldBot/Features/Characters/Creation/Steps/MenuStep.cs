@@ -14,7 +14,7 @@ public class MenuStep(
     FeedbackService feedbackService,
     string content,
     IReadOnlyList<string> options)
-    : DialogueStep<int?>(feedbackService, content)
+    : DialogStep<int?>(feedbackService, content)
 {
     protected readonly IReadOnlyList<string> Options = options;
 

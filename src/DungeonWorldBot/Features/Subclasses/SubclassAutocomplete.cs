@@ -4,7 +4,7 @@ using DungeonWorldBot.Features.Classes;
 namespace DungeonWorldBot.Features.Subclasses;
 
 /// <summary>
-/// Every subclass, labelled with the classes that can take it.
+/// Every subclass, labeled with the classes that can take it.
 /// </summary>
 public class SubclassAutocomplete() : ClassSheetAutocomplete(null, null)
 {

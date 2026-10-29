@@ -33,7 +33,7 @@ public class PartyReader(
             .ToList();
 
     /// <summary>
-    /// The NPCs travelling with the party, in name order. None when the database predates NPCs.
+    /// The NPCs traveling with the party, in name order. None when the database predates NPCs.
     /// </summary>
     public async Task<IReadOnlyList<Npc>> GetNpcsAsync()
     {

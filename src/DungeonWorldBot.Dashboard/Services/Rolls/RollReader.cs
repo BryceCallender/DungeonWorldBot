@@ -67,9 +67,9 @@ public class RollReader(DungeonWorldContext context, IRollStatsService rollStats
             .ToList();
 
         var sessions = SessionSummaries(rolls, await RecordedSessionsAsync());
-        var unlabelled = rolls.Count(r => r.Move is null);
+        var unlabeled = rolls.Count(r => r.Move is null);
 
-        return new RollBreakdown(moves, stats, sessions, unlabelled);
+        return new RollBreakdown(moves, stats, sessions, unlabeled);
     }
 
     /// <summary>
@@ -152,14 +152,14 @@ public class RollReader(DungeonWorldContext context, IRollStatsService rollStats
     // The most rolled moves against who rolled them, busiest rollers first
     private static MoveHeatmap Heatmap(List<RollRecord> rolls)
     {
-        var labelled = rolls.Where(r => r.Move is not null).ToList();
-        var players = labelled
+        var labeled = rolls.Where(r => r.Move is not null).ToList();
+        var players = labeled
             .GroupBy(r => r.UserID.Value)
             .OrderByDescending(g => g.Count())
             .Select(g => g.Key)
             .ToList();
 
-        var rows = labelled
+        var rows = labeled
             .GroupBy(r => r.Move!)
             .OrderByDescending(g => g.Count())
             .Take(HeatmapMoves)

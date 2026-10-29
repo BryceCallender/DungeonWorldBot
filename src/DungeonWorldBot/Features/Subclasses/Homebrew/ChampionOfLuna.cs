@@ -60,13 +60,13 @@ public static partial class ChampionOfLuna
                 "**10+:** All HP sacrificed is recovered. **7-9:** Half of the HP sacrificed is recovered, rounded down. " +
                 "**6-:** None is recovered, and the GM makes a move.\nRecovered HP returns to whoever sacrificed it. Use /luna blood-moon")),
             new(1, new(LunasVow,
-                "When you declare a specific objective in Luna's name, choose one Boon of Luna. You receive its full power; party members travelling " +
+                "When you declare a specific objective in Luna's name, choose one Boon of Luna. You receive its full power; party members traveling " +
                 "and fighting alongside you receive its lesser Echo. Only one Vow at a time. It lasts until the objective is completed, abandoned, or " +
                 "becomes impossible.\n" +
                 "• **Wrath:** +6 damage. *Echo:* +3 damage\n" +
                 "• **Aptitude:** +2 to a chosen stat. *Echo:* +1 to it\n" +
                 "• **Veil:** See and physically interact with magical constructs and effects, and try to disarm, disrupt or dispel them. " +
-                "*Echo:* Allies near you see hidden magic and recognise when something is being affected by it\n" +
+                "*Echo:* Allies near you see hidden magic and recognize when something is being affected by it\n" +
                 "• **Fortune:** +2 to Last Breath. *Echo:* +1 to Last Breath\n" +
                 "Use /luna vow")),
             new(3, Rolled(Revelation, StatType.Wis,
@@ -140,7 +140,7 @@ public static partial class ChampionOfLuna
             LunaBoon.Aptitude => ($"+2 to {stat}", $"+1 to {stat}"),
             LunaBoon.Veil => (
                 "You can see and physically interact with magical constructs and effects as though they were tangible, and try to disarm, disrupt, or dispel them even when you normally couldn't.",
-                "Party members near you can see magical effects that would normally be invisible and recognise when something is being affected by magic."),
+                "Party members near you can see magical effects that would normally be invisible and recognize when something is being affected by magic."),
             _ => ("+2 to Last Breath", "+1 to Last Breath"),
         };
     }

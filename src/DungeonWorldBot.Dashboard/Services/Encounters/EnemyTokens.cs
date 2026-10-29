@@ -19,11 +19,11 @@ public static class EnemyTokens
 {
     // The same as the board's: TOKEN_RADIUS in canvas.ts, and the red from its swatches
     private const double Radius = 36;
-    private const string Colour = "#D85A30";
+    private const string EnemyColor = "#D85A30";
 
     // The board's blue and green, so the party and their NPCs stand apart from the enemies
-    private const string PartyColour = "#378ADD";
-    private const string NpcColour = "#1D9E75";
+    private const string PartyColor = "#378ADD";
+    private const string NpcColor = "#1D9E75";
 
     // A token and a little room around it
     private const double Spacing = Radius * 2 + 12;
@@ -44,7 +44,7 @@ public static class EnemyTokens
         CanvasStore store,
         IHubContext<CanvasHub, ICanvasClient> hub,
         string? pictureUrl = null) =>
-        await PlaceAsync(canvasID, enemies.Select(e => new NewToken(e.Name, pictureUrl, TokenFighter.Enemy(e.ID))).ToList(), Colour, store, hub);
+        await PlaceAsync(canvasID, enemies.Select(e => new NewToken(e.Name, pictureUrl, TokenFighter.Enemy(e.ID))).ToList(), EnemyColor, store, hub);
 
     /// <summary>
     /// A token for each character and NPC joining the fight, leaving out any already on the board from an earlier one.
@@ -63,14 +63,14 @@ public static class EnemyTokens
             .OfType<string>()
             .ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-        await PlaceAsync(canvasID, characters.Where(c => !onBoard.Contains(c.Name)).ToList(), PartyColour, store, hub);
-        await PlaceAsync(canvasID, npcs.Where(n => !onBoard.Contains(n.Name)).ToList(), NpcColour, store, hub);
+        await PlaceAsync(canvasID, characters.Where(c => !onBoard.Contains(c.Name)).ToList(), PartyColor, store, hub);
+        await PlaceAsync(canvasID, npcs.Where(n => !onBoard.Contains(n.Name)).ToList(), NpcColor, store, hub);
     }
 
     private static async Task PlaceAsync(
         int canvasID,
         IReadOnlyList<NewToken> newTokens,
-        string colour,
+        string color,
         CanvasStore store,
         IHubContext<CanvasHub, ICanvasClient> hub)
     {
@@ -100,8 +100,8 @@ public static class EnemyTokens
                     {
                         // The board puts the picture from src into the circle, as it does for its image tokens
                         attrs = pictureUrl is null
-                            ? (object)new { radius = Radius, fill = colour, stroke = "#ffffff", strokeWidth = 2 }
-                            : new { radius = Radius, fill = colour, stroke = "#ffffff", strokeWidth = 2, src = pictureUrl },
+                            ? (object)new { radius = Radius, fill = color, stroke = "#ffffff", strokeWidth = 2 }
+                            : new { radius = Radius, fill = color, stroke = "#ffffff", strokeWidth = 2, src = pictureUrl },
                         className = "Circle",
                     },
                 },

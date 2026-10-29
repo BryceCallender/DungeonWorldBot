@@ -23,7 +23,7 @@ public enum BolsterLength
 }
 
 /// <summary>
-/// The rolled special moves for camping, travel and time in town, summarised from the Dungeon World SRD (CC BY 3.0).
+/// The rolled special moves for camping, travel and time in town, summarized from the Dungeon World SRD (CC BY 3.0).
 /// Make Camp and Recover don't roll, so they live in <see cref="SpecialMoveRules"/>.
 /// </summary>
 public static class SpecialMoves

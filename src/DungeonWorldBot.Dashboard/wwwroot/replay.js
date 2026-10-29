@@ -1,6 +1,6 @@
 // A fight played back from its timeline, on its page (FightPage.razor): fighters down each side, and each step lights up
 // whoever acted, draws an arrow to who they aimed at, and lands any damage on them. Everyone starts at full health and
-// loses what each hit did, greying out when they fall.
+// loses what each hit did, graying out when they fall.
 (() => {
     const root = document.querySelector('[data-replay]');
     const data = JSON.parse(document.querySelector('[data-replay-data]')?.textContent ?? '{}');
@@ -111,11 +111,14 @@
         const target = step.target ? cards.get(step.target)?.card : null;
         actor?.classList.add('acting');
         target?.classList.add('targeted');
+        // The same lines as the log beside it: the move and its target, then the roll's pill and the damage
+        const outcome = el('div', 'outcome-line');
+        if (step.roll) outcome.append(el('span', `roll-pill ${step.rollClass}`, step.shortRoll));
+        if (step.result) outcome.append(el('span', 'dmg', step.shortResult));
         caption.replaceChildren(
             el('strong', null, step.actorName), el('br'),
-            document.createTextNode(step.action + (step.targetName ? ` → ${step.targetName}` : '')),
-            ...(step.roll ? [el('br'), el('span', 'small', `🎲 ${step.roll}`)] : []),
-            ...(step.result ? [el('br'), el('span', 'small', step.result)] : []));
+            document.createTextNode(step.line),
+            ...(outcome.childElementCount ? [outcome] : []));
         drawArrow(actor, target);
 
         if (animate && target && step.damage) {

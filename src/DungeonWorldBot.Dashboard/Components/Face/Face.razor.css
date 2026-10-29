@@ -1,2 +1,3 @@
-img { display: block; width: 100%; height: 100%; border-radius: 50%; object-fit: cover; }
+/* The whole picture, however wide or tall, fitted inside the circle rather than cropped to fill it */
+img { display: block; width: 100%; height: 100%; border-radius: 50%; object-fit: contain; }
 .face-initial { font-weight: 800; color: var(--ring, var(--class, var(--muted))); }

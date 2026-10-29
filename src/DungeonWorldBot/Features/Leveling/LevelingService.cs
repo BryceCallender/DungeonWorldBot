@@ -44,7 +44,7 @@ public class LevelingService(
             await resourceService.SetValueAsync(character, resource, Math.Max(1, value + change));
         }
 
-        // Subclass moves unlock by level. Levelling down keeps them, like advanced moves.
+        // Subclass moves unlock by level. Leveling down keeps them, like advanced moves.
         if (subclasses is not null)
             await subclasses.GrantUnlockedMovesAsync(character);
     }

@@ -16,7 +16,7 @@ public record GuideCommand(string Command, string? Pick = null, string? Note = n
 public record GuideStep(string Title, string Text, IReadOnlyList<GuideCommand> Commands);
 
 /// <summary>
-/// How to play a class through the bot, from making the character to levelling up.
+/// How to play a class through the bot, from making the character to leveling up.
 /// </summary>
 /// <param name="Pitch">The class in a sentence or two: what it does and what the bot tracks for it.</param>
 public record ClassGuide(ClassType Class, string Pitch, IReadOnlyList<GuideStep> Steps);

@@ -24,9 +24,7 @@
 
 @if (_session is { } during)
 {
-    <nav class="session-nav">
-        <a href="@during.Url">← @during.Name</a>
-    </nav>
+    <a class="back" href="@during.Url">← @during.Name</a>
 }
 
 <header class="fight-head">
@@ -83,16 +81,27 @@
     <ol class="replay-log card" data-log>
         @foreach (var (step, i) in r.Steps.Select((s, i) => (s, i)))
         {
-            <li data-index="@(i + 1)">
-                <span class="muted">@step.At</span>
-                <strong>@step.ActorName</strong> · @step.Action@(step.TargetName is { } t ? $" → {t}" : "")
-                @if (step.Roll is not null)
+            <li data-index="@(i + 1)" title="@step.Line">
+                <div class="replay-who"><strong>@step.ActorName</strong><span class="muted">@step.At</span></div>
+                <div class="action-line">
+                    <span class="action">@step.Action</span>
+                    @if (step.TargetName is not null)
+                    {
+                        <span class="target">→ @step.TargetName</span>
+                    }
+                </div>
+                @if (step.Roll is not null || step.Result is not null)
                 {
-                    <span class="small muted">🎲 @step.Roll</span>
-                }
-                @if (step.Result is not null)
-                {
-                    <span class="small">@step.Result</span>
+                    <div class="outcome-line">
+                        @if (step.Roll is not null)
+                        {
+                            <span class="roll-pill @step.RollClass">@step.ShortRoll</span>
+                        }
+                        @if (step.Result is not null)
+                        {
+                            <span class="dmg">@step.ShortResult</span>
+                        }
+                    </div>
                 }
             </li>
         }

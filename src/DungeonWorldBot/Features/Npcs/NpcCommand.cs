@@ -15,7 +15,7 @@ using Remora.Results;
 namespace DungeonWorldBot.Features.Npcs;
 
 /// <summary>
-/// Looking after the NPCs travelling with the party. The DM adds and changes them with /dm npc.
+/// Looking after the NPCs traveling with the party. The DM adds and changes them with /dm npc.
 /// </summary>
 [Group("npc")]
 public class NpcCommand(
@@ -29,7 +29,7 @@ public class NpcCommand(
     private const string NameDescription = "The NPC";
 
     [Command("list")]
-    [Description("List the NPCs travelling with the party")]
+    [Description("List the NPCs traveling with the party")]
     public async Task<IResult> ListAsync()
     {
         var npcs = await npcService.GetAllAsync();
@@ -181,7 +181,7 @@ public class NpcCommand(
                 Title: $"🎲 {npc.Name}: {option.Name}",
                 Description: DiceHelper.BuildDiceResult(roll),
                 Fields: fields,
-                Colour: outcome is { } o ? MoveRoller.ColourFor(o) : _feedbackService.Theme.Success
+                Colour: outcome is { } o ? MoveRoller.ColorFor(o) : _feedbackService.Theme.Success
             ),
             ct: CancellationToken
         );

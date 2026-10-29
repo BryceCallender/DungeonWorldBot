@@ -78,7 +78,7 @@ public static partial class MoveRoller
         _ => "You fail.",
     };
 
-    public static Color ColourFor(MoveOutcome outcome) => outcome switch
+    public static Color ColorFor(MoveOutcome outcome) => outcome switch
     {
         MoveOutcome.StrongHit => Color.Green,
         MoveOutcome.WeakHit => Color.Orange,

@@ -41,7 +41,7 @@ public sealed class LevelingServiceTests : IDisposable
     }
 
     [Fact]
-    public async Task LevellingUp_GivesStatPointsAndRaisesClericLevel()
+    public async Task LevelingUp_GivesStatPointsAndRaisesClericLevel()
     {
         await using var context = CreateContext();
         var (character, leveling, resources) = await SetupAsync(context);

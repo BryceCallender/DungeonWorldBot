@@ -11,7 +11,7 @@ public class TextStep(
     string content,
     int minLength,
     int maxLength)
-    : DialogueStep<string>(feedbackService, content)
+    : DialogStep<string>(feedbackService, content)
 {
     protected override Embed BuildPrompt() => new()
     {

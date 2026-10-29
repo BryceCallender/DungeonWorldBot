@@ -90,24 +90,24 @@ else
     }
 
     <h2 class="section-title">Sessions</h2>
-    <p class="small">Game nights, worked out from when the party rolled. Sessions marked with /session start and end are counted as they ran; otherwise a session ends after @((int)RollReader.SessionGap.TotalHours) hours without a roll. The stronger a day's colour, the more the party rolled. Click one to see how it went.</p>
+    <p class="small">Game nights, worked out from when the party rolled. Sessions marked with /session start and end are counted as they ran; otherwise a session ends after @((int)RollReader.SessionGap.TotalHours) hours without a roll. The stronger a day's color, the more the party rolled. Click one to see how it went.</p>
     <SessionCalendar Sessions="_breakdown.Sessions" />
 
     <h2 class="section-title">By move</h2>
     @if (_breakdown.Moves.Count == 0)
     {
-        <p class="empty">No rolls are tied to a move yet. Rolls with /move, or a "." roll labelled with a move's name (like ".str hack and slash"), are counted here. Run /dice-stats scan to fill in older ones.</p>
+        <p class="empty">No rolls are tied to a move yet. Rolls with /move, or a "." roll labeled with a move's name (like ".str hack and slash"), are counted here. Run /dice-stats scan to fill in older ones.</p>
     }
     else
     {
-        <p class="small">The party's rolls for each move.@(_breakdown.Unlabelled > 0 ? $" {_breakdown.Unlabelled} rolls weren't for a move and aren't shown." : "")</p>
+        <p class="small">The party's rolls for each move.@(_breakdown.Unlabeled > 0 ? $" {_breakdown.Unlabeled} rolls weren't for a move and aren't shown." : "")</p>
         @Tallies(_breakdown.Moves, "Move")
     }
 
     @if (_nerdery.Heatmap is { Rows.Count: > 0, Players.Count: > 1 } heatmap)
     {
         <h2 class="section-title">Who's good at what</h2>
-        <p class="small">Hit rate (7+) for each player's most rolled moves. Greener is better; the number is how many times they rolled it, and the fewer rolls, the fainter the colour.</p>
+        <p class="small">Hit rate (7+) for each player's most rolled moves. Greener is better; the number is how many times they rolled it, and the fewer rolls, the fainter the color.</p>
         <div class="card table-card">
             <table class="heatmap">
                 <thead>

@@ -15,7 +15,7 @@ public static class Survivor
             new("Hold On to What's Precious",
                 "When you Defend an ally, a friend or something you cherish, gain +1 hold, even on a miss. " +
                 "When something or someone you cherish is in your hand and would be taken, knocked away, moved, broken or harmed, you can take the effect yourself instead."),
-            new("Reminders of the Past", "When you meet a traveller or enemy you've met before (your call), tell the GM about your last encounter; they'll tell you how they've changed. When you find a marked grave, say who they were and how you knew them."),
+            new("Reminders of the Past", "When you meet a traveler or enemy you've met before (your call), tell the GM about your last encounter; they'll tell you how they've changed. When you find a marked grave, say who they were and how you knew them."),
             Rolled("Survive", StatType.Con,
                 "When you brace for expected harm",
                 "Choose two:",

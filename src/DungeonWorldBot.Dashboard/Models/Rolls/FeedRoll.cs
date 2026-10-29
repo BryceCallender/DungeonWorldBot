@@ -12,7 +12,7 @@ namespace DungeonWorldBot.Dashboard.Models.Rolls;
 /// <param name="Outcome">"strong", "weak" or "miss".</param>
 /// <param name="Streak">The streak this roll puts them on, like "🔥 4 hits in a row", if it's long enough to mention.</param>
 /// <param name="Hot">Whether that streak is hits rather than misses.</param>
-/// <param name="Color">Their character's class colour, light and dark, which their dice are drawn in.</param>
+/// <param name="Color">Their character's class color, light and dark, which their dice are drawn in.</param>
 public record FeedRoll(
     string ID,
     string Who,

@@ -26,13 +26,6 @@
     </nav>
 
     <div class="viewer">
-        @* How the roll feed behaves for you (app.js keeps it in this browser) *@
-        <button type="button" class="feed-settings" popovertarget="roll-settings" title="Roll feed settings" aria-label="Roll feed settings">🎲</button>
-        <div id="roll-settings" class="menu-pop roll-settings" popover>
-            <strong>Roll feed</strong>
-            <label><input type="checkbox" data-roll-setting="show" checked /> Show rolls as they happen</label>
-            <label><input type="checkbox" data-roll-setting="sound" /> Dice sounds</label>
-        </div>
         <span class="live" title="Connecting…"><i class="live-dot off"></i>Live</span>
         @if (Viewer.SignedIn)
         {

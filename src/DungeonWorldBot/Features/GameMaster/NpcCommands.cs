@@ -24,7 +24,7 @@ public partial class DmCommand
         private const string NameDescription = "The NPC";
 
         [Command("add")]
-        [Description("Add an NPC to the party: a hireling, guide, companion or anyone else travelling with them")]
+        [Description("Add an NPC to the party: a hireling, guide, companion or anyone else traveling with them")]
         public async Task<IResult> AddAsync(
             [Description("Their name")]
             string name,

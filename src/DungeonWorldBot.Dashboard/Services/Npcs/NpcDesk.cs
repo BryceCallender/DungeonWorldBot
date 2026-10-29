@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 namespace DungeonWorldBot.Dashboard.Services.Npcs;
 
 /// <summary>
-/// The DM looking after the NPCs travelling with the party, as /dm npc does in Discord. The bot's own rules do the work.
+/// The DM looking after the NPCs traveling with the party, as /dm npc does in Discord. The bot's own rules do the work.
 /// </summary>
 /// <param name="options">Options for opening the bot's database read-write.</param>
 public class NpcDesk(DbContextOptions<DungeonWorldContext> options)

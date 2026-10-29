@@ -10,8 +10,8 @@ namespace DungeonWorldBot.Features.Encounters;
 /// </summary>
 public static class EncounterAnnouncements
 {
-    private static readonly Color StartColour = Color.FromArgb(0xD1, 0x45, 0x3B);
-    private static readonly Color EndColour = Color.FromArgb(0x2F, 0x9E, 0x5B);
+    private static readonly Color StartColor = Color.FromArgb(0xD1, 0x45, 0x3B);
+    private static readonly Color EndColor = Color.FromArgb(0x2F, 0x9E, 0x5B);
 
     public static Embed Started(Encounter encounter)
     {
@@ -23,7 +23,7 @@ public static class EncounterAnnouncements
             Title: $"⚔️ A Fight Begins: {encounter.Name}",
             Description: description,
             Url: encounter.SceneUrl is { } link ? link : default(Optional<string>),
-            Colour: StartColour);
+            Colour: StartColor);
     }
 
     /// <param name="cleared">What ending the fight took off everyone, as worded by /armor end-fight.</param>
@@ -37,6 +37,6 @@ public static class EncounterAnnouncements
         return new Embed(
             Title: "Fight Over",
             Description: $"{summary}\n\n{cleared}",
-            Colour: EndColour);
+            Colour: EndColor);
     }
 }

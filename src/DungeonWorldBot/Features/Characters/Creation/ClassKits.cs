@@ -155,7 +155,7 @@ public static class ClassKits
             ]),
 
         new(ClassType.Barbarian, "Barbarian",
-            [DungeonRations, ItemGrant.Of("Dagger (hand)", 1, 1), ItemGrant.Of("Token of Where You've Travelled", 1, 0)],
+            [DungeonRations, ItemGrant.Of("Dagger (hand)", 1, 1), ItemGrant.Of("Token of Where You've Traveled", 1, 0)],
             BaseArmor: 0,
             [
                 new("Which weapon would you like to have?",
@@ -393,7 +393,7 @@ public static class ClassKits
             [
                 new("Which items would you like to have?",
                 [
-                    new("A Catalogue of the Strange and Mysterious (5 uses)", [ItemGrant.Of("Catalogue of the Strange and Mysterious", 5, 1)]),
+                    new("A Catalog of the Strange and Mysterious (5 uses)", [ItemGrant.Of("Catalog of the Strange and Mysterious", 5, 1)]),
                     new("An Antique Weapon (any range) with 3 ammo", [ItemGrant.Of("Antique Weapon", 1, 1), ItemGrant.Of("Antique Weapon Ammo", 3, 1)]),
                     new("Monster Feed (8 uses) and Bandages (3 uses)", [ItemGrant.Of("Monster Feed", 8, 1), ItemGrant.Of("Bandages", 3, 0)]),
                     new("A Repair Kit (6 uses, slow) and an Appraisal Kit", [ItemGrant.Of("Repair Kit", 6, 1), ItemGrant.Of("Appraisal Kit", 1, 1)]),

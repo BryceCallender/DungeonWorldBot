@@ -7,7 +7,7 @@ using DungeonWorldBot.Features.Moves;
 namespace DungeonWorldBot.Features.Classes;
 
 /// <summary>
-/// Every class with sheet data. Move text is summarised from the published class sheets (Dungeon World's from the SRD
+/// Every class with sheet data. Move text is summarized from the published class sheets (Dungeon World's from the SRD
 /// by Sage LaTorra and Adam Koebel, CC BY 3.0); players should keep their own sheets for the full wording.
 /// </summary>
 public static class ClassSheetLibrary

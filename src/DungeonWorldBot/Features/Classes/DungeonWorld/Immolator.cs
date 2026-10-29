@@ -4,7 +4,7 @@ using static DungeonWorldBot.Features.Classes.ClassMove;
 namespace DungeonWorldBot.Features.Classes.DungeonWorld;
 
 /// <summary>
-/// Summarised from the Dungeon World playbooks (version 2.4) by Sage LaTorra and Adam Koebel.
+/// Summarized from the Dungeon World playbooks (version 2.4) by Sage LaTorra and Adam Koebel.
 /// </summary>
 public static class Immolator
 {

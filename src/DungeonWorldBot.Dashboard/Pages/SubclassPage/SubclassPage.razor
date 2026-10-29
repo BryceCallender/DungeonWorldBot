@@ -8,7 +8,7 @@
 @if (_subclass is not { } subclass)
 {
     <PageTitle>Not found · Sana Solem</PageTitle>
-    <p class="empty">No subclass called that. <a href="">Back to the party</a></p>
+    <p class="empty">No subclass called that. <a href="classes">All classes</a></p>
     return;
 }
 
@@ -20,7 +20,7 @@
 }
 else
 {
-    <a class="back" href="">← Party</a>
+    <a class="back" href="classes">← Classes</a>
 }
 
 <header class="card hero @(subclass.Classes.Count == 1 ? "classed" : "")" style="@(subclass.Classes.Count == 1 ? Lookup.ColorOf(subclass.Classes[0]) : null)">

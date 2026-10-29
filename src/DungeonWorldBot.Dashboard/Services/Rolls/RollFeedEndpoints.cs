@@ -74,7 +74,7 @@ public static class RollFeedEndpoints
                         },
                         streak is null ? null : $"{streak.Icon} {streak.Describe()}",
                         streak?.Hot,
-                        // Their dice in their class's colour
+                        // Their dice in their class's color
                         characters.GetValueOrDefault(player.ToString()) is { } character
                             ? ClassSheetLibrary.For(character.Character.Class.Type)?.Color
                             : null);

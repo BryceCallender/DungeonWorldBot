@@ -328,13 +328,13 @@ public class ShapeshiftCommand(
     private async Task<Character?> GetOwnCharacterAsync() =>
         await characterService.GetCharacterFromUserAsync(GetUserId());
 
-    private async Task<IResult> ReplyWithRollAsync(Character character, string title, string flavour, MoveRoll roll, IReadOnlyList<IEmbedField> fields)
+    private async Task<IResult> ReplyWithRollAsync(Character character, string title, string flavor, MoveRoll roll, IReadOnlyList<IEmbedField> fields)
     {
         var embed = new Embed(
             Title: title,
-            Description: $"{flavour}\n\n{DiceHelper.BuildDiceResult(roll.Dice)}",
+            Description: $"{flavor}\n\n{DiceHelper.BuildDiceResult(roll.Dice)}",
             Fields: fields.ToList(),
-            Colour: MoveRoller.ColourFor(roll.Outcome)
+            Colour: MoveRoller.ColorFor(roll.Outcome)
         );
 
         var reply = await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);

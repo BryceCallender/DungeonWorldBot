@@ -126,7 +126,7 @@ public class DiceRollCommand(
             Title: $"🎲 {rollDescription} Roll(s)",
             Description: DiceHelper.BuildDiceResult(roll) + details,
             Fields: fields.Count > 0 ? fields : new Optional<IReadOnlyList<IEmbedField>>(),
-            Colour: outcome is { } o ? MoveRoller.ColourFor(o) : _feedbackService.Theme.Success
+            Colour: outcome is { } o ? MoveRoller.ColorFor(o) : _feedbackService.Theme.Success
         );
     
         var reply = await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);

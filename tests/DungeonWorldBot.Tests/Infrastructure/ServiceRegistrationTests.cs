@@ -21,7 +21,7 @@ public class ServiceRegistrationTests
     [InlineData(typeof(ICharacterService), typeof(CharacterService), ServiceLifetime.Scoped)]
     [InlineData(typeof(IGameSettingsService), typeof(GameSettingsService), ServiceLifetime.Singleton)]
     [InlineData(typeof(IDiceRoller), typeof(DiceRoller), ServiceLifetime.Singleton)]
-    [InlineData(typeof(CharacterCreationDialogue), typeof(CharacterCreationDialogue), ServiceLifetime.Scoped)]
+    [InlineData(typeof(CharacterCreationDialog), typeof(CharacterCreationDialog), ServiceLifetime.Scoped)]
     public void TaggedServices_AreRegistered(Type serviceType, Type implementationType, ServiceLifetime lifetime)
     {
         var descriptor = Assert.Single(Register(), d => d.ServiceType == serviceType);

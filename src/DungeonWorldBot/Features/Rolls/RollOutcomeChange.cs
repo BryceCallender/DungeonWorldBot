@@ -67,7 +67,7 @@ public static class RollOutcomeChange
             embed.Description,
             embed.Url,
             embed.Timestamp,
-            MoveRoller.ColourFor(outcome),
+            MoveRoller.ColorFor(outcome),
             embed.Footer,
             embed.Image,
             embed.Thumbnail,

@@ -5,7 +5,7 @@ using static DungeonWorldBot.Features.Classes.ClassMove;
 namespace DungeonWorldBot.Features.Classes.DungeonWorld;
 
 /// <summary>
-/// Summarised from the Dungeon World SRD by Sage LaTorra and Adam Koebel (CC BY 3.0).
+/// Summarized from the Dungeon World SRD by Sage LaTorra and Adam Koebel (CC BY 3.0).
 /// </summary>
 public static class Cleric
 {

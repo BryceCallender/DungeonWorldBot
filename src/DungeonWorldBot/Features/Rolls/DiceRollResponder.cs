@@ -22,7 +22,7 @@ public class DiceRollResponder(
     IRollStatsService rollStatsService)
     : IResponder<IMessageCreate>
 {
-    private static readonly Color RollColour = Color.Fuchsia;
+    private static readonly Color RollColor = Color.Fuchsia;
 
     public async Task<Result> RespondAsync(IMessageCreate gatewayEvent, CancellationToken ct = default)
     {
@@ -73,7 +73,7 @@ public class DiceRollResponder(
             Fields: outcome is { } band
                 ? new List<IEmbedField> { new EmbedField(MoveRoller.Describe(band), MoveRoller.GeneralMeaning(band)) }
                 : new Optional<IReadOnlyList<IEmbedField>>(),
-            Colour: outcome is { } o ? MoveRoller.ColourFor(o) : RollColour);
+            Colour: outcome is { } o ? MoveRoller.ColorFor(o) : RollColor);
 
         return (embed, roll);
     }
@@ -89,7 +89,7 @@ public class DiceRollResponder(
             Title: Title(message.Author, request.Label),
             Description: DiceHelper.BuildDiceResult(roll),
             Fields: new List<IEmbedField> { new EmbedField("Picked", picked) },
-            Colour: RollColour);
+            Colour: RollColor);
     }
 
     private async Task<(Embed? Embed, DiceResult? Roll)> BuildStatRollAsync(IMessageCreate message, DiceMessage request)
@@ -118,7 +118,7 @@ public class DiceRollResponder(
                 new EmbedField("Rolled with", rolledWith, IsInline: true),
                 new EmbedField(MoveRoller.Describe(roll.Outcome), MoveRoller.GeneralMeaning(roll.Outcome)),
             },
-            Colour: MoveRoller.ColourFor(roll.Outcome));
+            Colour: MoveRoller.ColorFor(roll.Outcome));
 
         return (embed, roll.Dice);
     }

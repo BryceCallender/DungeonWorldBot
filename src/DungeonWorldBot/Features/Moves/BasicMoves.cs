@@ -3,7 +3,7 @@ using DungeonWorldBot.Data.Entities;
 namespace DungeonWorldBot.Features.Moves;
 
 /// <summary>
-/// The basic moves every character has, summarised from the Dungeon World SRD (CC BY 3.0).
+/// The basic moves every character has, summarized from the Dungeon World SRD (CC BY 3.0).
 /// </summary>
 public static class BasicMoves
 {

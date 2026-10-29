@@ -13,7 +13,9 @@
 .session-main .chip { display: inline-flex; align-items: center; gap: .35rem; margin-left: .35rem; }
 .session-fights { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.session-stats { margin-left: auto; display: flex; gap: 1rem; flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
+/* Columns of a fixed width, so the numbers line up down the list whether or not a session had a natural 12 */
+.session-stats { margin-left: auto; display: grid; grid-template-columns: 4.5rem 4rem 2.5rem; justify-items: end; gap: 1rem; flex: none; color: var(--muted); font-variant-numeric: tabular-nums; }
+.session-stats > .muted { grid-column: 1 / -1; }
 .session-stats strong { color: var(--text); }
 
 @media (max-width: 600px) {

@@ -8,16 +8,16 @@ using Remora.Rest.Core;
 
 namespace DungeonWorldBot.Features.Characters.Creation.Steps;
 
-public readonly record struct StepResult<T>(bool IsCancelled, T? Value)
+public readonly record struct StepResult<T>(bool IsCanceled, T? Value)
 {
-    public static StepResult<T> Cancelled => new(true, default);
+    public static StepResult<T> Canceled => new(true, default);
 }
 
 /// <summary>
 /// Asks the user a question in their DMs and keeps asking until they give a valid answer,
 /// type /cancel, or stop responding.
 /// </summary>
-public abstract class DialogueStep<T>(FeedbackService feedbackService, string content)
+public abstract class DialogStep<T>(FeedbackService feedbackService, string content)
 {
     private static readonly TimeSpan ResponseTimeout = TimeSpan.FromMinutes(1);
 
@@ -42,17 +42,17 @@ public abstract class DialogueStep<T>(FeedbackService feedbackService, string co
         {
             var sent = await FeedbackService.SendPrivateEmbedAsync(userId, prompt, ct: ct);
             if (!sent.IsSuccess)
-                return StepResult<T>.Cancelled;
+                return StepResult<T>.Canceled;
 
             var reply = await interactivity.GetNextMessageAsync(channelId, sent.Entity.ID, ResponseTimeout, ct);
 
-            // Errors and timeouts (no message) both end the dialogue
+            // Errors and timeouts (no message) both end the dialog
             if (!reply.IsSuccess || reply.Entity is null)
-                return StepResult<T>.Cancelled;
+                return StepResult<T>.Canceled;
 
             var input = reply.Entity.Content.Trim();
             if (input.Equals("/cancel", StringComparison.OrdinalIgnoreCase))
-                return StepResult<T>.Cancelled;
+                return StepResult<T>.Canceled;
 
             if (TryParse(input, out var value, out var problem))
                 return new StepResult<T>(false, value);

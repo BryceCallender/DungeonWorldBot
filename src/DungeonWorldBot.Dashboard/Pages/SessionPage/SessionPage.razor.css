@@ -1,5 +1,6 @@
-.session-nav { display: flex; gap: 1rem; justify-content: space-between; font-size: .85rem; margin-bottom: .75rem; }
-.session-nav a:nth-child(2) { margin: 0 auto; }
+.session-nav { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem 1rem; margin-bottom: .75rem; }
+.session-nav .back { margin: 0; }
+.session-pager { display: flex; gap: .4rem; }
 
 .session-head { margin-bottom: 1rem; }
 .session-head h1 { margin-bottom: .25rem; }

@@ -5,7 +5,7 @@ using Remora.Discord.Commands.Autocomplete;
 namespace DungeonWorldBot.Features.Npcs;
 
 /// <summary>
-/// The NPCs travelling with the party.
+/// The NPCs traveling with the party.
 /// </summary>
 public class NpcAutocomplete(INpcService npcService) : IAutocompleteProvider
 {

@@ -40,7 +40,7 @@ public class MoveRequestProcessor(
     CharacterMoves characterMoves,
     EnemyAttackResolver enemyAttackResolver)
 {
-    private static readonly Color AttackColour = Color.FromArgb(0xD8, 0x5A, 0x30);
+    private static readonly Color AttackColor = Color.FromArgb(0xD8, 0x5A, 0x30);
     private static readonly EmbedFooter FromScene = new("Rolled from the fight's scene");
 
     public async Task<ProcessedMoveResult> ProcessAsync(MoveRequest request)
@@ -154,7 +154,7 @@ public class MoveRequestProcessor(
         await LogAsync(request, attack.Action);
 
         return new ProcessedMoveResult(null, new ProcessedMove(
-            new Embed(Title: attack.Title, Description: attack.Description, Colour: AttackColour, Footer: FromScene),
+            new Embed(Title: attack.Title, Description: attack.Description, Colour: AttackColor, Footer: FromScene),
             attack.Action,
             $"-{attack.Taken}"));
     }

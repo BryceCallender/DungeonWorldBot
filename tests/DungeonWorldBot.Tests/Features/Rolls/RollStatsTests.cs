@@ -126,7 +126,7 @@ public class RollStatsTests
 
     [Theory]
     [InlineData("🎲 Zephyr: Hack and Slash", "STR +2, Bonus +1", "Hack and Slash", StatType.Str)]
-    // "." rolls labelled with a move's name count as that move
+    // "." rolls labeled with a move's name count as that move
     [InlineData("🎲 Zephyr: volley", "DEX +1", "Volley", StatType.Dex)]
     [InlineData("🎲 Zephyr: dodge the trap", "DEX +1", null, StatType.Dex)]
     [InlineData("🎲 Str Roll(s)", "STR +0", null, StatType.Str)]

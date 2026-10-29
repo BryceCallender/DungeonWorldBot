@@ -5,7 +5,7 @@ using static DungeonWorldBot.Features.Classes.ClassMove;
 namespace DungeonWorldBot.Features.Classes.DungeonWorld;
 
 /// <summary>
-/// Summarised from the Dungeon World SRD by Sage LaTorra and Adam Koebel (CC BY 3.0).
+/// Summarized from the Dungeon World SRD by Sage LaTorra and Adam Koebel (CC BY 3.0).
 /// </summary>
 public static class Wizard
 {
@@ -51,7 +51,7 @@ public static class Wizard
         ],
         level2To5:
         [
-            new("Logical", "When you use strict deduction to analyse your surroundings, you can Discern Realities with INT instead of WIS."),
+            new("Logical", "When you use strict deduction to analyze your surroundings, you can Discern Realities with INT instead of WIS."),
             new("Arcane Ward", "While you have at least one prepared spell of first level or higher, you have +2 armor."),
             Rolled("Counterspell", StatType.Int,
                 "When you try to counter an arcane spell that would otherwise affect you, stake one of your prepared spells on the defense",
@@ -76,7 +76,7 @@ public static class Wizard
             new("Master", "Choose one spell besides the one you picked for Prodigy. You prepare it as if it were one level lower.") { Requires = "Prodigy" },
             new("Greater Empowered Magic", "When you Cast a Spell, on a 10-11 you can choose from the 7-9 list. If you do, also choose one: maximize the spell's effects or double its targets. On a 12+, choose one of those for free.") { Replaces = "Empowered Magic" },
             new("Enchanter's Soul", "When you have time and safety with a magic item in a place of power, you can empower it so its next use is amplified (the GM says how).") { Requires = "Enchanter" },
-            new("Highly Logical", "When you use strict deduction to analyse your surroundings, you can Discern Realities with INT instead of WIS. On a 12+, ask the GM any three questions, not limited by the list.") { Replaces = "Logical" },
+            new("Highly Logical", "When you use strict deduction to analyze your surroundings, you can Discern Realities with INT instead of WIS. On a 12+, ask the GM any three questions, not limited by the list.") { Replaces = "Logical" },
             new("Mystical Puppet Strings", "When you use magic to control a person's actions, they have no memory of what you had them do and bear you no ill will."),
         ],
         resources:

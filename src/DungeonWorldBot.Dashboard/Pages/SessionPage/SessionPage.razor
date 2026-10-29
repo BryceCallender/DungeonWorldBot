@@ -23,15 +23,17 @@
 <PageTitle>@s.Name · Sana Solem</PageTitle>
 
 <nav class="session-nav">
-    @if (Number > 1)
-    {
-        <a href="session/@(Number - 1)">← Session @(Number - 1)</a>
-    }
-    <a href="sessions">All sessions</a>
-    @if (Number < _count)
-    {
-        <a href="session/@(Number + 1)">Session @(Number + 1) →</a>
-    }
+    <a class="back" href="sessions">← Sessions</a>
+    <span class="session-pager">
+        @if (Number > 1)
+        {
+            <a class="tool" href="session/@(Number - 1)">‹ Session @(Number - 1)</a>
+        }
+        @if (Number < _count)
+        {
+            <a class="tool" href="session/@(Number + 1)">Session @(Number + 1) ›</a>
+        }
+    </span>
 </nav>
 
 <header class="session-head">

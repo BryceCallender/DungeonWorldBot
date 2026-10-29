@@ -21,6 +21,16 @@ public static class RollStyles
     };
 
     /// <summary>
+    /// A fight roll's pill colour from its text: "strong", "weak" or "miss" for a player's ("9 · Weak Hit (7-9)"), and
+    /// "plain" for an enemy's dice ("d12 = 7").
+    /// </summary>
+    public static string FromRollText(string roll, bool missed = false) =>
+        missed || roll.Contains("Miss") ? "miss"
+        : roll.Contains("Strong Hit") ? "strong"
+        : roll.Contains("Weak Hit") ? "weak"
+        : "plain";
+
+    /// <summary>
     /// "lucky" or "unlucky" when the dice averaged half a pip from fair over enough rolls, else nothing.
     /// </summary>
     public static string Luck(int rolls, double averageNatural) => rolls < LuckRolls ? ""

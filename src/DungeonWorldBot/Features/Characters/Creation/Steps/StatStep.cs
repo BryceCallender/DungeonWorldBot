@@ -13,7 +13,7 @@ public class StatStep(
     FeedbackService feedbackService,
     string content,
     IReadOnlyCollection<int> available)
-    : DialogueStep<int?>(feedbackService, content)
+    : DialogStep<int?>(feedbackService, content)
 {
     private readonly IReadOnlyCollection<int> _available = available;
 

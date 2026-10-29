@@ -6,7 +6,7 @@ namespace DungeonWorldBot.Features.Classes.Guides;
 
 /// <summary>
 /// How to play each class with the bot's commands. Every guide runs the same way: make the character, the basic moves,
-/// the class's rolled moves, then whatever is special about the class, then downtime, subclasses and levelling up. All but
+/// the class's rolled moves, then whatever is special about the class, then downtime, subclasses and leveling up. All but
 /// the special steps are built from the sheet.
 /// </summary>
 public static class ClassGuides
@@ -316,7 +316,7 @@ public static class ClassGuides
         return new ClassGuide(
             sheet.Type,
             written.Pitch,
-            [GettingStarted(sheet), Basics, ClassMoves(sheet), .. written.Steps, Downtime, Subclasses(sheet), LevellingUp(sheet)]);
+            [GettingStarted(sheet), Basics, ClassMoves(sheet), .. written.Steps, Downtime, Subclasses(sheet), LevelingUp(sheet)]);
     }
 
     /// <summary>
@@ -400,7 +400,7 @@ public static class ClassGuides
         return Step("Subclass", text, Cmd("/subclass list"), Cmd("/subclass info"), Cmd("/subclass join"));
     }
 
-    private static GuideStep LevellingUp(ClassSheet sheet)
+    private static GuideStep LevelingUp(ClassSheet sheet)
     {
         var text = "When you level up, `/class moves` lists the advanced moves you can take and `/class learn` takes one. " +
                    "Spend the stat points it gives you with `/character level allocate`.";

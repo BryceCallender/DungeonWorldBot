@@ -66,10 +66,10 @@ public abstract class ClassSheetAutocomplete(
     }
 
     /// <summary>
-    /// Every sheet's entries, labelled with their class. Names on more than one sheet send "Name (Class)" so the
+    /// Every sheet's entries, labeled with their class. Names on more than one sheet send "Name (Class)" so the
     /// command can tell them apart.
     /// </summary>
-    protected static IEnumerable<Suggestion> Labelled(IEnumerable<ClassSheet> sheets, Func<ClassSheet, IEnumerable<string>> names)
+    protected static IEnumerable<Suggestion> Labeled(IEnumerable<ClassSheet> sheets, Func<ClassSheet, IEnumerable<string>> names)
     {
         var entries = sheets.SelectMany(s => names(s).Select(n => (Sheet: s, Name: n))).ToList();
         var shared = entries.GroupBy(e => e.Name, StringComparer.OrdinalIgnoreCase).Where(g => g.Count() > 1).Select(g => g.Key)
@@ -129,7 +129,7 @@ public class ClassMoveAutocomplete(
         return own.Concat(foreign);
     }
 
-    protected override IEnumerable<Suggestion> AllClassCandidates() => Labelled(ClassSheetLibrary.All, s => s.AllMoves.Select(m => m.Name));
+    protected override IEnumerable<Suggestion> AllClassCandidates() => Labeled(ClassSheetLibrary.All, s => s.AllMoves.Select(m => m.Name));
 }
 
 /// <summary>
@@ -150,7 +150,7 @@ public class AnyClassMoveAutocomplete(
 
     protected override IEnumerable<Suggestion> AllClassCandidates()
     {
-        var classMoves = Labelled(ClassSheetLibrary.All, s => s.AllMoves.Select(m => m.Name)).ToList();
+        var classMoves = Labeled(ClassSheetLibrary.All, s => s.AllMoves.Select(m => m.Name)).ToList();
         var taken = ClassSheetLibrary.All.SelectMany(s => s.AllMoves.Select(m => m.Name))
             .Concat(SubclassLibrary.All.SelectMany(s => s.Moves.Where(m => !m.Hidden).Select(m => m.Move.Name)))
             .GroupBy(n => n, StringComparer.OrdinalIgnoreCase)
@@ -191,7 +191,7 @@ public class RolledClassMoveAutocomplete(
                 .Select(f => new Suggestion(f.Move.Name, Multiclassing.Qualify(f))));
 
     protected override IEnumerable<Suggestion> AllClassCandidates() =>
-        Labelled(ClassSheetLibrary.All, s => s.AllMoves.Where(m => m.Roll is not null).Select(m => m.Name));
+        Labeled(ClassSheetLibrary.All, s => s.AllMoves.Where(m => m.Roll is not null).Select(m => m.Name));
 }
 
 public class ClassResourceAutocomplete(
@@ -207,6 +207,6 @@ public class ClassResourceAutocomplete(
         ClassSheetLibrary.ResourcesOf(character).Select(r => new Suggestion(r.Name, r.Name));
 
     protected override IEnumerable<Suggestion> AllClassCandidates() =>
-        Labelled(ClassSheetLibrary.All, s => s.Resources.Select(r => r.Name))
+        Labeled(ClassSheetLibrary.All, s => s.Resources.Select(r => r.Name))
             .Concat(ClassSheetLibrary.CommonResources.Select(r => new Suggestion(r.Name, r.Name)));
 }

@@ -11,7 +11,7 @@ public enum MoveTier
     Level6To10,
 
     /// <summary>
-    /// Things picked up outside of levelling, like a Shaman's spirit totems.
+    /// Things picked up outside of leveling, like a Shaman's spirit totems.
     /// </summary>
     Extra,
 }

@@ -18,7 +18,7 @@
 
 .member:hover { border-color: var(--class); transform: translateY(-2px); }
 
-/* The name, with a "You" chip beside your own character's, centred on it */
+/* The name, with a "You" chip beside your own character's, centered on it */
 .member-name { display: flex; align-items: center; gap: .5rem; min-width: 0; }
 .member-name h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .member-name .chip { flex: none; }

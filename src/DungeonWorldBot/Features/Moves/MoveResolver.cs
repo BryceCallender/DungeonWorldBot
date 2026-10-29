@@ -130,7 +130,7 @@ public class MoveResolver(IDiceRoller diceRoller, IDamageService damageService, 
             Title: $"🎲 {character.Name}: {move.Name}",
             Description: $"*{move.Trigger}...*\n\n{DiceHelper.BuildDiceResult(roll.Dice)}",
             Fields: fields,
-            Colour: MoveRoller.ColourFor(outcome)
+            Colour: MoveRoller.ColorFor(outcome)
         );
 
         return new MoveResolution(character, move, embed, roll, outcome, dealt);

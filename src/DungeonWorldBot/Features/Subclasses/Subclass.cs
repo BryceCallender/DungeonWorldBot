@@ -39,13 +39,13 @@ public record RollBonus(string Source, int Amount);
 public delegate IEnumerable<RollBonus> RollBonusRule(Character owner, Character roller, RollKind kind, StatType? stat);
 
 /// <summary>
-/// A homebrew specialisation a character takes on top of their class, like the Ranger's Champion of Luna. Members are
+/// A homebrew specialization a character takes on top of their class, like the Ranger's Champion of Luna. Members are
 /// marked by an ability named after the subclass, and its moves are learned as abilities as they unlock.
 /// </summary>
 public class Subclass
 {
     /// <param name="name">The subclass's name, also the name of the ability that marks a member.</param>
-    /// <param name="title">A flavour line under the name, e.g. "Bearer of the Forgotten Moon".</param>
+    /// <param name="title">A flavor line under the name, e.g. "Bearer of the Forgotten Moon".</param>
     /// <param name="source">Where it comes from, e.g. "Homebrew".</param>
     /// <param name="classes">The classes that can take it, or empty for any class.</param>
     public Subclass(

@@ -102,7 +102,7 @@ public sealed class SubclassTests : IDisposable
     }
 
     [Fact]
-    public async Task Joining_GivesMovesForLevel_AndLevellingUnlocksMore()
+    public async Task Joining_GivesMovesForLevel_AndLevelingUnlocksMore()
     {
         await using var context = CreateContext();
         var characters = new CharacterService(context);

@@ -13,7 +13,7 @@ namespace DungeonWorldBot.Features.Characters.Creation;
 /// Walks a player through creating a character over DMs.
 /// </summary>
 [Scoped]
-public class CharacterCreationDialogue(
+public class CharacterCreationDialog(
     FeedbackService feedbackService,
     InteractivityService interactivity,
     IDiscordRestUserAPI userAPI,
@@ -34,7 +34,7 @@ public class CharacterCreationDialogue(
         ("No Editing", Section.Done),
     ];
 
-    // Fields rather than parameters, since each Session reads them through its dialogue
+    // Fields rather than parameters, since each Session reads them through its dialog
     private readonly FeedbackService _feedbackService = feedbackService;
     private readonly InteractivityService _interactivity = interactivity;
     private readonly IDiceRoller _dice = dice;
@@ -42,7 +42,7 @@ public class CharacterCreationDialogue(
     // Off unless the TrackWeight setting turns it on, since the table doesn't count weight
     private readonly bool _trackWeight = configuration.GetValue("TrackWeight", false);
 
-    /// <returns>The finished (unsaved) character, or null if the player cancelled or stopped responding.</returns>
+    /// <returns>The finished (unsaved) character, or null if the player canceled or stopped responding.</returns>
     public async Task<Character?> RunAsync(Snowflake userId, CancellationToken ct = default)
     {
         var getDM = await userAPI.CreateDMAsync(userId, ct);
@@ -63,7 +63,7 @@ public class CharacterCreationDialogue(
         {
             var preview = draft.Build(userId);
             var review = await session.RunAsync(new ReviewStep(_feedbackService, preview, EditOptions.Select(o => o.Label).ToList()));
-            if (review.IsCancelled)
+            if (review.IsCanceled)
                 return null;
 
             var section = EditOptions[review.Value!.Value].Section;
@@ -75,14 +75,14 @@ public class CharacterCreationDialogue(
         }
     }
 
-    private class Session(CharacterCreationDialogue dialogue, Snowflake channelId, Snowflake userId, CancellationToken ct)
+    private class Session(CharacterCreationDialog dialog, Snowflake channelId, Snowflake userId, CancellationToken ct)
     {
-        private FeedbackService Feedback => dialogue._feedbackService;
+        private FeedbackService Feedback => dialog._feedbackService;
 
-        public Task<StepResult<T>> RunAsync<T>(DialogueStep<T> step) =>
-            step.RunAsync(dialogue._interactivity, channelId, userId, ct);
+        public Task<StepResult<T>> RunAsync<T>(DialogStep<T> step) =>
+            step.RunAsync(dialog._interactivity, channelId, userId, ct);
 
-        /// <returns>False if the player cancelled.</returns>
+        /// <returns>False if the player canceled.</returns>
         public async Task<bool> AskAsync(Section section, CharacterDraft draft) => section switch
         {
             Section.Name => await AskNameAsync(draft),
@@ -99,7 +99,7 @@ public class CharacterCreationDialogue(
         private async Task<bool> AskNameAsync(CharacterDraft draft)
         {
             var result = await RunAsync(new TextStep(Feedback, "What is your characters Name?", 2, 100));
-            if (result.IsCancelled)
+            if (result.IsCanceled)
                 return false;
 
             draft.Name = result.Value!;
@@ -110,7 +110,7 @@ public class CharacterCreationDialogue(
         {
             var options = CharacterDraft.RaceOptions;
             var result = await RunAsync(new MenuStep(Feedback, "What is your characters Race?", options.Select(o => o.Label).ToList()));
-            if (result.IsCancelled)
+            if (result.IsCanceled)
                 return false;
 
             draft.Race = options[result.Value!.Value].Value;
@@ -121,10 +121,10 @@ public class CharacterCreationDialogue(
         {
             var kits = ClassKits.All;
             var result = await RunAsync(new MenuStep(Feedback, "What is your characters Class?", kits.Select(k => k.DisplayName).ToList()));
-            if (result.IsCancelled)
+            if (result.IsCanceled)
                 return false;
 
-            draft.SetClass(kits[result.Value!.Value], dialogue._dice);
+            draft.SetClass(kits[result.Value!.Value], dialog._dice);
             return true;
         }
 
@@ -136,7 +136,7 @@ public class CharacterCreationDialogue(
             foreach (var statType in CharacterDraft.StatOrder)
             {
                 var result = await RunAsync(new StatStep(Feedback, $"Which value would you like your {StatName(statType)} stat to be?", available));
-                if (result.IsCancelled)
+                if (result.IsCanceled)
                     return false;
 
                 var value = result.Value!.Value;
@@ -158,7 +158,7 @@ public class CharacterCreationDialogue(
         {
             var options = CharacterDraft.AlignmentOptions;
             var result = await RunAsync(new MenuStep(Feedback, "What is your characters Alignment?", options.Select(o => o.Label).ToList()));
-            if (result.IsCancelled)
+            if (result.IsCanceled)
                 return false;
 
             draft.Alignment = options[result.Value!.Value].Value;
@@ -167,7 +167,7 @@ public class CharacterCreationDialogue(
 
         private async Task<bool> AskGearAsync(CharacterDraft draft)
         {
-            draft.ResetGear(dialogue._dice);
+            draft.ResetGear(dialog._dice);
 
             foreach (var question in draft.Kit.Questions)
             {
@@ -177,7 +177,7 @@ public class CharacterCreationDialogue(
 
                 foreach (var choice in picks)
                 {
-                    draft.ApplyChoice(choice, dialogue._dice);
+                    draft.ApplyChoice(choice, dialog._dice);
                 }
             }
 
@@ -204,7 +204,7 @@ public class CharacterCreationDialogue(
         /// <summary>
         /// Asks for <paramref name="count"/> different options, one menu at a time.
         /// </summary>
-        /// <returns>The picks, or null if the player cancelled.</returns>
+        /// <returns>The picks, or null if the player canceled.</returns>
         private async Task<List<T>?> AskPicksAsync<T>(string prompt, IReadOnlyList<T> options, Func<T, string> label, int count)
         {
             var remaining = options.ToList();
@@ -214,7 +214,7 @@ public class CharacterCreationDialogue(
             {
                 var step = count > 1 ? $"{prompt} (pick {i + 1} of {count})" : prompt;
                 var result = await RunAsync(new MenuStep(Feedback, step, remaining.Select(label).ToList()));
-                if (result.IsCancelled)
+                if (result.IsCanceled)
                     return null;
 
                 picks.Add(remaining[result.Value!.Value]);

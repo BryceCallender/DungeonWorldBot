@@ -3,7 +3,7 @@ using DungeonWorldBot.Features.Classes;
 namespace DungeonWorldBot.Features.Spells;
 
 /// <summary>
-/// Every spell, labelled with its list. Names on more than one list (like Light) send "Name (List)".
+/// Every spell, labeled with its list. Names on more than one list (like Light) send "Name (List)".
 /// </summary>
 public class SpellAutocomplete() : ClassSheetAutocomplete(null, null)
 {

@@ -46,7 +46,7 @@ public sealed class GameSettingsTests : IDisposable
     }
 
     [Fact]
-    public async Task LevellingUp_UsesTheDmsAmounts()
+    public async Task LevelingUp_UsesTheDmsAmounts()
     {
         var settings = new GameSettingsService(path: _path);
         await settings.SetStatPointsForLevelAsync(3, 2);

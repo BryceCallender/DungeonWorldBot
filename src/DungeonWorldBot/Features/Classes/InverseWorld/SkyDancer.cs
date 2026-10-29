@@ -117,6 +117,6 @@ public static class SkyDancer
                     "Freezing Snow: bury the target in ice and snow",
                     "Howling Winds: piercing 3, messy, forceful",
                 ]) with { Replaces = "Howling Winds" },
-            new("World Dancer", "Take to the Sky to somewhere you've been before always counts as a 10+. Travelling alone there, you never need Undertake a Perilous Journey, and it takes half the time."),
+            new("World Dancer", "Take to the Sky to somewhere you've been before always counts as a 10+. Traveling alone there, you never need Undertake a Perilous Journey, and it takes half the time."),
         ]);
 }

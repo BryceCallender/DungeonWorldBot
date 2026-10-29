@@ -105,7 +105,7 @@
             _months.Add(month);
     }
 
-    // Busier nights are a deeper colour, but even a quiet one stands out
+    // Busier nights are a deeper color, but even a quiet one stands out
     private string Busy(SessionRolls session) =>
         Num(0.6 + 0.4 * session.Rolls / _mostRolls, "0.##");
 }
