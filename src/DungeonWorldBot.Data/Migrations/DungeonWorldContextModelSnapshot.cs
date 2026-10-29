@@ -15,7 +15,7 @@ namespace DungeonWorldBot.Data.Migrations
         protected override void BuildModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
-            modelBuilder.HasAnnotation("ProductVersion", "10.0.12");
+            modelBuilder.HasAnnotation("ProductVersion", "10.0.14");
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Ability", b =>
                 {
@@ -497,7 +497,7 @@ namespace DungeonWorldBot.Data.Migrations
                     b.Property<int>("Amount")
                         .HasColumnType("INTEGER");
 
-                    b.Property<int?>("InventoryID")
+                    b.Property<int>("InventoryID")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
@@ -990,7 +990,9 @@ namespace DungeonWorldBot.Data.Migrations
                 {
                     b.HasOne("DungeonWorldBot.Data.Entities.Inventory", null)
                         .WithMany("Items")
-                        .HasForeignKey("InventoryID");
+                        .HasForeignKey("InventoryID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.MoveRequest", b =>
