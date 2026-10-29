@@ -69,6 +69,15 @@ code {
 }
 .small { font-size: .85rem; color: var(--muted); }
 .empty { color: var(--muted); font-style: italic; }
+/* A page or section with nothing to show yet: a dashed box where its content would be, not a stray line */
+:is(main, .desk-section) > p.empty {
+    padding: 1.5rem 1rem;
+    border: 1px dashed var(--border);
+    border-radius: 12px;
+    text-align: center;
+}
+main > p.empty { margin: 0 0 2rem; }
+.desk-section > p.empty { margin: 0; }
 
 .card {
     background: var(--surface);
@@ -132,17 +141,19 @@ code {
 
 /* Character sheet */
 
-.back { display: inline-block; margin-bottom: .75rem; text-decoration: none; }
+.back { display: inline-block; margin-bottom: .75rem; font-size: .9rem; text-decoration: none; }
+.back:hover { text-decoration: underline; }
 
 .sheet {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+    /* A wrapping row rather than a grid, so a short row's cards stretch across instead of leaving a gap at the end.
+       Cards side by side match the taller one. */
+    display: flex;
+    flex-wrap: wrap;
     gap: 1rem;
-    /* Cards side by side match the taller one */
-    align-items: stretch;
 }
 
-.sheet .wide { grid-column: 1 / -1; }
+.sheet > * { flex: 1 1 340px; min-width: 0; }
+.sheet > .wide { flex-basis: 100%; }
 
 .sheet .stats { margin-bottom: .5rem; }
 
@@ -187,17 +198,18 @@ details > .small { margin-top: .4rem; }
     border-radius: 0 8px 8px 0;
 }
 
-/* Roll outcomes, in the roll stats tables and dice charts */
+/* Roll outcomes, in the roll stats tables and dice charts. Only their bars are filled: elsewhere (the spotlight, the
+   fight timeline) the same classes color text or a dot, and a fill there hides it */
 
-.strong { background: var(--good); }
-.weak { background: var(--low); }
-.miss { background: var(--critical); }
+:is(.dice-bar, .spread-bar > div, .legend i).strong { background: var(--good); }
+:is(.dice-bar, .spread-bar > div, .legend i).weak { background: var(--low); }
+:is(.dice-bar, .spread-bar > div, .legend i).miss { background: var(--critical); }
 
 /* Summary tiles */
 
 .tiles {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     gap: .75rem;
     margin-top: 1rem;
 }
@@ -300,7 +312,7 @@ html:has(.jump) { scroll-padding-top: 3.5rem; }
 
 .filter { width: 14rem; max-width: 100%; }
 /* Dropdowns are drawn like the text boxes beside them, rather than by the browser, which pads and sizes them its own way.
-   The chevron is two gradient triangles in the muted text colour, so it follows the theme. */
+   The chevron is two gradient triangles in the muted text color, so it follows the theme. */
 select.filter {
     appearance: none;
     padding-right: 1.9rem;
@@ -320,7 +332,21 @@ li[hidden] { display: none !important; }
 
 /* Reference pages */
 
-.jump-filter { margin-left: auto; flex: 0 1 13rem; min-width: 7rem; }
+/* The search at the end of the tabs: shorter than the bar, so it sits in the middle with room above and below, and a
+   fixed width, so its placeholder isn't cut off. When the tabs don't fit it stays pinned at the right while they scroll
+   under it, fading out behind its left edge. */
+.jump-filter {
+    position: sticky;
+    right: 0;
+    flex: none;
+    width: 13rem;
+    margin: 0 0 0 auto;
+    padding-block: .3rem;
+    line-height: 1.25;
+    /* The page's background around it, hiding the tabs that scroll under it: solid on the right out to the bar's edge,
+       and solid then fading on the left */
+    box-shadow: 1.5rem 0 0 0 var(--bg), -1rem 0 0 0 var(--bg), -2.25rem 0 1rem -.5rem var(--bg);
+}
 a.chip { text-decoration: none; }
 .chip.good { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
 ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
@@ -365,14 +391,13 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 .section-title { margin-top: 2rem; }
 
 @media (max-width: 600px) {
-    .sheet { grid-template-columns: 1fr; }
     .wide ul.moves { grid-template-columns: 1fr; }
     .tiles { grid-template-columns: repeat(2, 1fr); }
     .hero { grid-template-columns: 1fr; }
     .hero-vitals { grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); }
     .jump { margin: 0 -1rem 1rem; padding: 0 1rem; gap: 1.1rem; }
     .filter { width: 100%; }
-    .jump-filter { width: 10rem; }
+    .jump-filter { width: 9rem; }
 }
 
 /* ---- Live dot ---------------------------------------------------------------------------------------------------- */
@@ -537,6 +562,53 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 
 .modal .create.danger { background: var(--critical); border-color: var(--critical); }
 
+/* The crop dialog for a character's picture (app.js): the picture in a square, darkened outside the circle it'll
+   fill, with a ring where its edge will be */
+.crop-frame {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 12px;
+    overflow: hidden;
+    background: var(--surface-2);
+}
+.crop-frame canvas { display: block; width: 100%; height: 100%; cursor: grab; touch-action: none; }
+.crop-frame canvas:active { cursor: grabbing; }
+.crop-frame::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(circle closest-side, transparent calc(100% - 2px), rgb(255 255 255 / .85) calc(100% - 2px) 100%, rgb(0 0 0 / .55) 100%);
+}
+.crop-zoom { display: flex; align-items: center; gap: .75rem; }
+.crop-zoom input { flex: 1; accent-color: var(--accent); }
+
+/* ---- Fight actions ---------------------------------------------------------------------------------------------- */
+
+/* Something someone did in a fight, in the encounter panel, the fight log and a fight's replay: the move and its target
+   on one line, cut short rather than wrapping so every entry is the same shape, then the roll as a pill in the
+   outcome's colour, so a list can be read by colour alone, and the damage beside it */
+.action-line { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.action-line .action { font-weight: 500; }
+/* Razor trims the space between the spans, so it's put back here */
+.action-line .target { margin-left: .3em; color: var(--muted); }
+.outcome-line { display: flex; flex-wrap: wrap; align-items: center; gap: .2rem .45rem; }
+
+.roll-pill {
+    padding: 0 .45rem;
+    border-radius: 999px;
+    font-weight: 600;
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+    background: var(--surface-2);
+    color: var(--muted);
+}
+.roll-pill.strong { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+.roll-pill.weak { background: color-mix(in srgb, var(--low) 18%, transparent); color: var(--low); }
+.roll-pill.miss { background: var(--warn-soft); color: var(--critical); }
+.dmg { font-weight: 600; color: var(--damage); white-space: nowrap; }
+
 /* ---- Roll feed --------------------------------------------------------------------------------------------------- */
 
 /* Rolls from the game chat, stacked in the bottom corner (app.js). Each toast slides in, its dice tumble and land, and
@@ -616,7 +688,7 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 }
 .die i { border-radius: 50%; }
 .die i.on { background: var(--text); }
-/* A character's dice come in their class colour (.classed sets --class), with white pips */
+/* A character's dice come in their class color (.classed sets --class), with white pips */
 .roll-toast.classed .die { background: var(--class); border-color: color-mix(in srgb, var(--class) 70%, black); box-shadow: inset 0 -3px 0 rgb(0 0 0 / .25); }
 .roll-toast.classed .die i.on { background: #fff; box-shadow: 0 1px 1px rgb(0 0 0 / .3); }
 .roll-toast.classed .roll-avatar { background: color-mix(in srgb, var(--class) 25%, var(--surface)); color: var(--class); }

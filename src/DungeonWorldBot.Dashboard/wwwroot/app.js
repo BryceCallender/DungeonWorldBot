@@ -517,21 +517,111 @@ if (document.querySelector('dialog[data-open-on-load]')) {
     history.replaceState(history.state, '', url);
 }
 
-// A character's picture, sent as soon as one's picked. Shrunk first, as the board does with its pictures, since it shows
-// small (on the character's page and their tokens) and every board with their token loads it.
+// ---- Square pictures ---------------------------------------------------------------------------------------------
+
+// A character's picture is cropped square before it's sent, in a dialog showing the circle their face fills. It opens
+// with the middle of the picture filling it, so "Use picture" straight away crops to fit; dragging moves the picture
+// and the slider or wheel zooms in. Resolves to the square picture, at most `size` across, or null if cancelled.
+async function cropToSquare(file, size = 512) {
+    const bitmap = await createImageBitmap(file);           // throws for anything that isn't a picture
+    const dialog = cropDialog();
+    const canvas = dialog.querySelector('canvas');
+    const zoom = dialog.querySelector('input[type=range]');
+    const view = canvas.width;                                // the preview's size in canvas pixels
+
+    // Which part of the picture shows: the square's side and its middle, in the picture's own pixels
+    const cover = Math.min(bitmap.width, bitmap.height);
+    let side = cover, cx = bitmap.width / 2, cy = bitmap.height / 2;
+    const clamp = () => {
+        cx = Math.min(Math.max(cx, side / 2), bitmap.width - side / 2);
+        cy = Math.min(Math.max(cy, side / 2), bitmap.height - side / 2);
+    };
+    const draw = () => {
+        const ctx = canvas.getContext('2d');
+        ctx.clearRect(0, 0, view, view);
+        ctx.drawImage(bitmap, cx - side / 2, cy - side / 2, side, side, 0, 0, view, view);
+    };
+    const zoomTo = level => {
+        zoom.value = String(level);
+        side = cover / level;
+        clamp();
+        draw();
+    };
+    zoomTo(1);
+
+    let drag = null;
+    canvas.onpointerdown = e => { drag = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId); };
+    canvas.onpointermove = e => {
+        if (!drag) return;
+        // Screen pixels to picture pixels: the preview shows `side` picture pixels across its width on screen
+        const perPixel = side / canvas.getBoundingClientRect().width;
+        cx -= (e.clientX - drag.x) * perPixel;
+        cy -= (e.clientY - drag.y) * perPixel;
+        drag = { x: e.clientX, y: e.clientY };
+        clamp();
+        draw();
+    };
+    canvas.onpointerup = canvas.onpointercancel = () => { drag = null; };
+    canvas.onwheel = e => {
+        e.preventDefault();
+        zoomTo(Math.min(Number(zoom.max), Math.max(1, Number(zoom.value) * (e.deltaY < 0 ? 1.1 : 1 / 1.1))));
+    };
+    zoom.oninput = () => zoomTo(Number(zoom.value));
+
+    dialog.returnValue = '';
+    dialog.showModal();
+    await new Promise(resolve => dialog.addEventListener('close', resolve, { once: true }));
+    if (dialog.returnValue !== 'use') {
+        bitmap.close();
+        return null;
+    }
+
+    const out = Math.round(Math.min(size, side));
+    const square = new OffscreenCanvas(out, out);
+    square.getContext('2d').drawImage(bitmap, cx - side / 2, cy - side / 2, side, side, 0, 0, out, out);
+    bitmap.close();
+    // WebP where the browser can make it (Safari can't, and gives PNG instead)
+    return square.convertToBlob({ type: 'image/webp', quality: 0.85 });
+}
+
+// The crop dialog, made the first time it's needed and kept for the next picture
+function cropDialog() {
+    let dialog = document.getElementById('crop-dialog');
+    if (dialog) return dialog;
+    dialog = document.createElement('dialog');
+    dialog.id = 'crop-dialog';
+    dialog.className = 'modal crop-dialog';
+    dialog.innerHTML = `
+        <form method="dialog">
+            <div class="modal-head">
+                <h2>Frame the picture</h2>
+                <button class="modal-close" value="" aria-label="Close">×</button>
+            </div>
+            <p class="small">Drag to move it, and zoom to fit the face in the circle.</p>
+            <div class="crop-frame"><canvas width="640" height="640"></canvas></div>
+            <label class="crop-zoom"><span class="field-label">Zoom</span><input type="range" min="1" max="4" step="0.01" value="1" /></label>
+            <div class="modal-actions">
+                <button class="tool" value="">Cancel</button>
+                <button class="tool create" value="use">Use picture</button>
+            </div>
+        </form>`;
+    document.body.append(dialog);
+    return dialog;
+}
+
+// A character's picture, sent once it's framed. Small, since it shows small (on the character's page and their tokens)
+// and every board with their token loads it.
 document.addEventListener('change', async e => {
     const input = e.target.closest?.('[data-portrait]');
     const file = input?.files?.[0];
     if (!file) return;
 
     try {
-        const bitmap = await createImageBitmap(file);
-        const scale = Math.min(1, 512 / Math.max(bitmap.width, bitmap.height));
-        const canvas = new OffscreenCanvas(Math.round(bitmap.width * scale), Math.round(bitmap.height * scale));
-        canvas.getContext('2d').drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-        bitmap.close();
-        // WebP where the browser can make it (Safari can't, and gives PNG instead)
-        const blob = await canvas.convertToBlob({ type: 'image/webp', quality: 0.85 });
+        const blob = await cropToSquare(file, 512);
+        if (!blob) {
+            input.value = '';                                  // so picking the same file again still counts
+            return;
+        }
         const files = new DataTransfer();
         files.items.add(new File([blob], 'portrait', { type: blob.type }));
         input.files = files.files;
@@ -578,45 +668,6 @@ document.addEventListener('pointerout', e => {
     let checking = false;
     let again = false;
     let feed = null;
-
-    // Whether to show rolls at all, and with sound: the 🎲 menu in the top bar, remembered in this browser
-    const settings = { show: true, sound: false };
-    try { Object.assign(settings, JSON.parse(localStorage.getItem('roll-feed') ?? '{}')); } catch { /* the defaults, then */ }
-    for (const input of document.querySelectorAll('[data-roll-setting]')) input.checked = settings[input.dataset.rollSetting];
-    document.addEventListener('change', e => {
-        const input = e.target.closest?.('[data-roll-setting]');
-        if (!input) return;
-        settings[input.dataset.rollSetting] = input.checked;
-        try { localStorage.setItem('roll-feed', JSON.stringify(settings)); } catch { /* just for this visit, then */ }
-        if (input.dataset.rollSetting === 'sound' && input.checked) { rattle(.5); clack(.55, 1); }
-        if (input.dataset.rollSetting === 'show' && !input.checked) feed?.querySelectorAll('.roll-toast').forEach(dismiss);
-    });
-
-    // Dice clatter, made up on the spot rather than loaded: each clack a burst of noise through a band-pass filter, at a
-    // slightly different pitch, so a tumble sounds like dice skittering across a table
-    let audio = null;
-    function clack(delay = 0, loudness = .35) {
-        if (!settings.sound || !window.AudioContext) return;
-        audio ??= new AudioContext();
-        // Browsers start sound only after someone's clicked on the page; until then this is silent
-        if (audio.state === 'suspended') audio.resume().catch(() => {});
-        const length = Math.floor(audio.sampleRate * .045);
-        const buffer = audio.createBuffer(1, length, audio.sampleRate);
-        const data = buffer.getChannelData(0);
-        for (let i = 0; i < length; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / length) ** 4;
-        const source = Object.assign(audio.createBufferSource(), { buffer });
-        const filter = audio.createBiquadFilter();
-        filter.type = 'bandpass';
-        filter.frequency.value = 1800 + Math.random() * 2200;
-        filter.Q.value = 2.5;
-        const gain = audio.createGain();
-        gain.gain.value = loudness;
-        source.connect(filter).connect(gain).connect(audio.destination);
-        source.start(audio.currentTime + delay);
-    }
-    function rattle(seconds) {
-        for (let t = 0; t < seconds; t += .05 + Math.random() * .09) clack(t, .12 + Math.random() * .15);
-    }
 
     const el = (tag, className, text) => {
         const e = document.createElement(tag);
@@ -678,13 +729,12 @@ document.addEventListener('pointerout', e => {
     }
 
     async function show(r) {
-        if (!settings.show) return;
         feed ??= document.body.appendChild(Object.assign(el('div', 'roll-feed'), { ariaLive: 'polite' }));
 
         const nat12 = r.first === 6 && r.second === 6;
         const nat2 = r.first === 1 && r.second === 1;
         const toast = el('div', `roll-toast ${r.outcome}${nat12 ? ' nat12' : ''}${nat2 ? ' nat2' : ''}${r.mine ? ' mine' : ''}`);
-        // Their dice in their class's colour, as on their party card
+        // Their dice in their class's color, as on their party card
         if (r.color) {
             toast.classList.add('classed');
             toast.style.setProperty('--class-light', r.color.light);
@@ -729,8 +779,7 @@ document.addEventListener('pointerout', e => {
         const shown = feed.querySelectorAll('.roll-toast:not(.leaving)');
         for (let i = 0; i < shown.length - maxShown; i++) dismiss(shown[i]);
 
-        if (!still.matches) rattle(.85);
-        await Promise.all([roll(first, r.first, 750).then(() => clack(0, .5)), roll(second, r.second, 950).then(() => clack(0, .6))]);
+        await Promise.all([roll(first, r.first, 750), roll(second, r.second, 950)]);
         toast.classList.add('revealed');
         if (nat12) burst(toast);
         expireLater(toast);

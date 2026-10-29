@@ -1,24 +1,32 @@
 @namespace DungeonWorldBot.Dashboard.Components
 @using DungeonWorldBot.Features.Encounters
 
-@* Something someone did in a fight: the move, its roll, who it was aimed at and what it did *@
+@* Something someone did in a fight, in at most two lines: the move and who it was aimed at, then how the roll went (a
+   pill in the outcome's colour) and what it did *@
 <div class="action-parts" title="@Title">
-    <span class="action">@Action.Action</span>
-    @if (Action.Roll is not null)
+    <div class="action-line">
+        <span class="action">@Action.Action</span>
+        @if (Action.Target is not null)
+        {
+            <span class="target">→ @Action.Target</span>
+        }
+    </div>
+    @if (Action.Roll is not null || Action.Result is not null || Action.ChangedReason is not null)
     {
-        <span class="roll @(Action.Missed ? "miss" : null)">🎲 @Action.Roll</span>
-    }
-    @if (Action.ChangedReason is not null)
-    {
-        <span class="changed">✏️ @Action.ChangedReason</span>
-    }
-    @if (Action.Target is not null)
-    {
-        <span class="target">🎯 @Action.Target</span>
-    }
-    @if (Action.Result is not null)
-    {
-        <span class="result">@Action.Result</span>
+        <div class="outcome-line">
+            @if (Action.Roll is not null)
+            {
+                <span class="roll-pill @FromRollText(Action.Roll, Action.Missed)">@ShortFightText(Action.Roll)</span>
+            }
+            @if (Action.Result is not null)
+            {
+                <span class="dmg">@ShortFightText(Action.Result)</span>
+            }
+            @if (Action.ChangedReason is not null)
+            {
+                <span class="changed">✏️ @Action.ChangedReason</span>
+            }
+        </div>
     }
 </div>
 

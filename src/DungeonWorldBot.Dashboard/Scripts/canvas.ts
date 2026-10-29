@@ -1150,7 +1150,7 @@ function stopRolling(tokenId: string) {
     rolling.delete(tokenId);
 }
 
-// What it did floats up off the target and fades: red for damage, grey for a miss
+// What it did floats up off the target and fades: red for damage, gray for a miss
 function floatOver(tokenId: string, text: string) {
     const token = stage.findOne('#' + tokenId);
     if (!token) return;
@@ -1266,7 +1266,7 @@ function editText(existing: Konva.Text | null, at: { x: number; y: number }) {
 const initialsOf = (name: string) =>
     name.split(/\s+/).filter(Boolean).slice(0, 2).map(word => [...word][0]).join('').toUpperCase();
 
-// Their initials in white, centred in a token's circle and sized to it
+// Their initials in white, centered in a token's circle and sized to it
 function addInitials(token: Konva.Group, name: string, radius: number) {
     token.add(new Konva.Text({
         text: initialsOf(name), fontSize: Math.round(radius * 0.8), fontStyle: 'bold', fill: '#ffffff',
@@ -1378,7 +1378,7 @@ async function upload(file: File, largest: number) {
 // The board point in the middle of what you can see
 const viewCenter = () => stage.getAbsoluteTransform().copy().invert().point({ x: stage.width() / 2, y: stage.height() / 2 });
 
-// A map or handout on the board, centred where you're looking (or where it was dropped), at most 800 by 600 units
+// A map or handout on the board, centered where you're looking (or where it was dropped), at most 800 by 600 units
 async function addPicture(file: File, at = viewCenter()) {
     const { url, width, height } = await upload(file, BOARD_PICTURE_SIZE);
     const scale = Math.min(1, 800 / width, 600 / height);
@@ -1564,16 +1564,16 @@ function themeColor(name: string, fallback: string) {
 // Negative is damage, positive healing
 function floatOff(token: Konva.Node, change: number) {
     const box = token.getClientRect({ relativeTo: tokens });
-    const centre = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+    const center = { x: box.x + box.width / 2, y: box.y + box.height / 2 };
     const color = change < 0 ? themeColor('--critical', '#d1453b') : themeColor('--good', '#2f9e5b');
     // The same size on screen however far in or out you're zoomed
     const scale = 1 / stage.scaleX();
     const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    const ring = new Konva.Circle({ ...centre, radius: box.width / 2, stroke: color, strokeWidth: 6 * scale, opacity: .9 });
+    const ring = new Konva.Circle({ ...center, radius: box.width / 2, stroke: color, strokeWidth: 6 * scale, opacity: .9 });
     const text = new Konva.Text({
         text: change < 0 ? `−${-change}` : `+${change}`,
-        x: centre.x, y: box.y - 6 * scale,
+        x: center.x, y: box.y - 6 * scale,
         fontSize: 30 * scale, fontStyle: 'bold', fontFamily: 'system-ui, sans-serif',
         fill: color, stroke: 'rgba(0, 0, 0, .55)', strokeWidth: 4 * scale, fillAfterStrokeEnabled: true,
     });
@@ -1609,10 +1609,10 @@ showBadges();
 // ---- The party's trail (map scenes) -----------------------------------------------------------------------------------
 
 // A map has one pin for the party. Dragging it somewhere new adds where it was to a dotted trail behind it, so the map
-// shows the road they've travelled, older stops fading. Both are ordinary items (the pin a token marked partyPin, the
+// shows the road they've traveled, older stops fading. Both are ordinary items (the pin a token marked partyPin, the
 // trail a drawing marked partyTrail), so they're saved and shared like anything else on the board.
 const TRAIL_COLOR = '#e8a33a';
-// Shorter hops than this are tidying the pin's spot, not travelling
+// Shorter hops than this are tidying the pin's spot, not traveling
 const TRAIL_STEP = 24;
 
 const partyPin = () => (tokens.getChildren() as Konva.Node[]).find(t => t.getAttr('partyPin')) as Konva.Group | undefined;
