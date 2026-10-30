@@ -1032,7 +1032,7 @@ const STATS: [Stat, string][] = [
 ];
 
 function statSelect() {
-    const select = Object.assign(document.createElement('select'), { name: 'stat' });
+    const select = Object.assign(document.createElement('select'), { name: 'stat', className: 'filter' });
     select.append(...STATS.map(([value, label]) => Object.assign(document.createElement('option'), { value, textContent: label })));
     return select;
 }

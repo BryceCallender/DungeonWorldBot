@@ -307,13 +307,14 @@
     padding: .3rem .4rem;
     border: 1px solid var(--border);
     border-radius: 6px;
-    background: var(--bg);
+    background-color: var(--bg);
     color: inherit;
     font: inherit;
 }
 
 #container ::deep .move-form input[type="text"] { width: 8rem; }
-#container ::deep .move-form select { width: 11rem; }
+/* Room on the right for the shared dropdown chevron (select.filter) */
+#container ::deep .move-form select { width: 11rem; padding-right: 1.9rem; }
 
 #container ::deep .move-form .actions {
     display: flex;
