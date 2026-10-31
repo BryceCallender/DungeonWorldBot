@@ -419,13 +419,19 @@ let penWidth = Number(document.querySelector<HTMLElement>('[data-width].on')?.da
 const shapeTool = document.querySelector<HTMLElement>('.shape-tool')!;
 const showShapes = (open: boolean) => shapeTool.classList.toggle('open', open);
 
+// Marks a toolbar button chosen or not: .on for its look, aria-pressed so screen readers hear which one is picked
+function markOn(button: Element, on: boolean) {
+    button.classList.toggle('on', on);
+    if (button instanceof HTMLButtonElement) button.setAttribute('aria-pressed', String(on));
+}
+
 function setTool(next: Tool) {
     // Watching, Move is the only tool, for panning
     if (viewOnly && next !== 'move') return;
     if (next !== 'shape') showShapes(false);
     tool = next;
     container.dataset.tool = next;                         // for the cursor, in ScenePage.razor.css
-    document.querySelectorAll<HTMLElement>('.board-rail [data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === next));
+    document.querySelectorAll<HTMLElement>('.board-rail [data-tool]').forEach(b => markOn(b, b.dataset.tool === next));
     tokens.getChildren().forEach(t => t.draggable(canDrag(t)));
     drawing.find('Text, .shape').forEach(t => t.draggable(canDrag(t)));
     pictures.getChildren().forEach(p => p.draggable(canDrag(p)));
@@ -435,7 +441,7 @@ function setTool(next: Tool) {
 
 function pickColor(next: string, swatch: Element) {
     color = next;
-    document.querySelectorAll('.swatch, .color-picker').forEach(b => b.classList.toggle('on', b === swatch));
+    document.querySelectorAll('.swatch, .color-picker').forEach(b => markOn(b, b === swatch));
     // Picking a color means you want to draw with it, unless you're placing tokens, text or shapes in it
     if (tool !== 'token' && tool !== 'text' && tool !== 'shape') setTool('pen');
 }
@@ -443,7 +449,7 @@ function pickColor(next: string, swatch: Element) {
 // The thickness buttons, each a dot of its size
 function pickWidth(button: HTMLElement) {
     penWidth = Number(button.dataset.width);
-    widthButtons.forEach(b => b.classList.toggle('on', b === button));
+    widthButtons.forEach(b => markOn(b, b === button));
     // Like a color: you want to draw with it, unless you're about to drag out a shape
     if (tool !== 'shape') setTool('pen');
 }
@@ -480,7 +486,7 @@ document.querySelector('.board-page')!.addEventListener('click', e => {
     if (button.hasAttribute('data-undo')) undo();
     if (button.dataset.shape) {
         shapeKind = button.dataset.shape as ShapeKind;
-        document.querySelectorAll('[data-shape]').forEach(b => b.classList.toggle('on', b === button));
+        document.querySelectorAll('[data-shape]').forEach(b => markOn(b, b === button));
         setTool('shape');
         showShapes(false);
     }

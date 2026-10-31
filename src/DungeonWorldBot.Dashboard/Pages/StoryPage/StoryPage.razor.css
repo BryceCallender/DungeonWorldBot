@@ -72,9 +72,9 @@ details[open] > .add-tile { border: 0; padding: 0 0 .4rem; text-align: right; fo
 .story-form textarea { width: 100%; resize: vertical; font: inherit; line-height: 1.5; }
 .form-foot { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
 .form-foot .primary { margin-left: auto; }
-.tool.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-.tool.primary:hover { color: #fff; opacity: .9; }
-.tool.danger:hover { border-color: var(--critical); color: var(--critical); }
+.tool.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.tool.primary:hover { color: var(--on-accent); opacity: .9; }
+.tool.danger:hover { border-color: var(--critical); color: var(--critical-text); }
 
 /* Goals: a checklist with progress */
 .goal-progress { margin-bottom: .6rem; }
@@ -129,7 +129,7 @@ li.done .checkbox::after {
 .row-button:hover { color: var(--accent); }
 .row-button.remove { font-size: 1.1rem; line-height: 1; opacity: 0; }
 ul.goals li:hover .remove, .remove:focus-visible { opacity: 1; }
-.row-button.remove:hover { color: var(--critical); }
+.row-button.remove:hover { color: var(--critical-text); }
 /* Save only shows while a goal is being typed in; Enter does the same */
 .row-button.save { display: none; font-size: .85rem; color: var(--accent); }
 form:focus-within > .row-button.save { display: inline; }

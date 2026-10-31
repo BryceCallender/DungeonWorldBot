@@ -38,9 +38,9 @@
 .board-meta { font-size: .8rem; color: var(--muted); }
 
 .board-status { margin-left: auto; display: inline-flex; align-items: center; gap: .5rem; font-size: .8rem; color: var(--muted); }
-.board-status.live { color: var(--good); }
-.board-status.reconnecting { color: var(--low); }
-.board-status.offline { color: var(--critical); }
+.board-status.live { color: var(--good-text); }
+.board-status.reconnecting { color: var(--low-text); }
+.board-status.offline { color: var(--critical-text); }
 /* The dot is still (.off) unless live, but keeps the warning color rather than going gray */
 .board-status.reconnecting .live-dot { --dot: var(--low); }
 .board-status.offline .live-dot { --dot: var(--critical); }
@@ -274,9 +274,9 @@
 /* A move's modifier and chance to hit beside its name, colored by how likely it is (canvas.ts) */
 #container ::deep .board-menu button:has(.odds) { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 #container ::deep .odds { font-size: .75rem; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--muted); white-space: nowrap; }
-#container ::deep .odds.good, #container ::deep .odds-line.good strong { color: var(--good); }
-#container ::deep .odds.fair, #container ::deep .odds-line.fair strong { color: var(--low); }
-#container ::deep .odds.poor, #container ::deep .odds-line.poor strong { color: var(--critical); }
+#container ::deep .odds.good, #container ::deep .odds-line.good strong { color: var(--good-text); }
+#container ::deep .odds.fair, #container ::deep .odds-line.fair strong { color: var(--low-text); }
+#container ::deep .odds.poor, #container ::deep .odds-line.poor strong { color: var(--critical-text); }
 #container ::deep .odds-line { font-size: .8rem; color: var(--muted); font-variant-numeric: tabular-nums; }
 
 /* The last step of a move made from a token: any bonus, then roll */
@@ -324,7 +324,7 @@
 
 #container ::deep .move-form button.roll {
     background: var(--accent);
-    color: #fff;
+    color: var(--on-accent);
     font-weight: 600;
 }
 
@@ -435,7 +435,7 @@
     opacity: 0;
 }
 .token-list ::deep li:hover .remove, .token-list ::deep .remove:focus-visible { opacity: 1; }
-.token-list ::deep button.remove:hover { color: var(--critical); }
+.token-list ::deep button.remove:hover { color: var(--critical-text); }
 /* Touch screens have no hover, so it always shows there */
 @media (hover: none) { .token-list ::deep button.remove { opacity: 1; } }
 

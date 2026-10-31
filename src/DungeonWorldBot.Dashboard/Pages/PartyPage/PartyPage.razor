@@ -116,7 +116,7 @@ else
 
                         @if (c.ActiveShapes is { Count: > 0 } shapes)
                         {
-                            <div class="small">🐾 In the shape of <strong>@string.Join(" + ", shapes)</strong></div>
+                            <div class="small has-icon"><Icon Name="paw" />In the shape of <strong>@string.Join(" + ", shapes)</strong></div>
                         }
 
                         @if (c.Picks.Count > 0 || c.Resources.Count > 0 || c.StatPoints > 0)
@@ -142,14 +142,14 @@ else
                 <div class="member-foot small">
                     @if (Settings.TrackWeight && c.Character.Inventory is { MaxLoad: > 0 } inventory)
                     {
-                        <span>🎒 @inventory.CurrentLoad/@inventory.MaxLoad load</span>
+                        <span class="has-icon"><Icon Name="bag" />@inventory.CurrentLoad/@inventory.MaxLoad load</span>
                     }
                     else
                     {
-                        <span>🎒 @(c.Character.Inventory?.Items?.Count ?? 0) items</span>
+                        <span class="has-icon"><Icon Name="bag" />@Plural(c.Character.Inventory?.Items?.Count ?? 0, "item")</span>
                     }
-                    <span>🪙 @Coin(c)</span>
-                    <span>🔗 @(c.Character.Bonds?.Count ?? 0) bonds</span>
+                    <span class="has-icon"><Icon Name="coin" />@Coin(c)</span>
+                    <span class="has-icon"><Icon Name="link" />@Plural(c.Character.Bonds?.Count ?? 0, "bond")</span>
                 </div>
             </a>
         }

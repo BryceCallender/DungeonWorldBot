@@ -16,6 +16,7 @@
 @if (_session is not { } s)
 {
     <PageTitle>Not found · Sana Solem</PageTitle>
+    <h1>Not found</h1>
     <p class="empty">No session @Number yet. Sessions are marked with /session start and /session end in Discord. <a href="sessions">All sessions</a></p>
     return;
 }
@@ -84,7 +85,7 @@ else
         @foreach (var fight in _fights)
         {
             <li class="card">
-                <a href="@s.Url/fight/@fight.ID"><strong>⚔️ @fight.Name</strong></a>
+                <a href="@s.Url/fight/@fight.ID"><strong class="has-icon"><Icon Name="sword" />@fight.Name</strong></a>
                 <span class="small muted">
                     @fight.StartedAt.ToLocalTime().ToString("h:mm tt")
                     @(fight.SceneName is { } scene ? $" · on {scene}" : "")

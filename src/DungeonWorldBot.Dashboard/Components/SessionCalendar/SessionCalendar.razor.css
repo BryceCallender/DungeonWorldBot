@@ -22,16 +22,23 @@
     font-variant-numeric: tabular-nums;
 }
 
+/* Busier days (--busy, .6 to 1) are a deeper shade of the accent: darker on a light page, lighter on a dark one. The
+   day's number stays solid on top, rather than the whole day fading and taking the number with it. */
 .cal-day.played {
-    background: var(--accent);
-    opacity: var(--busy, 1);
-    color: var(--surface);
+    --deep: black;
+    background: color-mix(in srgb, var(--accent), var(--deep) calc((var(--busy, .6) - .6) * 100%));
+    color: var(--on-accent);
     font-weight: 700;
     text-decoration: none;
 }
 
-.cal-day.played:hover, .cal-day.played:focus-visible { opacity: 1; outline: 2px solid var(--accent); outline-offset: 1px; }
-.cal-day.today { outline: 1px solid var(--accent); color: var(--accent); }
+@media (prefers-color-scheme: dark) {
+    .cal-day.played { --deep: white; }
+}
+
+.cal-day.played:hover, .cal-day.played:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.cal-day.today { outline: 1px solid var(--accent); }
+.cal-day.today:not(.played) { color: var(--accent); }
 
 button.cal-day { border: 0; padding: 0; font: inherit; font-size: .75rem; cursor: pointer; }
 
@@ -49,8 +56,8 @@ button.cal-day { border: 0; padding: 0; font: inherit; font-size: .75rem; cursor
 .cal-pop dl { display: grid; grid-template-columns: 1fr auto; gap: .2rem 1rem; margin: .5rem 0 0; font-size: .85rem; }
 .cal-pop dt { color: var(--muted); }
 .cal-pop dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
-.cal-pop dd.lucky { color: var(--good); font-weight: 700; }
-.cal-pop dd.unlucky { color: var(--critical); font-weight: 700; }
+.cal-pop dd.lucky { color: var(--good-text); font-weight: 700; }
+.cal-pop dd.unlucky { color: var(--critical-text); font-weight: 700; }
 
 /* Older months, folded away under the latest few */
 .cal-older { margin: -.5rem 0 1.25rem; }

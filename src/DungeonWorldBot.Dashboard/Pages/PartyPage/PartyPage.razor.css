@@ -43,18 +43,18 @@
 }
 
 .alert { --tone: var(--muted); display: flex; flex-direction: column; gap: .35rem; padding: .75rem .9rem; box-shadow: inset 3px 0 0 var(--tone); }
-.alert.critical { --tone: var(--critical); background: color-mix(in srgb, var(--critical) 6%, var(--surface)); }
-.alert.low { --tone: var(--low); }
+.alert.critical { --tone: var(--critical); --tone-text: var(--critical-text); background: color-mix(in srgb, var(--critical) 6%, var(--surface)); }
+.alert.low { --tone: var(--low); --tone-text: var(--low-text); }
 .alert.accent { --tone: var(--accent); }
 .alert.good { --tone: var(--good); }
 .alert.party-hp { --tone: var(--heart); justify-content: center; }
 
 .alert-head { display: flex; justify-content: space-between; align-items: baseline; gap: .5rem; }
-.alert-head .tile-label { color: var(--tone); }
+.alert-head .tile-label { color: var(--tone-text, var(--tone)); }
 .alert-head strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
 
-.alert .chip.critical { background: var(--warn-soft); color: var(--critical); }
-.alert .chip.low { background: color-mix(in srgb, var(--low) 18%, transparent); color: var(--low); }
+.alert .chip.critical { background: var(--warn-soft); color: var(--critical-text); }
+.alert .chip.low { background: color-mix(in srgb, var(--low) 18%, transparent); color: var(--low-text); }
 .alert .chip.accent { background: var(--accent-soft); color: var(--accent); }
 .alert a.chip:hover { text-decoration: underline; }
 
@@ -62,7 +62,7 @@
 
 /* On a streak of hits (🔥) or misses (🧊), from their latest rolls */
 .chip.streak { font-variant-numeric: tabular-nums; }
-.chip.streak.hot { background: color-mix(in srgb, var(--damage) 20%, transparent); color: var(--damage); animation: streak-flicker 1.6s ease-in-out infinite; }
+.chip.streak.hot { background: color-mix(in srgb, var(--damage) 20%, transparent); color: var(--damage-text); animation: streak-flicker 1.6s ease-in-out infinite; }
 .chip.streak.cold { background: color-mix(in srgb, var(--armor) 20%, transparent); color: var(--armor); }
 
 @keyframes streak-flicker {

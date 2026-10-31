@@ -61,6 +61,16 @@ app.UseForwardedHeaders(new ForwardedHeadersOptions
 if (!app.Environment.IsDevelopment())
     app.UseExceptionHandler("/error", createScopeForErrors: true);
 
+// An address that isn't a page gets the not-found page rather than a blank one. The API and hubs keep their bare 404s,
+// which the scripts calling them check for.
+app.UseWhen(
+    context => !context.Request.Path.StartsWithSegments("/api") && !context.Request.Path.StartsWithSegments("/hubs"),
+    branch => branch.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true));
+
+// Routing comes after the line above, so the not-found page it sends a 404 to is found again; left to itself, the app
+// routes once, first thing, before anything else gets a look in
+app.UseRouting();
+
 if (signInEnabled)
 {
     app.UseAuthentication();

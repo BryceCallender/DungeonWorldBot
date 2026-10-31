@@ -62,9 +62,9 @@
 /* app.js marks it for a moment after copying */
 .command.copied { border-color: var(--class); background: color-mix(in srgb, var(--class) 15%, var(--surface)); }
 
-.command.copied::after { content: "Copied"; color: var(--class); font-weight: 600; }
+.command.copied::after { content: "Copied"; color: var(--class-text); font-weight: 600; }
 
-.command code { background: none; color: var(--class); font-weight: 600; font-size: 1em; flex: none; }
+.command code { background: none; color: var(--class-text); font-weight: 600; font-size: 1em; flex: none; }
 
 .command .pick { color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 

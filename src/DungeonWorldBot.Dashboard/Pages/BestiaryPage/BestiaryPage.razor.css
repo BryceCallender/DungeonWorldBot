@@ -6,7 +6,7 @@
     border-color: color-mix(in srgb, var(--critical) 50%, var(--border));
     background: linear-gradient(110deg, color-mix(in srgb, var(--critical) 16%, var(--surface)), var(--surface) 60%);
 }
-.nemesis h2 { margin: .1rem 0 .3rem; font-size: 1.5rem; color: var(--critical); }
+.nemesis h2 { margin: .1rem 0 .3rem; font-size: 1.5rem; color: var(--critical-text); }
 .nemesis p { margin: 0; }
 .nemesis-crest { font-size: 3rem; filter: drop-shadow(0 0 10px color-mix(in srgb, var(--critical) 60%, transparent)); }
 
@@ -24,7 +24,7 @@
     height: 40px;
     border-radius: 10px;
     background: color-mix(in srgb, var(--damage) 18%, var(--surface-2));
-    color: var(--damage);
+    color: var(--damage-text);
     font-weight: 800;
     font-size: 1.15rem;
     transform: rotate(-4deg);

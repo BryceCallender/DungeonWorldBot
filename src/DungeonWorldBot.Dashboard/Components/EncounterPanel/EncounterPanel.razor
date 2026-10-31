@@ -27,12 +27,12 @@
         }
         @if (_canRun)
         {
-            <button type="button" class="tool panel-action" data-open-dialog="start-fight">⚔️ Start a fight here</button>
+            <button type="button" class="tool panel-action has-icon" data-open-dialog="start-fight"><Icon Name="sword" />Start a fight here</button>
         }
     }
     else
     {
-        <h2>⚔️ @encounter.Name</h2>
+        <h2 class="has-icon"><Icon Name="sword" />@encounter.Name</h2>
 
         @* How far below their max each fighter is, for the numbers that float off tokens as they're hurt and healed
            (canvas.ts). For enemies, players get only the damage the timeline already shows them, since how much HP

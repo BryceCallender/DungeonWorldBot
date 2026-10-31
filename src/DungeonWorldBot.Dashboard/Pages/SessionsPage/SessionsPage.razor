@@ -42,7 +42,7 @@ else
                         </span>
                         @if (s.Recap.Fights.Count > 0)
                         {
-                            <span class="small session-fights">⚔️ @string.Join(", ", s.Recap.Fights)</span>
+                            <span class="small session-fights has-icon"><Icon Name="sword" />@string.Join(", ", s.Recap.Fights)</span>
                         }
                     </div>
                     <div class="session-stats small">
@@ -52,7 +52,7 @@ else
                             <span><strong>@(s.Recap.Hits * 100 / s.Recap.Rolls)%</strong> hit</span>
                             @if (s.Recap.Natural12s > 0)
                             {
-                                <span>✨ <strong>@s.Recap.Natural12s</strong></span>
+                                <span class="has-icon"><Icon Name="sparkle" /><strong>@s.Recap.Natural12s</strong></span>
                             }
                         }
                         else

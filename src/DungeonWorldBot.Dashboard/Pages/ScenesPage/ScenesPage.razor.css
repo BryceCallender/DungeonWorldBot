@@ -73,7 +73,7 @@
     padding: .15rem .5rem;
     border-radius: 999px;
     background: var(--surface);
-    color: var(--good);
+    color: var(--good-text);
     font-size: .75rem;
     font-weight: 600;
     box-shadow: 0 0 0 1px var(--border);
@@ -85,8 +85,8 @@
     align-items: center;
     justify-content: center;
     margin-left: auto;
-    width: 26px;
-    height: 22px;
+    width: 28px;
+    height: 28px;
     padding: 0;
     border: 1px solid transparent;
     border-radius: 6px;
@@ -133,7 +133,7 @@
 
 .menu-pop button:hover,
 .menu-pop button:focus-visible { background: var(--surface-2); outline: none; }
-.menu-pop .delete { color: var(--critical); }
+.menu-pop .delete { color: var(--critical-text); }
 
 /* No hovering on a touch screen, so it's always there */
 @media (hover: none) { .card-menu-button { opacity: 1; } }

@@ -16,6 +16,7 @@
 @if (_replay is not { } r)
 {
     <PageTitle>Not found · Sana Solem</PageTitle>
+    <h1>Not found</h1>
     <p class="empty">No fight with that number. <a href="bestiary">To the bestiary</a></p>
     return;
 }
@@ -28,7 +29,7 @@
 }
 
 <header class="fight-head">
-    <h1>⚔️ @r.Fight.Name</h1>
+    <h1 class="has-icon"><Icon Name="sword" />@r.Fight.Name</h1>
     <div class="muted">
         @r.Fight.StartedAt.ToLocalTime().ToString("dddd d MMMM yyyy, h:mm tt")
         @if (r.Fight.SceneID is { } scene)

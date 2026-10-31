@@ -18,6 +18,7 @@
 @if (_canvas is not { } c)
 {
     <PageTitle>Not found · Sana Solem</PageTitle>
+    <h1>Not found</h1>
     <p class="empty">No scene with that ID. <a href="scenes">Back to the scenes</a></p>
     return;
 }
@@ -47,18 +48,18 @@
 
     <div class="board-body">
         <div class="board-rail" role="toolbar" aria-label="Drawing tools">
-            <button type="button" class="tool" data-tool="pen" title="Pen (P)" aria-label="Pen"><Icon Name="pen" /></button>
-            <button type="button" class="tool" data-tool="erase" title="Eraser (E)" aria-label="Eraser"><Icon Name="eraser" /></button>
-            <button type="button" class="tool on" data-tool="move" title="Move tokens (M)" aria-label="Move tokens"><Icon Name="move" /></button>
-            <button type="button" class="tool" data-tool="text" title="Text (X)" aria-label="Text"><Icon Name="text" /></button>
+            <button type="button" class="tool" data-tool="pen" aria-pressed="false" title="Pen (P)" aria-label="Pen"><Icon Name="pen" /></button>
+            <button type="button" class="tool" data-tool="erase" aria-pressed="false" title="Eraser (E)" aria-label="Eraser"><Icon Name="eraser" /></button>
+            <button type="button" class="tool on" data-tool="move" aria-pressed="true" title="Move tokens (M)" aria-label="Move tokens"><Icon Name="move" /></button>
+            <button type="button" class="tool" data-tool="text" aria-pressed="false" title="Text (X)" aria-label="Text"><Icon Name="text" /></button>
             @* The kinds of shape show beside the button while the Shape tool is on *@
             <span class="shape-tool">
-                <button type="button" class="tool" data-tool="shape" title="Shapes (S); hold Shift for squares, circles and 45° lines" aria-label="Shapes"><Icon Name="shapes" /></button>
+                <button type="button" class="tool" data-tool="shape" aria-pressed="false" title="Shapes (S); hold Shift for squares, circles and 45° lines" aria-label="Shapes"><Icon Name="shapes" /></button>
                 <span class="shape-picker" role="group" aria-label="Shape">
-                    <button type="button" class="tool on" data-shape="rect" title="Rectangle" aria-label="Rectangle"><Icon Name="rect" /></button>
-                    <button type="button" class="tool" data-shape="ellipse" title="Ellipse" aria-label="Ellipse"><Icon Name="ellipse" /></button>
-                    <button type="button" class="tool" data-shape="line" title="Line" aria-label="Line"><Icon Name="line" /></button>
-                    <button type="button" class="tool" data-shape="arrow" title="Arrow" aria-label="Arrow"><Icon Name="arrow" /></button>
+                    <button type="button" class="tool on" data-shape="rect" aria-pressed="true" title="Rectangle" aria-label="Rectangle"><Icon Name="rect" /></button>
+                    <button type="button" class="tool" data-shape="ellipse" aria-pressed="false" title="Ellipse" aria-label="Ellipse"><Icon Name="ellipse" /></button>
+                    <button type="button" class="tool" data-shape="line" aria-pressed="false" title="Line" aria-label="Line"><Icon Name="line" /></button>
+                    <button type="button" class="tool" data-shape="arrow" aria-pressed="false" title="Arrow" aria-label="Arrow"><Icon Name="arrow" /></button>
                 </span>
             </span>
             <button type="button" class="tool" data-pick="board" title="Add a picture or map (or drop or paste one)" aria-label="Add a picture"><Icon Name="image" /></button>
@@ -67,7 +68,7 @@
             <span class="swatches">
                 @foreach (var color in Colors)
                 {
-                    <button type="button" class="swatch@(color == Colors[0] ? " on" : "")" data-color="@color"
+                    <button type="button" class="swatch@(color == Colors[0] ? " on" : "")" data-color="@color" aria-pressed="@(color == Colors[0] ? "true" : "false")"
                             style="--swatch: @color" title="@color" aria-label="Color @color"></button>
                 }
             </span>
@@ -80,7 +81,7 @@
             <span class="widths" role="group" aria-label="Thickness">
                 @foreach (var width in Widths)
                 {
-                    <button type="button" class="width@(width.Size == Widths[3].Size ? " on" : "")" data-width="@width.Size"
+                    <button type="button" class="width@(width.Size == Widths[3].Size ? " on" : "")" data-width="@width.Size" aria-pressed="@(width.Size == Widths[3].Size ? "true" : "false")"
                             style="--dot: @(width.Dot)px" title="@width.Name ([ and ] to change)" aria-label="@width.Name line"></button>
                 }
             </span>
@@ -118,7 +119,7 @@
             @if (c.Kind == CanvasKind.Map)
             {
                 @* The party's pin, which leaves a trail of where they've been as it's dragged around (canvas.ts) *@
-                <button type="button" class="tool token-add" data-party-pin title="Drag the pin as the party travels; it leaves a trail">🧭 The party's pin</button>
+                <button type="button" class="tool token-add has-icon" data-party-pin title="Drag the pin as the party travels; it leaves a trail"><Icon Name="compass" />The party's pin</button>
             }
         </aside>
     </div>

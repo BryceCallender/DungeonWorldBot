@@ -54,7 +54,7 @@ else
                     <div style="width: @(e.Met == 0 ? 0 : e.Slain * 100 / e.Met)%"></div>
                 </div>
                 <ul class="beast-facts small">
-                    <li>⚔️ @e.Met met across @Plural(e.Fights, "fight")</li>
+                    <li class="has-icon"><Icon Name="sword" />@e.Met met across @Plural(e.Fights, "fight")</li>
                     @if (e.DamageToParty > 0)
                     {
                         <li>💥 Dealt @e.DamageToParty damage to the party</li>

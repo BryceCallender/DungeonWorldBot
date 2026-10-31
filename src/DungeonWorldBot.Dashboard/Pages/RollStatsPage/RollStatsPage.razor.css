@@ -13,8 +13,8 @@ tr.mine td { background: var(--accent-soft); }
 tr.mine td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
 tr.dm-row td { background: var(--surface-2); }
 
-td.lucky { color: var(--good); font-weight: 700; }
-td.unlucky { color: var(--critical); font-weight: 700; }
+td.lucky { color: var(--good-text); font-weight: 700; }
+td.unlucky { color: var(--critical-text); font-weight: 700; }
 
 .legend { display: flex; gap: 1rem; margin-top: .6rem; font-size: .85rem; color: var(--muted); }
 .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: .35rem; vertical-align: middle; }

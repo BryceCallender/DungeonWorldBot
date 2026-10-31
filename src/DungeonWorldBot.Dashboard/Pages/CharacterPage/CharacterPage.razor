@@ -12,6 +12,7 @@
 @if (_view is not { } c)
 {
     <PageTitle>Not found · Sana Solem</PageTitle>
+    <h1>Not found</h1>
     <p class="empty">No character with that ID. <a href="">Back to the party</a></p>
     return;
 }
@@ -62,7 +63,7 @@
             }
             @if (c.ActiveShapes is { Count: > 0 } shapes)
             {
-                <span class="chip accent">🐾 @string.Join(" + ", shapes)</span>
+                <span class="chip accent has-icon"><Icon Name="paw" />@string.Join(" + ", shapes)</span>
             }
             @if (c.StatPoints > 0)
             {

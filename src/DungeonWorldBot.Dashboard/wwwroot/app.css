@@ -17,7 +17,17 @@
     --divine: #b8860b;
     --damage: #c75f12;
     --heart: #d1453b;
+    /* The status colors above are for bars, dots and tints; as text on a light page they're too pale to read, so text
+       takes these darker shades (each at least 4.5:1 on its own tinted chip) */
+    --good-text: #17693a;
+    --low-text: #8f5600;
+    --critical-text: #b42318;
+    --damage-text: #a1460a;
+    /* Text on a filled accent or critical button */
+    --on-accent: #fff;
     --class: var(--accent);
+    /* The class color as text; .classed works it out again for its own class */
+    --class-text: color-mix(in srgb, var(--class) 70%, black);
     color-scheme: light;
 }
 
@@ -40,6 +50,14 @@
         --divine: #e8c35a;
         --damage: #f09a50;
         --heart: #ef6a5f;
+        /* On a dark page the bright colors read fine as text */
+        --good-text: var(--good);
+        --low-text: var(--low);
+        --critical-text: var(--critical);
+        --damage-text: var(--damage);
+        /* The dark theme's accent is light, so white on it is unreadable */
+        --on-accent: #1a0f08;
+        --class-text: var(--class);
         color-scheme: dark;
     }
 }
@@ -98,7 +116,7 @@ main > p.empty { margin: 0 0 2rem; }
 }
 
 .chip.accent { background: var(--accent-soft); color: var(--accent); }
-.chip.warn { background: var(--warn-soft); color: var(--critical); }
+.chip.warn { background: var(--warn-soft); color: var(--critical-text); }
 
 /* Party cards and class cards */
 
@@ -137,7 +155,7 @@ main > p.empty { margin: 0 0 2rem; }
 .stat-value { font-size: .7rem; color: var(--muted); }
 
 .stat.debilitated { background: var(--warn-soft); }
-.stat.debilitated .stat-mod { color: var(--critical); }
+.stat.debilitated .stat-mod { color: var(--critical-text); }
 
 /* Character sheet */
 
@@ -347,25 +365,29 @@ li[hidden] { display: none !important; }
        and solid then fading on the left */
     box-shadow: 1.5rem 0 0 0 var(--bg), -1rem 0 0 0 var(--bg), -2.25rem 0 1rem -.5rem var(--bg);
 }
-a.chip { text-decoration: none; }
-.chip.good { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+a.chip { position: relative; text-decoration: none; }
+/* A link chip looks like any other chip, but its clickable area reaches a little above and below, to the 24px a finger or
+   cursor needs */
+a.chip::after { content: ""; position: absolute; inset: -3px 0; }
+.chip.good { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good-text); }
 ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 
 [data-filter-group][hidden] { display: none !important; }
 .hero .muted a, .hero-main > .muted a { color: inherit; text-decoration-color: var(--accent); }
-.hero-main > .muted a.class-name { color: var(--class); text-decoration-color: color-mix(in srgb, var(--class) 50%, transparent); }
+.hero-main > .muted a.class-name { color: var(--class-text); text-decoration-color: color-mix(in srgb, var(--class) 50%, transparent); }
 
 /* Class colors: each class's sheet gives its two shades inline, and this picks one as --class, which cards, headers,
    chips and bars pick up */
 
-.classed { --class: var(--class-light); }
+.classed { --class: var(--class-light); --class-text: color-mix(in srgb, var(--class) 70%, black); }
 
 @media (prefers-color-scheme: dark) {
-    .classed { --class: var(--class-dark); }
+    .classed { --class: var(--class-dark); --class-text: color-mix(in srgb, var(--class) 80%, white); }
 }
 
-.class-name { color: var(--class); font-weight: 600; }
-.chip.class { background: color-mix(in srgb, var(--class) 16%, transparent); color: var(--class); }
+/* Names and chips in a shade of the class color that reads on its tint: darker in light mode, lighter in dark */
+.class-name { color: var(--class-text); font-weight: 600; }
+.chip.class { background: color-mix(in srgb, var(--class) 16%, transparent); color: var(--class-text); }
 .fill.class { background: var(--class); }
 
 /* A stripe along the top in the class color (party and class cards add their own) */
@@ -377,6 +399,10 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
         linear-gradient(120deg, color-mix(in srgb, var(--class) 15%, transparent), transparent 55%),
         var(--surface);
 }
+
+/* An icon leading a line of text, sized to the text. Razor drops the space after a component, so the gap is put back
+   here; the text stays inline, so lines that cut off with an ellipsis still do. */
+.has-icon > svg.icon { width: 1em; height: 1em; margin-inline-end: .3em; vertical-align: -.125em; }
 
 /* Armor, magic and damage tints (the icons themselves are styled in Icon.razor.css) */
 
@@ -498,14 +524,14 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 .kind-option input { position: absolute; opacity: 0; pointer-events: none; }
 
 .kind-icon { display: flex; align-items: center; justify-content: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: 8px; }
-.kind-icon.warn { background: var(--warn-soft); color: var(--critical); }
-.kind-icon.good { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
+.kind-icon.warn { background: var(--warn-soft); color: var(--critical-text); }
+.kind-icon.good { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good-text); }
 .kind-text { display: flex; flex-direction: column; gap: .1rem; }
 
 .modal-actions { display: flex; justify-content: flex-end; gap: .5rem; }
-.modal .create { background: var(--accent); border-color: var(--accent); color: #fff; }
-.modal .create:hover { color: #fff; opacity: .9; }
-.form-error { font-size: .85rem; color: var(--critical); }
+.modal .create { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.modal .create:hover { color: var(--on-accent); opacity: .9; }
+.form-error { font-size: .85rem; color: var(--critical-text); }
 .field.count { max-width: 7rem; }
 .field-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(6rem, 1fr)); gap: .6rem; }
 .field textarea { width: 100%; min-height: 4.5rem; resize: vertical; font: inherit; }
@@ -513,10 +539,10 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 
 /* How hurt an enemy looks, all the players see: beside the board and on the DM's enemies page */
 .chip.condition { flex: none; font-size: .7rem; }
-.chip.condition.unhurt { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
-.chip.condition.hurt { background: color-mix(in srgb, var(--low) 12%, transparent); color: var(--low); }
-.chip.condition.bloodied { background: color-mix(in srgb, var(--low) 24%, transparent); color: var(--low); }
-.chip.condition.neardeath { background: var(--warn-soft); color: var(--critical); }
+.chip.condition.unhurt { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good-text); }
+.chip.condition.hurt { background: color-mix(in srgb, var(--low) 12%, transparent); color: var(--low-text); }
+.chip.condition.bloodied { background: color-mix(in srgb, var(--low) 24%, transparent); color: var(--low-text); }
+.chip.condition.neardeath { background: var(--warn-soft); color: var(--critical-text); }
 .chip.condition.defeated { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); }
 
 /* A list page's header (PageHeader): its title, anything beside it, its buttons at the right, and a line about it */
@@ -604,10 +630,10 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
     background: var(--surface-2);
     color: var(--muted);
 }
-.roll-pill.strong { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good); }
-.roll-pill.weak { background: color-mix(in srgb, var(--low) 18%, transparent); color: var(--low); }
-.roll-pill.miss { background: var(--warn-soft); color: var(--critical); }
-.dmg { font-weight: 600; color: var(--damage); white-space: nowrap; }
+.roll-pill.strong { background: color-mix(in srgb, var(--good) 18%, transparent); color: var(--good-text); }
+.roll-pill.weak { background: color-mix(in srgb, var(--low) 18%, transparent); color: var(--low-text); }
+.roll-pill.miss { background: var(--warn-soft); color: var(--critical-text); }
+.dmg { font-weight: 600; color: var(--damage-text); white-space: nowrap; }
 
 /* ---- Roll feed --------------------------------------------------------------------------------------------------- */
 
@@ -691,14 +717,14 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 /* A character's dice come in their class color (.classed sets --class), with white pips */
 .roll-toast.classed .die { background: var(--class); border-color: color-mix(in srgb, var(--class) 70%, black); box-shadow: inset 0 -3px 0 rgb(0 0 0 / .25); }
 .roll-toast.classed .die i.on { background: #fff; box-shadow: 0 1px 1px rgb(0 0 0 / .3); }
-.roll-toast.classed .roll-avatar { background: color-mix(in srgb, var(--class) 25%, var(--surface)); color: var(--class); }
+.roll-toast.classed .roll-avatar { background: color-mix(in srgb, var(--class) 25%, var(--surface)); color: var(--class-text); }
 .die.tumbling { animation: die-tumble .32s linear infinite; }
 .die.landed { animation: die-land .35s cubic-bezier(.3, 1.6, .5, 1); }
 .revealed .die { border-color: color-mix(in srgb, var(--roll) 45%, var(--border)); }
 
 /* "🔥 4 hits in a row" under the dice once they land */
 .roll-streak { font-size: .78rem; font-weight: 700; opacity: 0; transition: opacity .3s .15s; }
-.roll-streak.hot { color: var(--damage); }
+.roll-streak.hot { color: var(--damage-text); }
 .roll-streak.cold { color: var(--armor); }
 .revealed .roll-streak { opacity: 1; }
 
@@ -764,4 +790,16 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 @media (prefers-reduced-motion: reduce) {
     .roll-toast, .roll-toast.leaving, .roll-toast.revealed.nat2, .die.landed { animation: none; }
     .roll-result { transition: none; }
+}
+
+/* dotnet watch injects a full-screen overlay with inline styles; dock it to the bottom instead */
+#dotnet-compile-error {
+    top: auto !important;
+    max-height: 40vh;
+    background-color: transparent !important;
+    overflow: auto !important;
+    font: 0.8rem/1.4 ui-monospace, monospace;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.3);
 }

@@ -5,8 +5,8 @@
 
 ul.moves li.active { outline: 2px solid var(--accent); }
 
-strong.over { color: var(--critical); }
-.over-note { color: var(--critical); margin: .35rem 0 0; }
+strong.over { color: var(--critical-text); }
+.over-note { color: var(--critical-text); margin: .35rem 0 0; }
 
 ul.meters { list-style: none; margin: .5rem 0 0; padding: 0; display: grid; gap: .8rem; }
 ul.meters .small { margin-top: .2rem; }

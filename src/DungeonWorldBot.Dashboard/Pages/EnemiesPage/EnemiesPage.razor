@@ -31,7 +31,7 @@ else
     {
         <section class="desk-section" id="fight-@fight.ID">
             <div class="desk-head">
-                <h2>⚔️ @fight.Name</h2>
+                <h2 class="has-icon"><Icon Name="sword" />@fight.Name</h2>
                 @if (fight.SceneID is { } sceneID)
                 {
                     <a class="tool desk-new" href="scene/@sceneID">Open @(fight.SceneName ?? "its scene")</a>
