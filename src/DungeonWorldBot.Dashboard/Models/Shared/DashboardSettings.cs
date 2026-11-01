@@ -3,8 +3,8 @@ namespace DungeonWorldBot.Dashboard.Models.Shared;
 /// <summary>
 /// How this campaign plays, for the things the dashboard can't tell from the database.
 /// </summary>
-/// <param name="DungeonMasterID">Whose rolls are the DM's, set with DungeonMasterId. Rolls only record who made them, not their roles. Who can do
-/// DM things on the dashboard goes by role instead (see <see cref="Auth.DiscordSignIn"/>).</param>
+/// <param name="DungeonMasterID">The DM's Discord ID, set with DungeonMasterId: whose rolls are the DM's, and the only
+/// person who can do DM things on the dashboard once signed in, admin included.</param>
 /// <param name="TrackWeight">Whether the table counts item weight and load, set with TrackWeight. Off hides both.</param>
 public record DashboardSettings(ulong DungeonMasterID, bool TrackWeight)
 {

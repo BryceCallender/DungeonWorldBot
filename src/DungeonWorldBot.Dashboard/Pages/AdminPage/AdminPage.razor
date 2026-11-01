@@ -6,7 +6,7 @@
 @inject AdminDesk Desk
 @inject Viewer Viewer
 
-@* The DM's way past the bot's rules: every table in both databases to open and change a row at a time, and a box for
+@* An admin's way past the bot's rules: every table in both databases to open and change a row at a time, and a box for
    SQL when that's quicker. It doesn't refresh itself (data-no-live), so a query's results stay put. *@
 <PageTitle>Admin · Sana Solem</PageTitle>
 
@@ -15,7 +15,7 @@
 
     @if (!_canRun)
     {
-        <p class="empty">Only the DM can change the databases.</p>
+        <p class="empty">Only admins can change the databases.</p>
     }
     else
     {
@@ -116,7 +116,7 @@
     protected override async Task OnInitializedAsync()
     {
         Query ??= new();
-        _canRun = Viewer.CanRunGame;
+        _canRun = Viewer.CanAdminister;
         if (!_canRun)
             return;
 
@@ -126,7 +126,7 @@
 
     private async Task RunAsync()
     {
-        if (!Viewer.CanRunGame)
+        if (!Viewer.CanAdminister)
             return;
 
         _result = await Desk.RunAsync(Query!.Database, Query.Sql ?? "");

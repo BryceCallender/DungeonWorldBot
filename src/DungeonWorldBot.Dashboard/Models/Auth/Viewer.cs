@@ -8,7 +8,8 @@ namespace DungeonWorldBot.Dashboard.Models.Auth;
 /// Who's looking at the page. Without Discord sign-in, nobody in particular.
 /// </summary>
 /// <param name="ID">Their Discord ID, which is also their character's ID.</param>
-public record Viewer(bool SignInEnabled, ulong? ID, string? Name, string? AvatarUrl, bool IsDungeonMaster)
+/// <param name="IsAdmin">Whether they had the server role in Discord:AdminRoleId when they signed in.</param>
+public record Viewer(bool SignInEnabled, ulong? ID, string? Name, string? AvatarUrl, bool IsDungeonMaster, bool IsAdmin)
 {
     public bool SignedIn => ID is not null;
 
@@ -23,15 +24,23 @@ public record Viewer(bool SignInEnabled, ulong? ID, string? Name, string? Avatar
     public bool CanRunGame => !SignedIn || IsDungeonMaster;
 
     /// <summary>
+    /// Whether they can open the admin pages and change the databases directly: the Admin role, or anyone when sign-in
+    /// is off. Being the DM isn't enough.
+    /// </summary>
+    public bool CanAdminister => !SignedIn || IsAdmin;
+
+    /// <summary>
     /// Whether they can put a scene away, bring it back or delete it: whoever runs the game, or whoever made it, so
     /// nobody clears the board in the middle of a fight.
     /// </summary>
     public bool CanManage(Canvas canvas) => CanRunGame || Is(canvas.CreatedBy ?? "");
 
-    public static Viewer From(ClaimsPrincipal? user, bool signInEnabled)
+    /// <param name="dungeonMasterID">The DM's Discord ID, from <see cref="Shared.DashboardSettings"/>. Only they get DM
+    /// powers once signed in.</param>
+    public static Viewer From(ClaimsPrincipal? user, bool signInEnabled, ulong dungeonMasterID)
     {
         if (user?.Identity?.IsAuthenticated != true || !ulong.TryParse(user.FindFirstValue(ClaimTypes.NameIdentifier), out var id))
-            return new Viewer(signInEnabled, null, null, null, false);
+            return new Viewer(signInEnabled, null, null, null, false, false);
 
         var avatar = user.FindFirstValue(DiscordSignIn.AvatarClaim);
         return new Viewer(
@@ -41,6 +50,7 @@ public record Viewer(bool SignInEnabled, ulong? ID, string? Name, string? Avatar
             string.IsNullOrEmpty(avatar)
                 ? $"https://cdn.discordapp.com/embed/avatars/{(id >> 22) % 6}.png"
                 : $"https://cdn.discordapp.com/avatars/{id}/{avatar}.png?size=64",
-            user.HasClaim(c => c.Type == DiscordSignIn.DungeonMasterClaim));
+            id == dungeonMasterID,
+            user.HasClaim(c => c.Type == DiscordSignIn.AdminClaim));
     }
 }

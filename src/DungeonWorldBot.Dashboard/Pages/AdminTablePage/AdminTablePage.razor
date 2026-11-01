@@ -15,7 +15,7 @@
 
     @if (!_canRun)
     {
-        <p class="empty">Only the DM can change the databases.</p>
+        <p class="empty">Only admins can change the databases.</p>
     }
     else if (_database is not { } database || _rows is not { } rows)
     {
@@ -132,7 +132,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        _canRun = Viewer.CanRunGame;
+        _canRun = Viewer.CanAdminister;
         _database = Parse(Database);
         if (_canRun && _database is { } database)
             _rows = await Desk.GetPageAsync(database, Table, Q, Sort, Desc, PageNumber ?? 1);

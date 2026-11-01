@@ -10,7 +10,7 @@ using Microsoft.EntityFrameworkCore.Metadata;
 namespace DungeonWorldBot.Dashboard.Services.Admin;
 
 /// <summary>
-/// The DM changing anything at all in the databases, a row at a time or with SQL. Unlike the other desks it goes
+/// An admin changing anything at all in the databases, a row at a time or with SQL. Unlike the other desks it goes
 /// around the bot's rules, straight to the tables, so it can fix what they can't.
 /// </summary>
 /// <remarks>
@@ -231,7 +231,7 @@ public class AdminDesk(DashboardDatabases databases)
     }
 
     /// <summary>
-    /// Runs whatever SQL the DM typed, and gives back the first rows it read (up to <see cref="MaxQueryRows"/>) or how
+    /// Runs whatever SQL the admin typed, and gives back the first rows it read (up to <see cref="MaxQueryRows"/>) or how
     /// many it changed.
     /// </summary>
     public async Task<AdminQueryResult> RunAsync(AdminDatabase database, string sql)

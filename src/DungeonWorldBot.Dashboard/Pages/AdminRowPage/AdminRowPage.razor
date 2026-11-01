@@ -25,7 +25,7 @@
 
     @if (!_canRun)
     {
-        <p class="empty">Only the DM can change the databases.</p>
+        <p class="empty">Only admins can change the databases.</p>
     }
     else if (_database is not { } database || _columns is not { } columns || (RowID is not null && _row is null))
     {
@@ -99,7 +99,7 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        _canRun = Viewer.CanRunGame;
+        _canRun = Viewer.CanAdminister;
         _database = Parse(Database);
         _error ??= Error;
         if (!_canRun || _database is not { } database)
@@ -112,7 +112,7 @@
 
     private async Task SaveAsync()
     {
-        if (!Viewer.CanRunGame || HttpContext is null || _database is not { } database)
+        if (!Viewer.CanAdminister || HttpContext is null || _database is not { } database)
             return;
 
         var form = await HttpContext.Request.ReadFormAsync();

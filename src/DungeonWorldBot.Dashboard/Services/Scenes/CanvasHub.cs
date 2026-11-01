@@ -2,6 +2,7 @@ using System.Text.Json;
 using DungeonWorldBot.Dashboard.Models.Auth;
 using DungeonWorldBot.Dashboard.Models.Encounters;
 using DungeonWorldBot.Dashboard.Models.Scenes;
+using DungeonWorldBot.Dashboard.Models.Shared;
 using DungeonWorldBot.Dashboard.Services.Encounters;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
@@ -23,7 +24,8 @@ public class CanvasHub(
     CanvasStore store,
     IEncounterService encounters,
     FightMoves moves,
-    MoveResults results)
+    MoveResults results,
+    DashboardSettings settings)
     : Hub<ICanvasClient>
 {
     /// <summary>
@@ -190,7 +192,7 @@ public class CanvasHub(
     }
 
     // With sign-in on, only signed-in members get this far, so being signed in says whether sign-in is on
-    private Viewer ViewerOf() => Viewer.From(Context.User, Context.User?.Identity?.IsAuthenticated == true);
+    private Viewer ViewerOf() => Viewer.From(Context.User, Context.User?.Identity?.IsAuthenticated == true, settings.DungeonMasterID);
 
     private static string CheckID(string id) =>
         !string.IsNullOrWhiteSpace(id) && id.Length <= CanvasStore.MaxItemIDLength

@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.Json;
 using DungeonWorldBot.Dashboard.Models.Auth;
+using DungeonWorldBot.Dashboard.Models.Shared;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OAuth;
@@ -14,7 +15,8 @@ namespace DungeonWorldBot.Dashboard.Services.Auth;
 /// <remarks>
 /// On only when Discord:ClientId and Discord:ClientSecret are set (from the bot's application in the Discord developer
 /// portal). Discord:GuildId limits it to that server's members. Without them the dashboard is open to anyone who can
-/// reach it, as before. Members with the role in Discord:DungeonMasterRoleId are the DM.
+/// reach it, as before. Whoever signs in as DungeonMasterId (see <see cref="DashboardSettings"/>) is the DM.
+/// Members with the role in Discord:AdminRoleId can use the admin pages.
 /// </remarks>
 public static class DiscordSignIn
 {
@@ -24,10 +26,10 @@ public static class DiscordSignIn
     public const string MemberClaim = "urn:sanasolem:member";
     public const string AvatarClaim = "urn:discord:avatar";
     public const string DisplayNameClaim = "urn:discord:display_name";
-    public const string DungeonMasterClaim = "urn:sanasolem:dm";
+    public const string AdminClaim = "urn:sanasolem:admin";
 
-    // Sana Solem's DM role. By ID rather than name like the bot, since only the server's roles' IDs reach the dashboard.
-    public const ulong DefaultDungeonMasterRoleID = 1325144809282998315;
+    // Sana Solem's Admin role. By ID, since only the server's roles' IDs reach the dashboard, not their names.
+    public const ulong DefaultAdminRoleID = 1356839825134845962;
 
     private const string Api = "https://discord.com/api";
 
@@ -46,7 +48,7 @@ public static class DiscordSignIn
             return false;
 
         var guildId = discord.GetValue<ulong?>("GuildId");
-        var dungeonMasterRoleId = discord.GetValue<ulong?>("DungeonMasterRoleId") ?? DefaultDungeonMasterRoleID;
+        var adminRoleId = discord.GetValue<ulong?>("AdminRoleId") ?? DefaultAdminRoleID;
 
         builder.Services
             .AddAuthentication(options =>
@@ -131,8 +133,8 @@ public static class DiscordSignIn
 
                     // Checked only here, so someone given or losing the role needs to sign in again
                     if (member.RootElement.TryGetProperty("roles", out var roles)
-                        && roles.EnumerateArray().Any(r => r.GetString() == dungeonMasterRoleId.ToString()))
-                        identity.AddClaim(new Claim(DungeonMasterClaim, dungeonMasterRoleId.ToString()));
+                        && roles.EnumerateArray().Any(r => r.GetString() == adminRoleId.ToString()))
+                        identity.AddClaim(new Claim(AdminClaim, adminRoleId.ToString()));
 
                     // Their server nickname is the name the table knows them by
                     if (String(member.RootElement, "nick") is { } nick && identity.FindFirst(DisplayNameClaim) is { } display)
@@ -156,7 +158,10 @@ public static class DiscordSignIn
     {
         services.AddHttpContextAccessor();
         return services.AddScoped(provider =>
-            Viewer.From(provider.GetRequiredService<IHttpContextAccessor>().HttpContext?.User, signInEnabled));
+            Viewer.From(
+                provider.GetRequiredService<IHttpContextAccessor>().HttpContext?.User,
+                signInEnabled,
+                provider.GetRequiredService<DashboardSettings>().DungeonMasterID));
     }
 
     public static void MapDiscordSignIn(this WebApplication app)

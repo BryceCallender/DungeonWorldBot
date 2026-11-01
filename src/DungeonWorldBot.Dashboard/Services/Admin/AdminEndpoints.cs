@@ -15,7 +15,7 @@ public static class AdminEndpoints
 
         group.MapPost("/{database}/{table}/{rowID:long}/delete", async (string database, string table, long rowID, Viewer viewer, AdminDesk desk) =>
         {
-            if (!viewer.CanRunGame)
+            if (!viewer.CanAdminister)
                 return Results.Forbid();
             if (AdminFormat.Parse(database) is not { } which)
                 return Results.NotFound();
