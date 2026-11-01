@@ -6,7 +6,7 @@
 @inject HealthReader Health
 @inject Viewer Viewer
 
-@* The DM's look under the hood: whether the bot is up and what it's run since it started, the errors either of them
+@* The admins' look under the hood: whether the bot is up and what it's run since it started, the errors either of them
    has hit lately, the databases on disk, and how busy the table's been. The deeper look (every log, each command's
    trace, charts over time) is the telemetry dashboard, linked at the top when there is one. *@
 <PageTitle>Health · Sana Solem</PageTitle>
@@ -22,7 +22,7 @@
 
 @if (!_canRun)
 {
-    <p class="empty">Only the DM can see how the bot is doing.</p>
+    <p class="empty">Only admins can see how the bot is doing.</p>
 }
 else if (_report is { } report)
 {
@@ -152,7 +152,7 @@ else if (_report is { } report)
 
     protected override async Task OnInitializedAsync()
     {
-        _canRun = Viewer.CanRunGame;
+        _canRun = Viewer.CanAdminister;
         if (_canRun)
             _report = await Health.ReadAsync();
     }

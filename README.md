@@ -3,7 +3,7 @@ D&amp;D discord bot for our campaign needs
 
 ## Keeping an eye on it
 
-**Health page.** The dashboard's Health tab (DM only) shows whether the bot is up, what it's run since it started,
+**Health page.** The dashboard's Health tab (admins only) shows whether the bot is up, what it's run since it started,
 the latest errors from the bot and the dashboard, the databases on disk and the rolls of the last two weeks. The bot
 writes a small `SanaSolem.status.json` beside its database every 30 seconds for it, so it works wherever the two run,
 as long as the dashboard can read the bot's database.
