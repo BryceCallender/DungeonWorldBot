@@ -612,10 +612,22 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 
 /* ---- Health ----------------------------------------------------------------------------------------------------- */
 
-/* Whether the bot is up, as a dot and a word: green online, red down, grey stopped or never heard from */
+/* Whether the bot is up, as a dot and a word: green online with the live dot's ripple, red down, grey stopped or
+   never heard from */
 .health-state { display: inline-flex; align-items: center; gap: .45rem; }
-.health-state i { width: .6rem; height: .6rem; border-radius: 50%; background: var(--muted); }
-.health-state.online i { background: var(--good); box-shadow: 0 0 0 3px color-mix(in srgb, var(--good) 25%, transparent); }
+.health-state i { position: relative; flex: none; width: .6rem; height: .6rem; border-radius: 50%; background: var(--muted); }
+.health-state.online i { background: var(--good); }
+.health-state.online i::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: var(--good);
+    animation: live-ping 2.4s cubic-bezier(0, 0, .2, 1) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+    .health-state.online i::after { animation: none; opacity: 0; }
+}
 .health-state.down i { background: var(--critical); }
 .health-state.down { color: var(--critical-text); }
 
