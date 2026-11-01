@@ -23,6 +23,14 @@
         <NavLink href="moves">Moves</NavLink>
         <NavLink href="spells">Spells</NavLink>
         <NavLink href="classes" class="@ActiveFor("subclasses/")">Classes</NavLink>
+        @* The DM's look under the hood: how the bot's doing, and the databases themselves for whatever the other pages
+           can't change *@
+        @if (Viewer.CanRunGame)
+        {
+            <span class="nav-sep" aria-hidden="true"></span>
+            <NavLink href="health">Health</NavLink>
+            <NavLink href="admin">Admin</NavLink>
+        }
     </nav>
 
     <div class="viewer">

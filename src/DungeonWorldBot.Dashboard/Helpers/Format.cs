@@ -31,5 +31,28 @@ public static class Format
     public static string ShortFightText(string text) =>
         RangeSuffix.Replace(text, "").Replace(" Hit", " hit").Replace("💥 ", "").Replace(" damage", " dmg");
 
+    /// <summary>
+    /// A file's size, e.g. "4.2 MB".
+    /// </summary>
+    public static string Bytes(long bytes) => bytes switch
+    {
+        < 1024 => $"{bytes} B",
+        < 1024 * 1024 => $"{bytes / 1024.0:0.#} KB",
+        < 1024L * 1024 * 1024 => $"{bytes / 1024.0 / 1024:0.#} MB",
+        _ => $"{bytes / 1024.0 / 1024 / 1024:0.##} GB",
+    };
+
+    /// <summary>
+    /// How long ago something was, roughly, e.g. "12s ago" or "3d ago".
+    /// </summary>
+    public static string Ago(DateTimeOffset at)
+    {
+        var since = DateTimeOffset.UtcNow - at;
+        return since.TotalSeconds < 60 ? $"{Math.Max(0, (int)since.TotalSeconds)}s ago"
+            : since.TotalMinutes < 60 ? $"{(int)since.TotalMinutes}m ago"
+            : since.TotalHours < 24 ? $"{(int)since.TotalHours}h ago"
+            : $"{(int)since.TotalDays}d ago";
+    }
+
     private static readonly Regex RangeSuffix = new(@"\s*\([^)]*\)$", RegexOptions.Compiled);
 }

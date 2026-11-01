@@ -1,0 +1,160 @@
+@page "/admin/{Database}/{Table}"
+@namespace DungeonWorldBot.Dashboard.Pages
+@using DungeonWorldBot.Dashboard.Models.Admin
+@using DungeonWorldBot.Dashboard.Services.Admin
+@using static DungeonWorldBot.Dashboard.Helpers.AdminFormat
+@inject AdminDesk Desk
+@inject Viewer Viewer
+
+@* One table's rows, a page at a time, to search, sort and open one to change. Columns that point at another table link
+   to the row they point at. Doesn't refresh itself (data-no-live), like the rest of admin. *@
+<PageTitle>@(_rows?.Table ?? Table) · Admin · Sana Solem</PageTitle>
+
+<div data-no-live>
+    <a class="back" href="admin">← Admin</a>
+
+    @if (!_canRun)
+    {
+        <p class="empty">Only the DM can change the databases.</p>
+    }
+    else if (_database is not { } database || _rows is not { } rows)
+    {
+        <h1>Not found</h1>
+        <p class="empty">There's no table called @Table.</p>
+    }
+    else
+    {
+        <PageHeader Title="@rows.Table">
+            <ChildContent>
+                <span class="chip">@Name(database)</span>
+                <form method="get" class="admin-search">
+                    <input class="filter" type="search" name="q" value="@Q" placeholder="Search every column" />
+                    @if (Sort is not null)
+                    {
+                        <input type="hidden" name="sort" value="@Sort" />
+                        <input type="hidden" name="desc" value="@(Desc ? "true" : "false")" />
+                    }
+                </form>
+            </ChildContent>
+            <Actions>
+                <a class="tool" href="@($"{TableUrl(database, rows.Table)}/new")">+ New row</a>
+            </Actions>
+        </PageHeader>
+
+        @if (Saved is not null)
+        {
+            <p class="small admin-saved">@Saved</p>
+        }
+
+        @if (rows.Rows.Count == 0)
+        {
+            <p class="empty">@(string.IsNullOrWhiteSpace(Q) ? "No rows yet." : "Nothing matches.")</p>
+        }
+        else
+        {
+            <div class="card admin-grid">
+                <table>
+                    <thead>
+                        <tr>
+                            <th></th>
+                            @foreach (var column in rows.Columns)
+                            {
+                                <th>
+                                    <a href="@Link(rows.Page, column.Name, string.Equals(Sort, column.Name, StringComparison.OrdinalIgnoreCase) && !Desc)"
+                                       title="@Describe(column)">
+                                        @column.Name@SortMark(column)
+                                    </a>
+                                </th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var row in rows.Rows)
+                        {
+                            <tr>
+                                <td><a class="tool" href="@RowUrl(database, rows.Table, row.RowID)">Edit</a></td>
+                                @for (var i = 0; i < rows.Columns.Count; i++)
+                                {
+                                    var column = rows.Columns[i];
+                                    var value = row.Values[i];
+                                    <td class="@(value is null ? "admin-null" : null) @(column.IsInteger || column.IsReal ? "num" : null)" title="@(value is string ? value : null)">
+                                        @if (column.References is { } references && value is not null)
+                                        {
+                                            @* Every table the bot points at is keyed by an INTEGER ID, which is its rowid *@
+                                            <a href="@RowUrl(database, references, value)">@Cell(value)</a>
+                                        }
+                                        else
+                                        {
+                                            @Cell(value)
+                                        }
+                                        @if (column.Describe(value) is { } meaning)
+                                        {
+                                            <span class="admin-meaning">@meaning</span>
+                                        }
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+            <nav class="admin-pages small">
+                @if (rows.Page > 1)
+                {
+                    <a href="@Link(rows.Page - 1, Sort, Desc)">← Previous</a>
+                }
+                <span>Page @rows.Page of @rows.Pages · @Plural((int)rows.Matching, "row")</span>
+                @if (rows.Page < rows.Pages)
+                {
+                    <a href="@Link(rows.Page + 1, Sort, Desc)">Next →</a>
+                }
+            </nav>
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string Database { get; set; } = "";
+    [Parameter] public string Table { get; set; } = "";
+
+    [SupplyParameterFromQuery] public string? Q { get; set; }
+    [SupplyParameterFromQuery] public string? Sort { get; set; }
+    [SupplyParameterFromQuery] public bool Desc { get; set; }
+    [SupplyParameterFromQuery(Name = "page")] public int? PageNumber { get; set; }
+
+    // Set by the row page once it's saved or deleted something
+    [SupplyParameterFromQuery] public string? Saved { get; set; }
+
+    private bool _canRun;
+    private AdminDatabase? _database;
+    private AdminTableRows? _rows;
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _canRun = Viewer.CanRunGame;
+        _database = Parse(Database);
+        if (_canRun && _database is { } database)
+            _rows = await Desk.GetPageAsync(database, Table, Q, Sort, Desc, PageNumber ?? 1);
+    }
+
+    private string Link(int page, string? sort, bool descending)
+    {
+        var query = new List<string>();
+        if (!string.IsNullOrWhiteSpace(Q))
+            query.Add($"q={Uri.EscapeDataString(Q)}");
+        if (sort is not null)
+            query.Add($"sort={Uri.EscapeDataString(sort)}");
+        if (descending)
+            query.Add("desc=true");
+        if (page > 1)
+            query.Add($"page={page}");
+        return $"{TableUrl(_database!.Value, _rows!.Table)}{(query.Count == 0 ? "" : "?" + string.Join("&", query))}";
+    }
+
+    private static string Describe(AdminColumn column) =>
+        string.Join(", ", new[] { column.Type, column.PrimaryKey ? "key" : null, column.NotNull ? "required" : null }.OfType<string>());
+
+    private string? SortMark(AdminColumn column) =>
+        string.Equals(Sort, column.Name, StringComparison.OrdinalIgnoreCase) ? Desc ? " ↓" : " ↑" : null;
+}

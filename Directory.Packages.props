@@ -25,6 +25,15 @@
         <PackageVersion Include="Remora.Discord.Pagination" Version="6.0.0" />
     </ItemGroup>
 
+    <!-- Sends logs, traces and metrics to an OpenTelemetry collector, like the Aspire Dashboard, when one is set -->
+    <ItemGroup Label="Telemetry">
+        <PackageVersion Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" Version="1.20.1" />
+        <PackageVersion Include="OpenTelemetry.Extensions.Hosting" Version="1.20.1" />
+        <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.1" />
+        <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.20.1" />
+        <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.20.1" />
+    </ItemGroup>
+
     <ItemGroup Label="Other libraries">
         <PackageVersion Include="d20tek-dicenotation" Version="5.1.8" />
         <PackageVersion Include="Enums.NET" Version="5.0.0" />

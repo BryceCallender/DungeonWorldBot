@@ -15,10 +15,11 @@ public static class BotServices
 {
     /// <summary>
     /// The bot's database, opened read-only so the dashboard can't change the game by accident, and the bot's own
-    /// services over it, used only for reading. Only four things write to it, each with
+    /// services over it, used only for reading. Only four things write to it through the bot's rules, each with
     /// <see cref="DashboardDatabases.WritableGame"/>: CharacterJournal, for players' backstories, notes and goals;
     /// PortraitStore, for characters' pictures; EncounterDesk, for the DM running fights and keeping enemies and saved
-    /// monsters; and NpcDesk, for the DM looking after the party's NPCs.
+    /// monsters; and NpcDesk, for the DM looking after the party's NPCs. AdminDesk goes around them, for the DM to
+    /// change anything directly.
     /// </summary>
     public static IServiceCollection AddBotServices(this IServiceCollection services, DashboardDatabases databases)
     {

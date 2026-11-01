@@ -1,0 +1,193 @@
+@page "/admin/{Database}/{Table}/new"
+@page "/admin/{Database}/{Table}/{RowID:long}"
+@namespace DungeonWorldBot.Dashboard.Pages
+@using DungeonWorldBot.Dashboard.Models.Admin
+@using DungeonWorldBot.Dashboard.Services.Admin
+@using static DungeonWorldBot.Dashboard.Helpers.AdminFormat
+@inject AdminDesk Desk
+@inject Viewer Viewer
+@inject NavigationManager Nav
+
+@* One row, every column of it, to change or delete, or a blank one to add. Enums and yes/no are picked from what the
+   bot's model says they can be. A mistake comes back with what was typed still there. Doesn't refresh itself
+   (data-no-live), so the bot writing elsewhere doesn't wipe the form. *@
+<PageTitle>@Title · Admin · Sana Solem</PageTitle>
+
+<div data-no-live>
+    @if (_database is { } back && _columns is not null)
+    {
+        <a class="back" href="@TableUrl(back, Table)">← @Table</a>
+    }
+    else
+    {
+        <a class="back" href="admin">← Admin</a>
+    }
+
+    @if (!_canRun)
+    {
+        <p class="empty">Only the DM can change the databases.</p>
+    }
+    else if (_database is not { } database || _columns is not { } columns || (RowID is not null && _row is null))
+    {
+        <h1>Not found</h1>
+        <p class="empty">That row isn't there.</p>
+    }
+    else
+    {
+        <PageHeader Title="@Title">
+            <ChildContent>
+                <span class="chip">@Name(database)</span>
+            </ChildContent>
+            <Actions>
+                @if (RowID is { } id)
+                {
+                    <button type="button" class="tool" data-open-dialog="admin-delete">Delete</button>
+                }
+            </Actions>
+        </PageHeader>
+
+        @if (_error is not null)
+        {
+            <p class="form-error desk-error">@_error</p>
+        }
+
+        <form method="post" @formname="admin-row" @onsubmit="SaveAsync" class="card admin-form">
+            <AntiforgeryToken />
+            <div class="admin-fields">
+                @for (var i = 0; i < columns.Count; i++)
+                {
+                    var column = columns[i];
+                    var stored = _row?.Values[i];
+                    @Input(column, stored)
+                }
+            </div>
+            <div class="desk-actions">
+                <a class="tool" href="@TableUrl(database, Table)">Cancel</a>
+                <button class="tool create">@(RowID is null ? "Add row" : "Save")</button>
+            </div>
+        </form>
+
+        @if (RowID is { } rowID)
+        {
+            <ConfirmDialog Id="admin-delete" Title="Delete this row?" Action="@($"api/admin/{Slug(database)}/{Uri.EscapeDataString(Table)}/{rowID}/delete")"
+                           Message="It's gone for good, along with anything the database deletes with it (a fight's enemies, say). Rows that point at it are left pointing at nothing or stop it, depending on the table."
+                           KeepLabel="Keep it" ConfirmLabel="Delete" />
+        }
+    }
+</div>
+
+@code {
+    [Parameter] public string Database { get; set; } = "";
+    [Parameter] public string Table { get; set; } = "";
+    [Parameter] public long? RowID { get; set; }
+
+    [CascadingParameter] public HttpContext? HttpContext { get; set; }
+
+    // Set by the delete endpoint when the database wouldn't
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+
+    private bool _canRun;
+    private AdminDatabase? _database;
+    private IReadOnlyList<AdminColumn>? _columns;
+    private AdminRow? _row;
+    private string? _error;
+
+    // What was typed, kept when it couldn't be saved
+    private IFormCollection? _posted;
+
+    private string Title => RowID is { } id ? $"{Table} row {id}" : $"New {Table} row";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _canRun = Viewer.CanRunGame;
+        _database = Parse(Database);
+        _error ??= Error;
+        if (!_canRun || _database is not { } database)
+            return;
+
+        _columns = await Desk.GetColumnsAsync(database, Table);
+        if (RowID is { } id)
+            _row = await Desk.GetRowAsync(database, Table, id);
+    }
+
+    private async Task SaveAsync()
+    {
+        if (!Viewer.CanRunGame || HttpContext is null || _database is not { } database)
+            return;
+
+        var form = await HttpContext.Request.ReadFormAsync();
+        _error = await Desk.SaveAsync(database, Table, RowID, form);
+        if (_error is not null)
+        {
+            _posted = form;
+            return;
+        }
+
+        var saved = RowID is { } id ? $"Saved row {id}." : "Added a row.";
+        Nav.NavigateTo($"{TableUrl(database, Table)}?saved={Uri.EscapeDataString(saved)}");
+    }
+
+    // What the field shows: what was typed if it couldn't be saved, or what's stored
+    private string Shown(AdminColumn column, object? stored) =>
+        _posted?.TryGetValue($"v:{column.Name}", out var typed) == true ? typed.ToString() : Raw(stored);
+
+    private bool ShownNull(AdminColumn column, object? stored) =>
+        _posted is not null ? _posted.ContainsKey($"null:{column.Name}") : RowID is not null && stored is null;
+
+    private bool ShownFlag(AdminColumn column, object? stored, AdminChoice choice) =>
+        _posted?.TryGetValue($"v:{column.Name}", out var typed) == true ? typed.Contains(choice.Value) : column.Has(stored, choice);
+
+    private RenderFragment Input(AdminColumn column, object? stored) =>
+    @<div class="field admin-field @(column.Flags || (!column.IsInteger && !column.IsReal && column.Choices.Count == 0) ? "wide" : null)">
+        <span class="field-label">
+            @column.Name
+            <span class="admin-type">@column.Type@(column.PrimaryKey ? " · key" : "")@(column.NotNull ? " · required" : "")@(column.References is { } to ? $" · → {to}" : "")</span>
+        </span>
+        @if (column.IsBlob)
+        {
+            <span class="small">@Cell(stored) · files are changed where they're used, like a character's picture</span>
+        }
+        else if (column.Flags)
+        {
+            <input type="hidden" name="v:@column.Name" value="0" />
+            <div class="admin-flags">
+                @foreach (var choice in column.Choices.Where(c => c.Value != "0"))
+                {
+                    <label class="admin-check"><input type="checkbox" name="v:@column.Name" value="@choice.Value" checked="@ShownFlag(column, stored, choice)" />@choice.Label</label>
+                }
+            </div>
+        }
+        else if (column.Choices.Count > 0)
+        {
+            var shown = Shown(column, stored);
+            <select class="filter" name="v:@column.Name">
+                @if (RowID is null && column.HasDefault)
+                {
+                    <option value="" selected="@(shown == "")">(default)</option>
+                }
+                @if (shown != "" && column.Choices.All(c => c.Value != shown))
+                {
+                    <option value="@shown" selected>@shown (not one the bot knows)</option>
+                }
+                @foreach (var choice in column.Choices)
+                {
+                    <option value="@choice.Value" selected="@(shown == choice.Value)">@choice.Label (@choice.Value)</option>
+                }
+            </select>
+        }
+        else if (column.IsInteger || column.IsReal)
+        {
+            <input class="filter" name="v:@column.Name" value="@Shown(column, stored)" inputmode="@(column.IsInteger ? "numeric" : "decimal")"
+                   placeholder="@(RowID is null && (column.HasDefault || column.PrimaryKey) ? "Leave blank for the default" : null)" />
+        }
+        else
+        {
+            <textarea class="filter admin-code" name="v:@column.Name" rows="@Math.Clamp(Shown(column, stored).Length / 70 + 1, 1, 12)"
+                      placeholder="@(RowID is null && column.HasDefault ? "Leave blank for the default" : null)">@Shown(column, stored)</textarea>
+        }
+        @if (!column.NotNull && !column.PrimaryKey && !column.IsBlob)
+        {
+            <label class="admin-check small"><input type="checkbox" name="null:@column.Name" checked="@ShownNull(column, stored)" />NULL</label>
+        }
+    </div>;
+}

@@ -1,7 +1,9 @@
 using DungeonWorldBot.Dashboard;
 using DungeonWorldBot.Dashboard.Models.Shared;
+using DungeonWorldBot.Dashboard.Services.Admin;
 using DungeonWorldBot.Dashboard.Services.Auth;
 using DungeonWorldBot.Dashboard.Services.Encounters;
+using DungeonWorldBot.Dashboard.Services.Health;
 using DungeonWorldBot.Dashboard.Services.Live;
 using DungeonWorldBot.Dashboard.Services.Npcs;
 using DungeonWorldBot.Dashboard.Services.Party;
@@ -35,7 +37,9 @@ builder.Services
     .AddEncounters(databases)
     .AddScenes(databases)
     .AddRolls()
-    .AddSessions();
+    .AddSessions()
+    .AddAdmin(databases)
+    .AddHealth(databases, builder.Configuration);
 
 var app = builder.Build();
 
@@ -94,6 +98,7 @@ IEndpointConventionBuilder[] membersOnly =
     app.MapEnemyEndpoints(),
     app.MapNpcEndpoints(),
     app.MapRollFeedEndpoints(),
+    app.MapAdminEndpoints(),
 ];
 
 if (signInEnabled)

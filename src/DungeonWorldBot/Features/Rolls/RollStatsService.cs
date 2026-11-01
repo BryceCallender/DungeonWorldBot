@@ -2,6 +2,7 @@ using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Infrastructure;
+using DungeonWorldBot.Infrastructure.Telemetry;
 using d20Tek.DiceNotation.Results;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Options;
@@ -40,6 +41,7 @@ public class RollStatsService(DungeonWorldContext dungeonWorldContext, IOptions<
         });
 
         await dungeonWorldContext.SaveChangesAsync();
+        BotMetrics.Rolled(dice.Total);
     }
 
     public async Task<int> AddMissingAsync(IReadOnlyList<RollRecord> rolls)

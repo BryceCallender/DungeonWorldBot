@@ -2,6 +2,8 @@ using DungeonWorldBot.Data;
 using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Features.Encounters;
 using DungeonWorldBot.Infrastructure;
+using DungeonWorldBot.Infrastructure.Telemetry;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -9,6 +11,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Remora.Discord.API.Abstractions.Gateway.Commands;
+using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Services;
 using Remora.Discord.Gateway;
 using Remora.Discord.Hosting.Extensions;
@@ -79,6 +82,7 @@ public class Program
                     .AddRemoraServices()
                     .AddHostedService<EncounterAnnouncer>()
                     .AddHostedService<MoveRequestWorker>();
+                AddTelemetry(context, services);
             }
         )
         .ConfigureLogging
@@ -89,6 +93,24 @@ public class Program
                 .AddFilter("System.Net.Http.HttpClient.*.ClientHandler", LogLevel.Warning)
                 .AddFilter("Microsoft.EntityFrameworkCore.Database.Command", LogLevel.Warning)
         );
+
+    /// <summary>
+    /// What the bot's been doing: logs, traces and metrics over OpenTelemetry when OTEL_EXPORTER_OTLP_ENDPOINT is set,
+    /// and a status file beside its database for the dashboard's health page either way.
+    /// </summary>
+    private static void AddTelemetry(HostBuilderContext context, IServiceCollection services)
+    {
+        services
+            .AddSanaSolemTelemetry(context.Configuration, "sana-solem-bot")
+            .AddSingleton<CommandTally>()
+            .AddScoped<CommandTelemetry.Timing>()
+            .AddPreExecutionEvent<CommandTelemetry.Before>()
+            .AddPostExecutionEvent<CommandTelemetry.After>();
+
+        var databasePath = new SqliteConnectionStringBuilder(context.Configuration.GetConnectionString("DungeonWorldConnectionString")).DataSource;
+        if (!string.IsNullOrEmpty(databasePath))
+            services.AddHostedService(provider => ActivatorUtilities.CreateInstance<BotStatusWriter>(provider, Path.GetFullPath(databasePath)));
+    }
 
     /// <summary>
     /// The dashboard's canvases.db, which the bot only reads for its encounter scenes. Set CanvasDatabasePath if it's

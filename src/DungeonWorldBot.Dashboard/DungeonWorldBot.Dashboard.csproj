@@ -15,6 +15,8 @@
         <PrivateAssets>all</PrivateAssets>
       </PackageReference>
       <!-- Short IDs for canvas links, like /canvas/Xb3kQ9 instead of /canvas/4 -->
+      <!-- Traces each page and API request, on top of the bot's telemetry setup -->
+      <PackageReference Include="OpenTelemetry.Instrumentation.AspNetCore" />
     </ItemGroup>
 
     <!-- TypeScript in Scripts/ is bundled by esbuild into wwwroot/canvas.js, which is built, not edited or committed -->

@@ -1,0 +1,144 @@
+@page "/admin"
+@namespace DungeonWorldBot.Dashboard.Pages
+@using DungeonWorldBot.Dashboard.Models.Admin
+@using DungeonWorldBot.Dashboard.Services.Admin
+@using static DungeonWorldBot.Dashboard.Helpers.AdminFormat
+@inject AdminDesk Desk
+@inject Viewer Viewer
+
+@* The DM's way past the bot's rules: every table in both databases to open and change a row at a time, and a box for
+   SQL when that's quicker. It doesn't refresh itself (data-no-live), so a query's results stay put. *@
+<PageTitle>Admin · Sana Solem</PageTitle>
+
+<div data-no-live>
+    <PageHeader Title="Admin" Description="Change anything in the databases directly. There's no undo, and the bot's own rules don't check it, so take a backup before anything big." />
+
+    @if (!_canRun)
+    {
+        <p class="empty">Only the DM can change the databases.</p>
+    }
+    else
+    {
+        @foreach (var (database, tables) in _tables)
+        {
+            <section class="desk-section">
+                <div class="desk-head">
+                    <h2>@Name(database)</h2>
+                    <span class="small">@(database == AdminDatabase.Canvas ? "The dashboard's scenes and boards" : "The bot's characters, fights, NPCs, rolls and sessions")</span>
+                </div>
+                <div class="admin-tables">
+                    @foreach (var table in tables)
+                    {
+                        <a class="card admin-table-link" href="@TableUrl(database, table.Name)">
+                            <strong>@table.Name</strong>
+                            <span class="small">@Plural((int)table.Rows, "row")</span>
+                        </a>
+                    }
+                </div>
+            </section>
+        }
+
+        <section class="desk-section" id="sql">
+            <div class="desk-head">
+                <h2>SQL</h2>
+                <span class="small">Runs as typed. Up to @AdminDesk.MaxQueryRows rows are shown.</span>
+            </div>
+            <form method="post" @formname="admin-sql" @onsubmit="RunAsync" action="admin#sql" class="card admin-sql">
+                <AntiforgeryToken />
+                <div class="field-row admin-sql-head">
+                    <Field Label="Database">
+                        <select class="filter" name="Query.Database">
+                            @foreach (var database in Enum.GetValues<AdminDatabase>())
+                            {
+                                <option value="@database" selected="@(Query!.Database == database)">@Name(database)</option>
+                            }
+                        </select>
+                    </Field>
+                </div>
+                <Field Label="Statement">
+                    <textarea class="filter admin-code" name="Query.Sql" rows="5" spellcheck="false" placeholder="SELECT Name, Level FROM Characters">@Query!.Sql</textarea>
+                </Field>
+                <div class="desk-actions">
+                    <button class="tool create">Run</button>
+                </div>
+            </form>
+
+            @if (_result is { } result)
+            {
+                @if (result.Error is not null)
+                {
+                    <p class="form-error desk-error">@result.Error</p>
+                }
+                else if (result.Changed is { } changed)
+                {
+                    <p class="small">Done. @Plural(changed, "row") changed.</p>
+                }
+                else
+                {
+                    <p class="small">@Plural(result.Rows.Count, "row")@(result.Truncated ? $", cut off at {AdminDesk.MaxQueryRows}" : "")</p>
+                    <div class="card admin-grid">
+                        <table>
+                            <thead>
+                                <tr>
+                                    @foreach (var column in result.Columns)
+                                    {
+                                        <th>@column</th>
+                                    }
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach (var row in result.Rows)
+                                {
+                                    <tr>
+                                        @foreach (var value in row)
+                                        {
+                                            <td class="@(value is null ? "admin-null" : null)" title="@(value is string ? value : null)">@Cell(value)</td>
+                                        }
+                                    </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                }
+            }
+        </section>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromForm(FormName = "admin-sql")]
+    private SqlForm? Query { get; set; }
+
+    private bool _canRun;
+    private Dictionary<AdminDatabase, IReadOnlyList<AdminTable>> _tables = [];
+    private AdminQueryResult? _result;
+
+    protected override async Task OnInitializedAsync()
+    {
+        Query ??= new();
+        _canRun = Viewer.CanRunGame;
+        if (!_canRun)
+            return;
+
+        foreach (var database in Enum.GetValues<AdminDatabase>())
+            _tables[database] = await Desk.GetTablesAsync(database);
+    }
+
+    private async Task RunAsync()
+    {
+        if (!Viewer.CanRunGame)
+            return;
+
+        _result = await Desk.RunAsync(Query!.Database, Query.Sql ?? "");
+        // What it changed shows in the counts too
+        foreach (var database in Enum.GetValues<AdminDatabase>())
+            _tables[database] = await Desk.GetTablesAsync(database);
+    }
+
+    private class SqlForm
+    {
+        public AdminDatabase Database { get; set; }
+
+        public string? Sql { get; set; }
+    }
+}

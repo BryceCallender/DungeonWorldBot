@@ -1,0 +1,177 @@
+@page "/health"
+@namespace DungeonWorldBot.Dashboard.Pages
+@using DungeonWorldBot.Dashboard.Models.Health
+@using DungeonWorldBot.Dashboard.Services.Health
+@using DungeonWorldBot.Infrastructure.Telemetry
+@inject HealthReader Health
+@inject Viewer Viewer
+
+@* The DM's look under the hood: whether the bot is up and what it's run since it started, the errors either of them
+   has hit lately, the databases on disk, and how busy the table's been. The deeper look (every log, each command's
+   trace, charts over time) is the telemetry dashboard, linked at the top when there is one. *@
+<PageTitle>Health · Sana Solem</PageTitle>
+
+<PageHeader Title="Health" Description="Whether the bot and the dashboard are up, and what's gone wrong lately.">
+    <Actions>
+        @if (_report?.TelemetryUrl is { } telemetry)
+        {
+            <a class="tool" href="@telemetry" target="_blank" rel="noopener">Logs, traces &amp; metrics ↗</a>
+        }
+    </Actions>
+</PageHeader>
+
+@if (!_canRun)
+{
+    <p class="empty">Only the DM can see how the bot is doing.</p>
+}
+else if (_report is { } report)
+{
+    var bot = report.Bot;
+    var commands = bot?.Commands ?? [];
+
+    <div class="tiles">
+        <StatTile Label="Bot" Note="@BotNote(report)">
+            <span class="health-state @report.BotState.ToString().ToLowerInvariant()"><i></i>@StateName(report.BotState)</span>
+        </StatTile>
+        <StatTile Label="Up for" Note="@(bot is null ? null : $"since {bot.StartedAt.LocalDateTime:ddd d MMM, h:mm tt}")">
+            @if (bot is not null && report.BotState == BotState.Online)
+            {
+                <time datetime="@bot.StartedAt.ToString("o")" data-since>@SessionBar.Elapsed(DateTimeOffset.UtcNow - bot.StartedAt)</time>
+            }
+            else
+            {
+                <span>—</span>
+            }
+        </StatTile>
+        <StatTile Label="Commands" Note="@($"since it started, {commands.Sum(c => c.Failed)} failed")">@commands.Sum(c => c.Runs)</StatTile>
+        <StatTile Label="Errors" Note="bot + dashboard, latest kept">@report.Errors.Count</StatTile>
+        <StatTile Label="Bot memory" Note="@($"dashboard {Bytes(report.DashboardMemoryBytes)}")">@(bot is null ? "—" : Bytes(bot.MemoryBytes))</StatTile>
+    </div>
+
+    <div class="health-grid">
+        <section class="card">
+            <CardHeader Title="Rolls, last two weeks" />
+            <div class="health-days" role="img" aria-label="Rolls each day for the last @HealthReader.RollDays days">
+                @{ var most = Math.Max(1, report.RollsByDay.Max(d => d.Count)); }
+                @foreach (var day in report.RollsByDay)
+                {
+                    <div class="health-day" title="@($"{day.Day:ddd d MMM}: {Plural(day.Count, "roll")}")">
+                        <div class="health-bar" style="--fill: @(day.Count * 100 / most)%"></div>
+                        <span>@day.Day.ToString("ddd")[0]</span>
+                    </div>
+                }
+            </div>
+            <p class="small">@Plural(report.RollsByDay.Sum(d => d.Count), "roll") in the game chat</p>
+        </section>
+
+        <section class="card">
+            <CardHeader Title="Databases" />
+            <dl class="pairs">
+                @foreach (var file in report.Databases)
+                {
+                    <dt>@file.Name</dt>
+                    <dd title="@file.Path">
+                        @if (file.LastWrite is { } written)
+                        {
+                            @Bytes(file.Bytes + file.JournalBytes)<span class="small"> · written @Ago(written)</span>
+                        }
+                        else
+                        {
+                            <span class="form-error">Not found</span>
+                        }
+                    </dd>
+                }
+            </dl>
+            <p class="small"><a href="admin">Open them in Admin</a></p>
+        </section>
+    </div>
+
+    <section class="desk-section">
+        <h2>Commands since the bot started</h2>
+        @if (commands.Count == 0)
+        {
+            <p class="empty">@(bot is null ? "The bot hasn't said anything yet. It writes its status once it's running the new version." : "None yet.")</p>
+        }
+        else
+        {
+            <div class="card admin-grid">
+                <table>
+                    <thead>
+                        <tr><th>Command</th><th class="num">Runs</th><th class="num">Failed</th><th class="num">Average</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var command in commands)
+                        {
+                            <tr>
+                                <td>/@command.Command</td>
+                                <td class="num">@command.Runs</td>
+                                <td class="num @(command.Failed > 0 ? "health-bad" : null)">@command.Failed</td>
+                                <td class="num">@($"{command.AverageMilliseconds:0} ms")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </section>
+
+    <section class="desk-section">
+        <h2>Recent errors</h2>
+        @{ var all = report.Errors; }
+        @if (all.Count == 0)
+        {
+            <p class="empty">Nothing's gone wrong lately.</p>
+        }
+        else
+        {
+            <ul class="health-errors">
+                @foreach (var entry in all)
+                {
+                    <li class="card">
+                        <div class="desk-line">
+                            <span class="chip @(entry.From == "Bot" ? "accent" : null)">@entry.From</span>
+                            <span class="chip warn">@entry.Error.Level</span>
+                            <span class="small" title="@entry.Error.At.LocalDateTime.ToString("f")">@Ago(entry.Error.At)</span>
+                            <span class="small health-category">@ShortCategory(entry.Error.Category)</span>
+                        </div>
+                        <div>@entry.Error.Message</div>
+                        @if (entry.Error.Exception is { } exception)
+                        {
+                            <code class="small">@exception</code>
+                        }
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+}
+
+@code {
+    private bool _canRun;
+    private HealthReport? _report;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _canRun = Viewer.CanRunGame;
+        if (_canRun)
+            _report = await Health.ReadAsync();
+    }
+
+    private static string StateName(BotState state) => state switch
+    {
+        BotState.Online => "Online",
+        BotState.Stopped => "Stopped",
+        BotState.Down => "Down",
+        _ => "Unknown",
+    };
+
+    private static string? BotNote(HealthReport report) => report.Bot switch
+    {
+        null => "no status file yet",
+        { StoppedAt: { } stopped } => $"shut down {Ago(stopped)}",
+        var bot => $"heard from {Ago(bot.LastBeat)} · {bot.Machine}",
+    };
+
+    // "DungeonWorldBot.Features.Encounters.MoveRequestWorker" is plenty as "MoveRequestWorker"
+    private static string ShortCategory(string category) => category[(category.LastIndexOf('.') + 1)..];
+}
