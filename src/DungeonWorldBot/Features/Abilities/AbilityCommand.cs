@@ -153,8 +153,11 @@ public class AbilityCommand(
 
         if (string.IsNullOrWhiteSpace(name))
         {
-            await abilityService.RestoreAllAbilitiesAsync(character);
-            return await ReplyAsync("Abilities Restored!", $"All of {character.Name}'s abilities were fully restored");
+            var kept = await abilityService.RestoreAllAbilitiesAsync(character);
+            var description = $"All of {character.Name}'s abilities were fully restored";
+            if (kept.Count > 0)
+                description += $", except {string.Join(", ", kept.Select(a => a.Name))}, which only come back another way. Restore one by name if the GM allows it.";
+            return await ReplyAsync("Abilities Restored!", description);
         }
 
         var ability = abilityService.FindAbility(character, name);

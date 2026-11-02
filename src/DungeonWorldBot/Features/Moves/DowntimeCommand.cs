@@ -1,6 +1,10 @@
 using System.ComponentModel;
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Features.Abilities;
 using DungeonWorldBot.Features.Characters;
+using DungeonWorldBot.Features.Classes;
+using DungeonWorldBot.Features.Classes.DungeonWorld;
+using DungeonWorldBot.Features.Classes.InverseWorld;
 using DungeonWorldBot.Features.Encounters;
 using DungeonWorldBot.Features.Resources;
 using DungeonWorldBot.Features.Rolls;
@@ -28,6 +32,7 @@ public class DowntimeCommand(
     MoveResolver moveResolver,
     IResourceService resourceService,
     ISpecialMoveService specialMoveService,
+    IAbilityService abilityService,
     RollReveal rollReveal)
     : MoveCommandBase(context, feedbackService, characterService, rollStatsService, encounterService, moveResolver, resourceService, rollReveal)
 {
@@ -52,6 +57,23 @@ public class DowntimeCommand(
                 ? $"Healed {camp.Healed} HP ({character.Health.CurrentHP}/{character.Health.MaxHP})."
                 : "Your rest was interrupted, so you don't heal."),
         ];
+
+        // Hold Together: camp repairs one Stress box, which the Mechanic picks
+        var marked = ClassSheetLibrary.ResourcesOf(character)
+            .Where(r => r.Name.StartsWith(Mechanic.StressPrefix) && _resourceService.GetValue(character, r) > 0)
+            .Select(r => r.Name[Mechanic.StressPrefix.Length..])
+            .ToList();
+        if (marked.Count > 0)
+            fields.Add(new EmbedField("Suit repairs", $"Marked: {string.Join(", ", marked)}. Unmark one with /resource spend"));
+
+        List<string> restored = [];
+        foreach (var resource in ClassSheetLibrary.ResourcesOf(character).Where(r => r.ResetsOnCamp))
+        {
+            await _resourceService.SetValueAsync(character, resource, _resourceService.GetResetValue(character, resource));
+            restored.Add($"{resource.Name} {_resourceService.Format(character, resource)}");
+        }
+        if (restored.Count > 0)
+            fields.Add(new EmbedField("Restored", string.Join('\n', restored)));
 
         return await ReplyAsync($"🏕️ {character.Name}: Make Camp", "*If you're somewhere dangerous, decide the watch order. Whoever's on watch rolls /downtime take-watch when something approaches.*", fields);
     }
@@ -116,6 +138,27 @@ public class DowntimeCommand(
         return await ReplyAsync(
             $"📚 {character.Name}: Bolster",
             $"*A {length.ToString().ToLower()} of preparing.* Took {gained} Preparation, {total} in all.\n\nWhen it pays off, add `prepared: True` to a move roll to spend 1 for +1. Only one per roll.");
+    }
+
+    [Command("brew")]
+    [Description("Thief: with time to gather materials and a safe place, brew 3 more doses of your mastered poison")]
+    public async Task<IResult> BrewAsync()
+    {
+        var character = await GetOwnCharacterAsync();
+        if (character is null)
+            return await ReplyWithErrorAsync(NoMoverMessage);
+
+        var poison = character.Abilities?.FirstOrDefault(a => a.IsLimited && a.Name.StartsWith(Thief.PoisonPrefix, StringComparison.OrdinalIgnoreCase));
+        if (poison is null)
+            return await ReplyWithErrorAsync($"{character.Name} hasn't mastered a poison to brew.");
+
+        // Brewed doses stack on top of what's left
+        await abilityService.SetAbilityUsesAsync(poison, poison.Uses + Thief.PoisonDoses);
+
+        var name = poison.Name[Thief.PoisonPrefix.Length..];
+        return await ReplyAsync(
+            $"🧪 {character.Name}: Brew",
+            $"*Bubbling over a hidden fire...* Brewed {Thief.PoisonDoses} doses of {name}, {poison.Uses} in all.\n\nUse a dose with /ability use");
     }
 
     [Command("supply")]

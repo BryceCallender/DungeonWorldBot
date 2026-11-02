@@ -7,6 +7,18 @@ namespace DungeonWorldBot.Features.Classes.InverseWorld;
 public static class Mechanic
 {
     private const string ResearchAndDevelopment = "Research and Development";
+    private const string EngineeringAndMechanics = "Engineering and Mechanics";
+
+    public const string StressPrefix = "Suit: ";
+
+    // Hold Together's Stress boxes, each a 0/1 resource so the bot knows which systems are down. Repairs come from Make
+    // Camp, not resetting everything.
+    private static ClassResource StressBox(string box, string penalty, string? grantedBy = null) =>
+        new($"{StressPrefix}{box}", $"A Hold Together Stress box. While marked: {penalty} Unmark one when you Make Camp.", Max: 1, GrantedBy: grantedBy)
+        {
+            ResetWithAll = false,
+            GainNote = "Once every box is marked, the suit is destroyed and takes a week to rebuild.",
+        };
 
     private static ClassMove Weapon(string name, string summary, string? requires = null) =>
         new($"Primary Weapon: {name}", summary) { Requires = requires };
@@ -45,7 +57,7 @@ public static class Mechanic
             ]),
             new ClassFeature("Specialization", "What is your area of expertise?",
             [
-                new("Engineering and Mechanics", "Your suit has redundant systems. Hold Together gains a fourth box: **Dinged**, which has no penalty."),
+                new(EngineeringAndMechanics, "Your suit has redundant systems. Hold Together gains a fourth box: **Dinged**, which has no penalty."),
                 new("Physics and Probability", "Your suit exploits Inverse physics. It also has the **Cloudwalker** Movement Method: it can fly through clouds and rain."),
                 new(ResearchAndDevelopment, "Your suit is packed with tech. Choose one extra suit option from any one list."),
                 new("Theory and Analysis", "Let Me See That asks three questions instead of two."),
@@ -152,10 +164,9 @@ public static class Mechanic
         ],
         resources:
         [
-            new ClassResource("Suit Stress", "Marked to negate damage while in your suit. Unmark one when you Make Camp. With every box marked, the suit is destroyed.", Max: 3)
-            {
-                ResetWithAll = false,
-                Bonuses = [new("Engineering and Mechanics", Max: 1)],
-            },
+            StressBox("Damaged", "Movement Methods are disabled (it can still walk)."),
+            StressBox("Disabled", "Advanced Systems stop working."),
+            StressBox("Disarmed", "Primary Weapons are disabled (the suit is still a close weapon)."),
+            StressBox("Dinged", "No penalty.", EngineeringAndMechanics),
         ]);
 }

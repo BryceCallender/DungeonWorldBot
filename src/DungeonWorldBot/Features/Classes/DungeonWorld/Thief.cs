@@ -8,6 +8,17 @@ namespace DungeonWorldBot.Features.Classes.DungeonWorld;
 /// </summary>
 public static class Thief
 {
+    public const string PoisonPrefix = "Poison: ";
+
+    /// <summary>
+    /// Doses of their mastered poison a Thief starts with, and makes each time they brew.
+    /// </summary>
+    public const int PoisonDoses = 3;
+
+    // The mastered poison is tracked as an ability whose uses are its doses, which only brewing makes more of
+    private static ClassMove Poison(string name, string summary) =>
+        new($"{PoisonPrefix}{name}", summary) { Uses = PoisonDoses, RestoresWithAll = false };
+
     public static readonly ClassSheet Sheet = new(
         ClassType.Thief,
         "Dungeon World",
@@ -46,10 +57,10 @@ public static class Thief
             ]),
             new ClassFeature("Poison", "Which poison have you mastered?",
             [
-                new("Poison: Oil of Tagit", "Applied. The target falls into a light sleep."),
-                new("Poison: Bloodweed", "Touch. The target deals -1d4 damage ongoing until cured."),
-                new("Poison: Goldenroot", "Applied. The target treats the next creature they see as a trusted ally, until proved otherwise."),
-                new("Poison: Serpent's Tears", "Touch. Anyone dealing damage to the target rolls twice and takes the better result."),
+                Poison("Oil of Tagit", "Applied. The target falls into a light sleep."),
+                Poison("Bloodweed", "Touch. The target deals -1d4 damage ongoing until cured."),
+                Poison("Goldenroot", "Applied. The target treats the next creature they see as a trusted ally, until proved otherwise."),
+                Poison("Serpent's Tears", "Touch. Anyone dealing damage to the target rolls twice and takes the better result."),
             ]),
         ],
         level2To5:

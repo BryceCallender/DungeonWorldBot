@@ -11,12 +11,13 @@ public static class Shaman
     private static ClassMove GuardianSpirit(string name, string effect) =>
         new($"Guardian Spirit: {name}", $"Once per attack, when you deal damage and a die shows 1, your spirit steps in: reroll that die and {effect}.");
 
-    // Totems are tracked as abilities whose uses are the totem's charges
+    // Totems are tracked as abilities whose uses are the totem's charges. A spent totem shatters, so restoring
+    // everything doesn't refill it
     private static ClassMove WorldlySpirit(string name, string word, string summary) =>
-        new(name, $"*\"{word}\"*: {summary}") { Uses = 1 };
+        new(name, $"*\"{word}\"*: {summary}") { Uses = 1, RestoresWithAll = false };
 
     private static ClassMove FirstSpirit(string name, string word, string summary) =>
-        new(name, $"*\"{word}\"*: {summary} (First Spirit totems always shatter when released.)") { Uses = 1, Requires = FirstSpiritTotem };
+        new(name, $"*\"{word}\"*: {summary} (First Spirit totems always shatter when released.)") { Uses = 1, Requires = FirstSpiritTotem, RestoresWithAll = false };
 
     public static readonly ClassSheet Sheet = new(
         ClassType.Shaman,

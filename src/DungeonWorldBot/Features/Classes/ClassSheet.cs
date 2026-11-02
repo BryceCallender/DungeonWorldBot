@@ -83,6 +83,12 @@ public record ClassMove(string Name, string Summary)
     /// </summary>
     public int? Uses { get; init; }
 
+    /// <summary>
+    /// Whether restoring every ability at once refills its uses. Off for uses that only come back a particular way, like
+    /// brewing poison or binding a new totem.
+    /// </summary>
+    public bool RestoresWithAll { get; init; } = true;
+
     public bool IsAdvanced => Tier is MoveTier.Level2To5 or MoveTier.Level6To10;
 
     /// <summary>
@@ -236,6 +242,11 @@ public record ClassResource(string Name, string Summary, int Start = 0, int? Max
     /// Whether resetting every resource at once includes this one. Off for things that build up over the campaign, like Trade.
     /// </summary>
     public bool ResetWithAll { get; init; } = true;
+
+    /// <summary>
+    /// Whether Make Camp resets it, like the Lantern's Arrow Piercing.
+    /// </summary>
+    public bool ResetsOnCamp { get; init; }
 
     /// <summary>
     /// Whether the resource goes up and down with the character's level, like a Ranger's effective cleric level.

@@ -18,7 +18,11 @@ public interface IAbilityService
     /// </summary>
     Task RestoreAbilityAsync(Ability ability, int? amount = null);
 
-    Task RestoreAllAbilitiesAsync(Character character);
+    /// <summary>
+    /// Fully restores every limited ability, except those whose uses only come back another way (poison doses, totems).
+    /// </summary>
+    /// <returns>The limited abilities it left alone.</returns>
+    Task<IReadOnlyList<Ability>> RestoreAllAbilitiesAsync(Character character);
 
     Task SetAbilityUsesAsync(Ability ability, int uses);
 

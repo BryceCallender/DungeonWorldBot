@@ -106,6 +106,25 @@ public sealed class AbilityTests : IDisposable
     }
 
     [Fact]
+    public async Task RestoringEverything_LeavesPoisonDosesForBrewing()
+    {
+        await using var context = CreateContext();
+        var character = await AddCharacterAsync(context);
+        character.Class.Type = ClassType.Thief;
+        var abilities = new AbilityService(context);
+        var poison = await abilities.AddAbilityAsync(character, "Poison: Bloodweed", null, maxUses: 3);
+        var trick = await abilities.AddAbilityAsync(character, "Trap Expert", null, maxUses: 3);
+        await abilities.SetAbilityUsesAsync(poison, 0);
+        await abilities.SetAbilityUsesAsync(trick, 0);
+
+        var kept = await abilities.RestoreAllAbilitiesAsync(character);
+
+        Assert.Equal([poison], kept);
+        Assert.Equal(0, poison.Uses);
+        Assert.Equal(3, trick.Uses);
+    }
+
+    [Fact]
     public async Task Remove_DeletesAbility()
     {
         await using (var context = CreateContext())

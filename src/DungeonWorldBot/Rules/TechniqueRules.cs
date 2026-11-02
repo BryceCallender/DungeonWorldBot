@@ -53,15 +53,12 @@ public static class TechniqueRules
     public static IReadOnlyList<TechniqueTag> AllTags { get; } =
         Enum.GetValues<TechniqueTag>().Where(t => t != TechniqueTag.None).ToList();
 
-    public static bool Knows(Character character, string move) =>
-        ClassSheetLibrary.KnownMoves(character).Contains(move, StringComparer.OrdinalIgnoreCase);
-
-    public static bool CanChannel(Character character) => Knows(character, Channel);
+    public static bool CanChannel(Character character) => ClassSheetLibrary.Knows(character, Channel);
 
     /// <summary>
     /// How many Techniques the character can know. Signature Technique adds a slot.
     /// </summary>
-    public static int MaxTechniques(Character character) => BaseSlots + (Knows(character, SignatureTechnique) ? 1 : 0);
+    public static int MaxTechniques(Character character) => BaseSlots + (ClassSheetLibrary.Knows(character, SignatureTechnique) ? 1 : 0);
 
     public static int MaxTags(Technique technique) => technique.IsSignature ? SignatureTags : BaseTags;
 
@@ -70,21 +67,21 @@ public static class TechniqueRules
     /// </summary>
     public static int MaxThreadDice(Character character)
     {
-        if (Knows(character, Fissure))
+        if (ClassSheetLibrary.Knows(character, Fissure))
             return FissureDice;
-        return Knows(character, ThreadTheNeedle) ? 1 : 0;
+        return ClassSheetLibrary.Knows(character, ThreadTheNeedle) ? 1 : 0;
     }
 
     /// <summary>
     /// The armor Barrier gives until the next Channel. Armor of the Elements doubles it.
     /// </summary>
-    public static int BarrierArmor(Character character) => Knows(character, ArmorOfTheElements) ? 2 : 1;
+    public static int BarrierArmor(Character character) => ClassSheetLibrary.Knows(character, ArmorOfTheElements) ? 2 : 1;
 
     /// <summary>
     /// The tags the character can put on a Technique: the six everyone has, and those their moves unlock.
     /// </summary>
     public static IReadOnlyList<TechniqueTag> AvailableTags(Character character) =>
-        AllTags.Where(t => UnlockedBy(t) is not { } move || Knows(character, move)).ToList();
+        AllTags.Where(t => UnlockedBy(t) is not { } move || ClassSheetLibrary.Knows(character, move)).ToList();
 
     public static IReadOnlyList<TechniqueTag> TagsOf(TechniqueTag tags) =>
         AllTags.Where(t => tags.HasFlag(t)).ToList();
@@ -126,15 +123,19 @@ public static class TechniqueRules
         if (Find(character, name) is { } existing)
             return $"{character.Name} already knows {existing.Name}. Change it with /technique edit";
 
-        if (signature && !Knows(character, SignatureTechnique))
+        if (signature && !ClassSheetLibrary.Knows(character, SignatureTechnique))
             return $"{character.Name} needs the {SignatureTechnique} move for a Technique with 3 tags.";
 
         if (signature && Signature(character) is { } current)
             return $"{current.Name} is already {character.Name}'s Signature Technique.";
 
-        var known = character.Techniques?.Count ?? 0;
-        return known >= MaxTechniques(character)
-            ? $"{character.Name} already knows {known} Techniques, all they can hold. Replace one with /technique edit, or forget one with /technique forget"
+        if (signature)
+            return null;
+
+        // Signature Technique's extra slot is for the 3-tag Technique only, so ordinary ones still stop at 3
+        var ordinary = character.Techniques?.Count(t => !t.IsSignature) ?? 0;
+        return ordinary >= BaseSlots
+            ? $"{character.Name} already knows {ordinary} Techniques, all they can hold. Replace one with /technique edit, or forget one with /technique forget"
             : null;
     }
 
@@ -143,7 +144,7 @@ public static class TechniqueRules
     /// </summary>
     public static string? WhyCannotDevastate(Character character, Technique technique, TechniqueTag tag)
     {
-        if (!Knows(character, DevastationWave))
+        if (!ClassSheetLibrary.Knows(character, DevastationWave))
             return $"{character.Name} needs the {DevastationWave} move to add a fourth tag.";
         if (!technique.IsSignature)
             return $"{DevastationWave} only works on a Signature Technique, and {technique.Name} isn't one.";
@@ -210,7 +211,7 @@ public static class TechniqueRules
     // The first tag that needs a move the character doesn't know
     private static TechniqueTag? LockedTag(Character character, TechniqueTag tags)
     {
-        var locked = TagsOf(tags).FirstOrDefault(t => UnlockedBy(t) is { } move && !Knows(character, move));
+        var locked = TagsOf(tags).FirstOrDefault(t => UnlockedBy(t) is { } move && !ClassSheetLibrary.Knows(character, move));
         return locked == TechniqueTag.None ? null : locked;
     }
 }

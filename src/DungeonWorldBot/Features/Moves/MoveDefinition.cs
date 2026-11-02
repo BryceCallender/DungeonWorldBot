@@ -58,8 +58,13 @@ public record MoveRoll(DiceResult Dice, MoveOutcome Outcome);
 
 public static partial class MoveRoller
 {
-    // 2d6 plus or minus flat modifiers, e.g. "2d6", "2d6+1", "2d6 - 1 + 2"
-    [GeneratedRegex(@"^\s*2\s*d\s*6\s*([+-]\s*\d+\s*)*$", RegexOptions.IgnoreCase)]
+    /// <summary>
+    /// What a Barbarian rolls for moves in place of 2d6 while pursuing an appetite.
+    /// </summary>
+    public const string AppetiteDice = "1d6+1d8";
+
+    // 2d6 (or a Barbarian's 1d6+1d8) plus or minus flat modifiers, e.g. "2d6", "2d6+1", "1d6+1d8 - 1 + 2"
+    [GeneratedRegex(@"^\s*(2\s*d\s*6|1\s*d\s*6\s*\+\s*1\s*d\s*8)\s*([+-]\s*\d+\s*)*$", RegexOptions.IgnoreCase)]
     private static partial Regex MoveRollExpression();
 
     /// <summary>
@@ -92,11 +97,17 @@ public static partial class MoveRoller
         _ => MoveOutcome.Miss,
     };
 
-    public static MoveRoll Roll(IDiceRoller dice, int modifier)
+    /// <param name="appetite">Whether a Barbarian is pursuing an appetite, rolling 1d6+1d8 in place of 2d6.</param>
+    public static MoveRoll Roll(IDiceRoller dice, int modifier, bool appetite = false)
     {
-        var result = dice.Roll(DiceHelper.AddModifier("2d6", modifier));
+        var result = dice.Roll(DiceHelper.AddModifier(appetite ? AppetiteDice : "2d6", modifier));
         return new MoveRoll(result, OutcomeFor(result.Value));
     }
+
+    /// <summary>
+    /// Whether an appetite roll's d6 came up higher than its d8, which brings the GM's complication.
+    /// </summary>
+    public static bool AppetiteBites(DiceResult roll) => roll.Results is [var d6, var d8, ..] && d6.Value > d8.Value;
 
     public static string Describe(MoveOutcome outcome) => outcome switch
     {

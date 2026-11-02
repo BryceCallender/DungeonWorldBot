@@ -1,5 +1,6 @@
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Characters.Creation;
+using DungeonWorldBot.Features.Classes.DungeonWorld;
 using DungeonWorldBot.Features.Rolls;
 using Remora.Rest.Core;
 
@@ -115,6 +116,19 @@ public class CharacterCreationTests
 
         var jars = Assert.IsType<HexedJars>(draft.Items.Single(i => i.Name == "Hexed Canopic Jars"));
         Assert.Equal(["A Skinless Hound", "Empty", "Empty"], jars.Contents);
+    }
+
+    [Fact]
+    public void Thief_StartsWithThreeDosesOfTheirPoison()
+    {
+        var draft = DraftWithChoices(ClassType.Thief);
+        draft.FeatureChoices["Poison"] = [Thief.Sheet.Features.Single(f => f.Name == "Poison").Options[1]];
+
+        var poison = draft.Build(new Snowflake(1)).Abilities!.Single(a => a.Name.StartsWith(Thief.PoisonPrefix));
+
+        Assert.Equal("Poison: Bloodweed", poison.Name);
+        Assert.Equal(Thief.PoisonDoses, poison.MaxUses);
+        Assert.Equal(Thief.PoisonDoses, poison.Uses);
     }
 
     [Fact]

@@ -42,7 +42,7 @@ public static class TacticRules
         name is null ? null : All.FirstOrDefault(t => t.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase));
 
     public static bool Knows(Character character, string move) =>
-        ClassSheetLibrary.KnownMoves(character).Contains(move, StringComparer.OrdinalIgnoreCase);
+        ClassSheetLibrary.Knows(character, move);
 
     public static bool UsesTactics(Character character) => Knows(character, Tactics);
 

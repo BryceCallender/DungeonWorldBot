@@ -8,8 +8,19 @@ namespace DungeonWorldBot.Features.Classes.DungeonWorld;
 /// </summary>
 public static class Barbarian
 {
+    public const string AppetitePrefix = "Appetite: ";
+
+    /// <summary>
+    /// The appetites the character chose, e.g. "Conquest".
+    /// </summary>
+    public static IReadOnlyList<string> Appetites(Character character) =>
+        character.Abilities?
+            .Where(a => a.Name.StartsWith(AppetitePrefix, StringComparison.OrdinalIgnoreCase))
+            .Select(a => a.Name[AppetitePrefix.Length..])
+            .ToList() ?? [];
+
     private static ClassMove Appetite(string name) =>
-        new($"Appetite: {name}", $"You hunger for {name.ToLower()}. While pursuing it, roll 1d6+1d8 instead of 2d6 for moves. If the d6 is higher, the GM adds a complication from your heedlessness.");
+        new($"{AppetitePrefix}{name}", $"You hunger for {name.ToLower()}. While pursuing it, roll 1d6+1d8 instead of 2d6 for moves. If the d6 is higher, the GM adds a complication from your heedlessness.");
 
     public static readonly ClassSheet Sheet = new(
         ClassType.Barbarian,
