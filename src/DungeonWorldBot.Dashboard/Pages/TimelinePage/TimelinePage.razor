@@ -1,0 +1,107 @@
+@page "/character/{Id}/timeline"
+@namespace DungeonWorldBot.Dashboard.Pages
+@inject NavigationManager Navigation
+@inject PartyReader PartyReader
+@inject CharacterHistory History
+
+@if (_view is not { } c)
+{
+    <PageTitle>Not found · Sana Solem</PageTitle>
+    <h1>Not found</h1>
+    <p class="empty">No character with that ID. <a href="">Back to the party</a></p>
+    return;
+}
+
+<PageTitle>@c.Name's timeline · Sana Solem</PageTitle>
+
+<a class="back" href="@c.Url">← @c.Name</a>
+
+@* Everything that's happened to them, a session at a time, newest first. It stays live, so a level-up or a big roll
+   shows up as it happens. *@
+<header class="timeline-head">
+    <h1>@c.Name's timeline</h1>
+    <div class="muted">Level @c.Level @c.ClassName · @c.Character.Race</div>
+</header>
+
+@if (_chapters.Count == 0)
+{
+    <p class="empty">Nothing yet. Level-ups, new moves, fights and big rolls show up here as they happen.</p>
+}
+else
+{
+    @foreach (var chapter in _chapters)
+    {
+        <section class="card chapter">
+            <h2>
+                @if (chapter.Url is { } url)
+                {
+                    <a href="@url">@chapter.Title</a>
+                }
+                else
+                {
+                    @chapter.Title
+                }
+            </h2>
+            <ol class="moments">
+                @foreach (var entry in chapter.Entries)
+                {
+                    <li class="moment moment-@entry.Kind.ToString().ToLowerInvariant()">
+                        <span class="moment-icon"><Icon Name="@IconFor(entry.Kind)" /></span>
+                        <div class="moment-body">
+                            <div class="moment-row">
+                                @if (entry.Url is { } link)
+                                {
+                                    <a class="moment-text" href="@link">@entry.Text</a>
+                                }
+                                else
+                                {
+                                    <span class="moment-text">@entry.Text</span>
+                                }
+                                <span class="moment-time">@entry.At.ToLocalTime().ToString("t")</span>
+                            </div>
+                            @if (entry.Detail is { } detail)
+                            {
+                                <div class="moment-detail">@ToHtml(detail)</div>
+                            }
+                        </div>
+                    </li>
+                }
+            </ol>
+        </section>
+    }
+    <p class="small timeline-note">Level-ups, moves, gear and the rest are recorded from when the timeline was added, so
+        older chapters only have fights, big rolls and notes.</p>
+}
+
+@code {
+    [Parameter]
+    public string Id { get; set; } = string.Empty;
+
+    private CharacterView? _view;
+    private List<HistoryChapter> _chapters = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _view = await PartyReader.GetCharacterAsync(Id);
+        _chapters = _view is null ? [] : await History.GetAsync(_view.Character);
+
+        // Older links use the Discord ID; send them to the address with the character's name
+        if (_view is not null && Id != _view.Slug)
+            Navigation.NavigateTo($"{_view.Url}/timeline", replace: true);
+    }
+
+    private static string IconFor(HistoryKind kind) => kind switch
+    {
+        HistoryKind.Milestone or HistoryKind.Level => "sparkle",
+        HistoryKind.Move => "magic",
+        HistoryKind.Stat => "shield",
+        HistoryKind.Hurt or HistoryKind.Healed => "heart",
+        HistoryKind.Bond => "link",
+        HistoryKind.Goal => "compass",
+        HistoryKind.Item => "bag",
+        HistoryKind.Coins => "coin",
+        HistoryKind.Roll => "dice",
+        HistoryKind.Fight => "sword",
+        _ => "pen",
+    };
+}

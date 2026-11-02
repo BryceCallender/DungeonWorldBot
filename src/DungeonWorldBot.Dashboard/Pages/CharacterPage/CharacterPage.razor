@@ -23,11 +23,13 @@
 
 <header class="card hero classed" style="@Lookup.ColorOf(c.Character.Class.Type)">
     <div class="hero-main">
-        @* Backstory, goals and notes have their own page; the link sits with the name, since it's about who they are *@
+        @* Backstory, goals and notes have their own page, and so does everything that's happened to them; the links sit with
+           the name, since they're about who they are *@
         <div class="hero-title">
             <span class="portrait"><Face Name="@c.Name" Picture="@_portrait" /></span>
             <h1>@c.Name</h1>
             <a class="story-link" href="@c.Url/story"><Icon Name="notes" />Story →</a>
+            <a class="story-link" href="@c.Url/timeline"><Icon Name="clock" />Timeline →</a>
         </div>
         @* Their tokens on the board show it. app.js shrinks the picture and sends it as soon as one's picked. *@
         @if (PortraitEndpoints.CanChange(c.Character.ID.Value, Viewer))

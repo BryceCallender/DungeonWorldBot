@@ -26,6 +26,21 @@ public class DungeonWorldContext(DbContextOptions<DungeonWorldContext> options) 
 
     public DbSet<GameSession> Sessions => Set<GameSession>();
 
+    public DbSet<CharacterEvent> CharacterEvents => Set<CharacterEvent>();
+
+    // Every save notes what changed on characters for their timelines (see CharacterEvents)
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        Data.CharacterEvents.Record(this);
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        Data.CharacterEvents.Record(this);
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
@@ -148,6 +163,16 @@ public class DungeonWorldContext(DbContextOptions<DungeonWorldContext> options) 
         {
             roll.HasKey(r => r.MessageID);
             roll.HasIndex(r => r.UserID);
+        });
+
+        // A character's timeline goes with them
+        modelBuilder.Entity<CharacterEvent>(e =>
+        {
+            e.HasOne<Character>()
+                .WithMany()
+                .HasForeignKey(c => c.CharacterID)
+                .OnDelete(DeleteBehavior.Cascade);
+            e.HasIndex(c => c.CharacterID);
         });
     }
 
