@@ -37,20 +37,14 @@
         <span class="live" title="Connecting…"><i class="live-dot off"></i>Live</span>
         @if (Viewer.SignedIn)
         {
+            @* The DM has no character to link to *@
             @if (!Viewer.IsDungeonMaster)
             {
-                <a class="me" href="character/@Viewer.ID" title="Your character">
-                    <img src="@Viewer.AvatarUrl" alt="" width="26" height="26" />
-                    <span>@Viewer.Name</span>
-                </a>
+                <a class="me" href="character/@Viewer.ID" title="Your character">@Me</a>
             }
             else
             {
-                <span class="me">
-                    <img src="@Viewer.AvatarUrl" alt="" width="26" height="26" />
-                    <span>@Viewer.Name</span>
-                    <span class="chip accent">DM</span>
-                </span>
+                <span class="me">@Me<span class="chip accent">DM</span></span>
             }
             <a class="signout" href="logout">Sign out</a>
         }
@@ -64,6 +58,12 @@
 </main>
 
 @code {
+    private RenderFragment Me =>
+        @<text>
+            <img src="@Viewer.AvatarUrl" alt="" width="26" height="26" />
+            <span>@Viewer.Name</span>
+        </text>;
+
     // A character or a scene belongs under its list's tab, though its address doesn't start with the list's
     private string? ActiveFor(params string[] prefixes) =>
         prefixes.Any(Nav.ToBaseRelativePath(Nav.Uri).StartsWith) ? "active" : null;

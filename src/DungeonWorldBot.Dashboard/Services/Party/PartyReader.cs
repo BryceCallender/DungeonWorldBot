@@ -1,5 +1,6 @@
 using DungeonWorldBot.Dashboard.Models.Party;
 using DungeonWorldBot.Dashboard.Services.Reference;
+using DungeonWorldBot.Dashboard.Services.Shared;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Features.Classes;
@@ -41,7 +42,7 @@ public class PartyReader(
         {
             return await npcService.GetAllAsync();
         }
-        catch (SqliteException e) when (e.Message.Contains("no such table"))
+        catch (SqliteException e) when (e.IsMissingTable())
         {
             // The dashboard only reads, so it can't add the table; the bot's migration does
             return [];
@@ -58,7 +59,7 @@ public class PartyReader(
         {
             return await encounterService.GetOnSceneAsync(sceneID);
         }
-        catch (SqliteException e) when (e.Message.Contains("no such table") || e.Message.Contains("no such column"))
+        catch (SqliteException e) when (e.IsMissingSchema())
         {
             return null;
         }

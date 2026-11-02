@@ -1,3 +1,4 @@
+using DungeonWorldBot.Dashboard.Services.Shared;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using Microsoft.Data.Sqlite;
@@ -76,7 +77,7 @@ public class PortraitStore(DbContextOptions<DungeonWorldContext> options)
                 WHERE p.CharacterID = Characters.ID AND Characters.PortraitData IS NULL
                 """).ExecuteNonQuery();
         }
-        catch (SqliteException e) when (e.Message.Contains("no such column"))
+        catch (SqliteException e) when (e.IsMissingColumn())
         {
             throw new InvalidOperationException(
                 $"{databasePath} has no picture columns yet, so characters' pictures can't be moved there. Bring it up to " +

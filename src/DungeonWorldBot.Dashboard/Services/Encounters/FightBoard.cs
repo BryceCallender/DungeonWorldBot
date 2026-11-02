@@ -1,4 +1,5 @@
 using DungeonWorldBot.Dashboard.Models.Auth;
+using DungeonWorldBot.Dashboard.Services.Shared;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Encounters;
@@ -31,7 +32,7 @@ public static class FightBoard
         {
             return CanChange(await encounters.GetOnSceneAsync(CanvasIds.Encode(scene.ID)), viewer);
         }
-        catch (SqliteException e) when (e.Message.Contains("no such table") || e.Message.Contains("no such column"))
+        catch (SqliteException e) when (e.IsMissingSchema())
         {
             // The bot hasn't added fights to its database yet, so there's none to keep anyone out of
             return true;

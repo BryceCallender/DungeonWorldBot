@@ -23,7 +23,7 @@
         <a class="back" href="admin">← Admin</a>
     }
 
-    @if (!_canRun)
+    @if (!Viewer.CanAdminister)
     {
         <p class="empty">Only admins can change the databases.</p>
     }
@@ -39,7 +39,7 @@
                 <span class="chip">@Name(database)</span>
             </ChildContent>
             <Actions>
-                @if (RowID is { } id)
+                @if (RowID is not null)
                 {
                     <button type="button" class="tool" data-open-dialog="admin-delete">Delete</button>
                 }
@@ -56,9 +56,7 @@
             <div class="admin-fields">
                 @for (var i = 0; i < columns.Count; i++)
                 {
-                    var column = columns[i];
-                    var stored = _row?.Values[i];
-                    @Input(column, stored)
+                    @Input(columns[i], _row?.Values[i])
                 }
             </div>
             <div class="desk-actions">
@@ -86,7 +84,6 @@
     // Set by the delete endpoint when the database wouldn't
     [SupplyParameterFromQuery] public string? Error { get; set; }
 
-    private bool _canRun;
     private AdminDatabase? _database;
     private IReadOnlyList<AdminColumn>? _columns;
     private AdminRow? _row;
@@ -99,10 +96,9 @@
 
     protected override async Task OnParametersSetAsync()
     {
-        _canRun = Viewer.CanAdminister;
         _database = Parse(Database);
         _error ??= Error;
-        if (!_canRun || _database is not { } database)
+        if (!Viewer.CanAdminister || _database is not { } database)
             return;
 
         _columns = await Desk.GetColumnsAsync(database, Table);
@@ -137,11 +133,14 @@
     private bool ShownFlag(AdminColumn column, object? stored, AdminChoice choice) =>
         _posted?.TryGetValue($"v:{column.Name}", out var typed) == true ? typed.Contains(choice.Value) : column.Has(stored, choice);
 
+    // Checkboxes and free text get the whole row; numbers and pick-lists sit side by side
+    private static bool IsWide(AdminColumn column) => column.Flags || (!column.IsNumber && column.Choices.Count == 0);
+
     private RenderFragment Input(AdminColumn column, object? stored) =>
-    @<div class="field admin-field @(column.Flags || (!column.IsInteger && !column.IsReal && column.Choices.Count == 0) ? "wide" : null)">
+    @<div class="field admin-field @(IsWide(column) ? "wide" : null)">
         <span class="field-label">
             @column.Name
-            <span class="admin-type">@column.Type@(column.PrimaryKey ? " · key" : "")@(column.NotNull ? " · required" : "")@(column.References is { } to ? $" · → {to}" : "")</span>
+            <span class="admin-type">@column.Details</span>
         </span>
         @if (column.IsBlob)
         {
@@ -175,7 +174,7 @@
                 }
             </select>
         }
-        else if (column.IsInteger || column.IsReal)
+        else if (column.IsNumber)
         {
             <input class="filter" name="v:@column.Name" value="@Shown(column, stored)" inputmode="@(column.IsInteger ? "numeric" : "decimal")"
                    placeholder="@(RowID is null && (column.HasDefault || column.PrimaryKey) ? "Leave blank for the default" : null)" />

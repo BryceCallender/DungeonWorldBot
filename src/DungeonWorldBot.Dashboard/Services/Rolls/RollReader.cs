@@ -1,6 +1,7 @@
-using DungeonWorldBot.Dashboard.Models.Rolls;
 using DungeonWorldBot.Dashboard.Helpers;
+using DungeonWorldBot.Dashboard.Models.Rolls;
 using DungeonWorldBot.Dashboard.Services.Encounters;
+using DungeonWorldBot.Dashboard.Services.Shared;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Rolls;
@@ -269,7 +270,7 @@ public class RollReader(DungeonWorldContext context, IRollStatsService rollStats
                 .Where(a => a.At >= from && a.At <= to)
                 .ToList();
         }
-        catch (SqliteException e) when (e.Message.Contains("no such table") || e.Message.Contains("no such column"))
+        catch (SqliteException e) when (e.IsMissingSchema())
         {
             return [];
         }
@@ -282,7 +283,7 @@ public class RollReader(DungeonWorldContext context, IRollStatsService rollStats
         {
             return await context.Sessions.AsNoTracking().OrderBy(s => s.ID).ToListAsync();
         }
-        catch (SqliteException e) when (e.Message.Contains("no such table"))
+        catch (SqliteException e) when (e.IsMissingTable())
         {
             return [];
         }

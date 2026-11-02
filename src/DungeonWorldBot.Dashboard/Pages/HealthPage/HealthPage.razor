@@ -20,7 +20,7 @@
     </Actions>
 </PageHeader>
 
-@if (!_canRun)
+@if (!Viewer.CanAdminister)
 {
     <p class="empty">Only admins can see how the bot is doing.</p>
 }
@@ -28,10 +28,11 @@ else if (_report is { } report)
 {
     var bot = report.Bot;
     var commands = bot?.Commands ?? [];
+    var errors = report.Errors;
 
     <div class="tiles">
         <StatTile Label="Bot" Note="@BotNote(report)">
-            <span class="health-state @report.BotState.ToString().ToLowerInvariant()"><i></i>@StateName(report.BotState)</span>
+            <span class="health-state @report.BotState.ToString().ToLowerInvariant()"><i></i>@report.BotState</span>
         </StatTile>
         <StatTile Label="Up for" Note="@(bot is null ? null : $"since {bot.StartedAt.LocalDateTime:ddd d MMM, h:mm tt}")">
             @if (bot is not null && report.BotState == BotState.Online)
@@ -44,7 +45,7 @@ else if (_report is { } report)
             }
         </StatTile>
         <StatTile Label="Commands" Note="@($"since it started, {commands.Sum(c => c.Failed)} failed")">@commands.Sum(c => c.Runs)</StatTile>
-        <StatTile Label="Errors" Note="bot + dashboard, latest kept">@report.Errors.Count</StatTile>
+        <StatTile Label="Errors" Note="bot + dashboard, latest kept">@errors.Count</StatTile>
         <StatTile Label="Bot memory" Note="@($"dashboard {Bytes(report.DashboardMemoryBytes)}")">@(bot is null ? "—" : Bytes(bot.MemoryBytes))</StatTile>
     </div>
 
@@ -117,15 +118,14 @@ else if (_report is { } report)
 
     <section class="desk-section">
         <h2>Recent errors</h2>
-        @{ var all = report.Errors; }
-        @if (all.Count == 0)
+        @if (errors.Count == 0)
         {
             <p class="empty">Nothing's gone wrong lately.</p>
         }
         else
         {
             <ul class="health-errors">
-                @foreach (var entry in all)
+                @foreach (var entry in errors)
                 {
                     <li class="card">
                         <div class="desk-line">
@@ -147,23 +147,13 @@ else if (_report is { } report)
 }
 
 @code {
-    private bool _canRun;
     private HealthReport? _report;
 
     protected override async Task OnInitializedAsync()
     {
-        _canRun = Viewer.CanAdminister;
-        if (_canRun)
+        if (Viewer.CanAdminister)
             _report = await Health.ReadAsync();
     }
-
-    private static string StateName(BotState state) => state switch
-    {
-        BotState.Online => "Online",
-        BotState.Stopped => "Stopped",
-        BotState.Down => "Down",
-        _ => "Unknown",
-    };
 
     private static string? BotNote(HealthReport report) => report.Bot switch
     {

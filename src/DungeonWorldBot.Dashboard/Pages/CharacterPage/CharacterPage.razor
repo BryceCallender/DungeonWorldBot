@@ -3,6 +3,7 @@
 @using Microsoft.AspNetCore.Components.Forms
 @using DungeonWorldBot.Features.Classes.Guides
 @using DungeonWorldBot.Features.Subclasses
+@using DungeonWorldBot.Rules
 @inject NavigationManager Navigation
 @inject PartyReader PartyReader
 @inject DashboardSettings Settings
@@ -150,6 +151,10 @@
     @if (c.Character.Transformations is { Count: > 0 })
     {
         <a href="@c.Url#shapes">Shapes</a>
+    }
+    @if (c.Character.Techniques is { Count: > 0 })
+    {
+        <a href="@c.Url#techniques">Techniques</a>
     }
     <a href="@c.Url#moves">Moves</a>
     <a href="@c.Url#commands">Commands</a>
@@ -354,6 +359,37 @@
                             {
                                 <div class="small"><strong>Moves (1 hold each):</strong><br>@ToHtml(form.Moves)</div>
                             }
+                        </details>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+
+    @* Changed with /technique in Discord, where the rules for tags and slots are checked *@
+    @if (c.Character.Techniques is { Count: > 0 } techniques)
+    {
+        <section class="card wide" id="techniques">
+            <h2>Techniques <span class="small">· @techniques.Count of @TechniqueRules.MaxTechniques(c.Character)</span></h2>
+            <ul class="moves">
+                @foreach (var technique in techniques.OrderByDescending(t => t.IsSignature).ThenBy(t => t.Name))
+                {
+                    <li>
+                        <details data-key="@technique.Name">
+                            <summary>
+                                <span class="move-name">
+                                    @technique.Name
+                                    @if (technique.IsSignature)
+                                    {
+                                        <span class="chip accent">Signature</span>
+                                    }
+                                    @foreach (var tag in TechniqueRules.TagsOf(technique.Tags))
+                                    {
+                                        <span class="chip">@tag</span>
+                                    }
+                                </span>
+                            </summary>
+                            <div class="small">@ToHtml(TechniqueRules.Describe(technique, c.Character))</div>
                         </details>
                     </li>
                 }

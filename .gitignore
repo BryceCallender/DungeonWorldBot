@@ -518,3 +518,10 @@ canvases.db-wal
 # Built from the dashboard's Scripts/ by npm run build
 src/DungeonWorldBot.Dashboard/wwwroot/canvas.js
 src/DungeonWorldBot.Dashboard/wwwroot/canvas.js.map
+
+# Claude Code: installed skills, worktrees and launch settings, kept local
+.claude/
+
+# The bot's status for the dashboard's health page, rewritten every 30 seconds
+*.status.json
+*.status.json.tmp
