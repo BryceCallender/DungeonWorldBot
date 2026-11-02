@@ -752,6 +752,16 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 .roll-toast.revealed.nat2 { animation: roll-shudder .5s; }
 .roll-toast.leaving { animation: roll-out .3s ease-in forwards; }
 
+/* Drama the bot headlined in Discord: Last Breath dims while Death decides, then lands gold, purple or grey; a
+   comeback lands in orange */
+.roll-toast.lastbreathlived { --roll: var(--divine); }
+.roll-toast.lastbreathbargain { --roll: #8b5cf6; }
+.roll-toast.lastbreathdied { --roll: var(--muted); }
+.roll-toast.comeback { --roll: var(--damage); }
+.roll-toast.drama:not(.revealed)[class*="lastbreath"] { animation: roll-in .35s cubic-bezier(.2, .9, .3, 1.2), roll-dim 1.2s ease-in-out .35s infinite alternate; }
+.roll-toast.revealed.drama { box-shadow: 0 0 0 1px var(--roll), 0 0 28px -4px var(--roll); }
+.roll-toast.revealed.lastbreathdied { filter: grayscale(1); box-shadow: 0 10px 30px -10px rgb(0 0 0 / .5); }
+
 .roll-who { display: flex; align-items: center; gap: .6rem; min-width: 0; }
 .roll-avatar {
     flex: none;
@@ -817,7 +827,8 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 }
 .revealed .roll-result { opacity: 1; transform: none; }
 .roll-total { font-size: 1.6rem; font-weight: 800; color: var(--roll); font-variant-numeric: tabular-nums; }
-.roll-outcome { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--roll); }
+/* A long headline ("Death offers a bargain") wraps under the total, lined up with it */
+.roll-outcome { font-size: .72rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--roll); text-align: right; text-wrap: balance; }
 
 /* A nat 12's sparks fly out from the dice */
 .roll-sparks { position: absolute; left: 3.2rem; top: 70%; pointer-events: none; }
@@ -847,6 +858,9 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 @keyframes die-land {
     from { transform: scale(1.25); }
 }
+@keyframes roll-dim {
+    to { filter: brightness(.55); }
+}
 @keyframes roll-shudder {
     20%, 60% { transform: translateX(-5px); }
     40%, 80% { transform: translateX(5px); }
@@ -862,7 +876,7 @@ ul.moves li.owned { box-shadow: inset 3px 0 0 var(--good); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .roll-toast, .roll-toast.leaving, .roll-toast.revealed.nat2, .die.landed { animation: none; }
+    .roll-toast, .roll-toast.leaving, .roll-toast.revealed.nat2, .roll-toast.drama, .die.landed { animation: none; }
     .roll-result { transition: none; }
 }
 

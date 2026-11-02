@@ -19,7 +19,16 @@ namespace DungeonWorldBot.Features.Encounters;
 /// <param name="Summary">A few words for the board to show over the target, e.g. "Miss" or "-4".</param>
 /// <param name="Roller">The player whose 2d6 roll it was, to count in their roll stats. Null for an enemy's attack.</param>
 /// <param name="Dice">The 2d6 roll, for roll stats.</param>
-public record ProcessedMove(Embed Embed, EncounterAction Action, string Summary, Snowflake? Roller = null, DiceResult? Dice = null);
+/// <param name="Outcome">What the roll counts as, after anything (like Tactics) that changes it, for its drama.</param>
+/// <param name="RollerHealth">The player's character's health after the move, for its drama.</param>
+public record ProcessedMove(
+    Embed Embed,
+    EncounterAction Action,
+    string Summary,
+    Snowflake? Roller = null,
+    DiceResult? Dice = null,
+    MoveOutcome? Outcome = null,
+    Health? RollerHealth = null);
 
 /// <param name="Error">Why it couldn't be made, or null when it was.</param>
 public record ProcessedMoveResult(string? Error, ProcessedMove? Move)
@@ -104,7 +113,9 @@ public class MoveRequestProcessor(
             action,
             summary,
             character.ID,
-            resolution.Roll.Dice));
+            resolution.Roll.Dice,
+            resolution.Outcome,
+            character.Health));
     }
 
     /// <summary>

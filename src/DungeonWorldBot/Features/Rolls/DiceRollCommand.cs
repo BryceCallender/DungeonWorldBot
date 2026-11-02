@@ -25,7 +25,8 @@ public class DiceRollCommand(
     ICharacterService characterService,
     IDiceRoller diceRoller,
     IRollStatsService rollStatsService,
-    IDamageService damageService)
+    IDamageService damageService,
+    RollReveal rollReveal)
     : DungeonWorldCommandBase(context, feedbackService)
 {
     
@@ -66,7 +67,7 @@ public class DiceRollCommand(
         if (!diceRoller.TryRoll(DiceHelper.AddModifier(value, bonuses.Sum(b => b.Amount)), out var result))
             return await ReplyWithErrorAsync($"`{value}` is not a valid dice roll.");
 
-        return await ReplyWithRoll(result, statType.ToString(), RolledWith(bonuses));
+        return await ReplyWithRoll(result, statType.ToString(), RolledWith(bonuses), roller: character, what: $"+{statType.ToString().ToUpper()}");
     }
     
     [Command("damage")]
@@ -102,7 +103,7 @@ public class DiceRollCommand(
         var details = (gear.Bonus != 0 ? $"\n**{result.Value + gear.Bonus}** damage" : string.Empty)
                       + string.Concat(gear.Notes.Select(n => $"\n{n}"));
 
-        return await ReplyWithRoll(result, "Damage", new EmbedField("Rolled with", string.Join(", ", parts)), details);
+        return await ReplyWithRoll(result, "Damage", new EmbedField("Rolled with", string.Join(", ", parts)), details, character, "damage");
     }
 
     private async Task<IResult> ReplyWithRoll(DiceResult roll)
@@ -112,7 +113,10 @@ public class DiceRollCommand(
 
     /// <param name="rolledWith">What went into the roll, shown above the outcome.</param>
     /// <param name="details">Extra lines under the dice, like what gear did.</param>
-    private async Task<IResult> ReplyWithRoll(DiceResult roll, string? rollDescription, IEmbedField? rolledWith = null, string? details = null)
+    /// <param name="roller">Their character, when the roll was made as one.</param>
+    /// <param name="what">What they're rolling, for the teaser when the roll's dramatic.</param>
+    private async Task<IResult> ReplyWithRoll(DiceResult roll, string? rollDescription, IEmbedField? rolledWith = null, string? details = null,
+        Character? roller = null, string? what = null)
     {
         var outcome = MoveRoller.OutcomeOf(roll);
 
@@ -129,7 +133,11 @@ public class DiceRollCommand(
             Colour: outcome is { } o ? MoveRoller.ColorFor(o) : _feedbackService.Theme.Success
         );
     
-        var reply = await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);
+        var drama = _context.TryGetUserID(out var rolledBy) ? await rollReveal.DramaOfAsync(rolledBy, roll, move: null, health: roller?.Health) : null;
+        // Only looked up when there's a teaser to name them in
+        var who = roller?.Name ?? (drama is null ? null : (await characterService.GetCharacterFromUserAsync(rolledBy))?.Name) ?? "Someone";
+        var reply = await rollReveal.SendAsync(embed, drama, who, what,
+            e => _feedbackService.SendContextualEmbedAsync(e, ct: CancellationToken), CancellationToken);
         if (reply.IsSuccess && _context.TryGetUserID(out var userID) && _context.TryGetChannelID(out var channelID))
             await rollStatsService.RecordAsync(reply.Entity.ID, channelID, userID, roll, RollLabel.Of(embed));
 

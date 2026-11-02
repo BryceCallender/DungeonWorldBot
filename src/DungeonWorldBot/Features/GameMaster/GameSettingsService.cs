@@ -24,6 +24,7 @@ public class GameSettingsService(IOptions<BotSettings>? settings = null, string?
         // Each level gives 1 stat point unless the DM says otherwise (the Dungeon World rule)
         public int StatPointsPerLevel { get; set; } = 1;
         public Dictionary<int, int> StatPointsAtLevel { get; set; } = new();
+        public bool DramaticRolls { get; set; } = true;
     }
 
     public int StatPointsForLevel(int level)
@@ -52,6 +53,10 @@ public class GameSettingsService(IOptions<BotSettings>? settings = null, string?
         else
             s.StatPointsAtLevel[level] = points;
     });
+
+    public bool DramaticRolls => Load().DramaticRolls;
+
+    public Task SetDramaticRollsAsync(bool on) => UpdateAsync(s => s.DramaticRolls = on);
 
     private Settings Load()
     {

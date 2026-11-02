@@ -193,4 +193,38 @@ public partial class DmCommand : CommandGroup
             return await ReplyWithLevelPointsAsync("Stat Points Updated!");
         }
     }
+
+    [Group("rolls")]
+    public class RollsCommand(
+        ICommandContext context,
+        FeedbackService feedbackService,
+        ICharacterService characterService,
+        IGameMasterService gameMaster,
+        ILevelingService leveling,
+        IGameSettingsService settings)
+        : CharacterCommandBase(context, feedbackService, characterService, gameMaster, leveling, settings)
+    {
+        [Command("drama")]
+        [Description("Turn the dramatic reveal for big rolls (double sixes, snake eyes, Last Breath) on or off")]
+        public async Task<IResult> SetDramaAsync(
+            [Description("On to pause and land big rolls with a headline, off for quick rolls")]
+            bool on)
+        {
+            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
+                return await ReplyNotGameMasterAsync();
+
+            await _settings.SetDramaticRollsAsync(on);
+
+            return await _feedbackService.SendContextualEmbedAsync(
+                new Embed(
+                    Title: on ? "🎭 Dramatic Rolls On" : "Dramatic Rolls Off",
+                    Description: on
+                        ? "Double sixes, snake eyes, Last Breath, comebacks and misses at low HP now land a moment late, with a headline."
+                        : "Every roll lands straight away.",
+                    Colour: _feedbackService.Theme.Primary
+                ),
+                ct: CancellationToken
+            );
+        }
+    }
 }

@@ -55,6 +55,9 @@ public static class RollFeedEndpoints
                     var dice = MoveDice.Of(r);
                     // The streak as of this roll, counting back through theirs before it
                     var streak = RollStreak.Of(newest.Where(o => o.UserID == r.UserID && o.MessageID.Value <= r.MessageID.Value));
+                    var before = RollStreak.Of(newest.Where(o => o.UserID == r.UserID && o.MessageID.Value < r.MessageID.Value));
+                    // Called the same as in Discord, but without their HP, which the feed doesn't know as it was then
+                    var drama = DramaticRolls.For(dice, r.Move, dice.Outcome, before is { Hot: false } cold ? cold.Length : 0, pick: _ => 0);
                     return new FeedRoll(
                         r.MessageID.Value.ToString(),
                         player == settings.DungeonMasterID ? "The DM" : characters.GetValueOrDefault(player.ToString())?.Name ?? "Someone",
@@ -77,7 +80,9 @@ public static class RollFeedEndpoints
                         // Their dice in their class's color
                         characters.GetValueOrDefault(player.ToString()) is { } character
                             ? ClassSheetLibrary.For(character.Character.Class.Type)?.Color
-                            : null);
+                            : null,
+                        drama?.Kind.ToString().ToLowerInvariant(),
+                        drama?.Headline);
                 })
                 .ToList());
         });

@@ -83,6 +83,16 @@ public class RollStatsService(DungeonWorldContext dungeonWorldContext, IOptions<
         await dungeonWorldContext.SaveChangesAsync();
     }
 
+    public async Task<int> MissStreakAsync(Snowflake userID)
+    {
+        // SQLite can't sort the message IDs, so they're put in order here
+        var rolls = await dungeonWorldContext.Rolls.AsNoTracking().Where(r => r.UserID == userID).ToListAsync();
+        return rolls
+            .OrderByDescending(r => r.MessageID.Value)
+            .TakeWhile(r => MoveDice.Of(r).Outcome == MoveOutcome.Miss)
+            .Count();
+    }
+
     public async Task<List<PlayerRollStats>> GetStatsAsync()
     {
         // Every roll is recorded with its channel, but only game chat rolls count

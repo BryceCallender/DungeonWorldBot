@@ -21,4 +21,12 @@ public interface IGameSettingsService
     Task SetDefaultStatPointsAsync(int points);
 
     Task SetStatPointsForLevelAsync(int level, int points);
+
+    /// <summary>
+    /// Whether big rolls (double sixes, snake eyes, Last Breath and the like) land a moment late with a headline. On
+    /// unless the DM turns it off for a quicker game.
+    /// </summary>
+    bool DramaticRolls { get; }
+
+    Task SetDramaticRollsAsync(bool on);
 }

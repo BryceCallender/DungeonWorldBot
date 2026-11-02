@@ -19,7 +19,8 @@ public class DiceRollResponder(
     IDiscordRestChannelAPI channelAPI,
     IDiceRoller diceRoller,
     ICharacterService characterService,
-    IRollStatsService rollStatsService)
+    IRollStatsService rollStatsService,
+    RollReveal rollReveal)
     : IResponder<IMessageCreate>
 {
     private static readonly Color RollColor = Color.Fuchsia;
@@ -41,12 +42,25 @@ public class DiceRollResponder(
         if (embed is null)
             return Result.FromSuccess();
 
-        var reply = await channelAPI.CreateMessageAsync(
-            gatewayEvent.ChannelID,
-            embeds: new[] { embed },
-            messageReference: new MessageReference(MessageID: gatewayEvent.ID, FailIfNotExists: false),
-            allowedMentions: new AllowedMentions(MentionRepliedUser: false),
-            ct: ct);
+        // A pick from a list isn't a move, however it lands
+        var author = gatewayEvent.Author;
+        var character = roll is not null && request.Options is null ? await characterService.GetCharacterFromUserAsync(author.ID) : null;
+        var drama = roll is not null && request.Options is null
+            ? await rollReveal.DramaOfAsync(author.ID, roll, RollLabel.Of(embed).Move, health: character?.Health)
+            : null;
+
+        var reply = await rollReveal.SendAsync(
+            embed,
+            drama,
+            character?.Name ?? author.GlobalName.OrDefault(null) ?? author.Username,
+            request.Label,
+            e => channelAPI.CreateMessageAsync(
+                gatewayEvent.ChannelID,
+                embeds: new[] { e },
+                messageReference: new MessageReference(MessageID: gatewayEvent.ID, FailIfNotExists: false),
+                allowedMentions: new AllowedMentions(MentionRepliedUser: false),
+                ct: ct),
+            ct);
 
         if (!reply.IsSuccess)
             return Result.FromError(reply);

@@ -48,6 +48,9 @@ public interface IRollStatsService
     /// <param name="reason">Why it was changed.</param>
     Task ChangeOutcomeAsync(Snowflake messageID, MoveOutcome? outcome, string reason, Snowflake changedBy);
 
+    /// <returns>How many misses in a row someone's latest rolls were, wherever they rolled them.</returns>
+    Task<int> MissStreakAsync(Snowflake userID);
+
     /// <returns>Everyone's stats from rolls in the game chat, most rolls first.</returns>
     Task<List<PlayerRollStats>> GetStatsAsync();
 }

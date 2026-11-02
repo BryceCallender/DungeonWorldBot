@@ -29,8 +29,9 @@ public class MoveCommand(
     IRollStatsService rollStatsService,
     IEncounterService encounterService,
     MoveResolver moveResolver,
-    IResourceService resourceService)
-    : MoveCommandBase(context, feedbackService, characterService, rollStatsService, encounterService, moveResolver, resourceService)
+    IResourceService resourceService,
+    RollReveal rollReveal)
+    : MoveCommandBase(context, feedbackService, characterService, rollStatsService, encounterService, moveResolver, resourceService, rollReveal)
 {
     private const string TargetDescription = "The enemy you're attacking, to take your damage off it on a hit";
 

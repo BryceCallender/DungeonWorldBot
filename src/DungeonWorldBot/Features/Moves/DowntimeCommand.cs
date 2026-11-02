@@ -27,8 +27,9 @@ public class DowntimeCommand(
     IEncounterService encounterService,
     MoveResolver moveResolver,
     IResourceService resourceService,
-    ISpecialMoveService specialMoveService)
-    : MoveCommandBase(context, feedbackService, characterService, rollStatsService, encounterService, moveResolver, resourceService)
+    ISpecialMoveService specialMoveService,
+    RollReveal rollReveal)
+    : MoveCommandBase(context, feedbackService, characterService, rollStatsService, encounterService, moveResolver, resourceService, rollReveal)
 {
     [Command("make-camp")]
     [Description("Settle in to rest: eat a ration, and heal half your max HP if you sleep a few hours")]

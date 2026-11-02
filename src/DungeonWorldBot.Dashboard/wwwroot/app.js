@@ -733,7 +733,9 @@ document.addEventListener('pointerout', e => {
 
         const nat12 = r.first === 6 && r.second === 6;
         const nat2 = r.first === 1 && r.second === 1;
-        const toast = el('div', `roll-toast ${r.outcome}${nat12 ? ' nat12' : ''}${nat2 ? ' nat2' : ''}${r.mine ? ' mine' : ''}`);
+        // Last Breath, a comeback and the like, as the bot headlined them in Discord
+        const lastBreath = r.drama?.startsWith('lastbreath');
+        const toast = el('div', `roll-toast ${r.outcome}${nat12 ? ' nat12' : ''}${nat2 ? ' nat2' : ''}${r.drama ? ` drama ${r.drama}` : ''}${r.mine ? ' mine' : ''}`);
         // Their dice in their class's color, as on their party card
         if (r.color) {
             toast.classList.add('classed');
@@ -765,7 +767,9 @@ document.addEventListener('pointerout', e => {
         if (modifier) dice.append(el('span', 'roll-mod', modifier > 0 ? `+${modifier}` : `−${-modifier}`));
         const result = el('div', 'roll-result');
         result.append(el('span', 'roll-total', r.total));
-        result.append(el('span', 'roll-outcome', nat12 ? 'Natural 12!' : nat2 ? 'Snake eyes' : outcomes[r.outcome]));
+        // Double sixes and snake eyes say so themselves; other drama gets the bot's headline, without its emoji
+        const headline = r.headline?.replace(/^\P{L}+|\P{L}+$/gu, '');
+        result.append(el('span', 'roll-outcome', nat12 ? 'Natural 12!' : nat2 ? 'Snake eyes' : headline || outcomes[r.outcome]));
         dice.append(result);
 
         toast.append(who, dice);
@@ -779,9 +783,11 @@ document.addEventListener('pointerout', e => {
         const shown = feed.querySelectorAll('.roll-toast:not(.leaving)');
         for (let i = 0; i < shown.length - maxShown; i++) dismiss(shown[i]);
 
-        await Promise.all([roll(first, r.first, 750), roll(second, r.second, 950)]);
+        // Death takes its time deciding
+        const [one, two] = lastBreath ? [2100, 2600] : [750, 950];
+        await Promise.all([roll(first, r.first, one), roll(second, r.second, two)]);
         toast.classList.add('revealed');
-        if (nat12) burst(toast);
+        if (nat12 || r.drama === 'lastbreathlived' || r.drama === 'comeback') burst(toast);
         expireLater(toast);
     }
 

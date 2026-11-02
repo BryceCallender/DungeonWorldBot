@@ -15,7 +15,8 @@ using Remora.Results;
 namespace DungeonWorldBot.Features.Moves;
 
 /// <summary>
-/// What /move and /downtime share: rolling a move, spending Preparation on it, and recording the roll.
+/// What /move and /downtime share: rolling a move, spending Preparation on it, posting it (slowly when it's dramatic), and
+/// recording the roll.
 /// </summary>
 public abstract class MoveCommandBase(
     ICommandContext context,
@@ -24,7 +25,8 @@ public abstract class MoveCommandBase(
     IRollStatsService rollStatsService,
     IEncounterService encounterService,
     MoveResolver moveResolver,
-    IResourceService resourceService)
+    IResourceService resourceService,
+    RollReveal rollReveal)
     : DungeonWorldCommandBase(context, feedbackService)
 {
     protected const string BonusDescription = "Any +forward, ongoing bonus, or penalty to add to the roll";
@@ -86,7 +88,14 @@ public abstract class MoveCommandBase(
             move,
             new MoveInput(modifierLabel, modifier, bonus, stat, kind, target, extraDamage, prepared));
 
-        var reply = await _feedbackService.SendContextualEmbedAsync(resolution.Embed, ct: CancellationToken);
+        var drama = await rollReveal.DramaOfAsync(character.ID, resolution.Roll.Dice, move.Name, resolution.Outcome, character.Health);
+        var reply = await rollReveal.SendAsync(
+            resolution.Embed,
+            drama,
+            character.Name,
+            move.Name,
+            embed => _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken),
+            CancellationToken);
 
         if (!reply.IsSuccess)
             return reply;

@@ -51,7 +51,8 @@ public static class RollOutcomeChange
         var rolled = fields.FirstOrDefault(f => f.Name == FieldName) is { } change ? RolledOf(change.Value) ?? shown : shown;
         var move = MoveOf(embed);
 
-        fields.RemoveAll(f => f.Name is FieldName or OptionsField);
+        // A headline like "Death takes them" stops being true once the outcome changes; double sixes are still double sixes
+        fields.RemoveAll(f => f.Name is FieldName or OptionsField || DramaticRolls.DependsOnOutcome(f.Name));
         var index = fields.FindIndex(f => OutcomeNamed(f.Name) is not null);
         fields[index] = new EmbedField(MoveRoller.Describe(outcome), move?.Describe(outcome) ?? MoveRoller.GeneralMeaning(outcome));
 

@@ -122,7 +122,14 @@ public class MoveRequestWorker(IServiceScopeFactory scopes, ILogger<MoveRequestW
         if (rollStats.GameChatChannelID is not { } gameChat)
             return;
 
-        var sent = await services.GetRequiredService<IDiscordRestChannelAPI>().CreateMessageAsync(gameChat, embeds: new[] { move.Embed }, ct: ct);
+        // Dramatic rolls land a moment late in game chat too, like they do from Discord
+        var reveal = services.GetRequiredService<RollReveal>();
+        var drama = move is { Roller: { } who, Dice: { } rolled }
+            ? await reveal.DramaOfAsync(who, rolled, move.Action.Action, move.Outcome, move.RollerHealth)
+            : null;
+        var channelAPI = services.GetRequiredService<IDiscordRestChannelAPI>();
+        var sent = await reveal.SendAsync(move.Embed, drama, move.Action.Actor, move.Action.Action,
+            e => channelAPI.CreateMessageAsync(gameChat, embeds: new[] { e }, ct: ct), ct);
         if (!sent.IsSuccess)
         {
             logger.LogWarning("Couldn't tell game chat about a move made on the dashboard: {Reason}", sent.Error.Message);
