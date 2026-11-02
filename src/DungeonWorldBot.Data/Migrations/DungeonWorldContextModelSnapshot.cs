@@ -150,6 +150,37 @@ namespace DungeonWorldBot.Data.Migrations
                     b.ToTable("Characters");
                 });
 
+            modelBuilder.Entity("DungeonWorldBot.Data.Entities.CharacterEvent", b =>
+                {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTimeOffset>("At")
+                        .HasColumnType("TEXT");
+
+                    b.Property<ulong>("CharacterID")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int?>("From")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Subject")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int?>("To")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("ID");
+
+                    b.HasIndex("CharacterID");
+
+                    b.ToTable("CharacterEvents");
+                });
+
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.CharacterPortrait", b =>
                 {
                     b.Property<ulong>("CharacterID")
@@ -869,6 +900,15 @@ namespace DungeonWorldBot.Data.Migrations
                         .HasForeignKey("LocationID");
 
                     b.Navigation("Location");
+                });
+
+            modelBuilder.Entity("DungeonWorldBot.Data.Entities.CharacterEvent", b =>
+                {
+                    b.HasOne("DungeonWorldBot.Data.Entities.Character", null)
+                        .WithMany()
+                        .HasForeignKey("CharacterID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.CharacterPortrait", b =>
