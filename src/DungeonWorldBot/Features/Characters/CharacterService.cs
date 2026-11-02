@@ -22,6 +22,7 @@ public class CharacterService(DungeonWorldContext dungeonWorldContext) : ICharac
             .Include(c => c.Resources)
             .Include(c => c.ArmorBonuses)
             .Include(c => c.Transformations)
+            .Include(c => c.Techniques)
             .Include(c => c.Goals)
             .Include(c => c.Notes)
             .Include(c => c.Inventory)

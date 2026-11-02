@@ -20,6 +20,7 @@ namespace DungeonWorldBot.Features.Moves;
 /// <param name="Target">The enemy to take the damage off, if the move rolls damage and hits.</param>
 /// <param name="ExtraDamage">Flat damage added to the damage roll, if the move rolls damage.</param>
 /// <param name="Prepared">Whether they spent a Preparation from Bolster for +1. Spend it before resolving.</param>
+/// <param name="Damage">The move's own damage, rolled on a hit in place of the character's.</param>
 public record MoveInput(
     string? ModifierLabel,
     int Modifier,
@@ -28,7 +29,8 @@ public record MoveInput(
     RollKind? Kind = null,
     string? Target = null,
     int ExtraDamage = 0,
-    bool Prepared = false)
+    bool Prepared = false,
+    MoveDamage? Damage = null)
 {
     /// <summary>
     /// A move rolled with one of the character's stats, or null if they don't have it.
@@ -38,6 +40,17 @@ public record MoveInput(
             ? new MoveInput(stat.ToString().ToUpper(), rolled.Modifier, bonus, stat, Target: target, ExtraDamage: extraDamage)
             : null;
 }
+
+/// <summary>
+/// Damage a move deals with its own dice rather than the character's, like a Channeler's Technique. Gear and subclass
+/// damage bonuses don't add to it.
+/// </summary>
+/// <param name="Dice">e.g. "1d8".</param>
+/// <param name="Source">Where the damage comes from, e.g. "Blast".</param>
+/// <param name="Piercing">Armor it ignores.</param>
+/// <param name="RiskDice">d4s added to it that also hurt the character (ignoring armor) when they show 1 or 2, like
+/// Thread the Needle.</param>
+public record MoveDamage(string Dice, string Source, int Piercing = 0, int RiskDice = 0);
 
 /// <summary>
 /// A move a character made: what it rolled, the embed telling the table, and what its damage did.
@@ -73,6 +86,9 @@ public record MoveResolution(Character Character, MoveDefinition Move, Embed Emb
 [Scoped]
 public class MoveResolver(IDiceRoller diceRoller, IDamageService damageService, IEncounterService encounterService)
 {
+    private const string RiskDie = "d4";
+    private const int RiskBacklash = 2;
+
     public async Task<MoveResolution> ResolveAsync(Character character, MoveDefinition move, MoveInput input)
     {
         var debility = input.Stat is { } rolled ? DebilityRules.RollPenalty(character, rolled) : null;
@@ -117,7 +133,9 @@ public class MoveResolver(IDiceRoller diceRoller, IDamageService damageService, 
         {
             if (!isHit)
                 fields.Add(new EmbedField($"{TacticRules.Current(character)!.Name} Tactics", "Your damage lands even on a miss."));
-            dealt = await RollDamageAsync(character, move.Name, input.Target, input.ExtraDamage);
+            dealt = input.Damage is { } own
+                ? await RollOwnDamageAsync(character, own, input.Target, input.ExtraDamage)
+                : await RollDamageAsync(character, move.Name, input.Target, input.ExtraDamage);
             fields.AddRange(dealt.Fields);
         }
 
@@ -145,9 +163,45 @@ public class MoveResolver(IDiceRoller diceRoller, IDamageService damageService, 
         if (string.IsNullOrWhiteSpace(target))
             return new DamageDealt(fields, Result: $"💥 {damage.Total} damage");
 
-        var hit = await EnemyHit.ApplyAsync(encounterService, target, damage.Total);
+        return await HitTargetAsync(fields, target, damage.Total);
+    }
+
+    private async Task<DamageDealt> RollOwnDamageAsync(Character character, MoveDamage damage, string? target, int extra)
+    {
+        var expression = DiceHelper.AddModifier(damage.Dice, extra);
+        if (!diceRoller.TryRoll(expression, out var dice))
+            return new DamageDealt([new EmbedField("Damage", $"Couldn't roll `{expression}`.")]);
+
+        var risk = Enumerable.Range(0, damage.RiskDice).Select(_ => diceRoller.Roll($"1{RiskDie}").Value).ToList();
+        var total = Math.Max(0, dice.Value) + risk.Sum();
+
+        var rolled = $"{damage.Source} {expression} → {dice.Value}";
+        if (risk.Count > 0)
+            rolled += $" + {risk.Count}{RiskDie} → {string.Join(", ", risk)}";
+        if (damage.Piercing > 0)
+            rolled += $" · {damage.Piercing} piercing";
+
+        var fields = new List<IEmbedField> { new EmbedField("Damage", $"{rolled} = **{total}**") };
+
+        // Each risk die showing 1 or 2 hurts the character by what it shows
+        var backlash = risk.Where(r => r <= RiskBacklash).Sum();
+        if (backlash > 0)
+        {
+            var hurt = await damageService.TakeAsync(character, backlash, DamageType.True);
+            fields.Add(new EmbedField("Backlash", hurt.Describe(character)));
+        }
+
+        if (string.IsNullOrWhiteSpace(target))
+            return new DamageDealt(fields, Result: $"💥 {total} damage");
+
+        return await HitTargetAsync(fields, target, total, damage.Piercing);
+    }
+
+    private async Task<DamageDealt> HitTargetAsync(List<IEmbedField> fields, string target, int total, int piercing = 0)
+    {
+        var hit = await EnemyHit.ApplyAsync(encounterService, target, total, piercing);
         fields.Add(hit.Field);
-        return new DamageDealt(fields, hit.Target, hit.Result ?? $"💥 {damage.Total} damage", hit.Taken);
+        return new DamageDealt(fields, hit.Target, hit.Result ?? $"💥 {total} damage", hit.Taken);
     }
 
     private static string FormatSigned(int value) => value >= 0 ? $"+{value}" : value.ToString();

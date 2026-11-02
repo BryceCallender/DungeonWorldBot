@@ -20,10 +20,9 @@ public static class AdminEndpoints
             if (AdminFormat.Parse(database) is not { } which)
                 return Results.NotFound();
 
-            var url = "/" + AdminFormat.TableUrl(which, table);
             return await desk.DeleteAsync(which, table, rowID) is { } error
                 ? Results.LocalRedirect($"/{AdminFormat.RowUrl(which, table, rowID)}?error={Uri.EscapeDataString(error)}")
-                : Results.LocalRedirect($"{url}?saved={Uri.EscapeDataString($"Deleted row {rowID}.")}");
+                : Results.LocalRedirect($"/{AdminFormat.TableUrl(which, table)}?saved={Uri.EscapeDataString($"Deleted row {rowID}.")}");
         });
 
         return group;

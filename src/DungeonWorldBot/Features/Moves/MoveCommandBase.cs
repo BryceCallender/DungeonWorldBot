@@ -7,6 +7,7 @@ using DungeonWorldBot.Features.Rolls;
 using DungeonWorldBot.Features.Subclasses;
 using DungeonWorldBot.Infrastructure;
 using DungeonWorldBot.Rules;
+using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Feedback.Services;
@@ -58,6 +59,8 @@ public abstract class MoveCommandBase(
     /// <param name="extraDamage">Flat damage added to the damage roll, if the move rolls damage.</param>
     /// <param name="ally">The player's character being helped or hindered, for the spotlight.</param>
     /// <param name="prepared">Whether they're spending a Preparation for +1.</param>
+    /// <param name="damage">The move's own damage, rolled on a hit in place of the character's.</param>
+    /// <param name="aftermath">What happens once the move's resolved, like a Technique's Barrier, as fields added to the end.</param>
     protected async Task<IResult> ReplyWithMoveAsync(
         Character character,
         MoveDefinition move,
@@ -69,7 +72,9 @@ public abstract class MoveCommandBase(
         string? target = null,
         int extraDamage = 0,
         string? ally = null,
-        bool prepared = false)
+        bool prepared = false,
+        MoveDamage? damage = null,
+        Func<MoveResolution, Task<IReadOnlyList<IEmbedField>>>? aftermath = null)
     {
         if (TacticRules.WhyCannotMake(character, move.Name) is { } forbidden)
             return await ReplyWithErrorAsync(forbidden);
@@ -86,7 +91,13 @@ public abstract class MoveCommandBase(
         var resolution = await moveResolver.ResolveAsync(
             character,
             move,
-            new MoveInput(modifierLabel, modifier, bonus, stat, kind, target, extraDamage, prepared));
+            new MoveInput(modifierLabel, modifier, bonus, stat, kind, target, extraDamage, prepared, damage));
+
+        if (aftermath is not null)
+        {
+            IReadOnlyList<IEmbedField> fields = [..resolution.Embed.Fields.Value, ..await aftermath(resolution)];
+            resolution = resolution with { Embed = resolution.Embed with { Fields = new(fields) } };
+        }
 
         var drama = await rollReveal.DramaOfAsync(character.ID, resolution.Roll.Dice, move.Name, resolution.Outcome, character.Health);
         var reply = await rollReveal.SendAsync(

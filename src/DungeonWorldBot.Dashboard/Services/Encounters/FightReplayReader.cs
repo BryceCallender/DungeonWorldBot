@@ -1,5 +1,6 @@
 using DungeonWorldBot.Dashboard.Models.Encounters;
 using DungeonWorldBot.Dashboard.Services.Party;
+using DungeonWorldBot.Dashboard.Services.Shared;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Classes;
@@ -26,7 +27,7 @@ public class FightReplayReader(DungeonWorldContext context, PartyReader party, P
                 .OrderByDescending(e => e.ID)
                 .FirstOrDefaultAsync();
         }
-        catch (SqliteException e) when (e.Message.Contains("no such table") || e.Message.Contains("no such column"))
+        catch (SqliteException e) when (e.IsMissingSchema())
         {
             return null;
         }
@@ -47,7 +48,7 @@ public class FightReplayReader(DungeonWorldContext context, PartyReader party, P
                 .GroupBy(a => a.Target!, StringComparer.OrdinalIgnoreCase)
                 .ToDictionary(g => g.Key, g => g.Sum(a => FightDamage.Of(a.Result)), StringComparer.OrdinalIgnoreCase);
         }
-        catch (SqliteException e) when (e.Message.Contains("no such table") || e.Message.Contains("no such column"))
+        catch (SqliteException e) when (e.IsMissingSchema())
         {
             return new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
         }
@@ -63,7 +64,7 @@ public class FightReplayReader(DungeonWorldContext context, PartyReader party, P
                 .Include(e => e.Actions)
                 .FirstOrDefaultAsync(e => e.ID == fightID);
         }
-        catch (SqliteException e) when (e.Message.Contains("no such table") || e.Message.Contains("no such column"))
+        catch (SqliteException e) when (e.IsMissingSchema())
         {
             return null;
         }

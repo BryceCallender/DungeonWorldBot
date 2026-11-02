@@ -13,7 +13,7 @@
 <div data-no-live>
     <PageHeader Title="Admin" Description="Change anything in the databases directly. There's no undo, and the bot's own rules don't check it, so take a backup before anything big." />
 
-    @if (!_canRun)
+    @if (!Viewer.CanAdminister)
     {
         <p class="empty">Only admins can change the databases.</p>
     }
@@ -109,19 +109,14 @@
     [SupplyParameterFromForm(FormName = "admin-sql")]
     private SqlForm? Query { get; set; }
 
-    private bool _canRun;
     private Dictionary<AdminDatabase, IReadOnlyList<AdminTable>> _tables = [];
     private AdminQueryResult? _result;
 
     protected override async Task OnInitializedAsync()
     {
         Query ??= new();
-        _canRun = Viewer.CanAdminister;
-        if (!_canRun)
-            return;
-
-        foreach (var database in Enum.GetValues<AdminDatabase>())
-            _tables[database] = await Desk.GetTablesAsync(database);
+        if (Viewer.CanAdminister)
+            await LoadTablesAsync();
     }
 
     private async Task RunAsync()
@@ -131,6 +126,11 @@
 
         _result = await Desk.RunAsync(Query!.Database, Query.Sql ?? "");
         // What it changed shows in the counts too
+        await LoadTablesAsync();
+    }
+
+    private async Task LoadTablesAsync()
+    {
         foreach (var database in Enum.GetValues<AdminDatabase>())
             _tables[database] = await Desk.GetTablesAsync(database);
     }

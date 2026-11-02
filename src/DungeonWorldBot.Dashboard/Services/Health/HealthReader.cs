@@ -3,6 +3,7 @@ using DungeonWorldBot.Dashboard.Models.Health;
 using DungeonWorldBot.Dashboard.Models.Shared;
 using DungeonWorldBot.Dashboard.Services.Rolls;
 using DungeonWorldBot.Infrastructure.Telemetry;
+using Microsoft.Data.Sqlite;
 
 namespace DungeonWorldBot.Dashboard.Services.Health;
 
@@ -57,7 +58,7 @@ public class HealthReader(
                 .Select(r => DateOnly.FromDateTime(r.MessageID.Timestamp.LocalDateTime))
                 .ToList();
         }
-        catch (Microsoft.Data.Sqlite.SqliteException)
+        catch (SqliteException)
         {
             // No database yet, or the bot hasn't made the rolls table
             days = [];
@@ -81,11 +82,14 @@ public class HealthReader(
     private static DatabaseFile File(string name, string path)
     {
         var database = new FileInfo(path);
-        var journal = new FileInfo(path + "-wal");
-        DateTimeOffset? lastWrite = !database.Exists
-            ? null
-            : journal.Exists && journal.LastWriteTimeUtc > database.LastWriteTimeUtc ? journal.LastWriteTimeUtc : database.LastWriteTimeUtc;
+        if (!database.Exists)
+            return new DatabaseFile(name, path, 0, 0, null);
 
-        return new DatabaseFile(name, path, database.Exists ? database.Length : 0, journal.Exists ? journal.Length : 0, lastWrite);
+        var journal = new FileInfo(path + "-wal");
+        if (!journal.Exists)
+            return new DatabaseFile(name, path, database.Length, 0, database.LastWriteTimeUtc);
+
+        var lastWrite = journal.LastWriteTimeUtc > database.LastWriteTimeUtc ? journal.LastWriteTimeUtc : database.LastWriteTimeUtc;
+        return new DatabaseFile(name, path, database.Length, journal.Length, lastWrite);
     }
 }

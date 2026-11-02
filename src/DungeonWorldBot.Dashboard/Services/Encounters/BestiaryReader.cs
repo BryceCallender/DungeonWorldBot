@@ -1,4 +1,5 @@
 using DungeonWorldBot.Dashboard.Models.Encounters;
+using DungeonWorldBot.Dashboard.Services.Shared;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using Microsoft.Data.Sqlite;
@@ -19,7 +20,7 @@ public class BestiaryReader(DungeonWorldContext context)
             actions = await context.EncounterActions.AsNoTracking().Where(a => a.Result != null).ToListAsync();
             templates = await context.MonsterTemplates.AsNoTracking().ToListAsync();
         }
-        catch (SqliteException e) when (e.Message.Contains("no such table") || e.Message.Contains("no such column"))
+        catch (SqliteException e) when (e.IsMissingSchema())
         {
             // The bot hasn't added fights to its database yet
             return new Bestiary([], null);

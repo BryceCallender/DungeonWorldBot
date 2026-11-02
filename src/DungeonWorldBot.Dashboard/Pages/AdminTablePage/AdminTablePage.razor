@@ -13,7 +13,7 @@
 <div data-no-live>
     <a class="back" href="admin">← Admin</a>
 
-    @if (!_canRun)
+    @if (!Viewer.CanAdminister)
     {
         <p class="empty">Only admins can change the databases.</p>
     }
@@ -60,8 +60,7 @@
                             @foreach (var column in rows.Columns)
                             {
                                 <th>
-                                    <a href="@Link(rows.Page, column.Name, string.Equals(Sort, column.Name, StringComparison.OrdinalIgnoreCase) && !Desc)"
-                                       title="@Describe(column)">
+                                    <a href="@Link(rows.Page, column.Name, IsSortedBy(column) && !Desc)" title="@column.Details">
                                         @column.Name@SortMark(column)
                                     </a>
                                 </th>
@@ -77,7 +76,7 @@
                                 {
                                     var column = rows.Columns[i];
                                     var value = row.Values[i];
-                                    <td class="@(value is null ? "admin-null" : null) @(column.IsInteger || column.IsReal ? "num" : null)" title="@(value is string ? value : null)">
+                                    <td class="@(value is null ? "admin-null" : null) @(column.IsNumber ? "num" : null)" title="@(value is string ? value : null)">
                                         @if (column.References is { } references && value is not null)
                                         {
                                             @* Every table the bot points at is keyed by an INTEGER ID, which is its rowid *@
@@ -126,15 +125,13 @@
     // Set by the row page once it's saved or deleted something
     [SupplyParameterFromQuery] public string? Saved { get; set; }
 
-    private bool _canRun;
     private AdminDatabase? _database;
     private AdminTableRows? _rows;
 
     protected override async Task OnParametersSetAsync()
     {
-        _canRun = Viewer.CanAdminister;
         _database = Parse(Database);
-        if (_canRun && _database is { } database)
+        if (Viewer.CanAdminister && _database is { } database)
             _rows = await Desk.GetPageAsync(database, Table, Q, Sort, Desc, PageNumber ?? 1);
     }
 
@@ -152,9 +149,12 @@
         return $"{TableUrl(_database!.Value, _rows!.Table)}{(query.Count == 0 ? "" : "?" + string.Join("&", query))}";
     }
 
-    private static string Describe(AdminColumn column) =>
-        string.Join(", ", new[] { column.Type, column.PrimaryKey ? "key" : null, column.NotNull ? "required" : null }.OfType<string>());
+    private bool IsSortedBy(AdminColumn column) => string.Equals(Sort, column.Name, StringComparison.OrdinalIgnoreCase);
 
-    private string? SortMark(AdminColumn column) =>
-        string.Equals(Sort, column.Name, StringComparison.OrdinalIgnoreCase) ? Desc ? " ↓" : " ↑" : null;
+    private string? SortMark(AdminColumn column)
+    {
+        if (!IsSortedBy(column))
+            return null;
+        return Desc ? " ↓" : " ↑";
+    }
 }

@@ -15,7 +15,8 @@ public record EnemyHit(IEmbedField Field, string? Target = null, string? Result 
     /// <summary>
     /// Takes the damage off the enemy. The roll stands either way; if there's no such enemy, the DM can apply it by hand.
     /// </summary>
-    public static async Task<EnemyHit> ApplyAsync(IEncounterService encounterService, string target, int damage)
+    /// <param name="piercing">Armor the damage ignores.</param>
+    public static async Task<EnemyHit> ApplyAsync(IEncounterService encounterService, string target, int damage, int piercing = 0)
     {
         if (await encounterService.FindEnemyAsync(target) is not { } enemy)
             return new EnemyHit(new EmbedField("Target", $"No enemy called {target.Trim()} is in the fight, so the damage wasn't applied."));
@@ -23,7 +24,7 @@ public record EnemyHit(IEmbedField Field, string? Target = null, string? Result 
         if (enemy.CurrentHP == 0)
             return new EnemyHit(new EmbedField("Target", $"{enemy.Name} is already defeated, so the damage wasn't applied."), enemy.Name);
 
-        var hit = await encounterService.DamageAsync(enemy, damage);
+        var hit = await encounterService.DamageAsync(enemy, damage, piercing: piercing);
         var armor = hit.Blocked > 0 ? $" (armor stopped {hit.Blocked})" : string.Empty;
         return new EnemyHit(
             new EmbedField($"🎯 {enemy.Name}", $"Took **{hit.Taken}**{armor} · {EnemySheet.Condition(enemy)}"),

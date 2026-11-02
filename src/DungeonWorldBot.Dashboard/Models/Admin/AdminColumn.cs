@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace DungeonWorldBot.Dashboard.Models.Admin;
 
 /// <summary>
@@ -24,10 +26,23 @@ public record AdminColumn(
         || Type.Contains("FLOA", StringComparison.OrdinalIgnoreCase)
         || Type.Contains("DOUB", StringComparison.OrdinalIgnoreCase);
 
+    public bool IsNumber => IsInteger || IsReal;
+
     /// <summary>
     /// Pictures and the like, which are shown by size and left as they are.
     /// </summary>
     public bool IsBlob => Type.Contains("BLOB", StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Its type and rules, e.g. "INTEGER · key · required" or "INTEGER · → Characters".
+    /// </summary>
+    public string Details => string.Join(" · ", new[]
+    {
+        Type,
+        PrimaryKey ? "key" : null,
+        NotNull ? "required" : null,
+        References is { } table ? $"→ {table}" : null,
+    }.OfType<string>());
 
     /// <summary>
     /// What a stored value means, e.g. "Ranger" for 9, or several joined for flags.
@@ -37,13 +52,13 @@ public record AdminColumn(
         if (value is null || Choices.Count == 0)
             return null;
 
-        var text = Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture);
+        var text = Convert.ToString(value, CultureInfo.InvariantCulture);
         if (!Flags)
             return Choices.FirstOrDefault(c => c.Value == text)?.Label;
 
-        if (!long.TryParse(text, out var bits))
+        if (!long.TryParse(text, out _))
             return null;
-        var names = Choices.Where(c => long.TryParse(c.Value, out var bit) && bit != 0 && (bits & bit) == bit).Select(c => c.Label).ToList();
+        var names = Choices.Where(c => Has(value, c)).Select(c => c.Label).ToList();
         return names.Count == 0 ? Choices.FirstOrDefault(c => c.Value == "0")?.Label : string.Join(", ", names);
     }
 
@@ -51,7 +66,7 @@ public record AdminColumn(
     /// Whether a flag is set in a stored value.
     /// </summary>
     public bool Has(object? value, AdminChoice choice) =>
-        long.TryParse(Convert.ToString(value, System.Globalization.CultureInfo.InvariantCulture), out var bits)
+        long.TryParse(Convert.ToString(value, CultureInfo.InvariantCulture), out var bits)
         && long.TryParse(choice.Value, out var bit)
         && bit != 0
         && (bits & bit) == bit;

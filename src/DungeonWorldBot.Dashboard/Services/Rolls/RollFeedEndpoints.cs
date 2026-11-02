@@ -1,4 +1,6 @@
+using DungeonWorldBot.Dashboard.Helpers;
 using DungeonWorldBot.Dashboard.Models.Auth;
+using DungeonWorldBot.Dashboard.Models.Party;
 using DungeonWorldBot.Dashboard.Models.Rolls;
 using DungeonWorldBot.Dashboard.Models.Shared;
 using DungeonWorldBot.Dashboard.Services.Party;
@@ -49,41 +51,44 @@ public static class RollFeedEndpoints
             var pictures = await portraits.UrlsAsync();
 
             return new RollFeed(latest, fresh
-                .Select(r =>
-                {
-                    var player = r.UserID.Value;
-                    var dice = MoveDice.Of(r);
-                    // The streak as of this roll, counting back through theirs before it
-                    var streak = RollStreak.Of(newest.Where(o => o.UserID == r.UserID && o.MessageID.Value <= r.MessageID.Value));
-                    var before = RollStreak.Of(newest.Where(o => o.UserID == r.UserID && o.MessageID.Value < r.MessageID.Value));
-                    // Called the same as in Discord, but without their HP, which the feed doesn't know as it was then
-                    var drama = DramaticRolls.For(dice, r.Move, dice.Outcome, before is { Hot: false } cold ? cold.Length : 0, pick: _ => 0);
-                    return new FeedRoll(
-                        r.MessageID.Value.ToString(),
-                        player == settings.DungeonMasterID ? "The DM" : characters.GetValueOrDefault(player.ToString())?.Name ?? "Someone",
-                        pictures.GetValueOrDefault(player),
-                        player == settings.DungeonMasterID,
-                        viewer.Is(player),
-                        r.First,
-                        r.Second,
-                        r.Total,
-                        r.Move,
-                        r.Stat is { } stat ? $"+{stat.ToString().ToUpper()}" : null,
-                        dice.Outcome switch
-                        {
-                            MoveOutcome.StrongHit => "strong",
-                            MoveOutcome.WeakHit => "weak",
-                            _ => "miss",
-                        },
-                        streak is null ? null : $"{streak.Icon} {streak.Describe()}",
-                        streak?.Hot,
-                        // Their dice in their class's color
-                        characters.GetValueOrDefault(player.ToString()) is { } character
-                            ? ClassSheetLibrary.For(character.Character.Class.Type)?.Color
-                            : null,
-                        drama?.Kind.ToString().ToLowerInvariant(),
-                        drama?.Headline);
-                })
+                .Select(r => Describe(r, newest, characters, pictures, settings, viewer))
                 .ToList());
         });
+
+    /// <param name="newest">The game chat's latest rolls, newest first, to find the streak this one is part of.</param>
+    private static FeedRoll Describe(RollRecord r, IReadOnlyList<RollRecord> newest, Dictionary<string, CharacterView> characters,
+        Dictionary<ulong, string> pictures, DashboardSettings settings, Viewer viewer)
+    {
+        var player = r.UserID.Value;
+        var isDungeonMaster = player == settings.DungeonMasterID;
+        var character = characters.GetValueOrDefault(player.ToString());
+        var dice = MoveDice.Of(r);
+
+        // The streak as of this roll, counting back through theirs before it
+        var theirs = newest.Where(o => o.UserID == r.UserID).ToList();
+        var streak = RollStreak.Of(theirs.Where(o => o.MessageID.Value <= r.MessageID.Value));
+        var before = RollStreak.Of(theirs.Where(o => o.MessageID.Value < r.MessageID.Value));
+
+        // Called the same as in Discord, but without their HP, which the feed doesn't know as it was then
+        var drama = DramaticRolls.For(dice, r.Move, dice.Outcome, before is { Hot: false } cold ? cold.Length : 0, pick: _ => 0);
+
+        return new FeedRoll(
+            r.MessageID.Value.ToString(),
+            isDungeonMaster ? "The DM" : character?.Name ?? "Someone",
+            pictures.GetValueOrDefault(player),
+            isDungeonMaster,
+            viewer.Is(player),
+            r.First,
+            r.Second,
+            r.Total,
+            r.Move,
+            r.Stat is { } stat ? $"+{stat.ToString().ToUpper()}" : null,
+            RollStyles.OutcomeClass(dice.Outcome),
+            streak is null ? null : $"{streak.Icon} {streak.Describe()}",
+            streak?.Hot,
+            // Their dice in their class's color
+            character is null ? null : ClassSheetLibrary.For(character.Character.Class.Type)?.Color,
+            drama?.Kind.ToString().ToLowerInvariant(),
+            drama?.Headline);
+    }
 }

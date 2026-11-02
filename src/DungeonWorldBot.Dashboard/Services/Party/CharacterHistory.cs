@@ -1,6 +1,9 @@
+using DungeonWorldBot.Dashboard.Helpers;
 using DungeonWorldBot.Dashboard.Models.Party;
+using DungeonWorldBot.Dashboard.Services.Shared;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Sessions;
 using DungeonWorldBot.Features.Subclasses;
 using DungeonWorldBot.Rules;
@@ -24,37 +27,17 @@ public class CharacterHistory(DungeonWorldContext context, ISessionService sessi
         SubclassLibrary.All.SelectMany(s => s.StateAbilities).Append(TacticRules.ActiveTactic),
         StringComparer.OrdinalIgnoreCase);
 
+    private const int MaxNoteLength = 200;
+
     public async Task<List<HistoryChapter>> GetAsync(Character character)
     {
-        var id = character.ID;
-        List<HistoryEntry> entries = [];
-
-        entries.AddRange((await EventsAsync(character)).Select(Describe).OfType<HistoryEntry>());
-
-        var rolls = await context.Rolls.AsNoTracking().Where(r => r.UserID == id).ToListAsync();
-        entries.AddRange(rolls.Select(Describe).OfType<HistoryEntry>());
-
-        var fights = await context.EncounterParticipants.AsNoTracking()
-            .Where(p => p.CharacterID == id)
-            .Select(p => p.Encounter)
-            .ToListAsync();
-        var actions = await context.EncounterActions.AsNoTracking()
-            .Where(a => a.CharacterID == id)
-            .GroupBy(a => a.EncounterID)
-            .Select(g => new { g.Key, Count = g.Count() })
-            .ToDictionaryAsync(g => g.Key, g => g.Count);
-        entries.AddRange(fights.DistinctBy(f => f.ID).Select(f => new HistoryEntry(
-            f.StartedAt,
-            HistoryKind.Fight,
-            $"Fought: {f.Name}",
-            actions.GetValueOrDefault(f.ID) switch { 0 => null, 1 => "1 action", var n => $"{n} actions" },
-            $"fight/{f.ID}")));
-
-        entries.AddRange((character.Notes ?? []).Select(n => new HistoryEntry(
-            new DateTimeOffset(DateTime.SpecifyKind(n.CreatedAt, DateTimeKind.Utc)),
-            HistoryKind.Note,
-            "Wrote a note",
-            n.Text.Length > 200 ? n.Text[..200].TrimEnd() + "…" : n.Text)));
+        List<HistoryEntry> entries =
+        [
+            .. (await EventsAsync(character)).Select(Describe).OfType<HistoryEntry>(),
+            .. (await RollsAsync(character)).Select(Describe).OfType<HistoryEntry>(),
+            .. await FightsAsync(character),
+            .. (character.Notes ?? []).Select(Describe),
+        ];
 
         return await ChaptersAsync(entries);
     }
@@ -62,34 +45,40 @@ public class CharacterHistory(DungeonWorldContext context, ISessionService sessi
     // In sessions where they were played, and by day in between, newest first
     private async Task<List<HistoryChapter>> ChaptersAsync(List<HistoryEntry> entries)
     {
-        List<GameSession> all;
-        try
-        {
-            all = await sessions.GetAllAsync();
-        }
-        catch (SqliteException e) when (e.Message.Contains("no such table"))
-        {
-            all = [];
-        }
+        var all = await SessionsAsync();
 
         return entries
             .GroupBy(e => all.FindIndex(s => e.At >= s.StartedAt && e.At <= (s.EndedAt ?? DateTimeOffset.MaxValue)) is var i and >= 0
-                ? $"session:{i}"
-                : $"day:{e.At.ToLocalTime().Date:yyyy-MM-dd}")
+                ? new ChapterKey(i, null)
+                : new ChapterKey(null, DateOnly.FromDateTime(e.At.LocalDateTime)))
             .Select(g =>
             {
                 var newest = g.OrderByDescending(e => e.At).ToList();
-                var start = newest[^1].At;
-                if (!g.Key.StartsWith("session:"))
+                if (g.Key.Session is not { } index)
+                {
+                    var start = newest[^1].At;
                     return new HistoryChapter($"Between sessions · {start.ToLocalTime():ddd d MMM yyyy}", null, start, newest);
+                }
 
-                var number = int.Parse(g.Key["session:".Length..]) + 1;
-                var session = all[number - 1];
+                var number = index + 1;
+                var session = all[index];
                 var title = session.Title is { } t ? $"Session {number}: {t}" : $"Session {number}";
                 return new HistoryChapter(title, $"session/{number}", session.StartedAt, newest);
             })
             .OrderByDescending(c => c.Start)
             .ToList();
+    }
+
+    private async Task<List<GameSession>> SessionsAsync()
+    {
+        try
+        {
+            return await sessions.GetAllAsync();
+        }
+        catch (SqliteException e) when (e.IsMissingTable())
+        {
+            return [];
+        }
     }
 
     private async Task<List<CharacterEvent>> EventsAsync(Character character)
@@ -99,11 +88,40 @@ public class CharacterHistory(DungeonWorldContext context, ISessionService sessi
             return await context.CharacterEvents.AsNoTracking().Where(e => e.CharacterID == character.ID).ToListAsync();
         }
         // Before the bot's database had them
-        catch (SqliteException e) when (e.Message.Contains("no such table"))
+        catch (SqliteException e) when (e.IsMissingTable())
         {
             return [];
         }
     }
+
+    private Task<List<RollRecord>> RollsAsync(Character character) =>
+        context.Rolls.AsNoTracking().Where(r => r.UserID == character.ID).ToListAsync();
+
+    private async Task<IEnumerable<HistoryEntry>> FightsAsync(Character character)
+    {
+        var fights = await context.EncounterParticipants.AsNoTracking()
+            .Where(p => p.CharacterID == character.ID)
+            .Select(p => p.Encounter)
+            .ToListAsync();
+        var actions = await context.EncounterActions.AsNoTracking()
+            .Where(a => a.CharacterID == character.ID)
+            .GroupBy(a => a.EncounterID)
+            .Select(g => new { g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.Key, g => g.Count);
+
+        return fights.DistinctBy(f => f.ID).Select(f => new HistoryEntry(
+            f.StartedAt,
+            HistoryKind.Fight,
+            $"Fought: {f.Name}",
+            actions.GetValueOrDefault(f.ID) is var count and > 0 ? Format.Plural(count, "action") : null,
+            $"fight/{f.ID}"));
+    }
+
+    private static HistoryEntry Describe(Note note) => new(
+        new DateTimeOffset(DateTime.SpecifyKind(note.CreatedAt, DateTimeKind.Utc)),
+        HistoryKind.Note,
+        "Wrote a note",
+        note.Text.Length > MaxNoteLength ? note.Text[..MaxNoteLength].TrimEnd() + "…" : note.Text);
 
     private static HistoryEntry? Describe(CharacterEvent e)
     {
@@ -147,12 +165,11 @@ public class CharacterHistory(DungeonWorldContext context, ISessionService sessi
     {
         var at = r.MessageID.Timestamp;
         var move = r.Move is { } m ? $" on {m}" : "";
-        var dice = $"{r.First} + {r.Second}{(r.Modifier == 0 ? "" : $" {(r.Modifier > 0 ? "+" : "−")} {Math.Abs(r.Modifier)}")} = {r.Total}";
+        var dice = Dice(r);
 
         if (string.Equals(r.Move, "Last Breath", StringComparison.OrdinalIgnoreCase))
         {
-            var outcome = r.ChangedOutcome ?? (r.Total >= 10 ? MoveOutcome.StrongHit : r.Total >= 7 ? MoveOutcome.WeakHit : MoveOutcome.Miss);
-            var text = outcome switch
+            var text = (r.ChangedOutcome ?? MoveRoller.OutcomeFor(r.Total)) switch
             {
                 MoveOutcome.StrongHit => "Took their Last Breath, and walked away",
                 MoveOutcome.WeakHit => "Took their Last Breath, and struck a bargain with Death",
@@ -169,6 +186,18 @@ public class CharacterHistory(DungeonWorldContext context, ISessionService sessi
         return null;
     }
 
+    // "6 + 3 − 1 = 8"
+    private static string Dice(RollRecord r)
+    {
+        var modifier = r.Modifier switch
+        {
+            0 => "",
+            > 0 => $" + {r.Modifier}",
+            _ => $" − {-r.Modifier}",
+        };
+        return $"{r.First} + {r.Second}{modifier} = {r.Total}";
+    }
+
     private static string Name(MoveOutcome outcome) => outcome switch
     {
         MoveOutcome.StrongHit => "strong hit",
@@ -179,4 +208,7 @@ public class CharacterHistory(DungeonWorldContext context, ISessionService sessi
     // "Str" → "Weak (STR)"
     private static string Debility(string stat) =>
         Enum.TryParse<StatType>(stat, out var type) ? DebilityRules.Describe(DebilityRules.For(type)) : stat;
+
+    // A session by its place in the list, or a day between sessions
+    private record ChapterKey(int? Session, DateOnly? Day);
 }

@@ -1,4 +1,5 @@
 using DungeonWorldBot.Dashboard.Models.Sessions;
+using DungeonWorldBot.Dashboard.Services.Shared;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Sessions;
@@ -71,7 +72,7 @@ public class SessionReader(ISessionService sessions, DungeonWorldContext context
         {
             return await read();
         }
-        catch (SqliteException e) when (e.Message.Contains("no such table"))
+        catch (SqliteException e) when (e.IsMissingTable())
         {
             return default;
         }

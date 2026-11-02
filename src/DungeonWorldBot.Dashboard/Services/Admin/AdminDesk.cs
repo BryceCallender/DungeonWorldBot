@@ -6,6 +6,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.Extensions.Primitives;
 
 namespace DungeonWorldBot.Dashboard.Services.Admin;
 
@@ -126,55 +127,15 @@ public class AdminDesk(DashboardDatabases databases)
             if (!form.ContainsKey(key))
                 continue;
 
-            object value;
+            object? value;
             if (form.ContainsKey($"null:{column.Name}"))
-            {
                 value = DBNull.Value;
-            }
-            else
-            {
-                var text = column.Flags ? null : form[key].ToString().Replace("\r\n", "\n");
-                // A new row leaves blank what SQLite fills in itself, like its ID
-                if (rowID is null && string.IsNullOrEmpty(text) && (column.HasDefault || column.PrimaryKey) && !column.Flags)
-                    continue;
+            else if (Parse(column, form[key], isNew: rowID is null, out value) is { } error)
+                return error;
 
-                if (column.Flags)
-                {
-                    long sum = 0;
-                    foreach (var bit in form[key])
-                    {
-                        if (!long.TryParse(bit, out var part))
-                            return $"{column.Name} takes whole numbers.";
-                        sum |= part;
-                    }
-                    value = sum;
-                }
-                else if (column.IsInteger)
-                {
-                    if (string.IsNullOrWhiteSpace(text) && !column.NotNull && !column.PrimaryKey)
-                        value = DBNull.Value;
-                    else if (long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number))
-                        value = number;
-                    // Discord IDs past the top of a long are stored wrapped around, as the bot stores them
-                    else if (ulong.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var big))
-                        value = unchecked((long)big);
-                    else
-                        return $"{column.Name} takes a whole number.";
-                }
-                else if (column.IsReal)
-                {
-                    if (string.IsNullOrWhiteSpace(text) && !column.NotNull)
-                        value = DBNull.Value;
-                    else if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
-                        value = number;
-                    else
-                        return $"{column.Name} takes a number.";
-                }
-                else
-                {
-                    value = text!;
-                }
-            }
+            // Left for SQLite to fill in
+            if (value is null)
+                continue;
 
             var parameter = $"$p{assigned.Count}";
             command.Parameters.AddWithValue(parameter, value);
@@ -286,6 +247,61 @@ public class AdminDesk(DashboardDatabases databases)
         {
             return AdminQueryResult.Failed(e.Message);
         }
+    }
+
+    /// <summary>
+    /// What to store for a column from what the form says.
+    /// </summary>
+    /// <param name="value">What to store, or null to leave it out of a new row for SQLite to fill in.</param>
+    /// <returns>Why what was typed won't do, or null when it will.</returns>
+    private static string? Parse(AdminColumn column, StringValues typed, bool isNew, out object? value)
+    {
+        value = null;
+        if (column.Flags)
+        {
+            long bits = 0;
+            foreach (var flag in typed)
+            {
+                if (!long.TryParse(flag, out var bit))
+                    return $"{column.Name} takes whole numbers.";
+                bits |= bit;
+            }
+            value = bits;
+            return null;
+        }
+
+        var text = typed.ToString().Replace("\r\n", "\n");
+        // A new row leaves blank what SQLite fills in itself, like its ID
+        if (isNew && text.Length == 0 && (column.HasDefault || column.PrimaryKey))
+            return null;
+
+        if (column.IsInteger)
+        {
+            if (string.IsNullOrWhiteSpace(text) && !column.NotNull && !column.PrimaryKey)
+                value = DBNull.Value;
+            else if (long.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number))
+                value = number;
+            // Discord IDs past the top of a long are stored wrapped around, as the bot stores them
+            else if (ulong.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var big))
+                value = unchecked((long)big);
+            else
+                return $"{column.Name} takes a whole number.";
+        }
+        else if (column.IsReal)
+        {
+            if (string.IsNullOrWhiteSpace(text) && !column.NotNull)
+                value = DBNull.Value;
+            else if (double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
+                value = number;
+            else
+                return $"{column.Name} takes a number.";
+        }
+        else
+        {
+            value = text;
+        }
+
+        return null;
     }
 
     private async Task<SqliteConnection> OpenAsync(AdminDatabase database)

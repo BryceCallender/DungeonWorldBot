@@ -34,6 +34,7 @@ public class Character
     public List<CharacterResource>? Resources { get; set; }
     public List<ArmorBonus>? ArmorBonuses { get; set; }
     public List<Transformation>? Transformations { get; set; }
+    public List<Technique>? Techniques { get; set; }
     public List<Goal>? Goals { get; set; }
     public List<Note>? Notes { get; set; }
 
