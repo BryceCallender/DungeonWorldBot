@@ -332,6 +332,9 @@ public static class ClassGuides
             [GettingStarted(sheet), Basics, ClassMoves(sheet), .. written.Steps, Downtime, Subclasses(sheet), LevelingUp(sheet)]);
     }
 
+    /// <returns>The class in a sentence or two, or null if its guide hasn't been written yet.</returns>
+    public static string? PitchFor(ClassType type) => Written.GetValueOrDefault(type)?.Pitch;
+
     /// <summary>
     /// Every rolled move a new character could have that's made with /move class. Shapeshifter has its own command.
     /// </summary>

@@ -1,4 +1,5 @@
 using System.Reflection;
+using DungeonWorldBot.Features.Characters.Creation;
 using DungeonWorldBot.Features.Rolls;
 using Microsoft.Extensions.DependencyInjection;
 using Remora.Commands.Extensions;
@@ -25,7 +26,8 @@ public static class ServiceExtensions
             .AddAutocompleteProviders(asm)
             .AddResponders(asm)
             .AddPagination()
-            .AddInteractionGroup<ChangeOutcomeInteractions>();
+            .AddInteractionGroup<ChangeOutcomeInteractions>()
+            .AddInteractionGroup<CharacterCreationInteractions>();
 
         return services;
     }

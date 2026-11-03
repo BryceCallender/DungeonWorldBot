@@ -21,9 +21,9 @@ public sealed class DatabaseTests : IDisposable
     {
         var draft = new CharacterDraft { Name = "Morrow", Race = Race.Human, Alignment = Alignment.NeutralEvil };
         draft.SetClass(ClassKits.All.Single(k => k.Type == ClassType.Necromancer), new DiceRoller());
-        foreach (var question in draft.Kit.Questions)
+        for (var i = 0; i < draft.Kit.Questions.Count; i++)
         {
-            draft.ApplyChoice(question.Choices[^1], new DiceRoller());
+            draft.ChooseGear(i, [draft.Kit.Questions[i].Choices[^1]], new DiceRoller());
         }
         foreach (var (type, value) in CharacterDraft.StatOrder.Zip(CharacterDraft.StatArray))
         {

@@ -19,7 +19,7 @@ public class CharacterCreationTests
 
         for (var i = 0; i < choices.Length; i++)
         {
-            draft.ApplyChoice(draft.Kit.Questions[i].Choices[choices[i]], _dice);
+            draft.ChooseGear(i, [draft.Kit.Questions[i].Choices[choices[i]]], _dice);
         }
 
         return draft;
@@ -43,8 +43,8 @@ public class CharacterCreationTests
         // The Necromancer's kit has weighted items, including the hexed jars
         var draft = new CharacterDraft { TrackWeight = false };
         draft.SetClass(Kit(ClassType.Necromancer), _dice);
-        foreach (var question in draft.Kit.Questions)
-            draft.ApplyChoice(question.Choices[0], _dice);
+        for (var i = 0; i < draft.Kit.Questions.Count; i++)
+            draft.ChooseGear(i, [draft.Kit.Questions[i].Choices[0]], _dice);
 
         Assert.All(draft.Items, i => Assert.Equal(0, i.Weight));
     }
@@ -54,8 +54,8 @@ public class CharacterCreationTests
     {
         var draft = new CharacterDraft();
         draft.SetClass(Kit(ClassType.Necromancer), _dice);
-        foreach (var question in draft.Kit.Questions)
-            draft.ApplyChoice(question.Choices[0], _dice);
+        for (var i = 0; i < draft.Kit.Questions.Count; i++)
+            draft.ChooseGear(i, [draft.Kit.Questions[i].Choices[0]], _dice);
 
         Assert.Contains(draft.Items, i => i.Weight > 0);
     }
