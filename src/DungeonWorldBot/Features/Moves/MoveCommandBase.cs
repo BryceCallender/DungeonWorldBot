@@ -1,6 +1,7 @@
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Features.Classes;
+using DungeonWorldBot.Features.Classes.DungeonWorld;
 using DungeonWorldBot.Features.Encounters;
 using DungeonWorldBot.Features.Resources;
 using DungeonWorldBot.Features.Rolls;
@@ -32,6 +33,7 @@ public abstract class MoveCommandBase(
 {
     protected const string BonusDescription = "Any +forward, ongoing bonus, or penalty to add to the roll";
     protected const string PreparedDescription = "Spend a Preparation from Bolster for +1";
+    protected const string AppetiteDescription = "Barbarian: the appetite you're pursuing, to roll 1d6+1d8 instead of 2d6";
     protected const string NoMoverMessage = "You must have a character to make moves. Try using /character create";
 
     protected readonly ICharacterService _characterService = characterService;
@@ -40,7 +42,8 @@ public abstract class MoveCommandBase(
     /// <param name="target">The enemy to take the damage off, for moves that roll it.</param>
     /// <param name="extraDamage">Flat damage added to the damage roll, for something the bot doesn't track.</param>
     /// <param name="prepared">Whether they're spending a Preparation for +1.</param>
-    protected async Task<IResult> MakeStatMoveAsync(MoveDefinition move, StatType statType, int bonus, string? target = null, int extraDamage = 0, bool prepared = false)
+    /// <param name="appetite">The appetite a Barbarian is pursuing, if any, rolling 1d6+1d8.</param>
+    protected async Task<IResult> MakeStatMoveAsync(MoveDefinition move, StatType statType, int bonus, string? target = null, int extraDamage = 0, bool prepared = false, string? appetite = null)
     {
         var character = await GetOwnCharacterAsync();
         if (character is null)
@@ -50,7 +53,7 @@ public abstract class MoveCommandBase(
         if (stat is null)
             return await ReplyWithErrorAsync($"Your character has no {statType} stat.");
 
-        return await ReplyWithMoveAsync(character, move, statType.ToString().ToUpper(), stat.Modifier, bonus, statType, target: target, extraDamage: extraDamage, prepared: prepared);
+        return await ReplyWithMoveAsync(character, move, statType.ToString().ToUpper(), stat.Modifier, bonus, statType, target: target, extraDamage: extraDamage, prepared: prepared, appetite: appetite);
     }
 
     /// <param name="target">The enemy to take the damage off, if the move rolls damage and hits.</param>
@@ -60,6 +63,8 @@ public abstract class MoveCommandBase(
     /// <param name="ally">The player's character being helped or hindered, for the spotlight.</param>
     /// <param name="prepared">Whether they're spending a Preparation for +1.</param>
     /// <param name="damage">The move's own damage, rolled on a hit in place of the character's.</param>
+    /// <param name="appetite">The appetite a Barbarian is pursuing, if any, rolling 1d6+1d8 in place of 2d6.</param>
+    /// <param name="piercing">Armor the character's damage ignores.</param>
     /// <param name="aftermath">What happens once the move's resolved, like a Technique's Barrier, as fields added to the end.</param>
     protected async Task<IResult> ReplyWithMoveAsync(
         Character character,
@@ -74,10 +79,25 @@ public abstract class MoveCommandBase(
         string? ally = null,
         bool prepared = false,
         MoveDamage? damage = null,
-        Func<MoveResolution, Task<IReadOnlyList<IEmbedField>>>? aftermath = null)
+        Func<MoveResolution, Task<IReadOnlyList<IEmbedField>>>? aftermath = null,
+        string? appetite = null,
+        int piercing = 0)
     {
         if (TacticRules.WhyCannotMake(character, move.Name) is { } forbidden)
             return await ReplyWithErrorAsync(forbidden);
+
+        string? pursuing = null;
+        if (!string.IsNullOrWhiteSpace(appetite))
+        {
+            var appetites = Barbarian.Appetites(character);
+            pursuing = appetites.FirstOrDefault(a => a.Equals(appetite.Trim(), StringComparison.OrdinalIgnoreCase));
+            if (pursuing is null)
+            {
+                return await ReplyWithErrorAsync(appetites.Count == 0
+                    ? $"{character.Name} has no appetites to pursue."
+                    : $"{character.Name}'s appetites are {string.Join(" and ", appetites)}.");
+            }
+        }
 
         if (prepared)
         {
@@ -91,7 +111,7 @@ public abstract class MoveCommandBase(
         var resolution = await moveResolver.ResolveAsync(
             character,
             move,
-            new MoveInput(modifierLabel, modifier, bonus, stat, kind, target, extraDamage, prepared, damage));
+            new MoveInput(modifierLabel, modifier, bonus, stat, kind, target, extraDamage, prepared, damage, pursuing, piercing));
 
         if (aftermath is not null)
         {

@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Features.Classes.InverseWorld;
 using DungeonWorldBot.Features.Subclasses;
 using DungeonWorldBot.Rules;
 
@@ -29,6 +30,10 @@ public static class ClassGuides
         [ClassType.Paladin] = new(
             "A holy warrior on a quest, healing allies and commanding foes with divine authority.",
             [
+                Step("Go on a quest",
+                    "Declare your mission and boons with `/quest declare`, then record the vows the GM sets with `/quest vow`. " +
+                    "While on it, Smite's damage and Holy Protection's armor apply on their own. `/quest end` when it's done.",
+                    Cmd("/quest declare"), Cmd("/quest vow"), Cmd("/quest end")),
                 Step("Heal at a cost",
                     "A hit on **Lay on Hands** heals with `/character heal`. On a 7-9 the hurt moves to you, so take it with " +
                     "`/character damage` on yourself.",
@@ -61,9 +66,9 @@ public static class ClassGuides
             "A hungry outsider who fights in a frenzy, chasing their appetites wherever they lead.",
             [
                 Step("Feed your appetites",
-                    "While chasing an appetite you roll 1d6+1d8 instead of 2d6, which the move commands don't do. " +
-                    "Roll it with `/roll stat`, picking the stat and `1d6+1d8` as the dice. If the d6 is higher, the GM adds a complication.",
-                    Cmd("/roll stat")),
+                    "While chasing an appetite you roll 1d6+1d8 instead of 2d6: pick it in the move's `pursuing` option. " +
+                    "If the d6 is higher, the roll says so and the GM adds a complication.",
+                    Cmd("/move hack-and-slash"), Cmd("/move defy-danger"), Cmd("/move class")),
                 Step("Cheat death",
                     "**The Upper Hand** gives +1 to Last Breath; add it to what `/move last-breath` shows.",
                     Cmd("/move last-breath")),
@@ -105,9 +110,10 @@ public static class ClassGuides
         [ClassType.Immolator] = new(
             "A fire-wielder who conjures blades of flame and bends fire to their will.",
             [
-                Step("Track your brand",
-                    "After you conjure your **Burning Brand**, set its uses to 3, and spend one with each attack.",
-                    Cmd("/resource set", "Burning Brand Uses"), Cmd("/resource spend", "Burning Brand Uses")),
+                Step("Wield your brand",
+                    "Conjure your **Burning Brand** with `/brand conjure`, picking its tags; it lands in your inventory with 3 uses. " +
+                    "Attack with `/brand strike` or `/brand throw` (+INT), which spends a use each time until it gutters out.",
+                    Cmd("/brand conjure"), Cmd("/brand strike"), Cmd("/brand throw")),
                 Step("Fight fire with fire",
                     "When you take odd damage after armor, roll a d4 and add it to your brand's uses, take it forward, " +
                     "or ask the GM to take it off the damage.",
@@ -217,6 +223,10 @@ public static class ClassGuides
                 Step("Spend Charges",
                     "If a totem loses its Charge after **Spirit Talk**, use it. At 0 it shatters, so remove it.",
                     Cmd("/ability use"), Cmd("/ability remove")),
+                Step("Catch a dying spirit",
+                    "When a creature dies before you, bind it with `/spirit catch`, then record what the GM says it does with `/spirit effect`. " +
+                    "`/spirit release` lets it loose, and it moves on.",
+                    Cmd("/spirit catch"), Cmd("/spirit effect"), Cmd("/spirit release")),
             ]),
 
         [ClassType.Captain] = new(
@@ -248,9 +258,12 @@ public static class ClassGuides
             "The keeper of a fickle little light, a piece of the god Sola, that becomes a weapon or a guide.",
             [
                 Step("Fight with your light",
-                    "Your light takes a **Light Weaponry** form; attack with `/move volley` or `/move hack-and-slash` to match. " +
-                    "On a 6- it reverts and sulks for a while.",
-                    Cmd("/move volley"), Cmd("/move hack-and-slash")),
+                    "Loose **Arrows of Light** with `/light arrows`: it rolls +INT and pierces armor. On a 7-9, lose a point of piercing " +
+                    "instead of ammo; it comes back when you make camp. On a 6- the light reverts and sulks for a while.",
+                    Cmd("/light arrows"), Cmd("/resource spend", Lantern.ArrowPiercing), Cmd("/downtime make-camp")),
+                Step("Shield your friends",
+                    "Form the **Shield of Light** with `/light shield`, or lend it to an ally. The armor moves with it, and `/light dim` lets it fade.",
+                    Cmd("/light shield"), Cmd("/light dim")),
             ]),
 
         [ClassType.Mechanic] = new(
@@ -260,8 +273,8 @@ public static class ClassGuides
                     "Hack and Slash in your suit rolls +INT, which the bot doesn't do for you: put INT minus STR in `bonus` on `/move hack-and-slash`.",
                     Cmd("/move hack-and-slash")),
                 Step("Hold together",
-                    "When you'd take damage in the suit, mark Stress instead. Unmark one when you make camp.",
-                    Cmd("/resource gain", "Suit Stress"), Cmd("/resource spend", "Suit Stress"), Cmd("/downtime make-camp")),
+                    "When you'd take damage in the suit, mark a Stress box instead (Damaged, Disabled, Disarmed, or Dinged with Engineering and Mechanics). Unmark one when you make camp.",
+                    Cmd("/resource gain", "Suit: Damaged"), Cmd("/resource spend", "Suit: Damaged"), Cmd("/downtime make-camp")),
                 Step("Push the button",
                     "The **Big Red Button** is a one-use ability; repair it at camp.",
                     Cmd("/ability use"), Cmd("/ability restore")),
@@ -318,6 +331,9 @@ public static class ClassGuides
             written.Pitch,
             [GettingStarted(sheet), Basics, ClassMoves(sheet), .. written.Steps, Downtime, Subclasses(sheet), LevelingUp(sheet)]);
     }
+
+    /// <returns>The class in a sentence or two, or null if its guide hasn't been written yet.</returns>
+    public static string? PitchFor(ClassType type) => Written.GetValueOrDefault(type)?.Pitch;
 
     /// <summary>
     /// Every rolled move a new character could have that's made with /move class. Shapeshifter has its own command.

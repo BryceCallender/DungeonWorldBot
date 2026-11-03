@@ -21,6 +21,8 @@ namespace DungeonWorldBot.Features.Moves;
 /// <param name="ExtraDamage">Flat damage added to the damage roll, if the move rolls damage.</param>
 /// <param name="Prepared">Whether they spent a Preparation from Bolster for +1. Spend it before resolving.</param>
 /// <param name="Damage">The move's own damage, rolled on a hit in place of the character's.</param>
+/// <param name="Appetite">The appetite a Barbarian is pursuing, if any, rolling 1d6+1d8 in place of 2d6.</param>
+/// <param name="Piercing">Armor the character's damage ignores, like Arrows of Light.</param>
 public record MoveInput(
     string? ModifierLabel,
     int Modifier,
@@ -30,7 +32,9 @@ public record MoveInput(
     string? Target = null,
     int ExtraDamage = 0,
     bool Prepared = false,
-    MoveDamage? Damage = null)
+    MoveDamage? Damage = null,
+    string? Appetite = null,
+    int Piercing = 0)
 {
     /// <summary>
     /// A move rolled with one of the character's stats, or null if they don't have it.
@@ -98,7 +102,7 @@ public class MoveResolver(IDiceRoller diceRoller, IDamageService damageService, 
             subclassBonuses = subclassBonuses.Append(new RollBonus($"{TacticRules.Current(character)!.Name} Tactics", tacticBonus)).ToList();
         if (input.Prepared)
             subclassBonuses = subclassBonuses.Append(new RollBonus(SpecialMoveRules.Preparation.Name, 1)).ToList();
-        var roll = MoveRoller.Roll(diceRoller, input.Modifier + input.Bonus + (debility?.Penalty ?? 0) + subclassBonuses.Sum(b => b.Amount));
+        var roll = MoveRoller.Roll(diceRoller, input.Modifier + input.Bonus + (debility?.Penalty ?? 0) + subclassBonuses.Sum(b => b.Amount), input.Appetite is not null);
         var outcome = TacticRules.Outcome(character, move.Name, roll.Outcome);
 
         List<IEmbedField> fields = [];
@@ -122,6 +126,13 @@ public class MoveResolver(IDiceRoller diceRoller, IDamageService damageService, 
 
         fields.Add(new EmbedField(MoveRoller.Describe(outcome), move.Describe(outcome)));
 
+        if (input.Appetite is { } appetite)
+        {
+            fields.Add(new EmbedField($"🍖 Pursuing {appetite}", MoveRoller.AppetiteBites(roll.Dice)
+                ? $"Rolled {MoveRoller.AppetiteDice}. The d6 is higher: the GM adds a complication or danger from your heedless pursuit."
+                : $"Rolled {MoveRoller.AppetiteDice}."));
+        }
+
         var isHit = outcome != MoveOutcome.Miss;
         if (move.ShowsOptions(outcome))
         {
@@ -135,7 +146,7 @@ public class MoveResolver(IDiceRoller diceRoller, IDamageService damageService, 
                 fields.Add(new EmbedField($"{TacticRules.Current(character)!.Name} Tactics", "Your damage lands even on a miss."));
             dealt = input.Damage is { } own
                 ? await RollOwnDamageAsync(character, own, input.Target, input.ExtraDamage)
-                : await RollDamageAsync(character, move.Name, input.Target, input.ExtraDamage);
+                : await RollDamageAsync(character, move.Name, input.Target, input.ExtraDamage, input.Piercing);
             fields.AddRange(dealt.Fields);
         }
 
@@ -154,7 +165,7 @@ public class MoveResolver(IDiceRoller diceRoller, IDamageService damageService, 
         return new MoveResolution(character, move, embed, roll, outcome, dealt);
     }
 
-    private async Task<DamageDealt> RollDamageAsync(Character character, string move, string? target, int extra)
+    private async Task<DamageDealt> RollDamageAsync(Character character, string move, string? target, int extra, int piercing)
     {
         if (await damageService.RollAsync(character, move, extra) is not { } damage)
             return new DamageDealt([new EmbedField("Damage", $"Couldn't roll `{character.DamageModifier ?? character.Class.Damage}`. Fix it with /character damage-dice")]);
@@ -163,7 +174,7 @@ public class MoveResolver(IDiceRoller diceRoller, IDamageService damageService, 
         if (string.IsNullOrWhiteSpace(target))
             return new DamageDealt(fields, Result: $"💥 {damage.Total} damage");
 
-        return await HitTargetAsync(fields, target, damage.Total);
+        return await HitTargetAsync(fields, target, damage.Total, piercing);
     }
 
     private async Task<DamageDealt> RollOwnDamageAsync(Character character, MoveDamage damage, string? target, int extra)

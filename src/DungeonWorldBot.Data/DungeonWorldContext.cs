@@ -141,6 +141,11 @@ public class DungeonWorldContext(DbContextOptions<DungeonWorldContext> options) 
                 .OnDelete(DeleteBehavior.Cascade);
         });
 
+        // Weapons, armor and jars share the Item table, so their damage, armor and contents are saved with them
+        modelBuilder.Entity<Weapon>();
+        modelBuilder.Entity<Armor>();
+        modelBuilder.Entity<HexedJars>();
+
         // A character's picture lives on their own row, but is loaded only when asked for (see CharacterPortrait)
         modelBuilder.Entity<Character>(character =>
         {

@@ -221,9 +221,6 @@ public class TechniqueCommand(
         if (channel.Error is { } error)
             return await ReplyWithErrorAsync(error);
 
-        // Barrier only lasts until the next Channel, which is this one
-        var dropped = await techniqueService.DropBarrierAsync(character!);
-
         var input = channel.Input!;
         var moveDamage = damage is null ? null : new MoveDamage(damage.Dice, damage.Tag.ToString(), damage.Piercing, threadDice);
         return await ReplyWithMoveAsync(
@@ -237,15 +234,23 @@ public class TechniqueCommand(
             extraDamage: extraDamage,
             prepared: prepared,
             damage: moveDamage,
-            aftermath: resolution => AftermathAsync(resolution, known, tags, wave, dropped.Count > 0));
+            aftermath: resolution => AftermathAsync(resolution, known, tags, wave));
     }
 
     /// <summary>
     /// The Technique's tags, then what they did: Barrier armor on a hit, and Devastation Wave's cost.
     /// </summary>
-    private async Task<IReadOnlyList<IEmbedField>> AftermathAsync(MoveResolution resolution, Technique technique, TechniqueTag tags, TechniqueTag? wave, bool barrierFaded)
+    /// <remarks>
+    /// Runs only once the Channel is actually rolled, so a Channel that's refused (say, for lack of Preparation) leaves
+    /// the last Barrier standing.
+    /// </remarks>
+    private async Task<IReadOnlyList<IEmbedField>> AftermathAsync(MoveResolution resolution, Technique technique, TechniqueTag tags, TechniqueTag? wave)
     {
         var character = resolution.Character;
+
+        // Barrier only lasts until the next Channel, which is this one
+        var barrierFaded = (await techniqueService.DropBarrierAsync(character)).Count > 0;
+
         var tagLines = TechniqueRules.TagsOf(tags).Select(t => $"• **{t}{(t == wave ? $" ({TechniqueRules.DevastationWave})" : string.Empty)}:** {TechniqueRules.Describe(t, character)}");
         List<IEmbedField> fields = [new EmbedField($"🌀 {technique.Name}", string.Join('\n', tagLines))];
 

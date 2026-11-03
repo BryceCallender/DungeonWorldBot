@@ -5,6 +5,12 @@ namespace DungeonWorldBot.Features.Classes.InverseWorld;
 
 public static class Lantern
 {
+    public const string LightWeaponry = "Light Weaponry";
+    public const string GiftFromGod = "Gift from God";
+    public const string IlluminatedWarrior = "Illuminated Warrior";
+    public const string ShieldOfLight = "Shield of Light";
+    public const string ArrowPiercing = "Arrow Piercing";
+
     public static readonly ClassSheet Sheet = new(
         ClassType.Lantern,
         "Inverse World",
@@ -14,7 +20,7 @@ public static class Lantern
             new("Your Little Light",
                 "You carry a piece of the god Sola: a glowing ball of light that floats where it likes but stays near you and rests in your lantern. " +
                 "It usually obeys, though it's fickle. It can't speak, but it signals with colors and beams, always gives you light, can't touch anything, and can't be harmed. Give it a name."),
-            new("Light Weaponry",
+            new(LightWeaponry,
                 "Command your little light to take one of these forms; it keeps it until it decides you need another. On a 6- while it's a weapon, it reverts to its harmless form and sulks for a while.\n" +
                 "• **Arrows of Light:** near, mystical, piercing 2. Instead of spending ammo, lose 1 piercing until you next Make Camp.\n" +
                 "• **Shield of Light:** +1 armor, which you can lend to anyone within reach.\n" +
@@ -47,7 +53,7 @@ public static class Lantern
             ]),
             new ClassFeature("Source of Light", "How did you get your little light?",
             [
-                new("Gift from God", "Sola gave you the light himself. Arrows of Light have piercing 3, and the Shield of Light still protects you while lent out."),
+                new(GiftFromGod, "Sola gave you the light himself. Arrows of Light have piercing 3, and the Shield of Light still protects you while lent out."),
                 new("Hand-Me-Down", "Your mentor passed the light to you. When you Reveal the Way to your little light, you always take the 10+ result."),
                 new("Stolen Property", "You ripped the light from Sola himself, and it learned from you: it can lift things up to 1 weight and often moves things around."),
             ]),
@@ -63,7 +69,7 @@ public static class Lantern
                 "They heal 1d8 HP and are filled with energy: +1 forward.",
                 "They heal 1d8 HP.",
                 miss: "The sunlight won't cooperate: they take -1 forward from the searing pain."),
-            new("Illuminated Warrior", "Your little light can hold two Light Weaponry forms at once. Lend one to an ally or wield both."),
+            new(IlluminatedWarrior, "Your little light can hold two Light Weaponry forms at once. Lend one to an ally or wield both."),
             new("Light of Revelation",
                 "Add to Bend Light:\n• Commit the light to the truth: reveal what's behind illusions, enchantments and invisible things here\n• Ask the light to show you something: reveal a secret in this area"),
             new("Magical Dabbler", "Take a non-multiclass move from any class, treating your level as one lower unless it's magic-based.") { Multiclass = MulticlassGrant.AnyClass(levelOneLower: true) },
@@ -93,5 +99,13 @@ public static class Lantern
             new("Solar Aura",
                 "Add a Light Weaponry form. **Solar Aura:** an aura seals everything within reach of you; nothing outside can get in by any means. If anyone inside leaves or attacks out of it, the light reverts to its harmless form."),
             new("Twilight Reckoning", "When you damage a surprised, defenseless or wounded enemy with your Twilight Blade, you can sever anything from them instead of dealing damage: their life, a limb, a title, a relationship, a prized possession, a belief.") { Requires = "Twilight Blade" },
+        ],
+        resources:
+        [
+            new ClassResource(ArrowPiercing, "The Arrows of Light's piercing. Lose 1 instead of spending ammo; it comes back when you Make Camp.", Start: 2, Max: 2, GrantedBy: LightWeaponry)
+            {
+                ResetsOnCamp = true,
+                Bonuses = [new(GiftFromGod, Start: 1, Max: 1)],
+            },
         ]);
 }

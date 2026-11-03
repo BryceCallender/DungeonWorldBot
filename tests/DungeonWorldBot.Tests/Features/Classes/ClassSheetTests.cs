@@ -150,6 +150,16 @@ public class ClassSheetTests
     }
 
     [Fact]
+    public void MechanicSuit_HasAStressBoxPerSystem_AndDingedWithEngineering()
+    {
+        var sheet = Sheet(ClassType.Mechanic);
+
+        Assert.Equal(["Suit: Damaged", "Suit: Disabled", "Suit: Disarmed"], sheet.ResourcesFor([]).Select(r => r.Name));
+        Assert.Contains("Suit: Dinged", sheet.ResourcesFor(["Engineering and Mechanics"]).Select(r => r.Name));
+        Assert.All(sheet.Resources, box => Assert.Equal(1, box.MaxFor([])));
+    }
+
+    [Fact]
     public void Build_GrantsStartingMovesAndChoices()
     {
         var draft = new CharacterDraft { Name = "Varro" };

@@ -1,5 +1,6 @@
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Characters.Creation;
+using DungeonWorldBot.Features.Classes.DungeonWorld;
 using DungeonWorldBot.Features.Rolls;
 using Remora.Rest.Core;
 
@@ -18,7 +19,7 @@ public class CharacterCreationTests
 
         for (var i = 0; i < choices.Length; i++)
         {
-            draft.ApplyChoice(draft.Kit.Questions[i].Choices[choices[i]], _dice);
+            draft.ChooseGear(i, [draft.Kit.Questions[i].Choices[choices[i]]], _dice);
         }
 
         return draft;
@@ -42,8 +43,8 @@ public class CharacterCreationTests
         // The Necromancer's kit has weighted items, including the hexed jars
         var draft = new CharacterDraft { TrackWeight = false };
         draft.SetClass(Kit(ClassType.Necromancer), _dice);
-        foreach (var question in draft.Kit.Questions)
-            draft.ApplyChoice(question.Choices[0], _dice);
+        for (var i = 0; i < draft.Kit.Questions.Count; i++)
+            draft.ChooseGear(i, [draft.Kit.Questions[i].Choices[0]], _dice);
 
         Assert.All(draft.Items, i => Assert.Equal(0, i.Weight));
     }
@@ -53,8 +54,8 @@ public class CharacterCreationTests
     {
         var draft = new CharacterDraft();
         draft.SetClass(Kit(ClassType.Necromancer), _dice);
-        foreach (var question in draft.Kit.Questions)
-            draft.ApplyChoice(question.Choices[0], _dice);
+        for (var i = 0; i < draft.Kit.Questions.Count; i++)
+            draft.ChooseGear(i, [draft.Kit.Questions[i].Choices[0]], _dice);
 
         Assert.Contains(draft.Items, i => i.Weight > 0);
     }
@@ -115,6 +116,19 @@ public class CharacterCreationTests
 
         var jars = Assert.IsType<HexedJars>(draft.Items.Single(i => i.Name == "Hexed Canopic Jars"));
         Assert.Equal(["A Skinless Hound", "Empty", "Empty"], jars.Contents);
+    }
+
+    [Fact]
+    public void Thief_StartsWithThreeDosesOfTheirPoison()
+    {
+        var draft = DraftWithChoices(ClassType.Thief);
+        draft.FeatureChoices["Poison"] = [Thief.Sheet.Features.Single(f => f.Name == "Poison").Options[1]];
+
+        var poison = draft.Build(new Snowflake(1)).Abilities!.Single(a => a.Name.StartsWith(Thief.PoisonPrefix));
+
+        Assert.Equal("Poison: Bloodweed", poison.Name);
+        Assert.Equal(Thief.PoisonDoses, poison.MaxUses);
+        Assert.Equal(Thief.PoisonDoses, poison.Uses);
     }
 
     [Fact]

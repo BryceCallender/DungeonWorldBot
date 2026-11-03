@@ -1,5 +1,6 @@
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Features.Classes;
 using DungeonWorldBot.Infrastructure;
 
 namespace DungeonWorldBot.Features.Abilities;
@@ -62,15 +63,23 @@ public class AbilityService(DungeonWorldContext dungeonWorldContext) : IAbilityS
         await dungeonWorldContext.SaveChangesAsync();
     }
 
-    public async Task RestoreAllAbilitiesAsync(Character character)
+    public async Task<IReadOnlyList<Ability>> RestoreAllAbilitiesAsync(Character character)
     {
+        var sheet = ClassSheetLibrary.For(character.Class.Type);
+        List<Ability> kept = [];
         foreach (var ability in character.Abilities ?? [])
         {
-            if (ability.MaxUses is { } max)
+            if (ability.MaxUses is not { } max)
+                continue;
+
+            if (sheet?.FindMove(ability.Name)?.RestoresWithAll == false)
+                kept.Add(ability);
+            else
                 ability.Uses = Math.Max(max, ability.Uses);
         }
 
         await dungeonWorldContext.SaveChangesAsync();
+        return kept;
     }
 
     public async Task SetAbilityUsesAsync(Ability ability, int uses)

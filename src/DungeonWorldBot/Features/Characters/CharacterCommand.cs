@@ -1,5 +1,4 @@
 using System.ComponentModel;
-using System.Drawing;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Characters.Creation;
 using DungeonWorldBot.Features.Classes;
@@ -29,7 +28,7 @@ public class CharacterCommand(
     ICommandContext context,
     FeedbackService feedbackService,
     ICharacterService characterService,
-    CharacterCreationDialog creationDialog,
+    CreationSessions creationSessions,
     IDiceRoller diceRoller,
     IResourceService resourceService,
     IGameMasterService gameMaster,
@@ -49,36 +48,17 @@ public class CharacterCommand(
             return await ReplyWithErrorAsync("You already have a character. Check your character sheet using /character profile");
         }
 
-        await _feedbackService.SendContextualNeutralAsync("Check your DMs to create your character!", ct: CancellationToken);
-        await _feedbackService.SendPrivateMessageAsync(userId, new FeedbackMessage("No character exists, starting character creation.", Color.Green), ct: CancellationToken);
+        // Only the player sees it, and the menus and buttons on it are answered by CharacterCreationInteractions
+        var session = creationSessions.Resume(userId, out var resumed);
+        var message = CreationView.Render(session, userId);
+        var embed = resumed
+            ? message.Embed with { Description = $"Picking up where you left off.\n\n{message.Embed.Description.OrDefault(string.Empty)}" }
+            : message.Embed;
 
-        var character = await creationDialog.RunAsync(userId, CancellationToken);
-        if (character is null)
-        {
-            await _feedbackService.SendPrivateMessageAsync(userId, new FeedbackMessage("Character creation was canceled.", Color.Orange), ct: CancellationToken);
-            return Result.FromSuccess();
-        }
-
-        await _characterService.AddCharacterAsync(character);
-
-        var icon = ImageHelper.ClassIcon(character.Class.Type);
-        await _feedbackService.SendPrivateEmbedAsync(userId, new Embed
-        {
-            Title = character.Name,
-            Thumbnail = icon.Thumbnail,
-            Description = $"{character.Class.Type}: Level 1",
-            Fields = CharacterSheet.NewCharacterFields(character),
-            Colour = _feedbackService.Theme.Primary
-        }, icon.Options, CancellationToken);
-
-        await _feedbackService.SendPrivateEmbedAsync(userId, new Embed
-        {
-            Title = "Character Creation",
-            Description = "Your Character has been successfully saved. Try typing /character profile to see your character sheet.",
-            Colour = Color.Green
-        }, ct: CancellationToken);
-
-        return Result.FromSuccess();
+        return await _feedbackService.SendContextualEmbedAsync(
+            embed,
+            new FeedbackMessageOptions(MessageFlags: MessageFlags.Ephemeral, MessageComponents: new(message.Components)),
+            CancellationToken);
     }
 
     [Command("profile")]

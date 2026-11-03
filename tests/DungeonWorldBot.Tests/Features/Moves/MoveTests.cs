@@ -1,5 +1,6 @@
 using System.Reflection;
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Features.Classes.DungeonWorld;
 using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Rolls;
 using d20Tek.DiceNotation.DieRoller;
@@ -52,6 +53,48 @@ public class MoveTests
         var roll = new DiceRoller(new ConstantDieRoller(everyDie)).Roll(expression);
 
         Assert.Equal(expected, MoveRoller.OutcomeOf(roll));
+    }
+
+    [Fact]
+    public void AppetiteRolls_Use1d6Plus1d8_AndHaveABand()
+    {
+        var roll = MoveRoller.Roll(new DiceRoller(new ConstantDieRoller(4)), 1, appetite: true);
+
+        Assert.StartsWith(MoveRoller.AppetiteDice, roll.Dice.DiceExpression);
+        Assert.Equal(9, roll.Dice.Value);
+        Assert.Equal(MoveOutcome.WeakHit, MoveRoller.OutcomeOf(roll.Dice));
+    }
+
+    [Theory]
+    [InlineData(5, 3, true)]
+    [InlineData(3, 5, false)]
+    [InlineData(4, 4, false)]
+    public void AppetiteBites_WhenTheD6IsHigher(int d6, int d8, bool bites)
+    {
+        var roll = MoveRoller.Roll(new DiceRoller(new SequenceDieRoller(d6, d8)), 0, appetite: true);
+
+        Assert.Equal(bites, MoveRoller.AppetiteBites(roll.Dice));
+    }
+
+    [Fact]
+    public void Appetites_AreTheBarbariansChosenOnes()
+    {
+        var barbarian = new Character
+        {
+            Name = "Grok",
+            Abilities = [new Ability { Name = "Appetite: Conquest" }, new Ability { Name = "Musclebound" }, new Ability { Name = "Appetite: Fame and Glory" }],
+        };
+
+        Assert.Equal(["Conquest", "Fame and Glory"], Barbarian.Appetites(barbarian));
+        Assert.Empty(Barbarian.Appetites(new Character { Name = "Fighter" }));
+    }
+
+    // Rolls the given values in order, one per die
+    private sealed class SequenceDieRoller(params int[] values) : d20Tek.DiceNotation.IDieRoller
+    {
+        private int _next;
+
+        public int Roll(int sides, int? factor = null) => values[_next++ % values.Length];
     }
 
     [Theory]

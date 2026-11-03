@@ -26,7 +26,7 @@ public static class ShapeshiftRules
     public static ClassResource Hold => Druid.Sheet.FindResource(HoldName)!;
 
     public static bool Knows(Character character, string move) =>
-        ClassSheetLibrary.KnownMoves(character).Contains(move, StringComparer.OrdinalIgnoreCase);
+        ClassSheetLibrary.Knows(character, move);
 
     public static bool CanShapeshift(Character character) => Knows(character, Shapeshifter);
 

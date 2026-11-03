@@ -24,15 +24,19 @@ public class DamageService(
     public async Task<DamageRoll?> RollAsync(Character character, string move, int extra = 0)
     {
         var bonuses = await DamageBonusesAsync(character, extra);
-        var baseDice = character.DamageModifier ?? character.Class.Damage;
         var tactic = TacticRules.ExtraDamage(character);
-        var expression = DiceHelper.AddModifier(tactic is not null ? $"{baseDice}+{tactic}" : baseDice, bonuses.Sum(b => b.Amount));
+        var smite = QuestRules.SmiteDamage(character);
+        string?[] extraDice = [tactic, smite];
+        var allDice = string.Join('+', extraDice.Where(d => d is not null).Prepend(character.DamageModifier ?? character.Class.Damage));
+        var expression = DiceHelper.AddModifier(allDice, bonuses.Sum(b => b.Amount));
         if (!diceRoller.TryRoll(expression, out var dice))
             return null;
 
         List<string> notes = [];
         if (tactic is not null)
             notes.Add($"{TacticRules.Current(character)!.Name} Tactics: +{tactic} damage");
+        if (smite is not null)
+            notes.Add($"On a quest: +{smite} damage");
 
         // Reckless Aggression: in Aggressive Tactics, roll twice and keep the better. Gear applies once, to the kept roll,
         // so effects like counters don't trigger for the discarded one
@@ -43,7 +47,9 @@ public class DamageService(
             dice = kept;
         }
 
-        var gear = await ApplyGearAsync(character, move, DamageDice(dice));
+        // Smite's die is last; it's holy power, not the weapon, so gear doesn't react to it
+        var weaponDice = DamageDice(dice).SkipLast(smite is null ? 0 : 1).ToList();
+        var gear = await ApplyGearAsync(character, move, weaponDice);
         if (notes.Count > 0)
             gear = gear with { Notes = [..notes, ..gear.Notes] };
         return new DamageRoll(expression, dice, dice.Value + gear.Bonus, bonuses, gear);

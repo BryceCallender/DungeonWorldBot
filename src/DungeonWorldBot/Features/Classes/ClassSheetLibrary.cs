@@ -63,6 +63,12 @@ public static class ClassSheetLibrary
         character.Abilities?.Select(a => a.Name).ToList() ?? [];
 
     /// <summary>
+    /// Whether the character has this move or ability.
+    /// </summary>
+    public static bool Knows(Character character, string move) =>
+        KnownMoves(character).Contains(move, StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
     /// Which of the six stats a class stat (like Lore) stands for. It's set by the first option the character picked
     /// for the deciding choice; options picked later don't change it.
     /// </summary>

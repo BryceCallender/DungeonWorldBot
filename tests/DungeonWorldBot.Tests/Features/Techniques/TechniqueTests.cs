@@ -100,6 +100,7 @@ public sealed class TechniqueTests : IDisposable
         character.Abilities!.Add(new Ability { Name = TechniqueRules.SignatureTechnique });
         Assert.Equal(4, TechniqueRules.MaxTechniques(character));
         Assert.Null(TechniqueRules.WhyCannotDevelop(character, "Four", signature: true));
+        Assert.NotNull(TechniqueRules.WhyCannotDevelop(character, "Four", signature: false));
         Assert.NotNull(TechniqueRules.WhyCannotDevelop(character, "one", signature: false));
     }
 
