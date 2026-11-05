@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Features.Subclasses;
@@ -15,34 +16,30 @@ namespace DungeonWorldBot.Features.Classes;
 public readonly record struct Suggestion(string Value, string Label);
 
 /// <summary>
-/// Suggests class sheet names as the player types, from their own class when they have a character with a class
-/// sheet, and from every class otherwise.
+/// Suggestions as the player types, filtered to what they've typed and cut to what Discord shows.
 /// </summary>
-public abstract class ClassSheetAutocomplete(
-    ContextInjectionService? contextInjection,
-    ICharacterService? characterService)
-    : IAutocompleteProvider
+public abstract class SuggestionAutocomplete : IAutocompleteProvider
 {
     // Discord shows at most 25 suggestions, each up to 100 characters
     private const int MaxSuggestions = 25;
     private const int MaxLength = 100;
 
-    private readonly ContextInjectionService? _contextInjection = contextInjection;
-    private readonly ICharacterService? _characterService = characterService;
+    // Every suggestion comes from the sheets, which never change, so each kind is built once
+    private static readonly ConcurrentDictionary<Type, IReadOnlyList<Suggestion>> AllSuggestions = new();
 
     public abstract string Identity { get; }
 
     /// <summary>
-    /// Suggestions for a player whose class has a sheet.
+    /// Every suggestion there is, whoever's typing.
     /// </summary>
-    protected abstract IEnumerable<Suggestion> OwnClassCandidates(Character character, ClassSheet sheet);
+    protected abstract IEnumerable<Suggestion> AllCandidates();
 
     /// <summary>
-    /// Suggestions when there's no character to go on, or the command isn't about the player's own class.
+    /// The suggestions for whoever's typing: every one, unless a kind narrows them down.
     /// </summary>
-    protected abstract IEnumerable<Suggestion> AllClassCandidates();
+    protected virtual Task<IEnumerable<Suggestion>> CandidatesAsync() => Task.FromResult<IEnumerable<Suggestion>>(Every);
 
-    protected virtual bool OwnClassOnly => true;
+    protected IReadOnlyList<Suggestion> Every => AllSuggestions.GetOrAdd(GetType(), _ => AllCandidates().ToList());
 
     public async ValueTask<IReadOnlyList<IApplicationCommandOptionChoice>> GetSuggestionsAsync(
         IReadOnlyList<IApplicationCommandInteractionDataOption> options,
@@ -50,12 +47,7 @@ public abstract class ClassSheetAutocomplete(
         CancellationToken ct = default)
     {
         var input = userInput.Trim();
-        var (character, sheet) = await OwnSheetAsync();
-        var candidates = character is not null && sheet is not null
-            ? OwnClassCandidates(character, sheet)
-            : AllClassCandidates();
-
-        return candidates
+        return (await CandidatesAsync())
             .Where(c => c.Label.Contains(input, StringComparison.OrdinalIgnoreCase))
             .DistinctBy(c => c.Value, StringComparer.OrdinalIgnoreCase)
             .OrderBy(c => !c.Value.StartsWith(input, StringComparison.OrdinalIgnoreCase))
@@ -82,30 +74,49 @@ public abstract class ClassSheetAutocomplete(
         });
     }
 
-    private async Task<(Character?, ClassSheet?)> OwnSheetAsync()
+    private static string Truncate(string value) => value.Length <= MaxLength ? value : value[..MaxLength];
+}
+
+/// <summary>
+/// Suggests class sheet entries as the player types, from their own class when they have a character with a class
+/// sheet, and from every class otherwise.
+/// </summary>
+public abstract class ClassSheetAutocomplete(
+    ContextInjectionService contextInjection,
+    ICharacterService characterService)
+    : SuggestionAutocomplete
+{
+    /// <summary>
+    /// Suggestions for a player whose class has a sheet.
+    /// </summary>
+    protected abstract IEnumerable<Suggestion> OwnClassCandidates(Character character, ClassSheet sheet);
+
+    protected override async Task<IEnumerable<Suggestion>> CandidatesAsync() =>
+        await OwnSheetAsync() is { } own ? OwnClassCandidates(own.Character, own.Sheet) : Every;
+
+    private record OwnSheet(Character Character, ClassSheet Sheet);
+
+    /// <returns>The player's character and their class's sheet, or null when there's no character with one.</returns>
+    private async Task<OwnSheet?> OwnSheetAsync()
     {
-        if (OwnClassOnly
-            && _characterService is not null
-            && _contextInjection?.Context is { } context
+        if (contextInjection.Context is { } context
             && context.TryGetUserID(out var userId)
-            && await _characterService.GetCharacterFromUserAsync(userId) is { } character
+            && await characterService.GetCharacterMovesAsync(userId) is { } character
             && ClassSheetLibrary.For(character.Class.Type) is { } sheet)
         {
-            return (character, sheet);
+            return new OwnSheet(character, sheet);
         }
 
-        return (null, null);
+        return null;
     }
-
-    private static string Truncate(string value) => value.Length <= MaxLength ? value : value[..MaxLength];
 }
 
 /// <summary>
 /// Moves the player can learn: their own sheet's, plus other classes' when a move like Special Trick allows it.
 /// </summary>
 public class ClassMoveAutocomplete(
-    ContextInjectionService? contextInjection = null,
-    ICharacterService? characterService = null)
+    ContextInjectionService contextInjection,
+    ICharacterService characterService)
     : ClassSheetAutocomplete(contextInjection, characterService)
 {
     public const string ID = "class-move";
@@ -129,26 +140,19 @@ public class ClassMoveAutocomplete(
         return own.Concat(foreign);
     }
 
-    protected override IEnumerable<Suggestion> AllClassCandidates() => Labeled(ClassSheetLibrary.All, s => s.AllMoves.Select(m => m.Name));
+    protected override IEnumerable<Suggestion> AllCandidates() => Labeled(ClassSheetLibrary.All, s => s.AllMoves.Select(m => m.Name));
 }
 
 /// <summary>
 /// Moves from every class sheet and subclass, for looking things up.
 /// </summary>
-public class AnyClassMoveAutocomplete(
-    ContextInjectionService? contextInjection = null,
-    ICharacterService? characterService = null)
-    : ClassSheetAutocomplete(contextInjection, characterService)
+public class AnyClassMoveAutocomplete : SuggestionAutocomplete
 {
     public const string ID = "any-class-move";
 
     public override string Identity => ID;
 
-    protected override bool OwnClassOnly => false;
-
-    protected override IEnumerable<Suggestion> OwnClassCandidates(Character character, ClassSheet sheet) => AllClassCandidates();
-
-    protected override IEnumerable<Suggestion> AllClassCandidates()
+    protected override IEnumerable<Suggestion> AllCandidates()
     {
         var classMoves = Labeled(ClassSheetLibrary.All, s => s.AllMoves.Select(m => m.Name)).ToList();
         var taken = ClassSheetLibrary.All.SelectMany(s => s.AllMoves.Select(m => m.Name))
@@ -173,8 +177,8 @@ public class AnyClassMoveAutocomplete(
 /// Rolled moves the player can make: their own class's, their subclass's, plus any rolled moves they learned from other classes.
 /// </summary>
 public class RolledClassMoveAutocomplete(
-    ContextInjectionService? contextInjection = null,
-    ICharacterService? characterService = null)
+    ContextInjectionService contextInjection,
+    ICharacterService characterService)
     : ClassSheetAutocomplete(contextInjection, characterService)
 {
     public const string ID = "rolled-class-move";
@@ -190,13 +194,13 @@ public class RolledClassMoveAutocomplete(
                 .Where(f => f.Move.Roll is not null)
                 .Select(f => new Suggestion(f.Move.Name, Multiclassing.Qualify(f))));
 
-    protected override IEnumerable<Suggestion> AllClassCandidates() =>
+    protected override IEnumerable<Suggestion> AllCandidates() =>
         Labeled(ClassSheetLibrary.All, s => s.AllMoves.Where(m => m.Roll is not null).Select(m => m.Name));
 }
 
 public class ClassResourceAutocomplete(
-    ContextInjectionService? contextInjection = null,
-    ICharacterService? characterService = null)
+    ContextInjectionService contextInjection,
+    ICharacterService characterService)
     : ClassSheetAutocomplete(contextInjection, characterService)
 {
     public const string ID = "class-resource";
@@ -206,7 +210,7 @@ public class ClassResourceAutocomplete(
     protected override IEnumerable<Suggestion> OwnClassCandidates(Character character, ClassSheet sheet) =>
         ClassSheetLibrary.ResourcesOf(character).Select(r => new Suggestion(r.Name, r.Name));
 
-    protected override IEnumerable<Suggestion> AllClassCandidates() =>
+    protected override IEnumerable<Suggestion> AllCandidates() =>
         Labeled(ClassSheetLibrary.All, s => s.Resources.Select(r => r.Name))
             .Concat(ClassSheetLibrary.CommonResources.Select(r => new Suggestion(r.Name, r.Name)));
 }

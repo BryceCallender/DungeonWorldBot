@@ -21,10 +21,11 @@ public class MoveResults(
     DatabaseWatcher watcher,
     IServiceScopeFactory scopes,
     IHubContext<CanvasHub, ICanvasClient> hub,
-    ILogger<MoveResults> logger) : BackgroundService
+    ILogger<MoveResults> logger,
+    TimeProvider time) : BackgroundService
 {
     private static readonly TimeSpan CheckTimeoutsEvery = TimeSpan.FromSeconds(5);
-    private static readonly TimeSpan GiveUpAfter = MoveRequestWorker.GiveUpAfter + TimeSpan.FromSeconds(10);
+    private static readonly TimeSpan GiveUpAfter = MoveRequestRules.GiveUpAfter + TimeSpan.FromSeconds(10);
     private const string BotAway = "The bot didn't roll it. Is it running?";
 
     private readonly ConcurrentDictionary<int, WaitingMove> _waiting = new();
@@ -67,7 +68,7 @@ public class MoveResults(
 
         foreach (var (id, move) in _waiting)
         {
-            if (DateTimeOffset.UtcNow - move.AskedAt > GiveUpAfter && _waiting.TryRemove(id, out _))
+            if (time.GetUtcNow() - move.AskedAt > GiveUpAfter && _waiting.TryRemove(id, out _))
                 await SendAsync(move, null, BotAway);
         }
     }

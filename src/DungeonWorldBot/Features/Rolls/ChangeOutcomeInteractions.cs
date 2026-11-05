@@ -1,5 +1,6 @@
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Encounters;
+using DungeonWorldBot.Features.GameMaster;
 using DungeonWorldBot.Features.Moves;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Abstractions.Rest;
@@ -22,7 +23,8 @@ public class ChangeOutcomeInteractions(
     IDiscordRestChannelAPI channelAPI,
     IDiscordRestInteractionAPI interactionAPI,
     IEncounterService encounterService,
-    IRollStatsService rollStatsService)
+    IRollStatsService rollStatsService,
+    IGameMasterService gameMaster)
     : InteractionGroup
 {
     public const string StrongHit = "change-outcome-strong-hit";
@@ -89,6 +91,10 @@ public class ChangeOutcomeInteractions(
     {
         if (!Snowflake.TryParse(state, out var messageID) || !context.TryGetChannelID(out var channelID) || !context.TryGetUserID(out var userID))
             return await AnswerAsync("Couldn't find that roll.");
+
+        // Checked again here, since anyone could send these buttons' IDs
+        if (!await ChangeOutcomeCommand.MayChangeAsync(rollStatsService, gameMaster, messageID.Value, CancellationToken))
+            return await AnswerAsync(ChangeOutcomeCommand.NotYourRoll);
 
         var message = await channelAPI.GetChannelMessageAsync(channelID, messageID.Value, CancellationToken);
         if (!message.IsSuccess || message.Entity.Embeds.FirstOrDefault() is not { } embed || RollOutcomeChange.Of(embed) is null)

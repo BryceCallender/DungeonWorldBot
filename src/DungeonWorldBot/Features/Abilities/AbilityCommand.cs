@@ -22,9 +22,6 @@ public class AbilityCommand(
 {
     private const string NameDescription = "The name of the ability";
 
-    // Discord rejects embeds with more than 25 fields
-    private const int MaxFields = 25;
-
     [Command("add")]
     [Description("Add a class move, spell, or feature to your character")]
     public async Task<IResult> AddAbilityAsync(
@@ -74,9 +71,7 @@ public class AbilityCommand(
         [Description("The user to see the abilities of. Don't specify a user to see your own.")]
         IUser? user = null)
     {
-        var character = user is not null
-            ? await characterService.GetCharacterFromUserAsync(user.ID)
-            : await GetOwnCharacterAsync();
+        var character = await characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
 
         if (character is null)
         {
@@ -90,22 +85,21 @@ public class AbilityCommand(
             return await ReplyAsync($"{character.Name}'s Abilities", "No abilities yet. Add one with /ability add");
 
         var fields = abilities
-            .Take(MaxFields)
+            .Take(MaxEmbedFields)
             .Select(a => (IEmbedField)new EmbedField(a.ToDisplay(), Truncate(Describe(a), 1024)))
             .ToList();
 
-        var description = abilities.Count > MaxFields
-            ? $"Showing {MaxFields} of {abilities.Count} abilities"
+        var description = abilities.Count > MaxEmbedFields
+            ? $"Showing {MaxEmbedFields} of {abilities.Count} abilities"
             : $"{character.Class.Type}: Level {character.Level}";
 
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Title: $"{character.Name}'s Abilities",
                 Description: description,
                 Fields: fields,
                 Colour: _feedbackService.Theme.Primary
-            ),
-            ct: CancellationToken
+            )
         );
     }
 

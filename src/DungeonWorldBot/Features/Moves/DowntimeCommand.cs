@@ -66,14 +66,10 @@ public class DowntimeCommand(
         if (marked.Count > 0)
             fields.Add(new EmbedField("Suit repairs", $"Marked: {string.Join(", ", marked)}. Unmark one with /resource spend"));
 
-        List<string> restored = [];
-        foreach (var resource in ClassSheetLibrary.ResourcesOf(character).Where(r => r.ResetsOnCamp))
-        {
-            await _resourceService.SetValueAsync(character, resource, _resourceService.GetResetValue(character, resource));
-            restored.Add($"{resource.Name} {_resourceService.Format(character, resource)}");
-        }
+        var restored = ClassSheetLibrary.ResourcesOf(character).Where(r => r.ResetsOnCamp).ToList();
+        await _resourceService.ResetAsync(character, restored);
         if (restored.Count > 0)
-            fields.Add(new EmbedField("Restored", string.Join('\n', restored)));
+            fields.Add(new EmbedField("Restored", string.Join('\n', restored.Select(r => $"{r.Name} {_resourceService.Format(character, r)}"))));
 
         return await ReplyAsync($"🏕️ {character.Name}: Make Camp", "*If you're somewhere dangerous, decide the watch order. Whoever's on watch rolls /downtime take-watch when something approaches.*", fields);
     }

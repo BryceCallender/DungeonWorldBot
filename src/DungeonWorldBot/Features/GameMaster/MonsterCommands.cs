@@ -18,11 +18,11 @@ public partial class DmCommand
     /// Monsters written up once, to put into fights with /dm encounter add.
     /// </summary>
     [Group("monster")]
+    [RequireGameMaster]
     public class MonsterCommands(
         ICommandContext context,
         FeedbackService feedbackService,
-        IEncounterService encounterService,
-        IGameMasterService gameMaster)
+        IEncounterService encounterService)
         : DungeonWorldCommandBase(context, feedbackService)
     {
         private const string MonsterDescription = "The monster";
@@ -51,9 +51,6 @@ public partial class DmCommand
             [Description("Anything else worth remembering. " + ClearHint)]
             string? notes = null)
         {
-            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
-                return await ReplyNotGameMasterAsync();
-
             if (Text(name) is not { } trimmed)
                 return await ReplyWithErrorAsync("Give the monster a name.");
 
@@ -91,9 +88,6 @@ public partial class DmCommand
             [Description("What to save it as, if not its name in the fight")]
             string? name = null)
         {
-            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
-                return await ReplyNotGameMasterAsync();
-
             if (await encounterService.FindEnemyAsync(enemy) is not { } source)
                 return await ReplyWithErrorAsync(EncounterCommands.NotFound(enemy));
 
@@ -121,15 +115,12 @@ public partial class DmCommand
         [Description("List the saved monsters")]
         public async Task<IResult> ListAsync()
         {
-            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
-                return await ReplyNotGameMasterAsync();
-
             var monsters = await encounterService.GetMonstersAsync();
             if (monsters.Count == 0)
                 return await ReplyWithErrorAsync("No monsters saved yet. Write one up with /dm monster save.");
 
             // Discord allows 25 fields per embed
-            var fields = monsters.Take(25)
+            var fields = monsters.Take(MaxEmbedFields)
                 .Select(m => (IEmbedField)new EmbedField(m.Name, EnemySheet.Summary(m)))
                 .ToList();
 
@@ -143,9 +134,6 @@ public partial class DmCommand
             [AutocompleteProvider(MonsterAutocomplete.ID)]
             string name)
         {
-            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
-                return await ReplyNotGameMasterAsync();
-
             if (await encounterService.FindMonsterAsync(name) is not { } monster)
                 return await ReplyWithErrorAsync(NotFound(name));
 
@@ -159,9 +147,6 @@ public partial class DmCommand
             [AutocompleteProvider(MonsterAutocomplete.ID)]
             string name)
         {
-            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
-                return await ReplyNotGameMasterAsync();
-
             if (await encounterService.FindMonsterAsync(name) is not { } monster)
                 return await ReplyWithErrorAsync(NotFound(name));
 
@@ -171,8 +156,5 @@ public partial class DmCommand
         }
 
         private static string NotFound(string name) => $"There's no saved monster called {name}. See /dm monster list";
-
-        private async Task<Result> ReplyNotGameMasterAsync() =>
-            await ReplyWithErrorAsync($"Only someone with the {gameMaster.RoleName} role can do that.");
     }
 }

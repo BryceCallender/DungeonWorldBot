@@ -77,9 +77,7 @@ public class JarCommand(
         [Description("The user to see the jars of. Don't specify a user to see your own.")]
         IUser? user = null)
     {
-        var character = user is not null
-            ? await _characterService.GetCharacterFromUserAsync(user.ID)
-            : await GetOwnCharacterAsync();
+        var character = await _characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
 
         if (character is null)
         {

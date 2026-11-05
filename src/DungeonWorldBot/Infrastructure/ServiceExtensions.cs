@@ -1,7 +1,11 @@
 using System.Reflection;
 using DungeonWorldBot.Features.Characters.Creation;
+using DungeonWorldBot.Features.GameMaster;
 using DungeonWorldBot.Features.Rolls;
 using Microsoft.Extensions.DependencyInjection;
+using Remora.Discord.API.Abstractions.Objects;
+using Remora.Discord.Caching.Extensions;
+using Remora.Discord.Caching.Services;
 using Remora.Commands.Extensions;
 using Remora.Commands.Groups;
 using Remora.Discord.Commands.Autocomplete;
@@ -16,38 +20,33 @@ namespace DungeonWorldBot.Infrastructure;
 
 public static class ServiceExtensions
 {
+    /// <summary>
+    /// How long a server's role list is kept for the DM check. Remora keeps things 30 seconds (10 unused) by default,
+    /// which runs out between commands at the table; role changes still update it sooner, through the gateway.
+    /// </summary>
+    public static readonly TimeSpan RoleListLifetime = TimeSpan.FromMinutes(10);
+
     public static IServiceCollection AddRemoraServices(this IServiceCollection services)
     {
-        var asm = Assembly.GetEntryAssembly()!;
+        var asm = typeof(Program).Assembly;
         services
+            // Keeps what Discord sends (like the server's roles, for the DM check) and answers repeat requests from memory,
+            // kept up to date by the gateway's events
+            .AddDiscordCaching()
+            .Configure<CacheSettings>(cache => cache
+                .SetAbsoluteExpiration<IReadOnlyList<IRole>>(RoleListLifetime)
+                .SetSlidingExpiration<IReadOnlyList<IRole>>(null))
             .AddDiscordCommands(enableSlash: true)
             .AddCommands()
             .AddCommands(asm)
+            .AddCondition<RequireGameMasterCondition>()
+            .AddPreparationErrorEvent<CommandErrorReplies>()
+            .AddPostExecutionEvent<CommandErrorReplies>()
             .AddAutocompleteProviders(asm)
             .AddResponders(asm)
             .AddPagination()
             .AddInteractionGroup<ChangeOutcomeInteractions>()
             .AddInteractionGroup<CharacterCreationInteractions>();
-
-        return services;
-    }
-
-    /// <summary>
-    /// Registers every class in the assembly tagged with a <see cref="ServiceAttribute"/>.
-    /// </summary>
-    public static IServiceCollection AddAttributedServices(this IServiceCollection services, Assembly assembly)
-    {
-        foreach (var type in assembly.GetConcreteTypes())
-        {
-            foreach (var attribute in type.GetCustomAttributes<ServiceAttribute>(inherit: false))
-            {
-                var serviceType = attribute.ServiceType ?? type;
-                if (!serviceType.IsAssignableFrom(type))
-                    throw new InvalidOperationException($"{type.Name} does not implement {serviceType.Name}.");
-
-                services.Add(new ServiceDescriptor(serviceType, type, attribute.Lifetime));
-            }
-        }
 
         return services;
     }

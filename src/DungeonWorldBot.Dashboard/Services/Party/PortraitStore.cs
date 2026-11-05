@@ -10,8 +10,7 @@ namespace DungeonWorldBot.Dashboard.Services.Party;
 /// <summary>
 /// Characters' pictures, kept on their rows in the bot's database (see <see cref="CharacterPortrait"/>).
 /// </summary>
-/// <param name="options">Options for opening the bot's database read-write.</param>
-public class PortraitStore(DbContextOptions<DungeonWorldContext> options)
+public class PortraitStore(GameWrites writes, TimeProvider time)
 {
     /// <summary>
     /// Where a character's picture is served, with when it was set so a new one gets a new address.
@@ -20,7 +19,8 @@ public class PortraitStore(DbContextOptions<DungeonWorldContext> options)
 
     public async Task<CharacterPortrait?> FindAsync(ulong characterID)
     {
-        await using var db = new DungeonWorldContext(options);
+        await using var write = writes.Open();
+        var db = write.Context;
         var id = new Snowflake(characterID);
         return await db.Set<CharacterPortrait>().AsNoTracking().FirstOrDefaultAsync(p => p.CharacterID == id);
     }
@@ -30,7 +30,8 @@ public class PortraitStore(DbContextOptions<DungeonWorldContext> options)
     /// </summary>
     public async Task<Dictionary<ulong, string>> UrlsAsync()
     {
-        await using var db = new DungeonWorldContext(options);
+        await using var write = writes.Open();
+        var db = write.Context;
         return (await db.Set<CharacterPortrait>().Select(p => new { p.CharacterID, p.UpdatedAt }).ToListAsync())
             .ToDictionary(p => p.CharacterID.Value, p => Url(p.CharacterID.Value, p.UpdatedAt));
     }
@@ -41,7 +42,7 @@ public class PortraitStore(DbContextOptions<DungeonWorldContext> options)
             CharacterID = c.ID,
             ContentType = contentType,
             Data = data,
-            UpdatedAt = DateTime.UtcNow,
+            UpdatedAt = time.GetUtcNow().UtcDateTime,
         });
 
     public Task RemoveAsync(ulong characterID) =>
@@ -95,7 +96,8 @@ public class PortraitStore(DbContextOptions<DungeonWorldContext> options)
     // Through the character, since the picture shares their row: setting or clearing it updates that row's columns
     private async Task ChangeAsync(ulong characterID, Action<Character> change)
     {
-        await using var db = new DungeonWorldContext(options);
+        await using var write = writes.Open();
+        var db = write.Context;
         var id = new Snowflake(characterID);
         if (await db.Characters.Include(c => c.Portrait).FirstOrDefaultAsync(c => c.ID == id) is not { } character)
             return;

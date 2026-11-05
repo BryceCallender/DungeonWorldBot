@@ -61,7 +61,7 @@ public sealed class DebilityTests : IDisposable
             var character = (await new CharacterService(context).GetCharacterFromUserAsync(UserId))!;
 
             Assert.Equal([DebilityType.Weak, DebilityType.Scarred], DebilityRules.Current(character));
-            Assert.Equal((DebilityType.Weak, -1), DebilityRules.RollPenalty(character, StatType.Str));
+            Assert.Equal(new DebilityPenalty(DebilityType.Weak, -1), DebilityRules.RollPenalty(character, StatType.Str));
             Assert.Null(DebilityRules.RollPenalty(character, StatType.Dex));
 
             var debilities = new DebilityService(context);

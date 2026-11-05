@@ -34,9 +34,7 @@ public class ClassCommand(
         [Description("The user to see the class sheet of. Don't specify a user to see your own.")]
         IUser? user = null)
     {
-        var character = user is not null
-            ? await characterService.GetCharacterFromUserAsync(user.ID)
-            : await GetOwnCharacterAsync();
+        var character = await characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
 
         if (character is null)
         {
@@ -97,7 +95,7 @@ public class ClassCommand(
             (picksLeft > 0 ? $"\n{picksLeft} to pick. See /class moves" : string.Empty)));
 
         var icon = ImageHelper.ClassIcon(character.Class.Type);
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Title: $"{character.Name}: The {character.Class.Type}",
                 Thumbnail: icon.Thumbnail,
@@ -105,8 +103,7 @@ public class ClassCommand(
                 Fields: fields,
                 Colour: _feedbackService.Theme.Primary
             ),
-            icon.Options,
-            CancellationToken
+            icon.Options
         );
     }
 
@@ -122,12 +119,8 @@ public class ClassCommand(
             return await ReplyWithNoSheetAsync(character);
 
         var known = ClassSheetLibrary.KnownMoves(character);
-        List<string> added = [];
-        foreach (var move in sheet.GrantedMoves.Where(m => !known.Contains(m.Name, StringComparer.OrdinalIgnoreCase)))
-        {
-            await abilityService.AddAbilityAsync(character, move.Name, move.Summary, move.Uses);
-            added.Add(move.Name);
-        }
+        var added = sheet.GrantedMoves.Where(m => !known.Contains(m.Name, StringComparer.OrdinalIgnoreCase)).ToList();
+        await abilityService.AddAbilitiesAsync(character, added.Select(NewAbility.From));
 
         known = ClassSheetLibrary.KnownMoves(character);
         var unchosen = sheet.Features
@@ -136,7 +129,7 @@ public class ClassCommand(
             .ToList();
 
         var description = added.Count > 0
-            ? $"Added {string.Join(", ", added)}."
+            ? $"Added {string.Join(", ", added.Select(m => m.Name))}."
             : "You already have every starting move.";
         if (unchosen.Count > 0)
             description += $"\n\nYou still need to choose with /class learn:\n{string.Join('\n', unchosen)}";
@@ -150,7 +143,7 @@ public class ClassCommand(
     {
         var userId = GetUserId();
 
-        var character = await characterService.GetCharacterFromUserAsync(userId);
+        var character = await characterService.GetCharacterToShowAsync(userId);
         if (character is null)
             return await ReplyWithErrorAsync(NoCharacterMessage);
 
@@ -269,17 +262,16 @@ public class ClassCommand(
     /// <summary>
     /// A subclass move by name, or by "Name (Subclass)" as autocomplete sends it. Hidden moves aren't found.
     /// </summary>
-    private static (Subclass, SubclassMove)? FindSubclassMove(string move)
+    private static SubclassMoveMatch? FindSubclassMove(string move)
     {
-        var moves = SubclassLibrary.All.SelectMany(s => s.Moves.Where(m => !m.Hidden).Select(m => (Subclass: s, Move: m))).ToList();
+        var moves = SubclassLibrary.All.SelectMany(s => s.Moves.Where(m => !m.Hidden).Select(m => new SubclassMoveMatch(s, m))).ToList();
         var name = move.Trim();
 
-        var match = moves.FirstOrDefault(m => m.Move.Move.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
-        if (match.Subclass is null)
-            match = moves.FirstOrDefault(m => $"{m.Move.Move.Name} ({m.Subclass.Name})".Equals(name, StringComparison.OrdinalIgnoreCase));
-
-        return match.Subclass is null ? null : match;
+        return moves.FirstOrDefault(m => m.Move.Move.Name.Equals(name, StringComparison.OrdinalIgnoreCase))
+            ?? moves.FirstOrDefault(m => $"{m.Move.Move.Name} ({m.Subclass.Name})".Equals(name, StringComparison.OrdinalIgnoreCase));
     }
+
+    private record SubclassMoveMatch(Subclass Subclass, SubclassMove Move);
 
     private async Task<IResult> LearnForeignMoveAsync(Character character, ClassSheet sheet, string move)
     {

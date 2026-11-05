@@ -1,3 +1,4 @@
+using DungeonWorldBot.Dashboard.Services.Shared;
 using DungeonWorldBot.Dashboard.Models.Auth;
 using DungeonWorldBot.Dashboard.Services.Scenes;
 
@@ -33,16 +34,12 @@ public static class PortraitEndpoints
                 return Results.StatusCode(StatusCodes.Status403Forbidden);
             if (await party.GetCharacterAsync(id) is not { } character)
                 return Results.NotFound();
-            if (picture.Length is 0 or > CanvasEndpoints.MaxImageBytes)
-                return Results.BadRequest($"Pictures can be up to {CanvasEndpoints.MaxImageBytes / 1024 / 1024} MB.");
+            if (picture.Length is 0 or > Picture.MaxBytes)
+                return Results.BadRequest(Picture.TooBig);
+            if (await Picture.ReadAsync(picture) is not { } read)
+                return Results.BadRequest(Picture.NotAPicture);
 
-            using var buffer = new MemoryStream();
-            await picture.CopyToAsync(buffer);
-            var data = buffer.ToArray();
-            if (CanvasEndpoints.ImageType(data) is not { } contentType)
-                return Results.BadRequest("That isn't a PNG, JPEG, WebP or GIF.");
-
-            await store.SaveAsync(id, contentType, data);
+            await store.SaveAsync(id, read.ContentType, read.Data);
             return Results.LocalRedirect("/" + character.Url);
         });
 

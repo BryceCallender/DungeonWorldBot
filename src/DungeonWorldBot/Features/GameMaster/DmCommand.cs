@@ -39,13 +39,13 @@ public partial class DmCommand : CommandGroup
         ICommandContext context,
         FeedbackService feedbackService,
         ICharacterService characterService,
-        IGameMasterService gameMaster,
         ILevelingService leveling,
         IGameSettingsService settings)
-        : CharacterCommandBase(context, feedbackService, characterService, gameMaster, leveling, settings)
+        : CharacterCommandBase(context, feedbackService, characterService, leveling, settings)
     {
         [Command("set")]
         [Description("Set any character's stat to a value")]
+        [RequireGameMaster("Players raise stats with /character level allocate when they level up.")]
         public async Task<IResult> ChangeStatAsync(
             [Description("The stat to change")]
             StatType type,
@@ -54,9 +54,6 @@ public partial class DmCommand : CommandGroup
             [Description("The player whose character to change. Leave blank for your own.")]
             IUser? user = null)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
-                return await ReplyNotGameMasterAsync("Players raise stats with /character level allocate when they level up.");
-
             var character = await GetCharacterAsync(user);
             if (character is null)
             {
@@ -65,17 +62,17 @@ public partial class DmCommand : CommandGroup
 
             await _characterService.UpdateCharacterStatAsync(character, type, value);
 
-            return await _feedbackService.SendContextualEmbedAsync(
+            return await ReplyWithEmbedAsync(
                 new Embed(
                     Title: "Stat Changed!",
                     Description: $"{character.Name}'s {type} was changed to {value}",
                     Colour: _feedbackService.Theme.Primary
-                ),
-                ct: CancellationToken
+                )
             );
         }
 
         [Command("grant-points")]
+        [RequireGameMaster]
         [Description("Give a character stat points to spend")]
         public async Task<IResult> GrantStatPointsAsync(
             [Description("The player whose character gets the points")]
@@ -84,9 +81,6 @@ public partial class DmCommand : CommandGroup
             [MinValue(1)]
             int amount = 1)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
-                return await ReplyNotGameMasterAsync();
-
             var character = await _characterService.GetCharacterFromUserAsync(user.ID);
             if (character is null)
             {
@@ -95,26 +89,25 @@ public partial class DmCommand : CommandGroup
 
             await _leveling.GrantStatPointsAsync(character, amount);
 
-            return await _feedbackService.SendContextualEmbedAsync(
+            return await ReplyWithEmbedAsync(
                 new Embed(
                     Title: "Stat Points Granted!",
                     Description: $"{character.Name} now has {_leveling.GetStatPoints(character)} stat point(s) to spend with /character level allocate",
                     Colour: _feedbackService.Theme.Primary
-                ),
-                ct: CancellationToken
+                )
             );
         }
     }
 
     [Group("level")]
+    [RequireGameMaster]
     public class LevelCommand(
         ICommandContext context,
         FeedbackService feedbackService,
         ICharacterService characterService,
-        IGameMasterService gameMaster,
         ILevelingService leveling,
         IGameSettingsService settings)
-        : CharacterCommandBase(context, feedbackService, characterService, gameMaster, leveling, settings)
+        : CharacterCommandBase(context, feedbackService, characterService, leveling, settings)
     {
         [Command("set")]
         [Description("Set a character's level, or everyone's")]
@@ -130,9 +123,6 @@ public partial class DmCommand : CommandGroup
             [MinValue(0)]
             int? points = null)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
-                return await ReplyNotGameMasterAsync("Only the DM can change levels.");
-
             // Saved like /dm level set-points, so anyone who reaches this level later gets the same
             if (points is { } levelPoints)
             {
@@ -150,14 +140,13 @@ public partial class DmCommand : CommandGroup
                     await _leveling.ChangeLevelAsync(each, level);
                 }
 
-                return await _feedbackService.SendContextualEmbedAsync(
+                return await ReplyWithEmbedAsync(
                     new Embed(
                         Title: "Party Level Changed!",
                         Description: $"Every character is now level {level}: {string.Join(", ", characters.Select(c => c.Name))}\n" +
                                      "Anyone who went up a level has stat points to spend with /character level allocate",
                         Colour: _feedbackService.Theme.Primary
-                    ),
-                    ct: CancellationToken
+                    )
                 );
             }
 
@@ -182,9 +171,6 @@ public partial class DmCommand : CommandGroup
             [MinValue(2)]
             int? level = null)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
-                return await ReplyNotGameMasterAsync();
-
             if (level is { } only)
                 await _settings.SetStatPointsForLevelAsync(only, points);
             else
@@ -195,14 +181,14 @@ public partial class DmCommand : CommandGroup
     }
 
     [Group("rolls")]
+    [RequireGameMaster]
     public class RollsCommand(
         ICommandContext context,
         FeedbackService feedbackService,
         ICharacterService characterService,
-        IGameMasterService gameMaster,
         ILevelingService leveling,
         IGameSettingsService settings)
-        : CharacterCommandBase(context, feedbackService, characterService, gameMaster, leveling, settings)
+        : CharacterCommandBase(context, feedbackService, characterService, leveling, settings)
     {
         [Command("drama")]
         [Description("Turn the dramatic reveal for big rolls (double sixes, snake eyes, Last Breath) on or off")]
@@ -210,20 +196,16 @@ public partial class DmCommand : CommandGroup
             [Description("On to pause and land big rolls with a headline, off for quick rolls")]
             bool on)
         {
-            if (!await _gameMaster.IsGameMasterAsync(CancellationToken))
-                return await ReplyNotGameMasterAsync();
-
             await _settings.SetDramaticRollsAsync(on);
 
-            return await _feedbackService.SendContextualEmbedAsync(
+            return await ReplyWithEmbedAsync(
                 new Embed(
                     Title: on ? "🎭 Dramatic Rolls On" : "Dramatic Rolls Off",
                     Description: on
                         ? "Double sixes, snake eyes, Last Breath, comebacks and misses at low HP now land a moment late, with a headline."
                         : "Every roll lands straight away.",
                     Colour: _feedbackService.Theme.Primary
-                ),
-                ct: CancellationToken
+                )
             );
         }
     }

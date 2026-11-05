@@ -16,6 +16,8 @@ public class EnemyAutocomplete(IEncounterService encounterService) : IAutocomple
 {
     public const string ID = "enemy";
 
+    protected IEncounterService Encounters { get; } = encounterService;
+
     protected virtual bool IncludeDead => true;
 
     // Discord shows at most 25 suggestions
@@ -51,7 +53,7 @@ public class EnemyAutocomplete(IEncounterService encounterService) : IAutocomple
     /// The fights whose enemies to suggest: every one going on.
     /// </summary>
     protected virtual async Task<IReadOnlyList<Encounter>> FightsAsync(IReadOnlyList<IApplicationCommandInteractionDataOption> options) =>
-        await encounterService.GetRunningAsync();
+        await Encounters.GetRunningAsync();
 
     // Discord takes names up to 100 characters
     private static string Shorten(string name) => name.Length <= 100 ? name : name[..99] + "…";
@@ -77,7 +79,7 @@ public class TargetAutocomplete(
     IEncounterService encounterService,
     ICharacterService characterService,
     INpcService npcService,
-    ContextInjectionService? contextInjection = null)
+    ContextInjectionService contextInjection)
     : LivingEnemyAutocomplete(encounterService)
 {
     public new const string ID = "target";
@@ -90,13 +92,14 @@ public class TargetAutocomplete(
         if (NpcRollAutocomplete.ChosenName(options) is { } name)
         {
             if (await npcService.FindAsync(name) is { } npc)
-                fight = await encounterService.GetForAsync(npcID: npc.ID);
+                fight = await Encounters.GetForAsync(npcID: npc.ID);
         }
-        else if (contextInjection?.Context is { } context
+        else if (contextInjection.Context is { } context
                  && context.TryGetUserID(out var userID)
-                 && await characterService.GetCharacterFromUserAsync(userID) is { } character)
+                 && await characterService.GetCharacterNameAsync(userID) is not null)
         {
-            fight = await encounterService.GetForAsync(character.ID);
+            // A character's ID is their player's, so only whether they have one needs looking up
+            fight = await Encounters.GetForAsync(userID);
         }
 
         return fight is not null ? [fight] : await base.FightsAsync(options);

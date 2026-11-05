@@ -11,7 +11,7 @@
     @if (Viewer.SignedIn)
     {
         <p>You're signed in as <strong>@Viewer.Name</strong>, but that Discord account isn't in the campaign's server.</p>
-        <p><a href="logout">Sign out</a> and try a different account, or ask the DM for an invite.</p>
+        <p><SignOutButton /> and try a different account, or ask the DM for an invite.</p>
     }
     else
     {

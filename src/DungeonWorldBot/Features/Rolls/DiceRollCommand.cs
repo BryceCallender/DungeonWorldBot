@@ -96,7 +96,7 @@ public class DiceRollCommand(
         // only used for some moves doesn't.
         var gear = await damageService.ApplyGearAsync(character, string.Empty, DamageService.DamageDice(result));
 
-        var parts = bonuses.Select(b => $"{b.Source} {FormatSigned(b.Amount)}").Prepend(damageDice).ToList();
+        var parts = bonuses.Select(b => $"{b.Source} {Numbers.Signed(b.Amount)}").Prepend(damageDice).ToList();
         if (modifiers.Length > 0)
             parts.Add($"Extra {extra}");
 
@@ -137,7 +137,7 @@ public class DiceRollCommand(
         // Only looked up when there's a teaser to name them in
         var who = roller?.Name ?? (drama is null ? null : (await characterService.GetCharacterFromUserAsync(rolledBy))?.Name) ?? "Someone";
         var reply = await rollReveal.SendAsync(embed, drama, who, what,
-            e => _feedbackService.SendContextualEmbedAsync(e, ct: CancellationToken), CancellationToken);
+            e => ReplyWithEmbedAsync(e), CancellationToken);
         if (reply.IsSuccess && _context.TryGetUserID(out var userID) && _context.TryGetChannelID(out var channelID))
             await rollStatsService.RecordAsync(reply.Entity.ID, channelID, userID, roll, RollLabel.Of(embed));
 
@@ -145,7 +145,5 @@ public class DiceRollCommand(
     }
 
     private static IEmbedField RolledWith(IEnumerable<RollBonus> bonuses) =>
-        new EmbedField("Rolled with", string.Join(", ", bonuses.Select(b => $"{b.Source} {FormatSigned(b.Amount)}")));
-
-    private static string FormatSigned(int value) => value >= 0 ? $"+{value}" : value.ToString();
+        new EmbedField("Rolled with", string.Join(", ", bonuses.Select(b => $"{b.Source} {Numbers.Signed(b.Amount)}")));
 }

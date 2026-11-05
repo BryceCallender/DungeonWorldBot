@@ -29,7 +29,7 @@ public static partial class Lookup
         Enum.TryParse<ClassType>(name, ignoreCase: true, out var type) ? ClassSheetLibrary.For(type) : null;
 
     public static Subclass? FindSubclass(string slug) =>
-        SubclassLibrary.All.FirstOrDefault(s => Slug(s.Name) == slug.ToLowerInvariant());
+        SubclassLibrary.All.FirstOrDefault(s => Slug(s.Name).Equals(slug, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// e.g. "Champion of Luna" → "champion-of-luna", "Mr. Hatter" → "mr-hatter".
@@ -43,10 +43,12 @@ public static partial class Lookup
     /// <summary>
     /// The class's damage die and its HP before Constitution, as the bot works them out.
     /// </summary>
-    public static (string Damage, int BaseHP) Basics(ClassType type)
+    public record ClassBasics(string Damage, int BaseHP);
+
+    public static ClassBasics Basics(ClassType type)
     {
         var rules = new Class { Type = type };
-        return (rules.Damage, rules.HealthModifier);
+        return new ClassBasics(rules.Damage, rules.HealthModifier);
     }
 
     public static ClassKit? Kit(ClassType type) => ClassKits.All.FirstOrDefault(k => k.Type == type);

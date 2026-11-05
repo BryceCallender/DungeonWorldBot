@@ -115,7 +115,7 @@ public sealed class SubclassTests : IDisposable
         Assert.Equal([ChampionOfLuna.BloodMoon, ChampionOfLuna.LunasVow], learned.Select(m => m.Name));
         Assert.Same(ChampionOfLuna.Subclass, SubclassLibrary.Of(character));
 
-        var leveling = new LevelingService(characters, new ResourceService(context), subclasses: subclasses);
+        var leveling = new LevelingService(characters, new ResourceService(context), new FakeGameSettings(), subclasses);
         await leveling.ChangeLevelAsync(character, 10);
 
         var known = ClassSheetLibrary.KnownMoves(character);

@@ -47,15 +47,14 @@ public class SessionCommand(
             return await ReplyWithErrorAsync("Couldn't start the session. Try again.");
 
         var number = await _sessions.NumberOfAsync(session);
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Title: Truncate(session.Title is { } t ? $"📜 Session {number}: {t}" : $"📜 Session {number} begins", 256),
                 Description: Truncate($"Started by <@{GetUserId()}>. Gather round, adventurers. Every roll from here counts toward tonight's tale."
                     + await PreviouslyAsync(session), 4096),
                 Timestamp: session.StartedAt,
                 Colour: _feedbackService.Theme.Primary
-            ),
-            ct: CancellationToken
+            )
         );
     }
 
@@ -68,15 +67,14 @@ public class SessionCommand(
 
         var number = await _sessions.NumberOfAsync(session);
         var recap = await _sessions.RecapAsync(session);
-        var names = (await characterService.GetCharactersAsync()).ToDictionary(c => c.ID, c => c.Name);
+        var names = (await characterService.GetCharacterNamesAsync()).ToDictionary(c => c.ID, c => c.Name);
 
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Title: Truncate(session.Title is { } t ? $"🌙 Session {number} ends: {t}" : $"🌙 Session {number} ends", 256),
                 Description: Describe(session, recap),
                 Fields: recap.Players
-                    // Discord rejects embeds with more than 25 fields
-                    .Take(25)
+                    .Take(MaxEmbedFields)
                     .Select(p => (IEmbedField)new EmbedField(
                         // Whoever rolled without a character, like the DM
                         names.GetValueOrDefault(p.UserID) ?? "No character",
@@ -85,8 +83,7 @@ public class SessionCommand(
                     .ToList(),
                 Timestamp: session.EndedAt!.Value,
                 Colour: _feedbackService.Theme.Primary
-            ),
-            ct: CancellationToken
+            )
         );
     }
 
@@ -136,9 +133,10 @@ public class SessionCommand(
         if (added.Count == 0)
             return await PostResultAsync(currentChannelID, "📜 Scan Complete", "No game nights were missing. Every night with rolls is already a session.");
 
+        // Sessions are numbered by when they started, so the added ones slot in among those already marked
         List<string> lines = [];
         foreach (var session in added)
-            lines.Add($"Session {await _sessions.NumberOfAsync(session)} · <t:{session.StartedAt.ToUnixTimeSeconds()}:D> · {(await _sessions.RecapAsync(session)).Rolls} rolls");
+            lines.Add($"Session {await _sessions.NumberOfAsync(session)} · <t:{session.StartedAt.ToUnixTimeSeconds()}:D> · {await _sessions.CountRollsAsync(session)} rolls");
 
         return await PostResultAsync(currentChannelID, "📜 Scan Complete", Truncate(
             $"Added {added.Count} past game night{(added.Count == 1 ? "" : "s")} from <#{gameChat}>, and recorded {scan.Entity.Added} roll{(scan.Entity.Added == 1 ? "" : "s")} that were missing. "

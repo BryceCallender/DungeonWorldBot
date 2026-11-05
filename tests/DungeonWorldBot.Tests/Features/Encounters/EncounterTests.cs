@@ -1,3 +1,4 @@
+using Remora.Discord.Commands.Services;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Encounters;
@@ -32,7 +33,7 @@ public sealed class EncounterTests : IDisposable
 
     private static async Task<(EncounterService Service, Encounter Encounter)> FightAsync(DungeonWorldContext context)
     {
-        var service = new EncounterService(context);
+        var service = new EncounterService(context, TimeProvider.System);
         var encounter = (await service.StartAsync("Ambush"))!;
         return (service, encounter);
     }
@@ -41,7 +42,7 @@ public sealed class EncounterTests : IDisposable
     public async Task SeveralFights_GoAtOnce_EachWithItsOwnNameAndScene()
     {
         await using var context = CreateContext();
-        var service = new EncounterService(context);
+        var service = new EncounterService(context, TimeProvider.System);
         var ford = new SceneLink("dEsXAr", "The ford", null);
 
         Assert.Empty(await service.GetRunningAsync());
@@ -65,7 +66,7 @@ public sealed class EncounterTests : IDisposable
     public async Task EnemyNames_AreNumberedAcrossTheFightsGoingOn()
     {
         await using var context = CreateContext();
-        var service = new EncounterService(context);
+        var service = new EncounterService(context, TimeProvider.System);
         var first = (await service.StartAsync("Ambush"))!;
         var second = (await service.StartAsync("Raid"))!;
 
@@ -80,7 +81,7 @@ public sealed class EncounterTests : IDisposable
     public async Task Actions_GoToTheFightTheyBelongTo()
     {
         await using var context = CreateContext();
-        var service = new EncounterService(context);
+        var service = new EncounterService(context, TimeProvider.System);
         var aria = DiscordSnowflake.New(1);
         var bram = DiscordSnowflake.New(2);
         var ambush = (await service.StartAsync("Ambush", roster: new EncounterRoster([aria], [])))!;
@@ -101,7 +102,7 @@ public sealed class EncounterTests : IDisposable
     public async Task Targets_AreTheEnemiesInTheActorsFight()
     {
         await using var context = CreateContext();
-        var service = new EncounterService(context);
+        var service = new EncounterService(context, TimeProvider.System);
         var npcs = new NpcService(context);
         var grub = new Npc { Name = "Grub", CurrentHP = 6, MaxHP = 6 };
         await npcs.AddAsync(grub);
@@ -109,7 +110,7 @@ public sealed class EncounterTests : IDisposable
         var raid = (await service.StartAsync("Raid", roster: new EncounterRoster([], [grub.ID])))!;
         await service.AddEnemyAsync(ambush, new Enemy { Name = "Goblin", MaxHP = 3, CurrentHP = 3 });
         await service.AddEnemyAsync(raid, new Enemy { Name = "Ogre", MaxHP = 10, CurrentHP = 10 });
-        var targets = new TargetAutocomplete(service, new CharacterService(context), npcs);
+        var targets = new TargetAutocomplete(service, new CharacterService(context), npcs, new ContextInjectionService());
 
         // Grub is in the raid, so only its enemies; with nobody to go on, every fight's, saying which
         var grubs = await targets.GetSuggestionsAsync([Option("roll", [Option("name", value: "grub")])], "");
@@ -128,7 +129,7 @@ public sealed class EncounterTests : IDisposable
     public async Task Picks_AreInOneFightAtATime()
     {
         await using var context = CreateContext();
-        var service = new EncounterService(context);
+        var service = new EncounterService(context, TimeProvider.System);
         var aria = DiscordSnowflake.New(1);
         var bram = DiscordSnowflake.New(2);
         var grub = new Npc { Name = "Grub", CurrentHP = 6, MaxHP = 6 };
@@ -151,7 +152,7 @@ public sealed class EncounterTests : IDisposable
     public async Task EndingAFight_OnlyTakesArmorFromWhoWasInIt()
     {
         await using var context = CreateContext();
-        var service = new EncounterService(context);
+        var service = new EncounterService(context, TimeProvider.System);
         var aria = DiscordSnowflake.New(1);
         var bram = DiscordSnowflake.New(2);
         var cass = DiscordSnowflake.New(3);
@@ -258,7 +259,7 @@ public sealed class EncounterTests : IDisposable
 
         await using (var context = CreateContext())
         {
-            var service = new EncounterService(context);
+            var service = new EncounterService(context, TimeProvider.System);
             Assert.Equal("Goblin 2", (await service.FindEnemyAsync("  gOBLIN 2 "))?.Name);
 
             await service.EndAsync((await service.FindRunningAsync("Ambush"))!);
@@ -288,14 +289,14 @@ public sealed class EncounterTests : IDisposable
     {
         await using (var context = CreateContext())
         {
-            var service = new EncounterService(context);
+            var service = new EncounterService(context, TimeProvider.System);
             await service.SaveMonsterAsync(Goblin());
             await Assert.ThrowsAsync<DbUpdateException>(() => service.SaveMonsterAsync(new MonsterTemplate { Name = "GOBLIN", MaxHP = 1 }));
         }
 
         await using (var context = CreateContext())
         {
-            var service = new EncounterService(context);
+            var service = new EncounterService(context, TimeProvider.System);
             var goblin = (await service.FindMonsterAsync("goblin"))!;
             goblin.MaxHP = 6;
             await service.SaveMonsterAsync(goblin);
@@ -309,7 +310,7 @@ public sealed class EncounterTests : IDisposable
     public async Task DashboardFights_WaitToBeAnnounced_AndCommandFightsDont()
     {
         await using var context = CreateContext();
-        var service = new EncounterService(context);
+        var service = new EncounterService(context, TimeProvider.System);
         var scene = new SceneLink("dEsXAr", "The ford", "https://example.test/scene/dEsXAr");
 
         // Started on the dashboard: the bot announces it later
@@ -336,7 +337,7 @@ public sealed class EncounterTests : IDisposable
     public async Task EndingByCommand_CoversAStartNobodyAnnounced()
     {
         await using var context = CreateContext();
-        var service = new EncounterService(context);
+        var service = new EncounterService(context, TimeProvider.System);
         var fight = (await service.StartAsync("Ambush"))!;
 
         await service.EndAsync(fight, announced: true);

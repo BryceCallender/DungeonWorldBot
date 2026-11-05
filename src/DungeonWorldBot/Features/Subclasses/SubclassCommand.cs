@@ -8,7 +8,6 @@ using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Attributes;
 using Remora.Discord.Commands.Contexts;
-using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
 
@@ -33,14 +32,13 @@ public class SubclassCommand(
                 Truncate($"*{s.Title}.* {s.Summary}\n{s.Source}", 1024)))
             .ToList();
 
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Title: "Subclasses",
                 Description: "Read one with /subclass info, and join with /subclass join",
                 Fields: fields,
                 Colour: _feedbackService.Theme.Primary
-            ),
-            ct: CancellationToken
+            )
         );
     }
 
@@ -63,7 +61,7 @@ public class SubclassCommand(
         }
         else
         {
-            character = await GetCharacterAsync(user);
+            character = await characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
             if (character is null)
                 return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
 
@@ -87,15 +85,14 @@ public class SubclassCommand(
         if (character is not null && found.Status?.Invoke(character) is { } status)
             fields.Insert(0, new EmbedField("Status", Truncate(status, 1024)));
 
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Title: character is null ? found.Name : $"{character.Name}: {found.Name}",
                 Description: $"*{found.Title}*\n{found.Summary}\n\n{found.Source} subclass for {(found.Classes.Count > 0 ? string.Join(", ", found.Classes) : "any class")}." +
                              (found.CommandHint is not null ? $"\n{found.CommandHint}" : string.Empty),
                 Fields: fields,
                 Colour: _feedbackService.Theme.Primary
-            ),
-            ct: CancellationToken
+            )
         );
     }
 
@@ -166,7 +163,7 @@ public class SubclassCommand(
     /// <returns>An error if the user is acting on someone else's character without being the DM.</returns>
     private async Task<IResult?> CheckOthersAsync(IUser? user)
     {
-        if (user is null || !_context.TryGetUserID(out var self) || user.ID == self || await gameMaster.IsGameMasterAsync(CancellationToken))
+        if (await gameMaster.MayChangeAsync(user?.ID, CancellationToken))
             return null;
 
         return await ReplyWithErrorAsync($"Only someone with the {gameMaster.RoleName} role can change someone else's subclass.");
@@ -185,15 +182,14 @@ public class SubclassCommand(
     private async Task<IResult> ReplyAsync(string title, string description, Character character)
     {
         var icon = ImageHelper.ClassIcon(character.Class.Type);
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Title: title,
                 Thumbnail: icon.Thumbnail,
                 Description: Truncate(description, 4096),
                 Colour: _feedbackService.Theme.Primary
             ),
-            icon.Options,
-            CancellationToken
+            icon.Options
         );
     }
 }

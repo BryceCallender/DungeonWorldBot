@@ -1,3 +1,4 @@
+using DungeonWorldBot.Features.Subclasses;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Abilities;
@@ -37,7 +38,7 @@ public sealed class LevelingServiceTests : IDisposable
         var characters = new CharacterService(context);
         await characters.AddCharacterAsync(character);
         var resources = new ResourceService(context);
-        return (character, new LevelingService(characters, resources), resources);
+        return (character, new LevelingService(characters, resources, new FakeGameSettings(), new SubclassService(new AbilityService(context))), resources);
     }
 
     [Fact]

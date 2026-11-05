@@ -18,12 +18,13 @@ public sealed class ArmorTests : IDisposable
 
     private DungeonWorldContext CreateContext() => _db.CreateContext();
 
-    private static async Task<Character> AddCharacterAsync(DungeonWorldContext context, int physical = 2, int magical = 1, int divine = 0)
+    private static async Task<Character> AddCharacterAsync(DungeonWorldContext context, int physical = 2, int magical = 1, int divine = 0,
+        ulong? id = null, string name = "Arthur")
     {
         var character = new Character
         {
-            ID = UserId,
-            Name = "Arthur",
+            ID = id is { } other ? new Snowflake(other) : UserId,
+            Name = name,
             Class = new Class { Type = ClassType.Paladin },
             Health = new Health { CurrentHP = 20, MaxHP = 20 },
             Inventory = new Inventory(),
@@ -128,6 +129,24 @@ public sealed class ArmorTests : IDisposable
 
         Assert.Single(await armor.RemoveBonusesAsync(character, "ring of warding"));
         Assert.Empty(character.ArmorBonuses!);
+    }
+
+    [Fact]
+    public async Task EndingAFight_OnlyClearsWhoWasInIt()
+    {
+        await using var context = CreateContext();
+        var arthur = await AddCharacterAsync(context);
+        var bram = await AddCharacterAsync(context, id: 88, name: "Bram");
+        var armor = new ArmorService(context);
+        await armor.AddBonusAsync([arthur, bram], "Lightning barrier", ArmorType.Magical, 1, ArmorDuration.Fight);
+
+        var cleared = await armor.EndFightForAsync([bram.ID]);
+
+        var only = Assert.Single(cleared);
+        Assert.Equal("Bram", only.Name);
+        Assert.Equal("Lightning barrier", Assert.Single(only.Removed).Source);
+        Assert.Empty(bram.ArmorBonuses!);
+        Assert.Equal("Lightning barrier", Assert.Single(arthur.ArmorBonuses!).Source);
     }
 
     [Fact]

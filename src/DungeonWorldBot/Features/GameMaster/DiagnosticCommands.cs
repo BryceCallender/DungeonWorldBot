@@ -1,9 +1,12 @@
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Globalization;
+using System.Text.RegularExpressions;
+using DungeonWorldBot.Infrastructure;
 using Remora.Commands.Attributes;
-using Remora.Commands.Groups;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Objects;
+using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
 
@@ -12,50 +15,52 @@ namespace DungeonWorldBot.Features.GameMaster;
 public partial class DmCommand
 {
     [Group("diag")]
-    public class DiagnosticCommands(FeedbackService feedbackService) : CommandGroup
+    [RequireGameMaster]
+    public partial class DiagnosticCommands(ICommandContext context, FeedbackService feedbackService)
+        : DungeonWorldCommandBase(context, feedbackService)
     {
+        // The Raspberry Pi's own tool, which prints e.g. "temp=48.3'C"
+        private const string VcGenCmd = "/usr/bin/vcgencmd";
+
+        [GeneratedRegex(@"temp=(\d+(?:\.\d+)?)")]
+        private static partial Regex Temperature();
+
         [Command("temp")]
+        [Description("Show the Raspberry Pi's temperature")]
         public async Task<IResult> GetPiTemperature()
         {
-            var tempProcess = new ProcessStartInfo
+            if (!File.Exists(VcGenCmd))
+                return await ReplyWithErrorAsync("The bot isn't running on a Raspberry Pi, so there's no temperature to read.");
+
+            using var process = Process.Start(new ProcessStartInfo(VcGenCmd, "measure_temp")
             {
-                FileName = "/usr/bin/vcgencmd",
-                Arguments = "measure_temp",
                 RedirectStandardOutput = true,
                 UseShellExecute = false,
-                CreateNoWindow = true
-            };
+                CreateNoWindow = true,
+            });
+            if (process is null)
+                return await ReplyWithErrorAsync("Couldn't run vcgencmd.");
 
-            using var process = Process.Start(tempProcess);
+            // Read before waiting, or a full output buffer would leave both sides waiting on each other
+            var output = await process.StandardOutput.ReadToEndAsync(CancellationToken);
+            await process.WaitForExitAsync(CancellationToken);
 
-            if (process is null) 
-                return Result.FromError<string>("Failed to create process");
+            var match = Temperature().Match(output);
+            if (!match.Success)
+                return await ReplyWithErrorAsync($"Couldn't read the temperature from \"{output.Trim()}\".");
 
-            await process.WaitForExitAsync();
+            var celsius = double.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture);
+            var fahrenheit = celsius * 9 / 5 + 32;
 
-            var output = await process.StandardOutput.ReadToEndAsync();
-            Console.WriteLine(output);
-
-            var result = double.TryParse(output[5..9], out var tempC);
-
-            if (!result)
-                return Result.FromError<string>("Failed to parse temp");
-
-            var tempF = (tempC * (9 / 5.0)) + 32;
-
-            return await feedbackService.SendContextualEmbedAsync(
-                new Embed(
-                    Title: $"Temperature",
-                    Description: "Current temp of raspberry pi",
-                    Fields: new List<IEmbedField>
-                    {
-                        new EmbedField("°C", Math.Truncate(tempC).ToString(CultureInfo.InvariantCulture), true),
-                        new EmbedField("°F", Math.Truncate(tempF).ToString(CultureInfo.InvariantCulture), true)
-                    },
-                    Colour: feedbackService.Theme.Secondary
-                ),
-                ct: CancellationToken
-            );
+            return await ReplyWithEmbedAsync(new Embed(
+                Title: "Temperature",
+                Description: "Current temp of raspberry pi",
+                Fields: new List<IEmbedField>
+                {
+                    new EmbedField("°C", Math.Truncate(celsius).ToString(CultureInfo.InvariantCulture), true),
+                    new EmbedField("°F", Math.Truncate(fahrenheit).ToString(CultureInfo.InvariantCulture), true),
+                },
+                Colour: _feedbackService.Theme.Secondary));
         }
     }
 }

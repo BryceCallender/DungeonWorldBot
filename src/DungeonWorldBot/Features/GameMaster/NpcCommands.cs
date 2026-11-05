@@ -14,11 +14,11 @@ namespace DungeonWorldBot.Features.GameMaster;
 public partial class DmCommand
 {
     [Group("npc")]
+    [RequireGameMaster]
     public class NpcCommands(
         ICommandContext context,
         FeedbackService feedbackService,
-        INpcService npcService,
-        IGameMasterService gameMaster)
+        INpcService npcService)
         : DungeonWorldCommandBase(context, feedbackService)
     {
         private const string NameDescription = "The NPC";
@@ -50,9 +50,6 @@ public partial class DmCommand
             [Description("The player whose character they follow, like a Ranger's animal companion")]
             IUser? follows = null)
         {
-            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
-                return await ReplyNotGameMasterAsync();
-
             name = name.Trim();
             if (name.Length == 0)
                 return await ReplyWithErrorAsync("Give the NPC a name.");
@@ -117,9 +114,6 @@ public partial class DmCommand
             [Option("follows-nobody")]
             bool followsNobody = false)
         {
-            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
-                return await ReplyNotGameMasterAsync();
-
             var npc = await npcService.FindAsync(name);
             if (npc is null)
                 return await ReplyWithErrorAsync(NpcCommand.NotFound(name));
@@ -172,9 +166,6 @@ public partial class DmCommand
             [Description("Wisdom modifier")] [MinValue(-3)] [MaxValue(3)] int? wis = null,
             [Description("Charisma modifier")] [MinValue(-3)] [MaxValue(3)] int? cha = null)
         {
-            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
-                return await ReplyNotGameMasterAsync();
-
             var npc = await npcService.FindAsync(name);
             if (npc is null)
                 return await ReplyWithErrorAsync(NpcCommand.NotFound(name));
@@ -202,9 +193,6 @@ public partial class DmCommand
             [AutocompleteProvider(NpcAutocomplete.ID)]
             string name)
         {
-            if (!await gameMaster.IsGameMasterAsync(CancellationToken))
-                return await ReplyNotGameMasterAsync();
-
             var npc = await npcService.FindAsync(name);
             if (npc is null)
                 return await ReplyWithErrorAsync(NpcCommand.NotFound(name));
@@ -213,8 +201,5 @@ public partial class DmCommand
 
             return await ReplyAsync("NPC Left the Party", $"{npc.Name} is no longer with the party.");
         }
-
-        private async Task<Result> ReplyNotGameMasterAsync() =>
-            await ReplyWithErrorAsync($"Only someone with the {gameMaster.RoleName} role can do that.");
     }
 }

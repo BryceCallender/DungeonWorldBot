@@ -29,7 +29,7 @@ public sealed class SpotlightTests : IDisposable
     public async Task EnemyAttacks_ShowWhatTheyDidAndWho_AndTheQuietOneIsDue()
     {
         await using var context = _db.CreateContext();
-        var encounters = new EncounterService(context);
+        var encounters = new EncounterService(context, TimeProvider.System);
         var encounter = (await encounters.StartAsync("Ambush"))!;
         var goblin = new Enemy { Name = "Goblin 1", CurrentHP = 3, MaxHP = 3 };
         await encounters.AddEnemyAsync(encounter, goblin);
@@ -54,7 +54,7 @@ public sealed class SpotlightTests : IDisposable
     public async Task PlayersRolls_TakeTheTargetFromTheLog()
     {
         await using var context = _db.CreateContext();
-        var encounters = new EncounterService(context);
+        var encounters = new EncounterService(context, TimeProvider.System);
         var encounter = (await encounters.StartAsync("Ambush"))!;
         var aria = Hero(1, "Aria");
         var bram = Hero(2, "Bram");
@@ -86,7 +86,7 @@ public sealed class SpotlightTests : IDisposable
     public async Task Allies_ShowTheNpcsStillUp_WithWhatTheyDid()
     {
         await using var context = _db.CreateContext();
-        var encounters = new EncounterService(context);
+        var encounters = new EncounterService(context, TimeProvider.System);
         var npcs = new NpcService(context);
         var encounter = (await encounters.StartAsync("Ambush"))!;
         var grub = new Npc { Name = "Grub", CurrentHP = 6, MaxHP = 6 };
@@ -112,7 +112,7 @@ public sealed class SpotlightTests : IDisposable
     public async Task PickedFight_ShowsOnlyWhoWasPicked_AndAnyoneWhoJoinedIn()
     {
         await using var context = _db.CreateContext();
-        var encounters = new EncounterService(context);
+        var encounters = new EncounterService(context, TimeProvider.System);
         var npcs = new NpcService(context);
         var grub = new Npc { Name = "Grub", CurrentHP = 6, MaxHP = 6 };
         var pip = new Npc { Name = "Pip", CurrentHP = 4, MaxHP = 4 };
@@ -136,7 +136,7 @@ public sealed class SpotlightTests : IDisposable
     public async Task SeveralFights_EachOnlyCountTheirOwnRolls()
     {
         await using var context = _db.CreateContext();
-        var encounters = new EncounterService(context);
+        var encounters = new EncounterService(context, TimeProvider.System);
         var aria = Hero(1, "Aria");
         var bram = Hero(2, "Bram");
         var ambush = (await encounters.StartAsync("Ambush", roster: new EncounterRoster([aria.ID], [])))!;
@@ -165,7 +165,7 @@ public sealed class SpotlightTests : IDisposable
     public async Task UnpickedFight_ShowsEveryone()
     {
         await using var context = _db.CreateContext();
-        var encounters = new EncounterService(context);
+        var encounters = new EncounterService(context, TimeProvider.System);
         await new NpcService(context).AddAsync(new Npc { Name = "Grub", CurrentHP = 6, MaxHP = 6 });
         var encounter = (await encounters.StartAsync("Ambush"))!;
 
@@ -179,7 +179,7 @@ public sealed class SpotlightTests : IDisposable
     public async Task Logging_DoesNothingBetweenFights()
     {
         await using var context = _db.CreateContext();
-        var encounters = new EncounterService(context);
+        var encounters = new EncounterService(context, TimeProvider.System);
 
         await encounters.LogAsync(new EncounterAction { Actor = "Goblin", Action = "Attack" });
 

@@ -2,6 +2,7 @@ using System.Drawing;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Classes;
 using DungeonWorldBot.Features.Classes.Guides;
+using DungeonWorldBot.Infrastructure;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Interactivity;
@@ -66,8 +67,6 @@ public static class CreationView
     public static string SectionName(CreationSection section) => SectionNames[section];
 
     public static string StatName(StatType stat) => StatNames[stat];
-
-    public static string FormatModifier(int modifier) => modifier >= 0 ? $"+{modifier}" : modifier.ToString();
 
     /// <param name="problem">Why the last answer wasn't taken, shown above the question.</param>
     public static CreationMessage Render(CreationSession session, Snowflake userId, string? problem = null)
@@ -186,7 +185,7 @@ public static class CreationView
                 .Select(stat => Option(StatName(stat), (int)stat, uses.GetValueOrDefault(stat) ?? BasicUses[stat], false))
                 .ToList();
 
-            var modifier = FormatModifier(new Stat { Value = next }.Modifier);
+            var modifier = Numbers.Signed(new Stat { Value = next }.Modifier);
             extra = [Select(Ids.Stat, session, options, $"Which stat gets your {next} ({modifier})?")];
         }
 
@@ -350,16 +349,16 @@ public static class CreationView
 
     private static string StatValue(CharacterDraft draft, StatType stat) =>
         draft.Stats.TryGetValue(stat, out var value)
-            ? $"{value} ({FormatModifier(new Stat { Value = value }.Modifier)})"
+            ? $"{value} ({Numbers.Signed(new Stat { Value = value }.Modifier)})"
             : "—";
 
     private static string? ArmorAndDamage(KitChoice choice)
     {
         List<string> parts = [];
         if (choice.Armor != 0)
-            parts.Add($"{FormatModifier(choice.Armor)} armor");
+            parts.Add($"{Numbers.Signed(choice.Armor)} armor");
         if (choice.Damage != 0)
-            parts.Add($"{FormatModifier(choice.Damage)} damage");
+            parts.Add($"{Numbers.Signed(choice.Damage)} damage");
 
         return parts.Count > 0 ? string.Join(", ", parts) : null;
     }

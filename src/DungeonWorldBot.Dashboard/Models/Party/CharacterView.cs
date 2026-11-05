@@ -4,6 +4,11 @@ using DungeonWorldBot.Data.Entities;
 namespace DungeonWorldBot.Dashboard.Models.Party;
 
 /// <summary>
+/// An option the character chose for a class feature, e.g. "Water" for the Primary Element.
+/// </summary>
+public record FeaturePick(string Feature, string Choice);
+
+/// <summary>
 /// Everything about a character worth showing, worked out with the bot's own rules.
 /// </summary>
 public record CharacterView(
@@ -18,7 +23,7 @@ public record CharacterView(
     IReadOnlyList<SpellBook> SpellBooks,
     IReadOnlyList<GearView> Gear,
     IReadOnlyList<AbilityLine> Moves,
-    IReadOnlyList<(string Feature, string Choice)> Picks)
+    IReadOnlyList<FeaturePick> Picks)
 {
     public string ID => Character.ID.Value.ToString();
 

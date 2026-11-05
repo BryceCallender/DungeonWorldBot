@@ -15,7 +15,8 @@ public class HealthReader(
     DashboardDatabases databases,
     RecentErrors errors,
     RollReader rolls,
-    IConfiguration configuration)
+    IConfiguration configuration,
+    TimeProvider time)
 {
     public const int RollDays = 14;
 
@@ -31,7 +32,7 @@ public class HealthReader(
         {
             null => BotState.Unknown,
             { StoppedAt: not null } => BotState.Stopped,
-            _ when DateTimeOffset.UtcNow - bot.LastBeat > Silence => BotState.Down,
+            _ when time.GetUtcNow() - bot.LastBeat > Silence => BotState.Down,
             _ => BotState.Online,
         };
 
@@ -48,13 +49,13 @@ public class HealthReader(
 
     private async Task<IReadOnlyList<DayCount>> RollsByDayAsync()
     {
-        var today = DateOnly.FromDateTime(DateTime.Now);
+        var today = DateOnly.FromDateTime(time.GetLocalNow().DateTime);
         var first = today.AddDays(-(RollDays - 1));
 
         IReadOnlyList<DateOnly> days;
         try
         {
-            days = (await rolls.GetRollsAsync(first.ToDateTime(TimeOnly.MinValue), DateTimeOffset.Now))
+            days = (await rolls.GetRollsAsync(first.ToDateTime(TimeOnly.MinValue), time.GetLocalNow()))
                 .Select(r => DateOnly.FromDateTime(r.MessageID.Timestamp.LocalDateTime))
                 .ToList();
         }

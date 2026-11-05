@@ -8,7 +8,7 @@ namespace DungeonWorldBot.Features.Shapeshifting;
 /// <summary>
 /// The forms the player's character knows.
 /// </summary>
-public class TransformationAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
+public class TransformationAutocomplete(ContextInjectionService contextInjection, ICharacterService characterService)
     : ClassSheetAutocomplete(contextInjection, characterService)
 {
     public const string ID = "transformation";
@@ -18,5 +18,5 @@ public class TransformationAutocomplete(ContextInjectionService? contextInjectio
     protected override IEnumerable<Suggestion> OwnClassCandidates(Character character, ClassSheet sheet) =>
         (character.Transformations ?? []).Select(t => new Suggestion(t.Name, t.IsActive ? $"{t.Name} (current)" : t.Name));
 
-    protected override IEnumerable<Suggestion> AllClassCandidates() => [];
+    protected override IEnumerable<Suggestion> AllCandidates() => [];
 }

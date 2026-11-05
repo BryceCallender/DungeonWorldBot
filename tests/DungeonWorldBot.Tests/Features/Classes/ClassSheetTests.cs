@@ -1,3 +1,5 @@
+using DungeonWorldBot.Features.Characters;
+using Remora.Discord.Commands.Services;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Characters.Creation;
 using DungeonWorldBot.Features.Classes;
@@ -287,7 +289,11 @@ public class ClassSheetTests
     [Fact]
     public async Task Autocomplete_FiltersAndStaysWithinDiscordLimits()
     {
-        var suggestions = await new ClassMoveAutocomplete().GetSuggestionsAsync([], "spirit");
+        // No one running a command, so every class's moves
+        using var database = new TestDatabase();
+        await using var context = database.CreateContext();
+        var characters = new CharacterService(context);
+        var suggestions = await new ClassMoveAutocomplete(new ContextInjectionService(), characters).GetSuggestionsAsync([], "spirit");
 
         Assert.InRange(suggestions.Count, 1, 25);
         Assert.All(suggestions, s =>
@@ -296,7 +302,7 @@ public class ClassSheetTests
             Assert.True(s.Name.Length <= 100);
         });
 
-        var rolled = await new RolledClassMoveAutocomplete().GetSuggestionsAsync([], "ra");
+        var rolled = await new RolledClassMoveAutocomplete(new ContextInjectionService(), characters).GetSuggestionsAsync([], "ra");
         Assert.Contains(rolled, s => s.Value.AsT0 == "Raise the Dead");
         Assert.DoesNotContain(rolled, s => s.Value.AsT0 == "Trickle");
         Assert.Contains(rolled, s => s.Name == "Raise the Dead (Necromancer)");

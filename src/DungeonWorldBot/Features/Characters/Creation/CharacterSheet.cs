@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data.Entities;
+using DungeonWorldBot.Infrastructure;
 using DungeonWorldBot.Rules;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Objects;
@@ -22,7 +23,7 @@ public static class CharacterSheet
         ];
 
         fields.AddRange(character.Stats.Select(s => new EmbedField(
-            CreationView.StatName(s.StatType), $"{s.Value} ({CreationView.FormatModifier(s.Modifier)})", IsInline: true)));
+            CreationView.StatName(s.StatType), $"{s.Value} ({Numbers.Signed(s.Modifier)})", IsInline: true)));
 
         fields.Add(new EmbedField("Health", character.Health.ToDisplay(), IsInline: true));
         fields.Add(new EmbedField("Armor", DamageRules.Summary(character), IsInline: true));

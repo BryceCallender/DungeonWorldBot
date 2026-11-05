@@ -125,7 +125,7 @@ public abstract class MoveCommandBase(
             drama,
             character.Name,
             move.Name,
-            embed => _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken),
+            embed => ReplyWithEmbedAsync(embed),
             CancellationToken);
 
         if (!reply.IsSuccess)

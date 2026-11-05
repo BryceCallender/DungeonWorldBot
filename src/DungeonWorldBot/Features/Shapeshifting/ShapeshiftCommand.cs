@@ -30,11 +30,10 @@ public class ShapeshiftCommand(
     ITransformationService transformationService,
     IResourceService resourceService,
     IDiceRoller diceRoller,
-    IRollStatsService rollStatsService,
-    IDamageService damageService)
-    : DungeonWorldCommandBase(context, feedbackService)
+    StatRoller statRoller,
+    IRollStatsService rollStatsService)
+    : RollingCommandBase(context, feedbackService, characterService, statRoller, rollStatsService)
 {
-    private const string BonusDescription = "Any +forward, ongoing bonus, or penalty to add to the roll";
     private const string FormDescription = "One of the forms you know";
 
     [Command("learn")]
@@ -47,9 +46,9 @@ public class ShapeshiftCommand(
         [Description("The moves the GM gives the form, which cost 1 hold each")]
         string? moves = null)
     {
-        var (character, error) = await GetShapeshifterAsync();
-        if (character is null)
-            return await ReplyWithErrorAsync(error!);
+        var found = await GetShapeshifterAsync();
+        if (!found.IsDefined(out var character))
+            return await ReplyWithErrorAsync(found.Error!.Message);
 
         if (ShapeshiftRules.Find(character, name) is { } existing)
             return await ReplyWithErrorAsync($"{character.Name} already knows the {existing.Name} form. Change it with /shapeshift edit");
@@ -71,9 +70,9 @@ public class ShapeshiftCommand(
         [Description("The moves the GM gives the form. Leave blank to keep them as they are")]
         string? moves = null)
     {
-        var (character, error) = await GetShapeshifterAsync();
-        if (character is null)
-            return await ReplyWithErrorAsync(error!);
+        var found = await GetShapeshifterAsync();
+        if (!found.IsDefined(out var character))
+            return await ReplyWithErrorAsync(found.Error!.Message);
 
         if (ShapeshiftRules.Find(character, form) is not { } known)
             return await ReplyWithErrorAsync(UnknownForm(character, form));
@@ -93,9 +92,9 @@ public class ShapeshiftCommand(
         [AutocompleteProvider(TransformationAutocomplete.ID)]
         string form)
     {
-        var (character, error) = await GetShapeshifterAsync();
-        if (character is null)
-            return await ReplyWithErrorAsync(error!);
+        var found = await GetShapeshifterAsync();
+        if (!found.IsDefined(out var character))
+            return await ReplyWithErrorAsync(found.Error!.Message);
 
         if (ShapeshiftRules.Find(character, form) is not { } known)
             return await ReplyWithErrorAsync(UnknownForm(character, form));
@@ -114,14 +113,12 @@ public class ShapeshiftCommand(
         [Description("The user to see the forms of. Don't specify a user to see your own.")]
         IUser? user = null)
     {
-        var character = user is not null
-            ? await characterService.GetCharacterFromUserAsync(user.ID)
-            : await GetOwnCharacterAsync();
+        var character = await Characters.GetCharacterToShowAsync(user?.ID ?? GetUserId());
 
         if (character is null)
         {
             return await ReplyWithErrorAsync(user is null
-                ? "No character exists. Try making one with /character create"
+                ? NoCharacterMessage
                 : $"{user.Username} does not have a character.");
         }
 
@@ -161,9 +158,9 @@ public class ShapeshiftCommand(
         [Option("and-with")]
         string? andWith = null)
     {
-        var (character, error) = await GetShapeshifterAsync();
-        if (character is null)
-            return await ReplyWithErrorAsync(error!);
+        var found = await GetShapeshifterAsync();
+        if (!found.IsDefined(out var character))
+            return await ReplyWithErrorAsync(found.Error!.Message);
 
         var names = new[] { form, mergeWith, andWith }.Where(n => !string.IsNullOrWhiteSpace(n)).Select(n => n!).ToList();
         if (names.Count > ShapeshiftRules.MaxShapes(character))
@@ -213,7 +210,7 @@ public class ShapeshiftCommand(
             ? $"🐾 {character.Name}: {previous} → {formName}"
             : $"🐾 {character.Name} becomes {Article(formName)} {formName}";
 
-        return await ReplyWithRollAsync(character, title, $"*{definition.Trigger}...*", roll, fields);
+        return await ReplyWithRollAsync(character, title, $"*{definition.Trigger}...*", roll, fields, move: ShapeshiftRules.Shapeshifter);
     }
 
     [Command("move")]
@@ -225,9 +222,9 @@ public class ShapeshiftCommand(
         [MinValue(1)]
         int amount = 1)
     {
-        var (character, error) = await GetShapeshifterAsync();
-        if (character is null)
-            return await ReplyWithErrorAsync(error!);
+        var found = await GetShapeshifterAsync();
+        if (!found.IsDefined(out var character))
+            return await ReplyWithErrorAsync(found.Error!.Message);
 
         if (ShapeshiftRules.FormName(character) is not { } formName)
             return await ReplyWithErrorAsync($"{character.Name} is in their natural form. Shapeshift with /shapeshift into");
@@ -259,9 +256,9 @@ public class ShapeshiftCommand(
         [Description("Shed: you're reverting to negate damage you just took")]
         bool shed = false)
     {
-        var (character, error) = await GetShapeshifterAsync();
-        if (character is null)
-            return await ReplyWithErrorAsync(error!);
+        var found = await GetShapeshifterAsync();
+        if (!found.IsDefined(out var character))
+            return await ReplyWithErrorAsync(found.Error!.Message);
 
         if (ShapeshiftRules.FormName(character) is not { } formName)
             return await ReplyWithErrorAsync($"{character.Name} is already in their natural form.");
@@ -281,29 +278,6 @@ public class ShapeshiftCommand(
         return await ReplyAsync($"🌿 {character.Name} returns to their natural form", description);
     }
 
-    /// <summary>
-    /// Rolls 2d6 + a stat, with its debility and any subclass bonuses.
-    /// </summary>
-    /// <returns>The roll, and what went into it for the "Rolled with" field.</returns>
-    private async Task<(MoveRoll Roll, string RolledWith)> RollStatAsync(Character character, StatType stat, int bonus)
-    {
-        var modifier = character.Stats.FirstOrDefault(s => s.StatType == stat)?.Modifier ?? 0;
-        var debility = DebilityRules.RollPenalty(character, stat);
-        var bonuses = await damageService.BonusesAsync(character, RollKind.Stat, stat);
-
-        var parts = new List<string> { $"{stat.ToString().ToUpper()} {FormatSigned(modifier)}" };
-        if (debility is { } penalty)
-            parts.Add($"{penalty.Debility} {FormatSigned(penalty.Penalty)}");
-        parts.AddRange(bonuses.Select(b => $"{b.Source} {FormatSigned(b.Amount)}"));
-        if (bonus != 0)
-            parts.Add($"Bonus {FormatSigned(bonus)}");
-
-        var roll = MoveRoller.Roll(diceRoller, modifier + (debility?.Penalty ?? 0) + bonuses.Sum(b => b.Amount) + bonus);
-        return (roll, string.Join(", ", parts));
-    }
-
-    private static string FormatSigned(int value) => value >= 0 ? $"+{value}" : value.ToString();
-
     private static string Article(string name) => "aeiou".Contains(char.ToLowerInvariant(name[0])) ? "an" : "a";
 
     // Embed field values are capped at 1024 characters
@@ -311,37 +285,15 @@ public class ShapeshiftCommand(
 
     private static string UnknownForm(Character character, string name) =>
         $"{character.Name} doesn't know a form called {name.Trim()}. Add it with /shapeshift learn";
-
     /// <returns>The user's character if they can shapeshift, or why not.</returns>
-    private async Task<(Character? Character, string? Error)> GetShapeshifterAsync()
+    private async Task<Result<Character>> GetShapeshifterAsync()
     {
-        var character = await GetOwnCharacterAsync();
-        if (character is null)
-            return (null, "No character exists. Try making one with /character create");
+        var own = await RequireOwnCharacterAsync();
+        if (!own.IsDefined(out var character))
+            return own;
 
-        if (!ShapeshiftRules.CanShapeshift(character))
-            return (null, $"{character.Name} doesn't know {ShapeshiftRules.Shapeshifter}.");
-
-        return (character, null);
-    }
-
-    private async Task<Character?> GetOwnCharacterAsync() =>
-        await characterService.GetCharacterFromUserAsync(GetUserId());
-
-    private async Task<IResult> ReplyWithRollAsync(Character character, string title, string flavor, MoveRoll roll, IReadOnlyList<IEmbedField> fields)
-    {
-        var embed = new Embed(
-            Title: title,
-            Description: $"{flavor}\n\n{DiceHelper.BuildDiceResult(roll.Dice)}",
-            Fields: fields.ToList(),
-            Colour: MoveRoller.ColorFor(roll.Outcome)
-        );
-
-        var reply = await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);
-
-        if (reply.IsSuccess && _context.TryGetChannelID(out var channelID))
-            await rollStatsService.RecordAsync(reply.Entity.ID, channelID, character.ID, roll.Dice, RollLabel.Of(embed) with { Move = ShapeshiftRules.Shapeshifter });
-
-        return reply;
+        return ShapeshiftRules.CanShapeshift(character)
+            ? character
+            : new InvalidOperationError($"{character.Name} doesn't know {ShapeshiftRules.Shapeshifter}.");
     }
 }

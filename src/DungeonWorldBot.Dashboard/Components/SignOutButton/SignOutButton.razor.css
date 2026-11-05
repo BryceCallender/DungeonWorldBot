@@ -1,0 +1,4 @@
+/* Looks like the link it used to be */
+.signout { display: inline; margin: 0; }
+.signout button { padding: 0; border: 0; background: none; font: inherit; color: var(--accent); cursor: pointer; }
+.signout button:hover { text-decoration: underline; }

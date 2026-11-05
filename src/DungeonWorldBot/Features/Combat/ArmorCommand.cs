@@ -8,7 +8,6 @@ using Remora.Commands.Attributes;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.Commands.Attributes;
 using Remora.Discord.Commands.Contexts;
-using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
 
@@ -36,7 +35,7 @@ public class ArmorCommand(
         [Description("The user to see the armor of. Don't specify a user to see your own.")]
         IUser? user = null)
     {
-        var character = await GetCharacterAsync(user);
+        var character = await characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
         if (character is null)
             return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
 
@@ -54,7 +53,7 @@ public class ArmorCommand(
         [Description(UserDescription)]
         IUser? user = null)
     {
-        if (user is not null && _context.TryGetUserID(out var self) && user.ID != self && !await gameMaster.IsGameMasterAsync(CancellationToken))
+        if (!await gameMaster.MayChangeAsync(user?.ID, CancellationToken))
             return await ReplyWithErrorAsync($"Only someone with the {gameMaster.RoleName} role can set someone else's armor.");
 
         var character = await GetCharacterAsync(user);
@@ -101,10 +100,9 @@ public class ArmorCommand(
         }
 
         source = string.IsNullOrWhiteSpace(source) ? DefaultSource : source.Trim();
-        foreach (var character in characters)
-            await armorService.AddBonusAsync(character, source, type, amount, duration);
+        await armorService.AddBonusAsync(characters, source, type, amount, duration);
 
-        var bonus = $"{(amount >= 0 ? "+" : "")}{amount} {DamageRules.Describe(type)} armor from {source} ({DamageRules.Describe(duration)})";
+        var bonus = $"{Numbers.Signed(amount)} {DamageRules.Describe(type)} armor from {source} ({DamageRules.Describe(duration)})";
         return await ReplyAsync("Armor Added", characters.Count == 1
             ? $"{characters[0].Name} gets {bonus}.\n\n{DamageRules.Summary(characters[0])}"
             : $"Everyone gets {bonus}.\n\n{string.Join('\n', characters.Select(c => $"**{c.Name}**: {DamageRules.Totals(c)}"))}");
@@ -155,7 +153,7 @@ public class ArmorCommand(
     /// <summary>
     /// What ending the fight took off everyone, for the reply.
     /// </summary>
-    public static string DescribeCleared(IReadOnlyList<(string Name, IReadOnlyList<ArmorBonus> Removed)> cleared) =>
+    public static string DescribeCleared(IReadOnlyList<ClearedArmor> cleared) =>
         cleared.Count > 0
             ? $"Removed temporary armor:\n{string.Join('\n', cleared.Select(c => $"**{c.Name}**: {string.Join(", ", c.Removed.Select(b => b.Source))}"))}"
             : "Nobody had temporary armor to remove.";

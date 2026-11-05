@@ -18,7 +18,7 @@ public sealed class SessionTests : IDisposable
     public void Dispose() => _db.Dispose();
 
     private static SessionService Service(DungeonWorldContext context) =>
-        new(context, new RollStatsService(context, Options.Create(new BotSettings { GameChatChannelID = GameChat.Value })));
+        new(context, new RollStatsService(context, Options.Create(new BotSettings { GameChatChannelID = GameChat.Value })), TimeProvider.System);
 
     // A roll made at a moment, as its message ID says
     private static RollRecord Roll(DateTimeOffset at, ulong player, int first, int second, int total, Snowflake? channel = null) => new()
@@ -87,13 +87,14 @@ public sealed class SessionTests : IDisposable
     }
 
     [Fact]
-    public async Task Backfill_GuessesPastNightsFromGameChatRolls_AndRenumbersByStart()
+    public async Task Backfill_GuessesPastNightsFromGameChatRolls_AndNumbersByStart()
     {
         await using var context = _db.CreateContext();
         var night1 = new DateTimeOffset(2026, 9, 5, 19, 0, 0, TimeSpan.Zero);
         var night2 = night1.AddDays(7);
         var marked = night2.AddDays(7);
-        context.Sessions.Add(new GameSession { Title = "Into the Sunken Abbey", StartedAt = marked, EndedAt = marked.AddHours(3) });
+        var markedSession = new GameSession { Title = "Into the Sunken Abbey", StartedAt = marked, EndedAt = marked.AddHours(3) };
+        context.Sessions.Add(markedSession);
         // A night that runs past midnight, a stray roll days later, a night in another channel, and the marked night's rolls
         context.Rolls.AddRange(Enumerable.Range(0, 6).Select(i => Roll(night1.AddHours(i), 1, 3, 4, 7)));
         context.Rolls.Add(Roll(night1.AddDays(3), 1, 3, 4, 7));
@@ -110,6 +111,9 @@ public sealed class SessionTests : IDisposable
         Assert.Equal([night1, night2, marked], all.Select(s => s.StartedAt));
         Assert.Equal("Into the Sunken Abbey", all[2].Title);
         Assert.Equal(3, await sessions.NumberOfAsync(all[2]));
+        // Numbered by when they started, so the marked session keeps its ID while moving to third
+        Assert.Equal(markedSession.ID, all[2].ID);
+        Assert.Equal(1, await sessions.NumberOfAsync(all[0]));
 
         Assert.Empty(await Service(context).BackfillAsync());
         Assert.Equal(3, (await sessions.GetAllAsync()).Count);

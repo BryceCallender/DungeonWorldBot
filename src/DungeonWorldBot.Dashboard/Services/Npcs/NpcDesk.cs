@@ -10,8 +10,7 @@ namespace DungeonWorldBot.Dashboard.Services.Npcs;
 /// <summary>
 /// The DM looking after the NPCs traveling with the party, as /dm npc does in Discord. The bot's own rules do the work.
 /// </summary>
-/// <param name="options">Options for opening the bot's database read-write.</param>
-public class NpcDesk(DbContextOptions<DungeonWorldContext> options)
+public class NpcDesk(GameWrites writes)
 {
     public const int MaxNameLength = FormText.MaxNameLength;
     public const int MaxTextLength = FormText.MaxTextLength;
@@ -38,46 +37,50 @@ public class NpcDesk(DbContextOptions<DungeonWorldContext> options)
                 return $"{stat.ToString().ToUpper()} goes from -{MaxModifier} to +{MaxModifier}.";
         }
 
-        await using var context = new DungeonWorldContext(options);
-        var service = new NpcService(context);
-
-        Npc npc;
-        if (npcID is null)
-            npc = new Npc();
-        else if (await context.Npcs.FirstOrDefaultAsync(n => n.ID == npcID) is { } found)
-            npc = found;
-        else
-            return NoNpc;
-
-        if (await service.FindAsync(name) is { } taken && taken.ID != npc.ID)
-            return $"{taken.Name} is already with the party.";
-
-        npc.Name = name;
-        npc.Role = FormText.Clean(details.Role, MaxNameLength);
-        npc.MaxHP = details.MaxHP;
-        // A new NPC starts unhurt
-        npc.CurrentHP = npcID is null ? details.MaxHP : details.CurrentHP;
-        npc.Armor = details.Armor;
-        npc.Damage = FormText.Clean(details.Damage, MaxNameLength);
-        npc.Loyalty = details.Loyalty;
-        npc.Skills = FormText.Clean(details.Skills);
-        npc.Cost = FormText.Clean(details.Cost, MaxNameLength);
-        npc.Notes = FormText.Clean(details.Notes);
-        npc.FollowsID = details.FollowsID;
-        foreach (var type in Enum.GetValues<StatType>())
-            npc.SetModifier(type, details.Modifier(type));
-
-        if (npcID is null)
+        return await Conflicts.RetryAsync(async () =>
         {
-            await service.AddAsync(npc);
-        }
-        else
-        {
-            // Keeps current HP between 0 and the max
-            await service.SaveAsync(npc);
-        }
+            await using var write = writes.Open();
+            var context = write.Context;
+            var service = write.Get<INpcService>();
 
-        return null;
+            Npc npc;
+            if (npcID is null)
+                npc = new Npc();
+            else if (await context.Npcs.FirstOrDefaultAsync(n => n.ID == npcID) is { } found)
+                npc = found;
+            else
+                return NoNpc;
+
+            if (await service.FindAsync(name) is { } taken && taken.ID != npc.ID)
+                return $"{taken.Name} is already with the party.";
+
+            npc.Name = name;
+            npc.Role = FormText.Clean(details.Role, MaxNameLength);
+            npc.MaxHP = details.MaxHP;
+            // A new NPC starts unhurt
+            npc.CurrentHP = npcID is null ? details.MaxHP : details.CurrentHP;
+            npc.Armor = details.Armor;
+            npc.Damage = FormText.Clean(details.Damage, MaxNameLength);
+            npc.Loyalty = details.Loyalty;
+            npc.Skills = FormText.Clean(details.Skills);
+            npc.Cost = FormText.Clean(details.Cost, MaxNameLength);
+            npc.Notes = FormText.Clean(details.Notes);
+            npc.FollowsID = details.FollowsID;
+            foreach (var type in Enum.GetValues<StatType>())
+                npc.SetModifier(type, details.Modifier(type));
+
+            if (npcID is null)
+            {
+                await service.AddAsync(npc);
+            }
+            else
+            {
+                // Keeps current HP between 0 and the max
+                await service.SaveAsync(npc);
+            }
+
+            return null;
+        });
     }
 
     /// <summary>
@@ -88,16 +91,20 @@ public class NpcDesk(DbContextOptions<DungeonWorldContext> options)
         if (amount < 1)
             return "Give an amount of at least 1.";
 
-        await using var context = new DungeonWorldContext(options);
-        var service = new NpcService(context);
-        if (await context.Npcs.FirstOrDefaultAsync(n => n.ID == npcID) is not { } npc)
-            return NoNpc;
+        return await Conflicts.RetryAsync(async () =>
+        {
+            await using var write = writes.Open();
+            var context = write.Context;
+            var service = write.Get<INpcService>();
+            if (await context.Npcs.FirstOrDefaultAsync(n => n.ID == npcID) is not { } npc)
+                return NoNpc;
 
-        if (change == HpChange.Damage)
-            await service.DamageAsync(npc, amount);
-        else
-            await service.HealAsync(npc, amount);
-        return null;
+            if (change == HpChange.Damage)
+                await service.DamageAsync(npc, amount);
+            else
+                await service.HealAsync(npc, amount);
+            return null;
+        });
     }
 
     /// <summary>
@@ -105,12 +112,16 @@ public class NpcDesk(DbContextOptions<DungeonWorldContext> options)
     /// </summary>
     public async Task<string?> RemoveAsync(int npcID)
     {
-        await using var context = new DungeonWorldContext(options);
-        if (await context.Npcs.FirstOrDefaultAsync(n => n.ID == npcID) is not { } npc)
-            return NoNpc;
+        return await Conflicts.RetryAsync(async () =>
+        {
+            await using var write = writes.Open();
+            var context = write.Context;
+            if (await context.Npcs.FirstOrDefaultAsync(n => n.ID == npcID) is not { } npc)
+                return NoNpc;
 
-        await new NpcService(context).RemoveAsync(npc);
-        return null;
+            await write.Get<INpcService>().RemoveAsync(npc);
+            return null;
+        });
     }
 
     private const string NoNpc = "That NPC isn't with the party any more.";

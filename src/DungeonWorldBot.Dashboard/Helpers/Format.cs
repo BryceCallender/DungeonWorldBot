@@ -45,9 +45,9 @@ public static class Format
     /// <summary>
     /// How long ago something was, roughly, e.g. "12s ago" or "3d ago".
     /// </summary>
-    public static string Ago(DateTimeOffset at)
+    public static string Ago(DateTimeOffset at, DateTimeOffset now)
     {
-        var since = DateTimeOffset.UtcNow - at;
+        var since = now - at;
         return since.TotalSeconds < 60 ? $"{Math.Max(0, (int)since.TotalSeconds)}s ago"
             : since.TotalMinutes < 60 ? $"{(int)since.TotalMinutes}m ago"
             : since.TotalHours < 24 ? $"{(int)since.TotalHours}h ago"

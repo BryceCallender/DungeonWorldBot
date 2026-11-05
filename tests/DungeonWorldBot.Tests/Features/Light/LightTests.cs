@@ -98,7 +98,7 @@ public sealed class LightTests : IDisposable
     {
         await using var context = _db.CreateContext();
         var lantern = await AddCharacterAsync(context, LanternId, ClassType.Lantern, Lantern.LightWeaponry);
-        var encounters = new EncounterService(context);
+        var encounters = new EncounterService(context, TimeProvider.System);
         var fight = (await encounters.StartAsync("Ambush"))!;
         var goblin = new Enemy { Name = "Goblin", CurrentHP = 10, MaxHP = 10, Armor = 2, Damage = "d6" };
         await encounters.AddEnemyAsync(fight, goblin);

@@ -145,7 +145,7 @@ public sealed class NpcTests : IDisposable
         var npc = NewNpc();
         npc.Skills = "Protector +2, Tracker+1; Burglar -1, Cook";
 
-        Assert.Equal([("Protector", 2), ("Tracker", 1), ("Burglar", -1)], NpcRolls.Skills(npc));
+        Assert.Equal([new NpcSkill("Protector", 2), new NpcSkill("Tracker", 1), new NpcSkill("Burglar", -1)], NpcRolls.Skills(npc));
     }
 
     [Fact]

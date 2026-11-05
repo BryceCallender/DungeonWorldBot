@@ -16,7 +16,7 @@ public sealed class AbilityTests : IDisposable
 
     private DungeonWorldContext CreateContext() => _db.CreateContext();
 
-    private async Task<Character> AddCharacterAsync(DungeonWorldContext context)
+    private static async Task<Character> AddCharacterAsync(DungeonWorldContext context)
     {
         var character = new Character
         {

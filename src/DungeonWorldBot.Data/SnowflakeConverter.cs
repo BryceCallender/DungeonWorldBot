@@ -4,32 +4,26 @@ using Remora.Rest.Core;
 
 namespace DungeonWorldBot.Data;
 
-public class SnowflakeConverter : ValueConverter<Snowflake, ulong>
+/// <summary>
+/// Stores snowflakes as signed numbers. SQLite only has those, so EF refuses to compare or sort unsigned ones in SQL;
+/// as signed numbers, queries like "rolls since" and "newest first" run in the database. Discord's IDs stay below
+/// long.MaxValue until 2084, so every one is stored as the same number either way.
+/// </summary>
+public class SnowflakeConverter : ValueConverter<Snowflake, long>
 {
-    private static readonly ConverterMappingHints _defaultHints = new(precision: 20, scale: 0);
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="SnowflakeConverter"/> class.
-    /// </summary>
     public SnowflakeConverter()
-        : base(sf => sf.Value, value => DiscordSnowflake.New(value), _defaultHints)
+        : base(sf => (long)sf.Value, value => DiscordSnowflake.New((ulong)value))
     { }
 }
 
-public class NullableSnowflakeConverter : ValueConverter<Snowflake?, ulong?>
+/// <summary>
+/// <see cref="SnowflakeConverter"/> for optional snowflakes.
+/// </summary>
+public class NullableSnowflakeConverter : ValueConverter<Snowflake?, long?>
 {
-    private static readonly ConverterMappingHints _defaultHints = new(precision: 20, scale: 0);
-
-    /// <summary>
-    /// Initializes a new instance of the <see cref="SnowflakeConverter"/> class.
-    /// </summary>
     public NullableSnowflakeConverter()
         : base(
-            sf => sf.HasValue 
-                ? sf.Value.Value 
-                : default, 
-            value => value.HasValue 
-                ? DiscordSnowflake.New(value.Value) 
-                : default, _defaultHints)
+            sf => sf.HasValue ? (long)sf.Value.Value : null,
+            value => value.HasValue ? DiscordSnowflake.New((ulong)value.Value) : null)
     { }
 }

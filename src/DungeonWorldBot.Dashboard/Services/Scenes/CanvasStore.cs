@@ -11,7 +11,7 @@ namespace DungeonWorldBot.Dashboard.Services.Scenes;
 /// <summary>
 /// Reads and saves canvases and what's drawn on them.
 /// </summary>
-public class CanvasStore(CanvasContext db)
+public class CanvasStore(CanvasContext db, TimeProvider time)
 {
     public const int MaxNameLength = Canvas.MaxNameLength;
     public const int MaxItemIDLength = CanvasItem.MaxIDLength;
@@ -30,7 +30,7 @@ public class CanvasStore(CanvasContext db)
 
     public async Task<Canvas> CreateAsync(string name, CanvasKind kind, string? createdBy)
     {
-        var now = DateTime.UtcNow;
+        var now = time.GetUtcNow().UtcDateTime;
         var canvas = new Canvas { Name = name, Kind = kind, CreatedBy = createdBy, CreatedAt = now, UpdatedAt = now };
         db.Canvases.Add(canvas);
         await db.SaveChangesAsync();
@@ -40,7 +40,7 @@ public class CanvasStore(CanvasContext db)
     /// <returns>Whether there was such a canvas.</returns>
     public async Task<bool> SetArchivedAsync(int id, bool archived) =>
         await db.Canvases.Where(c => c.ID == id)
-            .ExecuteUpdateAsync(c => c.SetProperty(x => x.ArchivedAt, archived ? DateTime.UtcNow : null)) > 0;
+            .ExecuteUpdateAsync(c => c.SetProperty(x => x.ArchivedAt, archived ? time.GetUtcNow().UtcDateTime : null)) > 0;
 
     /// <summary>
     /// Deletes a canvas for good, with everything drawn on it, its pictures and its thumbnail.
@@ -69,7 +69,7 @@ public class CanvasStore(CanvasContext db)
         if (existing is null)
             db.CanvasItems.Add(new CanvasItem
             {
-                ID = itemID, CanvasID = canvasID, Type = type, Json = json, AuthorID = authorID, CreatedAt = DateTime.UtcNow,
+                ID = itemID, CanvasID = canvasID, Type = type, Json = json, AuthorID = authorID, CreatedAt = time.GetUtcNow().UtcDateTime,
             });
         else
         {
@@ -140,7 +140,7 @@ public class CanvasStore(CanvasContext db)
         var id = Convert.ToHexString(RandomNumberGenerator.GetBytes(12)).ToLowerInvariant();
         db.CanvasImages.Add(new CanvasImage
         {
-            ID = id, CanvasID = canvasID, ContentType = contentType, Data = data, UploadedBy = uploadedBy, CreatedAt = DateTime.UtcNow,
+            ID = id, CanvasID = canvasID, ContentType = contentType, Data = data, UploadedBy = uploadedBy, CreatedAt = time.GetUtcNow().UtcDateTime,
         });
         await db.SaveChangesAsync();
         return id;
@@ -162,7 +162,7 @@ public class CanvasStore(CanvasContext db)
             thumbnail.ContentType = contentType;
             thumbnail.Data = data;
         }
-        thumbnail.UpdatedAt = DateTime.UtcNow;
+        thumbnail.UpdatedAt = time.GetUtcNow().UtcDateTime;
         await db.SaveChangesAsync();
     }
 
@@ -180,5 +180,5 @@ public class CanvasStore(CanvasContext db)
 
     private Task TouchAsync(int canvasID) =>
         db.Canvases.Where(c => c.ID == canvasID)
-            .ExecuteUpdateAsync(c => c.SetProperty(x => x.UpdatedAt, DateTime.UtcNow));
+            .ExecuteUpdateAsync(c => c.SetProperty(x => x.UpdatedAt, time.GetUtcNow().UtcDateTime));
 }

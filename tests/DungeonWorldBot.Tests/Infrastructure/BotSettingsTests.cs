@@ -25,6 +25,7 @@ public class BotSettingsTests
             ["DashboardUrl"] = "https://pi.example",
             ["GameSettingsPath"] = "elsewhere.json",
             ["DungeonMasterRoleName"] = "GM",
+            ["CommandServerId"] = "333",
         });
 
         Assert.Equal("token", settings.BotToken);
@@ -32,6 +33,7 @@ public class BotSettingsTests
         Assert.Equal("https://pi.example", settings.DashboardUrl);
         Assert.Equal("elsewhere.json", settings.GameSettingsPath);
         Assert.Equal("GM", settings.DungeonMasterRoleName);
+        Assert.Equal(333UL, settings.CommandServerID);
     }
 
     [Fact]
@@ -44,5 +46,6 @@ public class BotSettingsTests
         Assert.Null(settings.DashboardUrl);
         Assert.Equal("game-settings.json", settings.GameSettingsPath);
         Assert.Equal("DM", settings.DungeonMasterRoleName);
+        Assert.Null(settings.CommandServerID);
     }
 }

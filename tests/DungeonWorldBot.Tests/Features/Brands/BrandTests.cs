@@ -56,7 +56,7 @@ public sealed class BrandTests : IDisposable
         await using var context = _db.CreateContext();
         var character = await AddImmolatorAsync(context);
         var resources = new ResourceService(context);
-        var service = new BrandService(context, resources);
+        var service = new BrandService(resources);
 
         await service.ConjureAsync(character, ["hand", BrandRules.PlusOneDamage]);
 
@@ -78,7 +78,7 @@ public sealed class BrandTests : IDisposable
     {
         await using var context = _db.CreateContext();
         var character = await AddImmolatorAsync(context);
-        var service = new BrandService(context, new ResourceService(context));
+        var service = new BrandService(new ResourceService(context));
 
         await service.ConjureAsync(character, ["hand"]);
         await service.ConjureAsync(character, ["thrown, near"]);

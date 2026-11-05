@@ -16,8 +16,12 @@ using Microsoft.AspNetCore.HttpOverrides;
 var builder = WebApplication.CreateBuilder(args);
 
 // The Discord sign-in secret lives in user secrets (dotnet user-secrets set ...), which are otherwise only read in
-// Development, and the dashboard is shared in Production
-builder.Configuration.AddUserSecrets<Program>(optional: true);
+// Development, and the dashboard is shared in Production. The environment and command line are read again after them,
+// so either can still override a secret, as they can everything else.
+builder.Configuration
+    .AddUserSecrets<Program>(optional: true)
+    .AddEnvironmentVariables()
+    .AddCommandLine(args);
 
 // Find the build's compressed assets when run with `dotnet run` outside Development (as when sharing), or they're served empty
 builder.WebHost.UseStaticWebAssets();
@@ -32,9 +36,9 @@ builder.Services.AddRazorComponents();
 builder.Services
     .AddBotServices(databases)
     .AddLiveUpdates(databases)
-    .AddParty(databases)
-    .AddNpcs(databases)
-    .AddEncounters(databases)
+    .AddParty()
+    .AddNpcs()
+    .AddEncounters()
     .AddScenes(databases)
     .AddRolls()
     .AddSessions()
