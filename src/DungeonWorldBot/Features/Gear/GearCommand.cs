@@ -10,7 +10,6 @@ using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Attributes;
 using Remora.Discord.Commands.Contexts;
-using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
 
@@ -58,7 +57,7 @@ public class GearCommand(
             return await ReplyAsync(found.Name, Describe(found), ModeFields(found, active: null));
         }
 
-        var character = await GetCharacterAsync(user);
+        var character = await characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
         if (character is null)
             return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
 
@@ -233,14 +232,13 @@ public class GearCommand(
                          (action.HalfDamage ? $", halved (rounded up) → **{dealt}**" : $" → **{dealt}**") +
                          damage.Details;
 
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Title: $"🏹 {character.Name}: {action.Name}",
                 Description: $"*{action.Trigger}...*\n*{owned.Mode.Visual}*\n\n{DiceHelper.BuildDiceResult(damage.Dice)}",
                 Fields: new List<IEmbedField> { new EmbedField("Damage", damageText) },
                 Colour: _feedbackService.Theme.Primary
-            ),
-            ct: CancellationToken
+            )
         );
     }
 
@@ -268,7 +266,7 @@ public class GearCommand(
     /// <returns>An error if the user is acting on someone else's character without being the DM.</returns>
     private async Task<IResult?> CheckOthersAsync(IUser? user)
     {
-        if (user is null || !_context.TryGetUserID(out var self) || user.ID == self || await gameMaster.IsGameMasterAsync(CancellationToken))
+        if (await gameMaster.MayChangeAsync(user?.ID, CancellationToken))
             return null;
 
         return await ReplyWithErrorAsync($"Only someone with the {gameMaster.RoleName} role can change someone else's gear.");

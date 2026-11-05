@@ -1,39 +1,31 @@
 using System.ComponentModel;
+using DungeonWorldBot.Infrastructure;
 using OneOf;
 using Remora.Commands.Attributes;
-using Remora.Commands.Groups;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Abstractions.Rest;
 using Remora.Discord.API.Objects;
+using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Feedback.Messages;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
 
 namespace DungeonWorldBot.Features.Characters;
 
-public class DungeonWorldCommands(FeedbackService feedbackService, ICharacterService characterService) : CommandGroup
+public class DungeonWorldCommands(ICommandContext context, FeedbackService feedbackService, ICharacterService characterService)
+    : DungeonWorldCommandBase(context, feedbackService)
 {
-    
-
-    
     [Command("players")]
     [Description("List the characters in the campaign")]
     public async Task<IResult> ShowPlayersAsync()
     {
-        var characters = await characterService.GetCharactersAsync();
+        var characters = await characterService.GetCharacterNamesAsync();
         if (characters.Count == 0)
-        {
-            return await ReplyWithError("No characters are in the campaign");
-        }
+            return await ReplyWithErrorAsync("No characters are in the campaign");
 
-        return await feedbackService.SendContextualEmbedAsync(
-            new Embed(
-                Title: "Campaign Characters", 
-                Fields: characters.Select(c => new EmbedField(c.Class.Type.ToString(), c.Name)).ToList(),
-                Colour: feedbackService.Theme.Primary
-            ),
-            ct: CancellationToken
-        );
+        var description = characters.Count > MaxEmbedFields ? $"Showing {MaxEmbedFields} of {characters.Count} characters" : string.Empty;
+        return await ReplyAsync("Campaign Characters", description,
+            characters.Take(MaxEmbedFields).Select(c => (IEmbedField)new EmbedField(c.Class.ToString(), c.Name)).ToList());
     }
 
     [Command("world", "map")]
@@ -42,23 +34,13 @@ public class DungeonWorldCommands(FeedbackService feedbackService, ICharacterSer
     {
         await using var imageStream = File.OpenRead(Path.Combine(AppContext.BaseDirectory, "Assets", "world.png"));
 
-        return await feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Title: "World Map",
                 Image: new EmbedImage("attachment://world.png"),
-                Colour: feedbackService.Theme.Primary
+                Colour: _feedbackService.Theme.Primary
             ),
-            new FeedbackMessageOptions(Attachments: new OneOf<FileData, IPartialAttachment>[] { new FileData("world.png", imageStream) }),
-            CancellationToken
-        );
-    }
-    
-    private async Task<Result> ReplyWithError(string error)
-    {
-        return (Result)await feedbackService.SendContextualErrorAsync
-        (
-            error,
-            ct: CancellationToken
+            new FeedbackMessageOptions(Attachments: new OneOf<FileData, IPartialAttachment>[] { new FileData("world.png", imageStream) })
         );
     }
 }

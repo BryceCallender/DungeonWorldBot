@@ -29,17 +29,18 @@ public static class RollFeedEndpoints
 
     public static RouteHandlerBuilder MapRollFeedEndpoints(this IEndpointRouteBuilder app) =>
         app.MapGet("/api/rolls/feed", async (ulong? after, DungeonWorldContext context, IRollStatsService rollStats,
-            PartyReader party, PortraitStore portraits, DashboardSettings settings, Viewer viewer) =>
+            PartyReader party, PortraitStore portraits, DashboardSettings settings, Viewer viewer, CancellationToken ct) =>
         {
             // Same rule as the roll stats: only game chat rolls count
             if (rollStats.GameChatChannelID is not { } gameChat)
                 return new RollFeed(null, []);
 
-            // EF won't order by IDs stored as ulong in SQLite, though the column is a plain INTEGER that sorts fine
             var newest = await context.Rolls
-                .FromSql($"SELECT * FROM Rolls WHERE ChannelID = {gameChat.Value} ORDER BY MessageID DESC LIMIT {StreakRolls}")
                 .AsNoTracking()
-                .ToListAsync();
+                .Where(r => r.ChannelID == gameChat)
+                .NewestFirst()
+                .Take(StreakRolls)
+                .ToListAsync(ct);
 
             var latest = newest.FirstOrDefault()?.MessageID.Value.ToString();
             var fresh = after is { } seen ? newest.Take(MaxRolls).Where(r => r.MessageID.Value > seen).Reverse().ToList() : [];

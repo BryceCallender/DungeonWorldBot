@@ -7,7 +7,6 @@ using DungeonWorldBot.Rules;
 using Remora.Commands.Attributes;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.Commands.Contexts;
-using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Results;
 
@@ -32,9 +31,9 @@ public class DebilityCommand(
         [Description(UserDescription)]
         IUser? user = null)
     {
-        var (character, error) = await FindCharacterAsync(user);
-        if (character is null)
-            return error!;
+        var found = await FindCharacterAsync(user);
+        if (!found.IsDefined(out var character))
+            return await ReplyWithErrorAsync(found.Error!.Message);
 
         if (!await debilityService.AddAsync(character, debility))
             return await ReplyWithErrorAsync($"{character.Name} is already {debility}.");
@@ -58,9 +57,9 @@ public class DebilityCommand(
         [Description(UserDescription)]
         IUser? user = null)
     {
-        var (character, error) = await FindCharacterAsync(user);
-        if (character is null)
-            return error!;
+        var found = await FindCharacterAsync(user);
+        if (!found.IsDefined(out var character))
+            return await ReplyWithErrorAsync(found.Error!.Message);
 
         if (!await debilityService.RemoveAsync(character, debility))
             return await ReplyWithErrorAsync($"{character.Name} isn't {debility}.");
@@ -74,9 +73,9 @@ public class DebilityCommand(
         [Description(UserDescription)]
         IUser? user = null)
     {
-        var (character, error) = await FindCharacterAsync(user);
-        if (character is null)
-            return error!;
+        var found = await FindCharacterAsync(user);
+        if (!found.IsDefined(out var character))
+            return await ReplyWithErrorAsync(found.Error!.Message);
 
         var removed = await debilityService.ClearAsync(character);
         return await ReplyAsync("Debilities Cleared", removed.Count > 0
@@ -90,9 +89,7 @@ public class DebilityCommand(
         [Description("The user to see the debilities of. Don't specify a user to see your own.")]
         IUser? user = null)
     {
-        var character = user is not null
-            ? await characterService.GetCharacterFromUserAsync(user.ID)
-            : await GetOwnCharacterAsync();
+        var character = await characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
 
         if (character is null)
             return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
@@ -117,20 +114,19 @@ public class DebilityCommand(
         }));
     }
 
-    /// <returns>The character, or null and an error already sent (changing someone else's needs the DM role).</returns>
-    private async Task<(Character?, IResult?)> FindCharacterAsync(IUser? user)
+    /// <returns>The character, or why it can't be changed (changing someone else's needs the DM role).</returns>
+    private async Task<Result<Character>> FindCharacterAsync(IUser? user)
     {
-        if (user is not null && _context.TryGetUserID(out var self) && user.ID != self && !await gameMaster.IsGameMasterAsync(CancellationToken))
-            return (null, await ReplyWithErrorAsync($"Only someone with the {gameMaster.RoleName} role can change someone else's debilities."));
+        if (!await gameMaster.MayChangeAsync(user?.ID, CancellationToken))
+            return new InvalidOperationError($"Only someone with the {gameMaster.RoleName} role can change someone else's debilities.");
 
         var character = user is not null
             ? await characterService.GetCharacterFromUserAsync(user.ID)
             : await GetOwnCharacterAsync();
 
-        if (character is null)
-            return (null, await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character."));
-
-        return (character, null);
+        return character is not null
+            ? character
+            : new InvalidOperationError(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
     }
 
     private async Task<Character?> GetOwnCharacterAsync() =>

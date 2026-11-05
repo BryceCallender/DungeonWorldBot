@@ -28,7 +28,7 @@ public sealed class TimelineTests : IDisposable
     public async Task HasEverythingNewestFirst_EvenFromTheFallen()
     {
         await using var context = _db.CreateContext();
-        var encounters = new EncounterService(context);
+        var encounters = new EncounterService(context, TimeProvider.System);
         var encounter = (await encounters.StartAsync("Ambush"))!;
         var aria = Hero(1, "Aria");
         var bram = Hero(2, "Bram");
@@ -65,7 +65,7 @@ public sealed class TimelineTests : IDisposable
     public async Task ChangedRolls_ShowWhyTheyWereChanged()
     {
         await using var context = _db.CreateContext();
-        var encounters = new EncounterService(context);
+        var encounters = new EncounterService(context, TimeProvider.System);
         var encounter = (await encounters.StartAsync("Ambush"))!;
         var aria = Hero(1, "Aria");
         var bram = Hero(2, "Bram");
@@ -88,7 +88,7 @@ public sealed class TimelineTests : IDisposable
     public async Task ComesAPageAtATime_OlderAfterTheOldestShown()
     {
         await using var context = _db.CreateContext();
-        var encounters = new EncounterService(context);
+        var encounters = new EncounterService(context, TimeProvider.System);
         var encounter = (await encounters.StartAsync("Ambush"))!;
         var start = DateTimeOffset.UtcNow;
         for (var i = 1; i <= 5; i++)

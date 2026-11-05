@@ -166,14 +166,11 @@ public class BrandCommand(
 /// <summary>
 /// The tags a Burning Brand can be conjured with.
 /// </summary>
-public class BrandTagAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
-    : ClassSheetAutocomplete(contextInjection, characterService)
+public class BrandTagAutocomplete : SuggestionAutocomplete
 {
     public const string ID = "brand-tag";
 
     public override string Identity => ID;
 
-    protected override IEnumerable<Suggestion> OwnClassCandidates(Character character, ClassSheet sheet) => AllClassCandidates();
-
-    protected override IEnumerable<Suggestion> AllClassCandidates() => BrandRules.Options.Select(o => new Suggestion(o, o));
+    protected override IEnumerable<Suggestion> AllCandidates() => BrandRules.Options.Select(o => new Suggestion(o, o));
 }

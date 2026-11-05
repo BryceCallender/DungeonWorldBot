@@ -10,9 +10,10 @@ namespace DungeonWorldBot.Data;
 /// remembering: levels, stats, max HP, class, moves, debilities, bonds, goals, items, coins, shapes, and dying.
 /// </summary>
 /// <remarks>
-/// Done in <see cref="DungeonWorldContext"/>'s save rather than by each command, so nothing that changes a character
-/// can forget to, from the bot or the dashboard. A character being made gets one event, not one for everything they
-/// start with. What it means to the table (which moves are only the bot keeping track of something, say) is left to
+/// Done on every save (see <see cref="CharacterEventsInterceptor"/>) rather than by each command, so nothing that changes
+/// a character can forget to, from the bot or the dashboard. Only saves count: ExecuteUpdateAsync and ExecuteDeleteAsync
+/// go straight to the database, so they mustn't be used on anything a timeline shows. A character being made gets one
+/// event, not one for everything they start with. What it means to the table (which moves are only the bot keeping track of something, say) is left to
 /// whoever shows the events.
 /// </remarks>
 internal static class CharacterEvents
@@ -143,18 +144,20 @@ internal static class CharacterEvents
     }
 
     /// <returns>The character something was taken from, and the one it was given to, if either.</returns>
-    private static (Snowflake? Left, Snowflake? Joined) Owner(EntityEntry entry, Func<object?, Snowflake?> toCharacter,
+    private record Ownership(Snowflake? Left, Snowflake? Joined);
+
+    private static Ownership Owner(EntityEntry entry, Func<object?, Snowflake?> toCharacter,
         string foreignKey = "CharacterID")
     {
         var key = entry.Property(foreignKey);
         return entry.State switch
         {
-            EntityState.Added => (null, toCharacter(key.CurrentValue)),
-            EntityState.Deleted => (toCharacter(key.OriginalValue), null),
+            EntityState.Added => new(null, toCharacter(key.CurrentValue)),
+            EntityState.Deleted => new(toCharacter(key.OriginalValue), null),
             // Taken out of a list with an optional key, which leaves it behind with none
             EntityState.Modified when key.IsModified && toCharacter(key.OriginalValue) is var was
-                                      && toCharacter(key.CurrentValue) is var now && was != now => (was, now),
-            _ => (null, null),
+                                      && toCharacter(key.CurrentValue) is var now && was != now => new(was, now),
+            _ => new(null, null),
         };
     }
 

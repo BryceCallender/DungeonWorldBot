@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Antiforgery;
 using System.Net.Http.Headers;
 using System.Security.Claims;
 using System.Text.Json;
@@ -169,11 +170,12 @@ public static class DiscordSignIn
         app.MapGet("/login", (string? returnUrl) =>
             Results.Challenge(new AuthenticationProperties { RedirectUri = LocalOnly(returnUrl) }, [Scheme]));
 
-        app.MapGet("/logout", async (HttpContext context) =>
+        // A post with the antiforgery token (see SignOutButton), so a link on another site can't sign anyone out
+        app.MapPost("/logout", async (HttpContext context) =>
         {
             await context.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
             return Results.Redirect("/");
-        });
+        }).WithMetadata(new RequireAntiforgeryTokenAttribute());
     }
 
     private static bool NoRedirects(PathString path) =>

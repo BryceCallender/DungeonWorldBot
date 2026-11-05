@@ -1,6 +1,3 @@
-using DungeonWorldBot.Dashboard.Models.Shared;
-using DungeonWorldBot.Features.Moves;
-
 namespace DungeonWorldBot.Dashboard.Services.Encounters;
 
 public static class EncounterServices
@@ -9,13 +6,13 @@ public static class EncounterServices
     /// Fights: the DM running them, the bestiary and replays of past ones, and moves made from tokens on a fight's
     /// board, which the bot rolls and boards hear how they went.
     /// </summary>
-    public static IServiceCollection AddEncounters(this IServiceCollection services, DashboardDatabases databases)
+    public static IServiceCollection AddEncounters(this IServiceCollection services)
     {
-        services.AddSingleton(new EncounterDesk(databases.WritableGame()));
+        services.AddSingleton<EncounterDesk>();
         services.AddScoped<BestiaryReader>();
         services.AddScoped<FightReplayReader>();
 
-        services.AddScoped<CharacterMoves>();
+        // The bot's CharacterMoves comes with the rest of its services
         services.AddScoped<FightMoves>();
         services.AddSingleton<MoveResults>();
         services.AddHostedService(provider => provider.GetRequiredService<MoveResults>());

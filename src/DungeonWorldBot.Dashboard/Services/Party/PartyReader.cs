@@ -68,8 +68,17 @@ public class PartyReader(
     /// <summary>
     /// A character by name as it appears in addresses ("mr-hatter"), or by Discord ID for older links.
     /// </summary>
-    public async Task<CharacterView?> GetCharacterAsync(string nameOrId) =>
-        ulong.TryParse(nameOrId, out var id) ? await GetCharacterAsync(id) : Match(await GetPartyAsync(), nameOrId);
+    public async Task<CharacterView?> GetCharacterAsync(string nameOrId)
+    {
+        if (ulong.TryParse(nameOrId, out var id))
+            return await GetCharacterAsync(id);
+
+        // Found in the list of names, then only they are loaded, journal and all
+        var slug = Lookup.Slug(nameOrId);
+        return (await characterService.GetCharacterNamesAsync()).FirstOrDefault(c => Lookup.Slug(c.Name) == slug) is { } named
+            ? await GetCharacterAsync(named.ID.Value)
+            : null;
+    }
 
     /// <inheritdoc cref="GetCharacterAsync(string)"/>
     public static CharacterView? Match(IEnumerable<CharacterView> party, string? nameOrId) =>
@@ -77,8 +86,9 @@ public class PartyReader(
             ? null
             : party.FirstOrDefault(c => c.ID == nameOrId || c.Slug == Lookup.Slug(nameOrId));
 
+    // With their journal, for their own pages: the story and timeline show their goals and notes
     public async Task<CharacterView?> GetCharacterAsync(ulong id) =>
-        await characterService.GetCharacterFromUserAsync(new Snowflake(id)) is { } character ? Describe(character) : null;
+        await characterService.GetCharacterWithJournalAsync(new Snowflake(id)) is { } character ? Describe(character) : null;
 
     private CharacterView Describe(Character character)
     {
@@ -121,7 +131,7 @@ public class PartyReader(
                 .SelectMany(f => f.Options
                     .Where(o => known.Contains(o.Name, StringComparer.OrdinalIgnoreCase))
                     // "Primary Element: Water" is just "Water"
-                    .Select(o => (f.Name, o.Name.StartsWith($"{f.Name}: ") ? o.Name[(f.Name.Length + 2)..] : o.Name)))
+                    .Select(o => new FeaturePick(f.Name, o.Name.StartsWith($"{f.Name}: ") ? o.Name[(f.Name.Length + 2)..] : o.Name)))
                 .ToList());
     }
 

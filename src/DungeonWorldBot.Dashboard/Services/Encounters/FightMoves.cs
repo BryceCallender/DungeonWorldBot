@@ -211,8 +211,7 @@ public class FightMoves(CanvasStore store, IEncounterService encounters, ICharac
         if (fight.Enemies.FirstOrDefault(e => e.Name.Equals(name, StringComparison.OrdinalIgnoreCase)) is { } enemy)
             return TokenFighter.Enemy(enemy.ID);
 
-        var lower = name.ToLower();
-        if (await context.Characters.AsNoTracking().Where(c => c.Name.ToLower() == lower).Select(c => (Snowflake?)c.ID).FirstOrDefaultAsync() is { } character)
+        if (await context.Characters.AsNoTracking().Where(c => EF.Functions.Collate(c.Name, "NOCASE") == name).Select(c => (Snowflake?)c.ID).FirstOrDefaultAsync() is { } character)
             return TokenFighter.Character(character.Value);
 
         // NPCs' names are matched however they're typed

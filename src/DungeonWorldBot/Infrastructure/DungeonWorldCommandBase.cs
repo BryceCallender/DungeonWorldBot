@@ -3,6 +3,7 @@ using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Contexts;
 using Remora.Discord.Commands.Extensions;
+using Remora.Discord.Commands.Feedback.Messages;
 using Remora.Discord.Commands.Feedback.Services;
 using Remora.Rest.Core;
 using Remora.Results;
@@ -32,22 +33,25 @@ public abstract class DungeonWorldCommandBase(ICommandContext context, FeedbackS
         return userId;
     }
 
-    protected static string Truncate(string value, int length) =>
-        value.Length <= length ? value : value[..(length - 1)] + "…";
+    /// <summary>
+    /// The most fields an embed can have.
+    /// </summary>
+    protected const int MaxEmbedFields = EmbedLimits.MaxFields;
 
-    protected async Task<IResult> ReplyAsync(string title, string description, IReadOnlyList<IEmbedField>? fields = null)
-    {
-        // Discord rejects embeds with titles over 256 characters or descriptions over 4096
-        return await _feedbackService.SendContextualEmbedAsync(
-            new Embed(
-                Title: Truncate(title, 256),
-                Description: Truncate(description, 4096),
-                Fields: fields?.ToList() ?? [],
-                Colour: _feedbackService.Theme.Primary
-            ),
-            ct: CancellationToken
-        );
-    }
+    protected static string Truncate(string value, int length) => EmbedLimits.Truncate(value, length);
+
+    protected Task<Result<IMessage>> ReplyAsync(string title, string description, IReadOnlyList<IEmbedField>? fields = null) =>
+        ReplyWithEmbedAsync(new Embed(
+            Title: title,
+            Description: description,
+            Fields: fields?.ToList() ?? [],
+            Colour: _feedbackService.Theme.Primary));
+
+    /// <summary>
+    /// Replies with an embed, cut down to what Discord takes (see <see cref="EmbedLimits"/>).
+    /// </summary>
+    protected Task<Result<IMessage>> ReplyWithEmbedAsync(Embed embed, FeedbackMessageOptions? options = null) =>
+        _feedbackService.SendContextualEmbedAsync(EmbedLimits.Fit(embed), options, CancellationToken);
 
     protected async Task<Result> ReplyWithErrorAsync(string error)
     {

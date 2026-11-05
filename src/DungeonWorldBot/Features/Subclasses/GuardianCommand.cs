@@ -29,21 +29,22 @@ public class GuardianCommand(
     FeedbackService feedbackService,
     ICharacterService characterService,
     IAbilityService abilityService,
+    ISubclassService subclassService,
     IDiceRoller diceRoller,
+    StatRoller statRoller,
     IRollStatsService rollStatsService,
     IDamageService damageService,
     IArmorService armorService)
-    : DungeonWorldCommandBase(context, feedbackService)
+    : RollingCommandBase(context, feedbackService, characterService, statRoller, rollStatsService)
 {
-    private const string BonusDescription = "Any +forward, ongoing bonus, or penalty to add to the roll";
 
     [Command("read-the-room")]
     [Description("A fight is about to break out: roll +INT and gain a strategy pool of d6s equal to your roll")]
     public async Task<IResult> ReadTheRoomAsync([Description(BonusDescription)] int bonus = 0)
     {
-        var (character, error) = await GetGuardianAsync(TacticalGuardian.ReadTheRoom);
-        if (character is null)
-            return await ReplyWithErrorAsync(error!);
+        var found = await GetGuardianAsync(TacticalGuardian.ReadTheRoom);
+        if (!found.IsDefined(out var character))
+            return await ReplyWithErrorAsync(found.Error!.Message);
 
         var definition = TacticalGuardian.ReadTheRoomRoll;
         var (roll, rolledWith) = await RollStatAsync(character, StatType.Int, bonus);
@@ -75,9 +76,9 @@ public class GuardianCommand(
         [Description("Whose roll you're changing, and how you influence it")]
         string? how = null)
     {
-        var (character, error) = await GetGuardianAsync(TacticalGuardian.OneStepAhead);
-        if (character is null)
-            return await ReplyWithErrorAsync(error!);
+        var found = await GetGuardianAsync(TacticalGuardian.OneStepAhead);
+        if (!found.IsDefined(out var character))
+            return await ReplyWithErrorAsync(found.Error!.Message);
 
         var pool = TacticalGuardian.PoolOf(character);
         if (pool.Count == 0)
@@ -100,9 +101,9 @@ public class GuardianCommand(
     [Description("See your strategy pool and stored damage")]
     public async Task<IResult> PoolAsync()
     {
-        var (character, error) = await GetGuardianAsync(TacticalGuardian.ReadTheRoom);
-        if (character is null)
-            return await ReplyWithErrorAsync(error!);
+        var found = await GetGuardianAsync(TacticalGuardian.ReadTheRoom);
+        if (!found.IsDefined(out var character))
+            return await ReplyWithErrorAsync(found.Error!.Message);
 
         List<IEmbedField> fields =
         [
@@ -129,9 +130,9 @@ public class GuardianCommand(
         [MinValue(0)]
         int piercing = 0)
     {
-        var (character, error) = await GetGuardianAsync(forAlly ? TacticalGuardian.GuardiansStand : TacticalGuardian.ReadTheRoom);
-        if (character is null)
-            return await ReplyWithErrorAsync(error!);
+        var found = await GetGuardianAsync(forAlly ? TacticalGuardian.GuardiansStand : TacticalGuardian.ReadTheRoom);
+        if (!found.IsDefined(out var character))
+            return await ReplyWithErrorAsync(found.Error!.Message);
 
         var hit = await armorService.TakeDamageAsync(character, TacticalGuardian.DamageTaken(damage, forAlly), type, piercing);
         var taken = hit.Taken;
@@ -164,9 +165,9 @@ public class GuardianCommand(
         int? damage = null,
         [Option(DamageService.ExtraOption)] [Description(DamageService.ExtraDescription)] int extraDamage = 0)
     {
-        var (character, error) = await GetGuardianAsync(TacticalGuardian.ShieldedPursuit);
-        if (character is null)
-            return await ReplyWithErrorAsync(error!);
+        var found = await GetGuardianAsync(TacticalGuardian.ShieldedPursuit);
+        if (!found.IsDefined(out var character))
+            return await ReplyWithErrorAsync(found.Error!.Message);
 
         var stored = TacticalGuardian.StoredDamageOf(character);
         if (stored == 0)
@@ -177,7 +178,7 @@ public class GuardianCommand(
         {
             var total = Math.Max(0, dealt + extraDamage) + stored;
             damageText = extraDamage != 0
-                ? $"{dealt} {FormatSigned(extraDamage)} extra + {stored} stored → **{total}**"
+                ? $"{dealt} {Numbers.Signed(extraDamage)} extra + {stored} stored → **{total}**"
                 : $"{dealt} + {stored} stored → **{total}**";
         }
         else
@@ -198,9 +199,9 @@ public class GuardianCommand(
     [Description("The battle is over: clear your strategy pool and stored damage")]
     public async Task<IResult> EndFightAsync()
     {
-        var (character, error) = await GetGuardianAsync(TacticalGuardian.ReadTheRoom);
-        if (character is null)
-            return await ReplyWithErrorAsync(error!);
+        var found = await GetGuardianAsync(TacticalGuardian.ReadTheRoom);
+        if (!found.IsDefined(out var character))
+            return await ReplyWithErrorAsync(found.Error!.Message);
 
         var pool = TacticalGuardian.PoolOf(character);
         var stored = TacticalGuardian.StoredDamageOf(character);
@@ -221,9 +222,9 @@ public class GuardianCommand(
     [Description("Orchestrate a coordinated strike with every ally near you (+INT, once per short rest)")]
     public async Task<IResult> PerfectedAssaultAsync([Description(BonusDescription)] int bonus = 0)
     {
-        var (character, error) = await GetGuardianAsync(TacticalGuardian.PerfectedAssault);
-        if (character is null)
-            return await ReplyWithErrorAsync(error!);
+        var found = await GetGuardianAsync(TacticalGuardian.PerfectedAssault);
+        if (!found.IsDefined(out var character))
+            return await ReplyWithErrorAsync(found.Error!.Message);
 
         var ability = abilityService.FindAbility(character, TacticalGuardian.PerfectedAssault)!;
         if (ability.IsLimited && !await abilityService.UseAbilityAsync(ability, 1))
@@ -269,65 +270,13 @@ public class GuardianCommand(
             await abilityService.SetDescriptionAsync(ability, value);
         }
     }
-
-    /// <summary>
-    /// Rolls 2d6 + a stat, with its debility and any subclass bonuses.
-    /// </summary>
-    /// <returns>The roll, and what went into it for the "Rolled with" field.</returns>
-    private async Task<(MoveRoll Roll, string RolledWith)> RollStatAsync(Character character, StatType stat, int bonus)
-    {
-        var modifier = character.Stats.FirstOrDefault(s => s.StatType == stat)?.Modifier ?? 0;
-        var debility = DebilityRules.RollPenalty(character, stat);
-        var bonuses = await damageService.BonusesAsync(character, RollKind.Stat, stat);
-
-        var parts = new List<string> { $"{stat.ToString().ToUpper()} {FormatSigned(modifier)}" };
-        if (debility is { } penalty)
-            parts.Add($"{penalty.Debility} {FormatSigned(penalty.Penalty)}");
-        parts.AddRange(bonuses.Select(b => $"{b.Source} {FormatSigned(b.Amount)}"));
-        if (bonus != 0)
-            parts.Add($"Bonus {FormatSigned(bonus)}");
-
-        var roll = MoveRoller.Roll(diceRoller, modifier + (debility?.Penalty ?? 0) + bonuses.Sum(b => b.Amount) + bonus);
-        return (roll, string.Join(", ", parts));
-    }
-
-    private static string FormatSigned(int value) => value >= 0 ? $"+{value}" : value.ToString();
-
     /// <returns>The user's character if they're a Tactical Guardian who knows the move, or why not.</returns>
-    private async Task<(Character? Character, string? Error)> GetGuardianAsync(string move)
+    private async Task<Result<Character>> GetGuardianAsync(string move)
     {
-        var userId = GetUserId();
+        var own = await RequireOwnCharacterAsync();
+        if (!own.IsDefined(out var character))
+            return own;
 
-        var character = await characterService.GetCharacterFromUserAsync(userId);
-        if (character is null)
-            return (null, "No character exists. Try making one with /character create");
-
-        if (SubclassLibrary.Of(character) != TacticalGuardian.Subclass)
-            return (null, $"{character.Name} isn't a {TacticalGuardian.Name}. See /subclass info {TacticalGuardian.Name}");
-
-        if (abilityService.FindAbility(character, move) is null)
-        {
-            var level = TacticalGuardian.Subclass.Moves.FirstOrDefault(m => m.Move.Name == move)?.Level;
-            return (null, $"{character.Name} hasn't unlocked {move} yet" + (level is not null ? $" (level {level})." : "."));
-        }
-
-        return (character, null);
-    }
-
-    private async Task<IResult> ReplyWithRollAsync(Character character, string title, string flavor, MoveRoll roll, IReadOnlyList<IEmbedField> fields)
-    {
-        var embed = new Embed(
-            Title: title,
-            Description: $"{flavor}\n\n{DiceHelper.BuildDiceResult(roll.Dice)}",
-            Fields: fields.ToList(),
-            Colour: MoveRoller.ColorFor(roll.Outcome)
-        );
-
-        var reply = await _feedbackService.SendContextualEmbedAsync(embed, ct: CancellationToken);
-
-        if (reply.IsSuccess && _context.TryGetChannelID(out var channelID))
-            await rollStatsService.RecordAsync(reply.Entity.ID, channelID, character.ID, roll.Dice, RollLabel.Of(embed));
-
-        return reply;
+        return subclassService.WhyCantUse(character, TacticalGuardian.Subclass, move) is { } why ? new InvalidOperationError(why) : character;
     }
 }

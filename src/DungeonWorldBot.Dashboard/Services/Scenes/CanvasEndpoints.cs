@@ -56,16 +56,12 @@ public static class CanvasEndpoints
                 return Results.NotFound();
             if (!await FightBoard.CanChangeAsync(scene, viewer, encounters))
                 return Results.BadRequest(FightBoard.ViewOnlyMessage);
-            if (file.Length is 0 or > MaxImageBytes)
-                return Results.BadRequest($"Pictures can be up to {MaxImageBytes / 1024 / 1024} MB.");
+            if (file.Length is 0 or > Picture.MaxBytes)
+                return Results.BadRequest(Picture.TooBig);
+            if (await Picture.ReadAsync(file) is not { } picture)
+                return Results.BadRequest(Picture.NotAPicture);
 
-            using var buffer = new MemoryStream();
-            await file.CopyToAsync(buffer);
-            var data = buffer.ToArray();
-            if (ImageType(data) is not { } contentType)
-                return Results.BadRequest("That isn't a PNG, JPEG, WebP or GIF.");
-
-            var imageID = await store.SaveImageAsync(canvasID, contentType, data, viewer.ID?.ToString());
+            var imageID = await store.SaveImageAsync(canvasID, picture.ContentType, picture.Data, viewer.ID?.ToString());
             return Results.Ok(new { url = $"api/canvases/{id}/images/{imageID}" });
         });
 
@@ -80,21 +76,20 @@ public static class CanvasEndpoints
             return Results.Bytes(image.Data, image.ContentType);
         });
 
-        // The board's picture of itself, for its card. Small, so it's capped well under a full picture.
-        group.MapPost("/{id}/thumbnail", async (string id, IFormFile file, CanvasStore store) =>
+        // The board's picture of itself, for its card, taken by whoever last changed it. Small, so it's capped well under
+        // a full picture.
+        group.MapPost("/{id}/thumbnail", async (string id, IFormFile file, CanvasStore store, Viewer viewer, IEncounterService encounters) =>
         {
-            if (!CanvasIds.TryDecode(id, out var canvasID) || await store.FindAsync(canvasID) is null)
+            if (!CanvasIds.TryDecode(id, out var canvasID) || await store.FindAsync(canvasID) is not { } scene)
                 return Results.NotFound();
+            if (!await FightBoard.CanChangeAsync(scene, viewer, encounters))
+                return Results.BadRequest(FightBoard.ViewOnlyMessage);
             if (file.Length is 0 or > MaxThumbnailBytes)
                 return Results.BadRequest("That's too big for a thumbnail.");
+            if (await Picture.ReadAsync(file) is not { } picture)
+                return Results.BadRequest(Picture.NotAPicture);
 
-            using var buffer = new MemoryStream();
-            await file.CopyToAsync(buffer);
-            var data = buffer.ToArray();
-            if (ImageType(data) is not { } contentType)
-                return Results.BadRequest("That isn't a PNG, JPEG, WebP or GIF.");
-
-            await store.SaveThumbnailAsync(canvasID, contentType, data);
+            await store.SaveThumbnailAsync(canvasID, picture.ContentType, picture.Data);
             return Results.NoContent();
         });
 
@@ -112,16 +107,7 @@ public static class CanvasEndpoints
         return group;
     }
 
-    internal const int MaxImageBytes = 5 * 1024 * 1024;
     private const int MaxThumbnailBytes = 512 * 1024;
-
-    // What the file's first bytes say it is. SVG isn't allowed: it can carry scripts.
-    internal static string? ImageType(ReadOnlySpan<byte> data) =>
-        data.StartsWith((ReadOnlySpan<byte>)[0x89, (byte)'P', (byte)'N', (byte)'G', 0x0D, 0x0A, 0x1A, 0x0A]) ? "image/png"
-        : data.StartsWith((ReadOnlySpan<byte>)[0xFF, 0xD8, 0xFF]) ? "image/jpeg"
-        : data.StartsWith("GIF87a"u8) || data.StartsWith("GIF89a"u8) ? "image/gif"
-        : data.Length > 12 && data.StartsWith("RIFF"u8) && data[8..12].SequenceEqual("WEBP"u8) ? "image/webp"
-        : null;
 
     // Only the DM or whoever made it can put it away, so nobody clears the board in the middle of a fight
     private static async Task<IResult> Archive(string sqid, bool archived, CanvasStore store, Viewer viewer)

@@ -12,7 +12,7 @@ namespace DungeonWorldBot.Features.Encounters;
 /// Tells game chat about fights started or ended on the dashboard. The dashboard can't reach Discord, so it only
 /// marks them in the database, and this notices them a moment later.
 /// </summary>
-public class EncounterAnnouncer(IServiceScopeFactory scopes, ILogger<EncounterAnnouncer> logger) : BackgroundService
+public class EncounterAnnouncer(IServiceScopeFactory scopes, ILogger<EncounterAnnouncer> logger, TimeProvider time) : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(3);
 
@@ -21,26 +21,29 @@ public class EncounterAnnouncer(IServiceScopeFactory scopes, ILogger<EncounterAn
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        while (!stoppingToken.IsCancellationRequested)
+        try
         {
-            var delay = Interval;
-            try
-            {
-                if (!await AnnounceAsync(stoppingToken))
-                    delay = Backoff;
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                return;
-            }
-            catch (Exception e)
-            {
-                // The database busy or mid-migration: the next look will likely do
-                logger.LogWarning(e, "Couldn't check for fights to announce");
-                delay = Backoff;
-            }
+            while (true)
+                await Task.Delay(await LookAsync(stoppingToken), time, stoppingToken);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Shutting down
+        }
+    }
 
-            await Task.Delay(delay, stoppingToken).ContinueWith(_ => { }, CancellationToken.None);
+    /// <returns>How long to wait before looking again.</returns>
+    private async Task<TimeSpan> LookAsync(CancellationToken ct)
+    {
+        try
+        {
+            return await AnnounceAsync(ct) ? Interval : Backoff;
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            // The database busy or mid-migration: the next look will likely do
+            logger.LogWarning(e, "Couldn't check for fights to announce");
+            return Backoff;
         }
     }
 
@@ -51,7 +54,7 @@ public class EncounterAnnouncer(IServiceScopeFactory scopes, ILogger<EncounterAn
         var services = scope.ServiceProvider;
         var encounters = services.GetRequiredService<IEncounterService>();
 
-        var waiting = await encounters.GetUnannouncedAsync();
+        var waiting = await encounters.GetUnannouncedAsync(ct);
         if (waiting.Count == 0)
             return true;
 
@@ -68,7 +71,7 @@ public class EncounterAnnouncer(IServiceScopeFactory scopes, ILogger<EncounterAn
                 if (!await SendAsync(channels, gameChat, EncounterAnnouncements.Started(encounter), ct))
                     return false;
 
-                encounter.AnnouncedAt = DateTimeOffset.UtcNow;
+                encounter.AnnouncedAt = time.GetUtcNow();
                 await encounters.SaveAsync(encounter);
             }
 
@@ -79,7 +82,7 @@ public class EncounterAnnouncer(IServiceScopeFactory scopes, ILogger<EncounterAn
                 if (!await SendAsync(channels, gameChat, EncounterAnnouncements.Ended(encounter, ArmorCommand.DescribeCleared(cleared)), ct))
                     return false;
 
-                encounter.EndAnnouncedAt = DateTimeOffset.UtcNow;
+                encounter.EndAnnouncedAt = time.GetUtcNow();
                 await encounters.SaveAsync(encounter);
             }
         }

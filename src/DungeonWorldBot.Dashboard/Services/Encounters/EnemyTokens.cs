@@ -15,6 +15,11 @@ namespace DungeonWorldBot.Dashboard.Services.Encounters;
 /// circle carries its address in src, like the board's image tokens; without one the board adds the initials itself
 /// when it loads it, so "Goblin 2" shows as G2.
 /// </remarks>
+/// <summary>
+/// A place on a scene's board, in the board's own units.
+/// </summary>
+public record BoardSpot(double X, double Y);
+
 public static class EnemyTokens
 {
     // The same as the board's: TOKEN_RADIUS in canvas.ts, and the red from its swatches
@@ -115,14 +120,14 @@ public static class EnemyTokens
     /// <summary>
     /// The nearest spot to the middle of the board on a grid a token apart, clear of every token already there.
     /// </summary>
-    public static (double X, double Y) FreeSpot(IReadOnlyList<(double X, double Y)> taken)
+    public static BoardSpot FreeSpot(IReadOnlyList<BoardSpot> taken)
     {
         const int reach = 8;
         var spots =
             from dx in Enumerable.Range(-reach, reach * 2 + 1)
             from dy in Enumerable.Range(-reach, reach * 2 + 1)
             orderby dx * dx + dy * dy, dy, dx
-            select (X: CenterX + dx * Spacing, Y: CenterY + dy * Spacing);
+            select new BoardSpot(CenterX + dx * Spacing, CenterY + dy * Spacing);
 
         foreach (var spot in spots)
         {
@@ -131,19 +136,19 @@ public static class EnemyTokens
         }
 
         // A board that full can take one more in the middle
-        return (CenterX, CenterY);
+        return new BoardSpot(CenterX, CenterY);
     }
 
     // Konva saves a node as { attrs: { x, y, ... } }, leaving out a 0
-    private static (double X, double Y) PositionOf(string json)
+    private static BoardSpot PositionOf(string json)
     {
         using var document = JsonDocument.Parse(json);
         if (!document.RootElement.TryGetProperty("attrs", out var attrs))
-            return (0, 0);
+            return new BoardSpot(0, 0);
 
         var x = attrs.TryGetProperty("x", out var xValue) && xValue.TryGetDouble(out var px) ? px : 0;
         var y = attrs.TryGetProperty("y", out var yValue) && yValue.TryGetDouble(out var py) ? py : 0;
-        return (x, y);
+        return new BoardSpot(x, y);
     }
 
     // Tokens are named for who they are; ones without a name have none to match

@@ -122,9 +122,7 @@ public class QuestCommand(
         [Description("The user to see the quest of. Don't specify a user to see your own.")]
         IUser? user = null)
     {
-        var character = user is not null
-            ? await characterService.GetCharacterFromUserAsync(user.ID)
-            : await GetOwnCharacterAsync();
+        var character = await characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
 
         if (character is null)
         {

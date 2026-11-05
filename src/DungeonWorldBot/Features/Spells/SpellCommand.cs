@@ -69,12 +69,11 @@ public class SpellCommand(
         if (matches.Count == 0)
             return await ReplyWithErrorAsync($"There's no spell called {spell}.");
 
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Fields: matches.Select(s => (IEmbedField)new EmbedField($"{s.Name} · {s.Heading}", Truncate(s.Description, 1024))).ToList(),
                 Colour: _feedbackService.Theme.Primary
-            ),
-            ct: CancellationToken
+            )
         );
     }
 
@@ -138,9 +137,7 @@ public class SpellCommand(
         [Description("The user to see the spells of. Don't specify a user to see your own.")]
         IUser? user = null)
     {
-        var character = user is not null
-            ? await characterService.GetCharacterFromUserAsync(user.ID)
-            : await GetOwnCharacterAsync();
+        var character = await characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
 
         if (character is null)
         {
@@ -166,14 +163,13 @@ public class SpellCommand(
             })
             .ToList();
 
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Title: $"{character.Name}'s Spells",
                 Description: "Read one with /spell info, or cast it with /ability use",
                 Fields: fields,
                 Colour: _feedbackService.Theme.Primary
-            ),
-            ct: CancellationToken
+            )
         );
     }
 
@@ -188,11 +184,7 @@ public class SpellCommand(
             return await ReplyWithErrorAsync(NoCharacterMessage);
 
         var toRemove = SpellCasting.KnownSpells(character).Where(s => s.List == list && !s.IsFree).ToList();
-        foreach (var spell in toRemove)
-        {
-            if (abilityService.FindAbility(character, spell.Name) is { } ability)
-                await abilityService.RemoveAbilityAsync(character, ability);
-        }
+        await abilityService.RemoveAbilitiesAsync(character, toRemove.Select(s => abilityService.FindAbility(character, s.Name)).OfType<Ability>());
 
         return await ReplyAsync("Spells Cleared", toRemove.Count > 0
             ? $"Removed {string.Join(", ", toRemove.Select(s => s.Name))}. Pick new ones with /spell learn"

@@ -1,7 +1,9 @@
 using System.Drawing;
 using d20Tek.DiceNotation.Results;
+using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Features.Moves;
+using DungeonWorldBot.Infrastructure;
 using Remora.Discord.API.Abstractions.Gateway.Events;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Abstractions.Rest;
@@ -35,16 +37,19 @@ public class DiceRollResponder(
         if (request is null)
             return Result.FromSuccess();
 
+        // A plain pick from a list isn't a move, however it lands, so it needs no character
+        var author = gatewayEvent.Author;
+        var character = request.Stat is not null || request.Options is null
+            ? await characterService.GetCharacterFromUserAsync(author.ID)
+            : null;
+
         var (embed, roll) = request.Stat is not null
-            ? await BuildStatRollAsync(gatewayEvent, request)
+            ? BuildStatRoll(gatewayEvent, request, character)
             : BuildDiceRoll(gatewayEvent, request);
 
         if (embed is null)
             return Result.FromSuccess();
 
-        // A pick from a list isn't a move, however it lands
-        var author = gatewayEvent.Author;
-        var character = roll is not null && request.Options is null ? await characterService.GetCharacterFromUserAsync(author.ID) : null;
         var drama = roll is not null && request.Options is null
             ? await rollReveal.DramaOfAsync(author.ID, roll, RollLabel.Of(embed).Move, health: character?.Health)
             : null;
@@ -70,14 +75,17 @@ public class DiceRollResponder(
 
         return Result.FromSuccess();
     }
+    /// <param name="Roll">The dice, when there are any to count toward roll stats.</param>
+    private record BuiltRoll(Embed? Embed, DiceResult? Roll);
 
-    private (Embed? Embed, DiceResult? Roll) BuildDiceRoll(IMessageCreate message, DiceMessage request)
+
+    private BuiltRoll BuildDiceRoll(IMessageCreate message, DiceMessage request)
     {
         if (!diceRoller.TryRoll(request.Expression!, out var roll))
-            return (null, null);
+            return new BuiltRoll(null, null);
 
         if (request.Options is not null)
-            return (BuildPick(message, request, request.Options, roll), roll);
+            return new BuiltRoll(BuildPick(message, request, request.Options, roll), roll);
 
         var outcome = MoveRoller.OutcomeOf(roll);
 
@@ -89,7 +97,7 @@ public class DiceRollResponder(
                 : new Optional<IReadOnlyList<IEmbedField>>(),
             Colour: outcome is { } o ? MoveRoller.ColorFor(o) : RollColor);
 
-        return (embed, roll);
+        return new BuiltRoll(embed, roll);
     }
 
     // A roll against a list isn't a move, so show what it landed on instead of hit/miss
@@ -106,23 +114,22 @@ public class DiceRollResponder(
             Colour: RollColor);
     }
 
-    private async Task<(Embed? Embed, DiceResult? Roll)> BuildStatRollAsync(IMessageCreate message, DiceMessage request)
+    private BuiltRoll BuildStatRoll(IMessageCreate message, DiceMessage request, Character? character)
     {
         var statType = request.Stat!.Value;
-        var character = await characterService.GetCharacterFromUserAsync(message.Author.ID);
         var stat = character?.Stats.FirstOrDefault(s => s.StatType == statType);
 
         if (character is null || stat is null)
         {
-            return (new Embed(
+            return new BuiltRoll(new Embed(
                 Title: Title(message.Author, request.Label),
                 Description: $"You need a character to roll +{statType.ToString().ToUpper()}. Try using /character create",
                 Colour: Color.Red), null);
         }
 
         var roll = MoveRoller.Roll(diceRoller, stat.Modifier + request.Bonus);
-        var rolledWith = $"{statType.ToString().ToUpper()} {Signed(stat.Modifier)}"
-                         + (request.Bonus != 0 ? $", Bonus {Signed(request.Bonus)}" : string.Empty);
+        var rolledWith = $"{statType.ToString().ToUpper()} {Numbers.Signed(stat.Modifier)}"
+                         + (request.Bonus != 0 ? $", Bonus {Numbers.Signed(request.Bonus)}" : string.Empty);
 
         var embed = new Embed(
             Title: Title(message.Author, request.Label, character.Name),
@@ -134,7 +141,7 @@ public class DiceRollResponder(
             },
             Colour: MoveRoller.ColorFor(roll.Outcome));
 
-        return (embed, roll.Dice);
+        return new BuiltRoll(embed, roll.Dice);
     }
 
     private static string Title(IUser author, string? label, string? characterName = null)
@@ -142,6 +149,4 @@ public class DiceRollResponder(
         var who = characterName ?? author.GlobalName.OrDefault(null) ?? author.Username;
         return label is null ? $"🎲 {who} rolled" : $"🎲 {who}: {label}";
     }
-
-    private static string Signed(int value) => value >= 0 ? $"+{value}" : value.ToString();
 }

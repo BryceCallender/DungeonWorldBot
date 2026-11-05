@@ -107,7 +107,7 @@ public class RollStatsTests
     {
         using var database = new TestDatabase();
         await using var context = database.CreateContext();
-        var service = new RollStatsService(context);
+        var service = new RollStatsService(context, Options.Create(new BotSettings { GameChatChannelID = 0 }));
 
         await service.RecordAsync(new Snowflake(1), new Snowflake(222), new Snowflake(111), new DiceRoller(new ConstantDieRoller(6)).Roll("2d6"));
 

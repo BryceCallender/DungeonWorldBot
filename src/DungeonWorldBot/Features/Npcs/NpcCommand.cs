@@ -36,8 +36,7 @@ public class NpcCommand(
         if (npcs.Count == 0)
             return await ReplyWithErrorAsync("No NPCs are with the party. The DM can add one with /dm npc add.");
 
-        // Discord allows 25 fields per embed
-        var fields = npcs.Take(25)
+        var fields = npcs.Take(MaxEmbedFields)
             .Select(n => (IEmbedField)new EmbedField(NpcSheet.Title(n), NpcSheet.Summary(n)))
             .ToList();
 
@@ -146,9 +145,9 @@ public class NpcCommand(
         if (!diceRoller.TryRoll(dice, out var roll))
             return await ReplyWithErrorAsync($"{npc.Name}'s {option.Name} dice (`{option.Dice}`) can't be rolled. The DM can fix them with /dm npc edit.");
 
-        var rolledWith = option.Modifier is { } mod ? $"{option.Name} {NpcSheet.Signed(mod)}" : option.Dice;
+        var rolledWith = option.Modifier is { } mod ? $"{option.Name} {Numbers.Signed(mod)}" : option.Dice;
         if (bonus != 0)
-            rolledWith += $", Bonus {NpcSheet.Signed(bonus)}";
+            rolledWith += $", Bonus {Numbers.Signed(bonus)}";
 
         // Only 2d6 rolls have hit bands; a damage roll is just a number
         var outcome = option.Modifier is null ? null : MoveRoller.OutcomeOf(roll);
@@ -176,14 +175,13 @@ public class NpcCommand(
         }
 
         // Not recorded in roll stats, which belong to the player who rolled
-        var reply = await _feedbackService.SendContextualEmbedAsync(
+        var reply = await ReplyWithEmbedAsync(
             new Embed(
                 Title: $"🎲 {npc.Name}: {option.Name}",
                 Description: DiceHelper.BuildDiceResult(roll),
                 Fields: fields,
                 Colour: outcome is { } o ? MoveRoller.ColorFor(o) : _feedbackService.Theme.Success
-            ),
-            ct: CancellationToken
+            )
         );
 
         // Does nothing between fights

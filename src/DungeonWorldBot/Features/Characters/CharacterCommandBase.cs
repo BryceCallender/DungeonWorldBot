@@ -20,13 +20,11 @@ public abstract class CharacterCommandBase(
     ICommandContext context,
     FeedbackService feedbackService,
     ICharacterService characterService,
-    IGameMasterService gameMaster,
     ILevelingService leveling,
     IGameSettingsService settings)
     : DungeonWorldCommandBase(context, feedbackService)
 {
     protected readonly ICharacterService _characterService = characterService;
-    protected readonly IGameMasterService _gameMaster = gameMaster;
     protected readonly ILevelingService _leveling = leveling;
     protected readonly IGameSettingsService _settings = settings;
 
@@ -36,36 +34,27 @@ public abstract class CharacterCommandBase(
     protected async Task<Character?> GetOwnCharacterAsync() =>
         await _characterService.GetCharacterFromUserAsync(GetUserId());
 
-    protected static string FormatModifier(int modifier) => modifier >= 0 ? $"+{modifier}" : modifier.ToString();
-
-    protected async Task<Result> ReplyNotGameMasterAsync(string? hint = null)
-    {
-        var message = $"Only someone with the {_gameMaster.RoleName} role can do that.";
-        return await ReplyWithErrorAsync(hint is null ? message : $"{message} {hint}");
-    }
-
     protected async Task<IResult> ReplyWithLevelPointsAsync(string title)
     {
-        var (perLevel, overrides) = _settings.GetStatPointTable();
-        var description = $"Every level gives **{perLevel}** stat point{(perLevel == 1 ? "" : "s")}";
-        description += overrides.Count == 0
+        var table = _settings.GetStatPointTable();
+        var description = $"Every level gives **{table.Default}** stat point{(table.Default == 1 ? "" : "s")}";
+        description += table.PerLevel.Count == 0
             ? "."
-            : ", except:\n" + string.Join('\n', overrides.OrderBy(o => o.Key).Select(o => $"• Level {o.Key}: **{o.Value}**"));
+            : ", except:\n" + string.Join('\n', table.PerLevel.OrderBy(o => o.Key).Select(o => $"• Level {o.Key}: **{o.Value}**"));
         description += "\n\nPoints are given when a character levels up, for every character. Changes don't affect levels already gained; the DM can use /dm stat grant-points for those.";
 
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Title: title,
                 Description: description,
                 Colour: _feedbackService.Theme.Primary
-            ),
-            ct: CancellationToken
+            )
         );
     }
 
     protected async Task<IResult> ReplyWithLevelChangedAsync(Character character)
     {
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Title: "Level Changed!",
                 Description: $"{character.Name} is now level {character.Level}."
@@ -77,8 +66,7 @@ public abstract class CharacterCommandBase(
                                  ? $"\nRaise a stat with /character level allocate ({points} point{(points == 1 ? "" : "s")} to spend)"
                                  : string.Empty),
                 Colour: _feedbackService.Theme.Primary
-            ),
-            ct: CancellationToken
+            )
         );
     }
 

@@ -31,7 +31,7 @@ public class InventoryCommand(
     {
         var userId = GetUserId();
         
-        var character = await characterService.GetCharacterFromUserAsync(userId);
+        var character = await characterService.GetCharacterToShowAsync(userId);
 
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to view its inventory. Try using /character create");
@@ -55,12 +55,11 @@ public class InventoryCommand(
 
         if (inventoryEmbeds.Count == 0)
         {
-            return await _feedbackService.SendContextualEmbedAsync(
+            return await ReplyWithEmbedAsync(
                 new Embed(
                     Title: "Inventory",
                     Description: $"Coins (🪙): {coinAmount}\n\nYour inventory is empty.",
-                    Colour: _feedbackService.Theme.Primary),
-                ct: CancellationToken);
+                    Colour: _feedbackService.Theme.Primary));
         }
 
         return await _feedbackService.SendContextualPaginatedMessageAsync(

@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <!-- The game's rules, the services that keep track of it, and the telemetry setup: everything the bot and the
+         dashboard share, with nothing of Discord's commands or gateway -->
+    <PropertyGroup>
+        <RootNamespace>DungeonWorldBot</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+      <PackageReference Include="d20tek-dicenotation" />
+      <PackageReference Include="Enums.NET" />
+      <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
+      <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+      <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
+      <PackageReference Include="OpenTelemetry.Extensions.Hosting" />
+      <PackageReference Include="OpenTelemetry.Instrumentation.Http" />
+      <PackageReference Include="OpenTelemetry.Instrumentation.Runtime" />
+      <PackageReference Include="Remora.Discord.API" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\DungeonWorldBot.Data\DungeonWorldBot.Data.csproj" />
+    </ItemGroup>
+
+</Project>

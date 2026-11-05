@@ -34,9 +34,7 @@ public class TacticCommand(
         [Description("The user to see the Tactic of. Don't specify a user to see your own.")]
         IUser? user = null)
     {
-        var character = user is not null
-            ? await characterService.GetCharacterFromUserAsync(user.ID)
-            : await characterService.GetCharacterFromUserAsync(GetUserId());
+        var character = await characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
         if (character is null)
             return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
 
@@ -53,9 +51,9 @@ public class TacticCommand(
         [AutocompleteProvider(TacticAutocomplete.ID)]
         string tactic)
     {
-        var (character, error) = await GetTacticianAsync();
-        if (character is null)
-            return await ReplyWithErrorAsync(error!);
+        var found = await GetTacticianAsync();
+        if (!found.IsDefined(out var character))
+            return await ReplyWithErrorAsync(found.Error!.Message);
 
         if (TacticRules.Find(tactic) is not { } chosen)
             return await ReplyWithErrorAsync($"{tactic} isn't a Tactic. Pick one of {string.Join(", ", TacticRules.All.Select(t => t.Name))}.");
@@ -74,9 +72,9 @@ public class TacticCommand(
         [Description("Return without spending a Gambit, e.g. when the GM says so")]
         bool free = false)
     {
-        var (character, error) = await GetTacticianAsync();
-        if (character is null)
-            return await ReplyWithErrorAsync(error!);
+        var found = await GetTacticianAsync();
+        if (!found.IsDefined(out var character))
+            return await ReplyWithErrorAsync(found.Error!.Message);
 
         if (TacticRules.Default(character) is not { } fallback)
             return await ReplyWithErrorAsync($"{character.Name} hasn't picked a Default Tactic. Pick one with /class learn");
@@ -126,16 +124,14 @@ public class TacticCommand(
         }
     }
 
-    private async Task<(Character? Character, string? Error)> GetTacticianAsync()
+    /// <returns>The user's character if they use Tactics, or why not.</returns>
+    private async Task<Result<Character>> GetTacticianAsync()
     {
         var character = await characterService.GetCharacterFromUserAsync(GetUserId());
         if (character is null)
-            return (null, NoCharacterMessage);
+            return new InvalidOperationError(NoCharacterMessage);
 
-        if (!TacticRules.UsesTactics(character))
-            return (null, $"{character.Name} doesn't use Tactics.");
-
-        return (character, null);
+        return TacticRules.UsesTactics(character) ? character : new InvalidOperationError($"{character.Name} doesn't use Tactics.");
     }
 }
 

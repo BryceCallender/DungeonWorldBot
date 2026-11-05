@@ -10,6 +10,7 @@
 @inject RollReader RollReader
 @inject PartyReader PartyReader
 @inject DashboardSettings Settings
+@inject TimeProvider Time
 
 @* One game night, from /session start to /session end: how the dice went over the evening, who stood out, the fights,
    and every roll in order. A scrapbook page for the campaign. *@
@@ -147,7 +148,7 @@ else
             return;
 
         _count = await Sessions.CountAsync();
-        var to = s.Session.EndedAt ?? DateTimeOffset.UtcNow;
+        var to = s.Session.EndedAt ?? Time.GetUtcNow();
         _rolls = await RollReader.GetRollsAsync(s.Session.StartedAt, to);
         _awards = await RollReader.GetAwardsAsync(s.Session.StartedAt, to, leaveOut: Settings.DungeonMasterID);
         _fights = await Sessions.GetFightsAsync(s);
@@ -178,7 +179,7 @@ else
             return @<p class="small muted">Only the DM rolled.</p>;
 
         var start = _session!.Session.StartedAt;
-        var span = Math.Max(1, ((_session.Session.EndedAt ?? DateTimeOffset.UtcNow) - start).TotalSeconds);
+        var span = Math.Max(1, ((_session.Session.EndedAt ?? Time.GetUtcNow()) - start).TotalSeconds);
         string X(RollRecord r) => Num(Math.Clamp((r.MessageID.Timestamp - start).TotalSeconds / span, 0, 1) * width);
         double YAt(double rate) => bottom - rate * (bottom - top);
         string Y(double rate) => Num(YAt(rate));

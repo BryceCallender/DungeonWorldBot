@@ -1,0 +1,50 @@
+root = true
+
+[*.cs]
+indent_style = space
+indent_size = 4
+insert_final_newline = true
+
+# Style the code already follows, shown in the editor
+csharp_style_namespace_declarations = file_scoped:suggestion
+csharp_style_var_for_built_in_types = true:suggestion
+csharp_style_var_when_type_is_apparent = true:suggestion
+csharp_style_prefer_primary_constructors = true:suggestion
+dotnet_style_prefer_collection_expression = when_types_loosely_match:suggestion
+dotnet_diagnostic.IDE0005.severity = suggestion # Unnecessary usings
+
+# Analyzer rules that don't fit this project
+# Test names read as sentences: Thing_DoesThis_WhenThat
+dotnet_diagnostic.CA1707.severity = none
+# Classes aren't sealed, by choice
+dotnet_diagnostic.CA1852.severity = none
+# The bot and dashboard run in one known culture and only write English, so culture-specific overloads add noise
+dotnet_diagnostic.CA1304.severity = none
+dotnet_diagnostic.CA1305.severity = none
+dotnet_diagnostic.CA1309.severity = none
+dotnet_diagnostic.CA1310.severity = none
+dotnet_diagnostic.CA1311.severity = none
+# Logging isn't on a hot path, so LoggerMessage delegates would cost readability for nothing
+dotnet_diagnostic.CA1848.severity = none
+# Interfaces and IReadOnlyList returns are deliberate
+dotnet_diagnostic.CA1859.severity = none
+# The command bases share their context with commands through protected fields
+dotnet_diagnostic.CA1051.severity = none
+# Visual Basic keywords (Class, Shared) don't matter in a C# app
+dotnet_diagnostic.CA1716.severity = none
+# Stats are called INT and the like
+dotnet_diagnostic.CA1720.severity = none
+# list.FirstOrDefault() reads better than a count check and an indexer
+dotnet_diagnostic.CA1826.severity = none
+
+# EF Core writes these
+[**/Migrations/*.cs]
+generated_code = true
+
+# Commands declared inside tests are Remora's, so their methods can't be static
+[tests/**.cs]
+dotnet_diagnostic.CA1822.severity = none
+
+# Scripts run once, so caching their constant arrays gains nothing
+[scripts/**.cs]
+dotnet_diagnostic.CA1861.severity = none

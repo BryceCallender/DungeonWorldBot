@@ -55,7 +55,7 @@ public class EclipseCommand(
 
         var character = await characterService.GetCharacterFromUserAsync(userId);
         if (character is null)
-            return await ReplyWithErrorAsync("No character exists. Try making one with /character create");
+            return await ReplyWithErrorAsync(NoCharacterMessage);
 
         if (SubclassLibrary.Of(character) != CircleOfTheEclipse.Subclass)
             return await ReplyWithErrorAsync($"{character.Name} isn't in the {CircleOfTheEclipse.Name}. See /subclass info {CircleOfTheEclipse.Name}");
@@ -107,14 +107,13 @@ public class EclipseCommand(
             ? $"{CircleOfTheEclipse.Icon(aspect)} {character.Name} attunes to the {aspect} aspect"
             : $"{CircleOfTheEclipse.Icon(aspect)} {character.Name} shifts from {current} to {aspect}";
 
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Title: title,
                 Description: current is null ? "*The sun and moon find their balance in you.*" : "*An eclipse flashes in their eyes.*",
                 Fields: fields,
                 Colour: _feedbackService.Theme.Primary
-            ),
-            ct: CancellationToken
+            )
         );
     }
 }

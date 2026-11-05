@@ -81,10 +81,11 @@ public class RollReader(DungeonWorldContext context, IRollStatsService rollStats
         if (rollStats.GameChatChannelID is not { } gameChat)
             return new Dictionary<ulong, RollStreak>();
 
-        // EF won't order by IDs stored as ulong in SQLite, though the column is a plain INTEGER that sorts fine
         var recent = await context.Rolls
-            .FromSql($"SELECT * FROM Rolls WHERE ChannelID = {gameChat.Value} ORDER BY MessageID DESC LIMIT {StreakRolls}")
             .AsNoTracking()
+            .Where(r => r.ChannelID == gameChat)
+            .NewestFirst()
+            .Take(StreakRolls)
             .ToListAsync();
 
         var streaks = new Dictionary<ulong, RollStreak>();
@@ -115,13 +116,16 @@ public class RollReader(DungeonWorldContext context, IRollStatsService rollStats
     /// </summary>
     public async Task<List<RollRecord>> GetRollsAsync(DateTimeOffset from, DateTimeOffset to)
     {
-        if (await GameChatRollsAsync() is not { } rolls)
+        if (rollStats.GameChatChannelID is not { } gameChat)
             return [];
 
-        return rolls
-            .Where(r => r.MessageID.Timestamp >= from && r.MessageID.Timestamp <= to)
-            .OrderBy(r => r.MessageID.Value)
-            .ToList();
+        return await context.Rolls
+            .AsNoTracking()
+            .Where(r => r.ChannelID == gameChat)
+            .Since(from)
+            .Until(to)
+            .OldestFirst()
+            .ToListAsync();
     }
 
     /// <summary>
@@ -265,10 +269,9 @@ public class RollReader(DungeonWorldContext context, IRollStatsService rollStats
     {
         try
         {
-            // SQLite can't compare times, so they're filtered here
-            return (await context.EncounterActions.AsNoTracking().Where(a => a.Result != null).ToListAsync())
-                .Where(a => a.At >= from && a.At <= to)
-                .ToList();
+            return await context.EncounterActions.AsNoTracking()
+                .Where(a => a.Result != null && a.At >= from && a.At <= to)
+                .ToListAsync();
         }
         catch (SqliteException e) when (e.IsMissingSchema())
         {
@@ -281,7 +284,7 @@ public class RollReader(DungeonWorldContext context, IRollStatsService rollStats
     {
         try
         {
-            return await context.Sessions.AsNoTracking().OrderBy(s => s.ID).ToListAsync();
+            return await context.Sessions.AsNoTracking().OrderBy(s => s.StartedAt).ToListAsync();
         }
         catch (SqliteException e) when (e.IsMissingTable())
         {

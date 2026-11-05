@@ -5,6 +5,7 @@
 @using DungeonWorldBot.Infrastructure.Telemetry
 @inject HealthReader Health
 @inject Viewer Viewer
+@inject TimeProvider Time
 
 @* The admins' look under the hood: whether the bot is up and what it's run since it started, the errors either of them
    has hit lately, the databases on disk, and how busy the table's been. The deeper look (every log, each command's
@@ -37,7 +38,7 @@ else if (_report is { } report)
         <StatTile Label="Up for" Note="@(bot is null ? null : $"since {bot.StartedAt.LocalDateTime:ddd d MMM, h:mm tt}")">
             @if (bot is not null && report.BotState == BotState.Online)
             {
-                <time datetime="@bot.StartedAt.ToString("o")" data-since>@SessionBar.Elapsed(DateTimeOffset.UtcNow - bot.StartedAt)</time>
+                <time datetime="@bot.StartedAt.ToString("o")" data-since>@SessionBar.Elapsed(Time.GetUtcNow() - bot.StartedAt)</time>
             }
             else
             {
@@ -74,7 +75,7 @@ else if (_report is { } report)
                     <dd title="@file.Path">
                         @if (file.LastWrite is { } written)
                         {
-                            @Bytes(file.Bytes + file.JournalBytes)<span class="small"> · written @Ago(written)</span>
+                            @Bytes(file.Bytes + file.JournalBytes)<span class="small"> · written @Ago(written, Time.GetUtcNow())</span>
                         }
                         else
                         {
@@ -131,7 +132,7 @@ else if (_report is { } report)
                         <div class="desk-line">
                             <span class="chip @(entry.From == "Bot" ? "accent" : null)">@entry.From</span>
                             <span class="chip warn">@entry.Error.Level</span>
-                            <span class="small" title="@entry.Error.At.LocalDateTime.ToString("f")">@Ago(entry.Error.At)</span>
+                            <span class="small" title="@entry.Error.At.LocalDateTime.ToString("f")">@Ago(entry.Error.At, Time.GetUtcNow())</span>
                             <span class="small health-category">@ShortCategory(entry.Error.Category)</span>
                         </div>
                         <div>@entry.Error.Message</div>
@@ -155,11 +156,11 @@ else if (_report is { } report)
             _report = await Health.ReadAsync();
     }
 
-    private static string? BotNote(HealthReport report) => report.Bot switch
+    private string? BotNote(HealthReport report) => report.Bot switch
     {
         null => "no status file yet",
-        { StoppedAt: { } stopped } => $"shut down {Ago(stopped)}",
-        var bot => $"heard from {Ago(bot.LastBeat)} · {bot.Machine}",
+        { StoppedAt: { } stopped } => $"shut down {Ago(stopped, Time.GetUtcNow())}",
+        var bot => $"heard from {Ago(bot.LastBeat, Time.GetUtcNow())} · {bot.Machine}",
     };
 
     // "DungeonWorldBot.Features.Encounters.MoveRequestWorker" is plenty as "MoveRequestWorker"

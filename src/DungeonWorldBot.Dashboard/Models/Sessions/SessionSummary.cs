@@ -6,7 +6,8 @@ namespace DungeonWorldBot.Dashboard.Models.Sessions;
 /// <summary>
 /// A session marked with /session start, with its number and how its dice have gone so far.
 /// </summary>
-public record SessionSummary(GameSession Session, int Number, SessionRecap Recap)
+/// <param name="AsOf">When it was read, which is as far as one still going on has run.</param>
+public record SessionSummary(GameSession Session, int Number, SessionRecap Recap, DateTimeOffset AsOf)
 {
     public string Name => Session.Title is { } title ? $"Session {Number}: {title}" : $"Session {Number}";
 
@@ -14,5 +15,5 @@ public record SessionSummary(GameSession Session, int Number, SessionRecap Recap
 
     public bool Live => Session.EndedAt is null;
 
-    public TimeSpan Length => (Session.EndedAt ?? DateTimeOffset.UtcNow) - Session.StartedAt;
+    public TimeSpan Length => (Session.EndedAt ?? AsOf) - Session.StartedAt;
 }

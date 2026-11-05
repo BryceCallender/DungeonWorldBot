@@ -34,7 +34,7 @@ public class CharacterCommandsTests
     private static void AssertAllInTree(Character character)
     {
         var paths = CommandTreeTests.Paths(CommandTreeTests.BuildTree().Root).ToHashSet();
-        Assert.Empty(Commands(character).Distinct().Where(c => !paths.Contains(c)));
+        Assert.DoesNotContain(Commands(character).Distinct(), c => !paths.Contains(c));
     }
 
     [Theory]

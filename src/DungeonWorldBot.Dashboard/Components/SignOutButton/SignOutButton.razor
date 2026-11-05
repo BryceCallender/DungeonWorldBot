@@ -1,0 +1,6 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* A form post with the antiforgery token rather than a link, so another site can't sign anyone out *@
+<form method="post" action="logout" class="signout">
+    <AntiforgeryToken />
+    <button type="submit">Sign out</button>
+</form>

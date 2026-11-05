@@ -227,7 +227,7 @@
     public string? For { get; set; }
 
     private ClassSheet? _sheet;
-    private (string Damage, int BaseHP) _basics;
+    private Lookup.ClassBasics _basics = null!;
     private DungeonWorldBot.Features.Characters.Creation.ClassKit? _kit;
     private List<string> _baseItems = [];
     private CharacterView? _character;

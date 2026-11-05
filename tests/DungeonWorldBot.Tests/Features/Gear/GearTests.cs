@@ -24,7 +24,7 @@ public sealed class GearTests : IDisposable
 
     private static GearMode Gem(string name) => GemAspectedBow.Gear.FindMode(name)!;
 
-    private async Task<(Character, GearService, ResourceService)> SetupAsync(DungeonWorldContext context, IDiceRoller? dice = null)
+    private static async Task<(Character, GearService, ResourceService)> SetupAsync(DungeonWorldContext context, IDiceRoller? dice = null)
     {
         var character = new Character
         {
@@ -82,12 +82,12 @@ public sealed class GearTests : IDisposable
         await gear.SetModeAsync(character, GemAspectedBow.Gear, Gem("Ruby"));
 
         for (var i = 0; i < 4; i++)
-            await gear.ApplyToDamageAsync(character, "Volley", [(8, 4)]);
+            await gear.ApplyToDamageAsync(character, "Volley", [new(8, 4)]);
         Assert.Equal(3, gear.GetCounter(character, dodge));
 
         // A sword swing isn't the bow
         await gear.SetCounterAsync(character, dodge, 1);
-        await gear.ApplyToDamageAsync(character, "Hack and Slash", [(8, 4)]);
+        await gear.ApplyToDamageAsync(character, "Hack and Slash", [new(8, 4)]);
         Assert.Equal(1, gear.GetCounter(character, dodge));
 
         await gear.SetModeAsync(character, GemAspectedBow.Gear, Gem("Diamond"));
@@ -101,11 +101,11 @@ public sealed class GearTests : IDisposable
         var (character, gear, _) = await SetupAsync(context, new DiceRoller(new d20Tek.DiceNotation.DieRoller.ConstantDieRoller(7)));
         await gear.SetModeAsync(character, GemAspectedBow.Gear, Gem("Sapphire"));
 
-        var result = await gear.ApplyToDamageAsync(character, "Volley", [(8, 2), (6, 5)]);
+        var result = await gear.ApplyToDamageAsync(character, "Volley", [new(8, 2), new(6, 5)]);
         Assert.Equal(5, result.Bonus);
         Assert.Contains("d8, 2 → 7", Assert.Single(result.Notes));
 
-        Assert.Equal(new Reroll(8, 6, 3), GearRules.RerollLowest([(8, 6)], _ => 3));
+        Assert.Equal(new Reroll(8, 6, 3), GearRules.RerollLowest([new(8, 6)], _ => 3));
         Assert.Equal(0, new Reroll(8, 6, 3).Gain);
         Assert.Null(GearRules.RerollLowest([], _ => 3));
     }
@@ -116,10 +116,10 @@ public sealed class GearTests : IDisposable
         await using var context = CreateContext();
         var (character, gear, _) = await SetupAsync(context);
 
-        Assert.Empty((await gear.ApplyToDamageAsync(character, "Volley", [(8, 4)])).Notes);
+        Assert.Empty((await gear.ApplyToDamageAsync(character, "Volley", [new(8, 4)])).Notes);
 
         await gear.SetModeAsync(character, GemAspectedBow.Gear, Gem("Diamond"));
-        Assert.Contains("armor", Assert.Single((await gear.ApplyToDamageAsync(character, "Volley", [(8, 4)])).Notes));
+        Assert.Contains("armor", Assert.Single((await gear.ApplyToDamageAsync(character, "Volley", [new(8, 4)])).Notes));
     }
 
     [Fact]
@@ -127,7 +127,7 @@ public sealed class GearTests : IDisposable
     {
         var roll = new DiceRoller(new d20Tek.DiceNotation.DieRoller.ConstantDieRoller(4)).Roll("2d8+1d6+3");
 
-        Assert.Equal([(8, 4), (8, 4), (6, 4)], DamageService.DamageDice(roll));
+        Assert.Equal([new DamageDie(8, 4), new DamageDie(8, 4), new DamageDie(6, 4)], DamageService.DamageDice(roll));
     }
 
     [Theory]

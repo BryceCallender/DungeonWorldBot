@@ -30,7 +30,7 @@ public sealed class MoveRequestTests : IDisposable
     {
         var dice = new DiceRoller(new ConstantDieRoller(5));
         var characters = new CharacterService(context);
-        var encounters = new EncounterService(context);
+        var encounters = new EncounterService(context, TimeProvider.System);
         var npcs = new NpcService(context);
         var damage = new DamageService(characters, dice, new GearService(new AbilityService(context), new ResourceService(context), dice), new ArmorService(context));
         return new MoveRequestProcessor(
@@ -55,7 +55,7 @@ public sealed class MoveRequestTests : IDisposable
             ArmorRating = 1,
         });
 
-        var encounters = new EncounterService(context);
+        var encounters = new EncounterService(context, TimeProvider.System);
         var fight = (await encounters.StartAsync("Ambush"))!;
         var goblin = new Enemy { Name = "Goblin", CurrentHP = 6, MaxHP = 6, Armor = 1, Damage = "d6" };
         await encounters.AddEnemyAsync(fight, goblin);
@@ -116,7 +116,7 @@ public sealed class MoveRequestTests : IDisposable
     {
         await using var context = _db.CreateContext();
         var (fight, goblin) = await SetupAsync(context);
-        var encounters = new EncounterService(context);
+        var encounters = new EncounterService(context, TimeProvider.System);
         var other = (await encounters.StartAsync("Elsewhere"))!;
         var orc = new Enemy { Name = "Orc", CurrentHP = 8, MaxHP = 8 };
         await encounters.AddEnemyAsync(other, orc);

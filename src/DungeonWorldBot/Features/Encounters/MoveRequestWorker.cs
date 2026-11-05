@@ -16,36 +16,36 @@ namespace DungeonWorldBot.Features.Encounters;
 /// <remarks>
 /// Each is marked taken before it's rolled, so a move is never made twice, even if something goes wrong partway.
 /// </remarks>
-public class MoveRequestWorker(IServiceScopeFactory scopes, ILogger<MoveRequestWorker> logger) : BackgroundService
+public class MoveRequestWorker(IServiceScopeFactory scopes, ILogger<MoveRequestWorker> logger, TimeProvider time) : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(1);
 
-    /// <summary>
-    /// Moves asked for longer ago than this, as while the bot was off, are dropped rather than all landing at once.
-    /// </summary>
-    public static readonly TimeSpan GiveUpAfter = TimeSpan.FromMinutes(1);
-
-    public const string TooLate = "The bot wasn't around to roll it in time. Try again.";
-
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        while (!stoppingToken.IsCancellationRequested)
+        using var timer = new PeriodicTimer(Interval, time);
+        try
         {
-            try
+            do
             {
-                await RollWaitingAsync(stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                return;
-            }
-            catch (Exception e)
-            {
-                // The database busy or mid-migration: the next look will likely do
-                logger.LogWarning(e, "Couldn't check for moves made on the dashboard");
-            }
+                await LookAsync(stoppingToken);
+            } while (await timer.WaitForNextTickAsync(stoppingToken));
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            // Shutting down
+        }
+    }
 
-            await Task.Delay(Interval, stoppingToken).ContinueWith(_ => { }, CancellationToken.None);
+    private async Task LookAsync(CancellationToken ct)
+    {
+        try
+        {
+            await RollWaitingAsync(ct);
+        }
+        catch (Exception e) when (e is not OperationCanceledException)
+        {
+            // The database busy or mid-migration: the next look will likely do
+            logger.LogWarning(e, "Couldn't check for moves made on the dashboard");
         }
     }
 
@@ -61,31 +61,36 @@ public class MoveRequestWorker(IServiceScopeFactory scopes, ILogger<MoveRequestW
                 .ToListAsync(ct);
         }
 
-        // Each in its own scope, so one move's changes are all saved (or not) before the next sees them
+        // Each in its own scope, so one move's changes are all saved (or not) before the next sees them. Shutting down
+        // stops between moves, never partway through one, so none is left taken but never rolled.
         foreach (var id in waiting)
-            await RollAsync(id, ct);
+        {
+            if (ct.IsCancellationRequested)
+                return;
+            await RollAsync(id);
+        }
     }
 
-    private async Task RollAsync(int id, CancellationToken ct)
+    private async Task RollAsync(int id)
     {
         await using var scope = scopes.CreateAsyncScope();
         var services = scope.ServiceProvider;
         var context = services.GetRequiredService<DungeonWorldContext>();
 
-        if (await context.MoveRequests.FindAsync([id], ct) is not { ResolvedAt: null } request)
+        if (await context.MoveRequests.FindAsync(id) is not { ResolvedAt: null } request)
             return;
 
-        var now = DateTimeOffset.UtcNow;
+        var now = time.GetUtcNow();
         request.ResolvedAt = now;
-        if (now - request.RequestedAt > GiveUpAfter)
+        if (now - request.RequestedAt > MoveRequestRules.GiveUpAfter)
         {
-            request.Error = TooLate;
-            await context.SaveChangesAsync(ct);
+            request.Error = MoveRequestRules.TooLate;
+            await context.SaveChangesAsync();
             return;
         }
 
         // Taken before rolling, so it's never rolled again
-        await context.SaveChangesAsync(ct);
+        await context.SaveChangesAsync();
 
         ProcessedMove move;
         try
@@ -94,29 +99,29 @@ public class MoveRequestWorker(IServiceScopeFactory scopes, ILogger<MoveRequestW
             if (processed.Move is null)
             {
                 request.Error = processed.Error;
-                await context.SaveChangesAsync(ct);
+                await context.SaveChangesAsync();
                 return;
             }
 
             move = processed.Move;
             request.Summary = move.Summary;
-            await context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync();
         }
         catch (Exception e) when (e is not OperationCanceledException)
         {
             logger.LogWarning(e, "Couldn't roll move {ID} made on the dashboard", id);
             request.Error = "Something went wrong rolling it. Check game chat before trying again.";
-            await context.SaveChangesAsync(ct);
+            await context.SaveChangesAsync();
             return;
         }
 
-        await TellGameChatAsync(services, move, ct);
+        await TellGameChatAsync(services, move);
     }
 
     /// <summary>
     /// Posts the move in game chat, and counts a player's roll in their stats as /move would. The move stands either way.
     /// </summary>
-    private async Task TellGameChatAsync(IServiceProvider services, ProcessedMove move, CancellationToken ct)
+    private async Task TellGameChatAsync(IServiceProvider services, ProcessedMove move)
     {
         var rollStats = services.GetRequiredService<IRollStatsService>();
         if (rollStats.GameChatChannelID is not { } gameChat)
@@ -129,7 +134,7 @@ public class MoveRequestWorker(IServiceScopeFactory scopes, ILogger<MoveRequestW
             : null;
         var channelAPI = services.GetRequiredService<IDiscordRestChannelAPI>();
         var sent = await reveal.SendAsync(move.Embed, drama, move.Action.Actor, move.Action.Action,
-            e => channelAPI.CreateMessageAsync(gameChat, embeds: new[] { e }, ct: ct), ct);
+            e => channelAPI.CreateMessageAsync(gameChat, embeds: new[] { e }));
         if (!sent.IsSuccess)
         {
             logger.LogWarning("Couldn't tell game chat about a move made on the dashboard: {Reason}", sent.Error.Message);
@@ -139,7 +144,7 @@ public class MoveRequestWorker(IServiceScopeFactory scopes, ILogger<MoveRequestW
         if (move.Action.ID != 0)
         {
             move.Action.MessageID = sent.Entity.ID;
-            await services.GetRequiredService<DungeonWorldContext>().SaveChangesAsync(ct);
+            await services.GetRequiredService<DungeonWorldContext>().SaveChangesAsync();
         }
 
         if (move.Roller is { } roller && move.Dice is { } dice)

@@ -14,8 +14,7 @@ namespace DungeonWorldBot.Dashboard.Services.Encounters;
 /// fights going on, and keeping the saved monsters. The bot's own rules do the work, and the bot announces the
 /// start and end in game chat when it notices them.
 /// </summary>
-/// <param name="options">Options for opening the bot's database read-write.</param>
-public class EncounterDesk(DbContextOptions<DungeonWorldContext> options)
+public class EncounterDesk(GameWrites writes, TimeProvider time)
 {
     public const int MaxNameLength = FormText.MaxNameLength;
     public const int MaxTextLength = FormText.MaxTextLength;
@@ -32,8 +31,9 @@ public class EncounterDesk(DbContextOptions<DungeonWorldContext> options)
         if (monsters.FirstOrDefault(m => m.Count is < 0 or > MaxCount) is { } tooMany)
             return Added.Failed($"Start with between 0 and {MaxCount} of {tooMany.Name}.");
 
-        await using var context = new DungeonWorldContext(options);
-        var service = new EncounterService(context);
+        await using var write = writes.Open();
+        var context = write.Context;
+        var service = write.Get<IEncounterService>();
 
         // Every monster checked before the fight starts, so a mistake doesn't leave it half set up
         var templates = new Dictionary<MonsterTemplate, int>();
@@ -48,6 +48,9 @@ public class EncounterDesk(DbContextOptions<DungeonWorldContext> options)
             return Added.Failed($"{onScene.Name} is still going on here. End it first.");
         if (await service.FindRunningAsync(fightName) is { } sameName)
             return Added.Failed($"{sameName.Name} is already going on. Give this fight another name.");
+
+        // The fight and its monsters land together, or not at all
+        await using var transaction = await context.Database.BeginTransactionAsync();
         if (await service.StartAsync(fightName, scene, roster: roster) is not { } encounter)
             return Added.Failed("Couldn't start the fight. Try again.");
 
@@ -55,6 +58,7 @@ public class EncounterDesk(DbContextOptions<DungeonWorldContext> options)
         foreach (var (template, count) in templates)
             spawned.AddRange(await service.SpawnAsync(encounter, template, count));
 
+        await transaction.CommitAsync();
         return new Added(null, spawned);
     }
 
@@ -68,8 +72,8 @@ public class EncounterDesk(DbContextOptions<DungeonWorldContext> options)
         if (count is < 1 or > MaxCount)
             return Added.Failed($"Add between 1 and {MaxCount} at a time.");
 
-        await using var context = new DungeonWorldContext(options);
-        var service = new EncounterService(context);
+        await using var write = writes.Open();
+        var service = write.Get<IEncounterService>();
         if (await FightOnAsync(service, sceneID) is not { } encounter)
             return Added.Failed(NoFight);
         if (await service.FindMonsterAsync(monster) is not { } template)
@@ -89,8 +93,8 @@ public class EncounterDesk(DbContextOptions<DungeonWorldContext> options)
         if (Problem(details.MaxHP, details.Armor) is { } problem)
             return Added.Failed(problem);
 
-        await using var context = new DungeonWorldContext(options);
-        var service = new EncounterService(context);
+        await using var write = writes.Open();
+        var service = write.Get<IEncounterService>();
         if (await FightOnAsync(service, sceneID) is not { } encounter)
             return Added.Failed(NoFight);
         if (await service.FindEnemyAsync(name) is { } taken)
@@ -120,18 +124,17 @@ public class EncounterDesk(DbContextOptions<DungeonWorldContext> options)
     /// </summary>
     public async Task<MoveAsked> RequestMoveAsync(MoveRequest request)
     {
-        await using var context = new DungeonWorldContext(options);
+        await using var write = writes.Open();
+        var context = write.Context;
 
-        // SQLite can't compare times, so the few waiting are checked here
+        var stillWaitingSince = time.GetUtcNow() - MoveRequestRules.GiveUpAfter;
         var waiting = await context.MoveRequests
-            .Where(r => r.ResolvedAt == null && r.EncounterID == request.EncounterID)
-            .Where(r => request.CharacterID != null ? r.CharacterID == request.CharacterID : r.EnemyID == request.EnemyID)
-            .Select(r => r.RequestedAt)
-            .ToListAsync();
-        if (waiting.Any(at => DateTimeOffset.UtcNow - at < MoveRequestWorker.GiveUpAfter))
+            .Where(r => r.ResolvedAt == null && r.EncounterID == request.EncounterID && r.RequestedAt > stillWaitingSince)
+            .AnyAsync(r => request.CharacterID != null ? r.CharacterID == request.CharacterID : r.EnemyID == request.EnemyID);
+        if (waiting)
             return MoveAsked.Failed("Still waiting on the last move. Give the bot a moment.");
 
-        request.RequestedAt = DateTimeOffset.UtcNow;
+        request.RequestedAt = time.GetUtcNow();
         context.MoveRequests.Add(request);
         await context.SaveChangesAsync();
         return new MoveAsked(null, request.ID);
@@ -142,8 +145,8 @@ public class EncounterDesk(DbContextOptions<DungeonWorldContext> options)
     /// </summary>
     public async Task<string?> EndAsync(string sceneID)
     {
-        await using var context = new DungeonWorldContext(options);
-        var service = new EncounterService(context);
+        await using var write = writes.Open();
+        var service = write.Get<IEncounterService>();
         if (await FightOnAsync(service, sceneID) is not { } encounter)
             return NoFight;
 
@@ -159,16 +162,20 @@ public class EncounterDesk(DbContextOptions<DungeonWorldContext> options)
         if (amount < 1)
             return "Give an amount of at least 1.";
 
-        await using var context = new DungeonWorldContext(options);
-        var service = new EncounterService(context);
-        if (await FightingAsync(context, enemyID) is not { } enemy)
-            return NoEnemy;
+        return await Conflicts.RetryAsync(async () =>
+        {
+            await using var write = writes.Open();
+            var context = write.Context;
+            var service = write.Get<IEncounterService>();
+            if (await FightingAsync(context, enemyID) is not { } enemy)
+                return NoEnemy;
 
-        if (change == HpChange.Damage)
-            await service.DamageAsync(enemy, amount);
-        else
-            await service.HealAsync(enemy, amount);
-        return null;
+            if (change == HpChange.Damage)
+                await service.DamageAsync(enemy, amount);
+            else
+                await service.HealAsync(enemy, amount);
+            return null;
+        });
     }
 
     /// <summary>
@@ -179,18 +186,22 @@ public class EncounterDesk(DbContextOptions<DungeonWorldContext> options)
         if (Problem(details.MaxHP, details.Armor) is { } problem)
             return problem;
 
-        await using var context = new DungeonWorldContext(options);
-        var service = new EncounterService(context);
-        if (await FightingAsync(context, enemyID) is not { } enemy)
-            return NoEnemy;
+        return await Conflicts.RetryAsync(async () =>
+        {
+            await using var write = writes.Open();
+            var context = write.Context;
+            var service = write.Get<IEncounterService>();
+            if (await FightingAsync(context, enemyID) is not { } enemy)
+                return NoEnemy;
 
-        enemy.MaxHP = details.MaxHP;
-        enemy.CurrentHP = details.CurrentHP;
-        enemy.Armor = details.Armor;
-        Descriptions.Of(details).ApplyTo(enemy);
-        // Keeps current HP between 0 and the max
-        await service.SaveAsync(enemy);
-        return null;
+            enemy.MaxHP = details.MaxHP;
+            enemy.CurrentHP = details.CurrentHP;
+            enemy.Armor = details.Armor;
+            Descriptions.Of(details).ApplyTo(enemy);
+            // Keeps current HP between 0 and the max
+            await service.SaveAsync(enemy);
+            return null;
+        });
     }
 
     /// <summary>
@@ -198,12 +209,16 @@ public class EncounterDesk(DbContextOptions<DungeonWorldContext> options)
     /// </summary>
     public async Task<string?> RemoveEnemyAsync(int enemyID)
     {
-        await using var context = new DungeonWorldContext(options);
-        if (await FightingAsync(context, enemyID) is not { } enemy)
-            return NoEnemy;
+        return await Conflicts.RetryAsync(async () =>
+        {
+            await using var write = writes.Open();
+            var context = write.Context;
+            if (await FightingAsync(context, enemyID) is not { } enemy)
+                return NoEnemy;
 
-        await new EncounterService(context).RemoveAsync(enemy);
-        return null;
+            await write.Get<IEncounterService>().RemoveAsync(enemy);
+            return null;
+        });
     }
 
     /// <summary>
@@ -217,8 +232,9 @@ public class EncounterDesk(DbContextOptions<DungeonWorldContext> options)
         if (Problem(details.MaxHP, details.Armor) is { } problem)
             return problem;
 
-        await using var context = new DungeonWorldContext(options);
-        var service = new EncounterService(context);
+        await using var write = writes.Open();
+        var context = write.Context;
+        var service = write.Get<IEncounterService>();
 
         MonsterTemplate monster;
         if (monsterID is null)
@@ -241,11 +257,12 @@ public class EncounterDesk(DbContextOptions<DungeonWorldContext> options)
 
     public async Task<string?> RemoveMonsterAsync(int monsterID)
     {
-        await using var context = new DungeonWorldContext(options);
+        await using var write = writes.Open();
+        var context = write.Context;
         if (await context.MonsterTemplates.FirstOrDefaultAsync(m => m.ID == monsterID) is not { } monster)
             return NoMonster;
 
-        await new EncounterService(context).RemoveMonsterAsync(monster);
+        await write.Get<IEncounterService>().RemoveMonsterAsync(monster);
         return null;
     }
 
@@ -270,7 +287,7 @@ public class EncounterDesk(DbContextOptions<DungeonWorldContext> options)
     /// <summary>
     /// The fight going on on this scene.
     /// </summary>
-    private static Task<Encounter?> FightOnAsync(EncounterService service, string sceneID) => service.GetOnSceneAsync(sceneID);
+    private static Task<Encounter?> FightOnAsync(IEncounterService service, string sceneID) => service.GetOnSceneAsync(sceneID);
 
     /// <summary>
     /// The free text an enemy or monster is described with, tidied from what the DM typed.

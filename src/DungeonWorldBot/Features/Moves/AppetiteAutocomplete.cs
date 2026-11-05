@@ -9,7 +9,7 @@ namespace DungeonWorldBot.Features.Moves;
 /// <summary>
 /// The player's own appetites, for a Barbarian pursuing one. Everyone else gets no suggestions.
 /// </summary>
-public class AppetiteAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
+public class AppetiteAutocomplete(ContextInjectionService contextInjection, ICharacterService characterService)
     : ClassSheetAutocomplete(contextInjection, characterService)
 {
     public const string ID = "appetite";
@@ -19,5 +19,5 @@ public class AppetiteAutocomplete(ContextInjectionService? contextInjection = nu
     protected override IEnumerable<Suggestion> OwnClassCandidates(Character character, ClassSheet sheet) =>
         Barbarian.Appetites(character).Select(a => new Suggestion(a, a));
 
-    protected override IEnumerable<Suggestion> AllClassCandidates() => [];
+    protected override IEnumerable<Suggestion> AllCandidates() => [];
 }

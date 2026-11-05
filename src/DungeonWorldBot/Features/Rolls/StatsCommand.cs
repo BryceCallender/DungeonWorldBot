@@ -23,9 +23,6 @@ public class StatsCommand(
     RollHistoryScanner scanner)
     : DungeonWorldCommandBase(context, feedbackService)
 {
-    // Discord rejects embeds with more than 25 fields
-    private const int MaxFields = 25;
-
     [Command("show")]
     [Description("Show how everyone's 2d6 rolls in the game chat have gone: hits, misses, nat 12s, nat 2s, modifiers")]
     public async Task<IResult> ShowStatsAsync(
@@ -46,23 +43,22 @@ public class StatsCommand(
                 : $"No 2d6 rolls recorded for <@{user.ID}> in <#{rollStatsService.GameChatChannelID}> yet.");
         }
 
-        var characters = (await characterService.GetCharactersAsync()).ToDictionary(c => c.ID);
+        var names = (await characterService.GetCharacterNamesAsync()).ToDictionary(c => c.ID, c => c.Name);
 
         var fields = stats
-            .Take(MaxFields)
+            .Take(MaxEmbedFields)
             .Select(s => (IEmbedField)new EmbedField(
-                characters.TryGetValue(s.UserID, out var character) ? character.Name : "Player",
+                names.GetValueOrDefault(s.UserID) ?? "Player",
                 Describe(s)))
             .ToList();
 
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Title: "🎲 Roll Stats",
                 Description: $"Every 2d6 roll made through the bot in <#{rollStatsService.GameChatChannelID}>, counted by total with modifiers.",
                 Fields: fields,
                 Colour: _feedbackService.Theme.Primary
-            ),
-            ct: CancellationToken
+            )
         );
     }
 

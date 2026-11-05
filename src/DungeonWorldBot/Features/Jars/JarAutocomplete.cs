@@ -9,7 +9,7 @@ namespace DungeonWorldBot.Features.Jars;
 /// <summary>
 /// The corpses in the player's Hexed Canopic Jars.
 /// </summary>
-public class JarAutocomplete(ContextInjectionService? contextInjection = null, ICharacterService? characterService = null)
+public class JarAutocomplete(ContextInjectionService contextInjection, ICharacterService characterService)
     : ClassSheetAutocomplete(contextInjection, characterService)
 {
     public const string ID = "jar-corpse";
@@ -19,5 +19,5 @@ public class JarAutocomplete(ContextInjectionService? contextInjection = null, I
     protected override IEnumerable<Suggestion> OwnClassCandidates(Character character, ClassSheet sheet) =>
         JarRules.Corpses(character).Select(c => new Suggestion(c, c));
 
-    protected override IEnumerable<Suggestion> AllClassCandidates() => [];
+    protected override IEnumerable<Suggestion> AllCandidates() => [];
 }

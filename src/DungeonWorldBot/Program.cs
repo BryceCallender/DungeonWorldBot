@@ -11,10 +11,13 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Remora.Discord.API.Abstractions.Gateway.Commands;
+using Remora.Discord.API.Abstractions.Rest;
 using Remora.Discord.Commands.Extensions;
 using Remora.Discord.Commands.Services;
 using Remora.Discord.Gateway;
 using Remora.Discord.Hosting.Extensions;
+using Remora.Rest.Core;
+using Remora.Results;
 
 namespace DungeonWorldBot;
 
@@ -41,21 +44,42 @@ public class Program
             await scope.ServiceProvider.GetRequiredService<ICharacterService>().GetCharactersAsync();
         }
 
-        var slashService = services.GetRequiredService<SlashService>();
-
-        var updateSlash = await slashService.UpdateSlashCommandsAsync();
-        if (!updateSlash.IsSuccess)
-        {
-            log.LogWarning("Failed to update slash commands: {Reason}", updateSlash.Error?.Message);
-        }
+        await RegisterSlashCommandsAsync(services, log);
 
         await host.RunAsync();
+    }
+
+    /// <summary>
+    /// Tells Discord about the slash commands: globally, or only on the CommandServerId server when it's set. Global
+    /// ones are cleared then, or every command would show up twice there.
+    /// </summary>
+    private static async Task RegisterSlashCommandsAsync(IServiceProvider services, ILogger log)
+    {
+        Snowflake? server = services.GetRequiredService<IOptions<BotSettings>>().Value.CommandServerID is { } id ? new Snowflake(id) : null;
+
+        var updated = await services.GetRequiredService<SlashService>().UpdateSlashCommandsAsync(server);
+        if (!updated.IsSuccess)
+        {
+            log.LogWarning("Failed to update slash commands: {Reason}", updated.Error?.Message);
+            return;
+        }
+
+        if (server is null)
+            return;
+
+        var application = await services.GetRequiredService<IDiscordRestOAuth2API>().GetCurrentBotApplicationInformationAsync();
+        var cleared = application.IsSuccess
+            ? (Result)await services.GetRequiredService<IDiscordRestApplicationAPI>().BulkOverwriteGlobalApplicationCommandsAsync(application.Entity.ID, [])
+            : (Result)application;
+        if (!cleared.IsSuccess)
+            log.LogWarning("Failed to clear the global slash commands: {Reason}", cleared.Error?.Message);
     }
     
     private static IHostBuilder CreateHostBuilder(string[] args) => Host.CreateDefaultBuilder(args)
         // The default builder only reads user secrets in Development, and the bot runs as Production. Where none are
         // set (like on the Pi), the token comes from appsettings.json or the environment as before.
-        .ConfigureAppConfiguration(c => c.AddUserSecrets<Program>(optional: true))
+        // The environment and command line are read again after them, so either can still override a secret
+        .ConfigureAppConfiguration(c => c.AddUserSecrets<Program>(optional: true).AddEnvironmentVariables().AddCommandLine(args))
         .AddDiscordService
         (
             services => services.GetRequiredService<IOptions<BotSettings>>().Value.BotToken!)
@@ -78,6 +102,7 @@ public class Program
                 services
                     .AddSqlite<DungeonWorldContext>(context.Configuration.GetConnectionString("DungeonWorldConnectionString"))
                     .AddSqlite<CanvasContext>($"Data Source={CanvasDatabasePath(context)};Mode=ReadOnly")
+                    .AddCoreServices()
                     .AddAttributedServices(typeof(Program).Assembly)
                     .AddRemoraServices()
                     .AddHostedService<EncounterAnnouncer>()

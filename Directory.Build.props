@@ -7,4 +7,13 @@
         <LangVersion>14</LangVersion>
     </PropertyGroup>
 
+    <!-- Every warning fails the build, with the recommended analyzers on; .editorconfig turns off the few that don't fit.
+         A newly published package advisory only warns, so it can't block a deploy before there's a fix to take. -->
+    <PropertyGroup>
+        <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+        <WarningsNotAsErrors>$(WarningsNotAsErrors);NU1901;NU1902;NU1903;NU1904</WarningsNotAsErrors>
+        <AnalysisLevel>latest-recommended</AnalysisLevel>
+        <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    </PropertyGroup>
+
 </Project>

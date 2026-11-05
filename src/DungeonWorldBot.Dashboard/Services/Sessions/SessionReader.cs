@@ -12,7 +12,7 @@ namespace DungeonWorldBot.Dashboard.Services.Sessions;
 /// The sessions marked with /session start and end, read with the bot's own rules. None when the bot's database
 /// predates them.
 /// </summary>
-public class SessionReader(ISessionService sessions, DungeonWorldContext context)
+public class SessionReader(ISessionService sessions, DungeonWorldContext context, TimeProvider time)
 {
     /// <summary>
     /// The fights started during a session, first first.
@@ -20,11 +20,11 @@ public class SessionReader(ISessionService sessions, DungeonWorldContext context
     public async Task<List<Encounter>> GetFightsAsync(SessionSummary summary)
     {
         var from = summary.Session.StartedAt;
-        var to = summary.Session.EndedAt ?? DateTimeOffset.MaxValue;
-        // SQLite can't compare dates stored with an offset, so they're sorted out here
-        return (await context.Encounters.AsNoTracking().OrderBy(e => e.ID).ToListAsync())
-            .Where(e => e.StartedAt >= from && e.StartedAt <= to)
-            .ToList();
+        var to = summary.Session.EndedAt;
+        return await context.Encounters.AsNoTracking()
+            .Where(e => e.StartedAt >= from && (to == null || e.StartedAt <= to))
+            .OrderBy(e => e.StartedAt)
+            .ToListAsync();
     }
 
     /// <summary>
@@ -54,7 +54,7 @@ public class SessionReader(ISessionService sessions, DungeonWorldContext context
             List<SessionSummary> summaries = [];
             // Numbered by the order they started in, as the bot numbers them
             foreach (var (session, i) in all.Select((s, i) => (s, i)))
-                summaries.Add(new SessionSummary(session, i + 1, await sessions.RecapAsync(session)));
+                summaries.Add(new SessionSummary(session, i + 1, await sessions.RecapAsync(session), time.GetUtcNow()));
             return summaries.OrderByDescending(s => s.Live).ThenByDescending(s => s.Number).ToList();
         }) ?? [];
 
@@ -64,7 +64,7 @@ public class SessionReader(ISessionService sessions, DungeonWorldContext context
     public async Task<int> CountAsync() => (await Safely(async () => (int?)(await sessions.GetAllAsync()).Count)) ?? 0;
 
     private async Task<SessionSummary> SummaryAsync(GameSession session) =>
-        new(session, await sessions.NumberOfAsync(session), await sessions.RecapAsync(session));
+        new(session, await sessions.NumberOfAsync(session), await sessions.RecapAsync(session), time.GetUtcNow());
 
     private static async Task<T?> Safely<T>(Func<Task<T?>> read)
     {

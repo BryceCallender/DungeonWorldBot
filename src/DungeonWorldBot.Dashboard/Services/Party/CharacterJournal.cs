@@ -1,3 +1,4 @@
+using DungeonWorldBot.Dashboard.Services.Shared;
 using DungeonWorldBot.Data;
 using DungeonWorldBot.Data.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -9,8 +10,7 @@ namespace DungeonWorldBot.Dashboard.Services.Party;
 /// The one part of the bot's database the dashboard writes: a character's backstory, notes and goals, which players
 /// keep here rather than in Discord. Everything else stays read-only.
 /// </summary>
-/// <param name="options">Options for opening the bot's database read-write.</param>
-public class CharacterJournal(DbContextOptions<DungeonWorldContext> options)
+public class CharacterJournal(GameWrites writes, TimeProvider time)
 {
     public const int MaxTextLength = 4000;
 
@@ -36,7 +36,7 @@ public class CharacterJournal(DbContextOptions<DungeonWorldContext> options)
         ChangeGoalAsync(characterID, goalID, (c, g) => c.Goals!.Remove(g));
 
     public Task<bool> AddNoteAsync(ulong characterID, string text) =>
-        ChangeAsync(characterID, c => (c.Notes ??= []).Add(new Note { Text = text.Trim(), CreatedAt = DateTime.UtcNow }));
+        ChangeAsync(characterID, c => (c.Notes ??= []).Add(new Note { Text = text.Trim(), CreatedAt = time.GetUtcNow().UtcDateTime }));
 
     public Task<bool> EditNoteAsync(ulong characterID, int noteID, string text) =>
         ChangeNoteAsync(characterID, noteID, (_, n) => n.Text = text.Trim());
@@ -78,7 +78,8 @@ public class CharacterJournal(DbContextOptions<DungeonWorldContext> options)
     // A fresh context each time, so a write never picks up anything else and is done before the page reloads
     private async Task<bool> ChangeAsync(ulong characterID, Func<Character, bool> change)
     {
-        await using var db = new DungeonWorldContext(options);
+        await using var write = writes.Open();
+        var db = write.Context;
         var id = new Snowflake(characterID);
         var character = await db.Characters.Include(c => c.Goals).Include(c => c.Notes).FirstOrDefaultAsync(c => c.ID == id);
         if (character is null || !change(character))

@@ -31,11 +31,10 @@ public class CharacterCommand(
     CreationSessions creationSessions,
     IDiceRoller diceRoller,
     IResourceService resourceService,
-    IGameMasterService gameMaster,
     ILevelingService leveling,
     IGameSettingsService settings,
     IDamageService damageService)
-    : CharacterCommandBase(context, feedbackService, characterService, gameMaster, leveling, settings)
+    : CharacterCommandBase(context, feedbackService, characterService, leveling, settings)
 {
     [Command("create")]
     [Description("Create your character for the campaign")]
@@ -49,16 +48,15 @@ public class CharacterCommand(
         }
 
         // Only the player sees it, and the menus and buttons on it are answered by CharacterCreationInteractions
-        var session = creationSessions.Resume(userId, out var resumed);
+        var (session, resumed) = creationSessions.Resume(userId);
         var message = CreationView.Render(session, userId);
         var embed = resumed
             ? message.Embed with { Description = $"Picking up where you left off.\n\n{message.Embed.Description.OrDefault(string.Empty)}" }
             : message.Embed;
 
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             embed,
-            new FeedbackMessageOptions(MessageFlags: MessageFlags.Ephemeral, MessageComponents: new(message.Components)),
-            CancellationToken);
+            new FeedbackMessageOptions(MessageFlags: MessageFlags.Ephemeral, MessageComponents: new(message.Components)));
     }
 
     [Command("profile")]
@@ -69,10 +67,11 @@ public class CharacterCommand(
         string? name = null)
     {
         // Matched in full rather than by Contains, since people can send their own text instead of a suggestion
-        var character = name is not null
-            ? (await _characterService.GetCharactersAsync())
-                .FirstOrDefault(c => c.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase))
-            : await GetOwnCharacterAsync();
+        var id = name is not null
+            ? (await _characterService.GetCharacterNamesAsync())
+                .FirstOrDefault(c => c.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase))?.ID
+            : GetUserId();
+        var character = id is { } found ? await _characterService.GetCharacterToShowAsync(found) : null;
 
         if (character is null)
         {
@@ -83,7 +82,7 @@ public class CharacterCommand(
 
         List<IEmbedField> embedFields = [];
 
-        embedFields.AddRange(character.Stats.Select(s => new EmbedField(Name: s.StatType.ToString(), Value: $"{s.Value} ({(s.Modifier >= 0 ? "+" : string.Empty)}{s.Modifier})", true)));
+        embedFields.AddRange(character.Stats.Select(s => new EmbedField(Name: s.StatType.ToString(), Value: $"{s.Value} ({Numbers.Signed(s.Modifier)})", true)));
 
         embedFields.Add(new EmbedField(Name: "Health", Value: character.Health.ToDisplay(), IsInline: false));
         embedFields.Add(new EmbedField(Name: "Status", Value: character.Status?.ToString() ?? "Unknown..."));
@@ -139,7 +138,7 @@ public class CharacterCommand(
         }
 
         var icon = ImageHelper.ClassIcon(character.Class.Type);
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Title: character.Name,
                 Thumbnail: icon.Thumbnail,
@@ -147,8 +146,7 @@ public class CharacterCommand(
                 Fields: embedFields,
                 Colour: ClassSheetLibrary.For(character.Class.Type)?.Color.Discord ?? _feedbackService.Theme.Primary
             ),
-            icon.Options,
-            CancellationToken
+            icon.Options
         );
     }
 
@@ -200,13 +198,12 @@ public class CharacterCommand(
 
         var hit = await damageService.TakeAsync(character, roll.Value, type, piercing);
 
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Title: "Damaged!",
                 Description: hit.Describe(character),
                 Colour: _feedbackService.Theme.Primary
-            ),
-            ct: CancellationToken
+            )
         );
     }
 
@@ -242,13 +239,12 @@ public class CharacterCommand(
             description = $"{character.Name} was healed for {amount} HP";
         }
 
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Title: "Healed!",
                 Description: $"{description} ({character.Health.CurrentHP}/{character.Health.MaxHP} HP)",
                 Colour: _feedbackService.Theme.Primary
-            ),
-            ct: CancellationToken
+            )
         );
     }
 
@@ -271,13 +267,12 @@ public class CharacterCommand(
 
         await _characterService.UpdateCharacterDamageModifierAsync(character, newModifier);
 
-        return await _feedbackService.SendContextualEmbedAsync(
+        return await ReplyWithEmbedAsync(
             new Embed(
                 Title: "Damage Modifier Changed!",
                 Description: $"{character.Name}'s Damage modifier was changed to {newModifier}",
                 Colour: _feedbackService.Theme.Primary
-            ),
-            ct: CancellationToken
+            )
         );
     }
 
@@ -289,10 +284,9 @@ public class CharacterCommand(
         ICommandContext context,
         FeedbackService feedbackService,
         ICharacterService characterService,
-        IGameMasterService gameMaster,
         ILevelingService leveling,
         IGameSettingsService settings)
-        : CharacterCommandBase(context, feedbackService, characterService, gameMaster, leveling, settings)
+        : CharacterCommandBase(context, feedbackService, characterService, leveling, settings)
     {
         [Command("allocate")]
         [Description("Spend a stat point from leveling up to raise a stat by 1 (max 18)")]
@@ -312,19 +306,18 @@ public class CharacterCommand(
             }
 
             var raised = character.Stats.First(s => s.StatType == stat);
-            var description = $"{character.Name}'s {stat} is now {raised.Value} ({FormatModifier(raised.Modifier)})";
+            var description = $"{character.Name}'s {stat} is now {raised.Value} ({Numbers.Signed(raised.Modifier)})";
             if (stat == StatType.Con)
                 description += $"\nMax HP is now {character.Health.MaxHP}.";
             if (_leveling.GetStatPoints(character) is > 0 and var left)
                 description += $"\n{left} stat point{(left == 1 ? "" : "s")} left.";
 
-            return await _feedbackService.SendContextualEmbedAsync(
+            return await ReplyWithEmbedAsync(
                 new Embed(
                     Title: "Stat Raised!",
                     Description: description,
                     Colour: _feedbackService.Theme.Primary
-                ),
-                ct: CancellationToken
+                )
             );
         }
 

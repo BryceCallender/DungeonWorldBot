@@ -25,7 +25,8 @@ public class CanvasHub(
     IEncounterService encounters,
     FightMoves moves,
     MoveResults results,
-    DashboardSettings settings)
+    DashboardSettings settings,
+    TimeProvider time)
     : Hub<ICanvasClient>
 {
     /// <summary>
@@ -143,7 +144,7 @@ public class CanvasHub(
 
         // A move aimed at no one shows how it went over whoever made it
         var shownOver = ask.Target ?? ask.Actor;
-        results.Follow(asked.ID, new WaitingMove(canvas, me.ID, ask.Actor, shownOver, DateTimeOffset.UtcNow));
+        results.Follow(asked.ID, new WaitingMove(canvas, me.ID, ask.Actor, shownOver, time.GetUtcNow()));
         await Clients.OthersInGroup(Group(canvas)).MoveAsked(me.ID, ask.Actor, shownOver);
     }
 
@@ -161,7 +162,7 @@ public class CanvasHub(
         await Clients.Group(Group(canvas)).PresenceChanged(presence.On(canvas));
     }
 
-    private (int Canvas, CanvasPerson Me) Current() =>
+    private CanvasVisit Current() =>
         presence.Find(Context.ConnectionId) ?? throw new HubException("Join a scene first.");
 
     // A drag sends a dozen moves a second, so whether they can change the board is worked out at most this often
@@ -175,10 +176,10 @@ public class CanvasHub(
     /// <summary>
     /// <see cref="Current"/>, for changing the board: refused for anyone kept out of it while a fight's on.
     /// </summary>
-    private async Task<(int Canvas, CanvasPerson Me)> ChangerAsync()
+    private async Task<CanvasVisit> ChangerAsync()
     {
         var current = Current();
-        var now = DateTimeOffset.UtcNow;
+        var now = time.GetUtcNow();
         if (Context.Items.TryGetValue(nameof(ChangeCheck), out var cached)
             && cached is ChangeCheck check && check.Canvas == current.Canvas && now - check.At < RecheckAfter)
         {

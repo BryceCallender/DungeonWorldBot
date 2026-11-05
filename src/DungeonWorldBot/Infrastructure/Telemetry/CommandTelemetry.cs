@@ -57,7 +57,7 @@ public static class CommandTelemetry
     /// <summary>
     /// A command's full name, groups and all, e.g. "dm npc add".
     /// </summary>
-    private static string NameOf(ICommandContext context)
+    public static string NameOf(ICommandContext context)
     {
         var parts = new List<string>();
         IChildNode? node = context.Command.Command.Node;

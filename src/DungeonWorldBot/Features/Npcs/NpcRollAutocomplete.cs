@@ -1,3 +1,4 @@
+using DungeonWorldBot.Infrastructure;
 using Remora.Discord.API.Abstractions.Objects;
 using Remora.Discord.API.Objects;
 using Remora.Discord.Commands.Autocomplete;
@@ -26,7 +27,7 @@ public class NpcRollAutocomplete(INpcService npcService) : IAutocompleteProvider
             .Where(o => o.Name.Contains(input, StringComparison.OrdinalIgnoreCase))
             .Take(25)
             .Select(o => (IApplicationCommandOptionChoice)new ApplicationCommandOptionChoice(
-                o.Modifier is { } mod ? $"{o.Name} {NpcSheet.Signed(mod)}" : $"{o.Name} ({o.Dice})", o.Name))
+                o.Modifier is { } mod ? $"{o.Name} {Numbers.Signed(mod)}" : $"{o.Name} ({o.Dice})", o.Name))
             .ToList();
     }
 

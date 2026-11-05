@@ -48,7 +48,7 @@ public sealed class TechniqueTests : IDisposable
         var dice = new DiceRoller(new ConstantDieRoller(everyDie));
         var characters = new CharacterService(context);
         var damage = new DamageService(characters, dice, new GearService(new AbilityService(context), new ResourceService(context), dice), new ArmorService(context));
-        return new MoveResolver(dice, damage, new EncounterService(context));
+        return new MoveResolver(dice, damage, new EncounterService(context, TimeProvider.System));
     }
 
     [Fact]
@@ -137,7 +137,7 @@ public sealed class TechniqueTests : IDisposable
     {
         await using var context = CreateContext();
         var character = await AddChannelerAsync(context, TechniqueRules.ThreadTheNeedle);
-        var encounters = new EncounterService(context);
+        var encounters = new EncounterService(context, TimeProvider.System);
         var fight = (await encounters.StartAsync("Ambush"))!;
         var goblin = new Enemy { Name = "Goblin", CurrentHP = 10, MaxHP = 10, Armor = 2, Damage = "d6" };
         await encounters.AddEnemyAsync(fight, goblin);
