@@ -24,8 +24,9 @@ dotnet_diagnostic.CA1305.severity = none
 dotnet_diagnostic.CA1309.severity = none
 dotnet_diagnostic.CA1310.severity = none
 dotnet_diagnostic.CA1311.severity = none
-# Logging isn't on a hot path, so LoggerMessage delegates would cost readability for nothing
+# Logging isn't on a hot path, so LoggerMessage delegates and IsEnabled guards would cost readability for nothing
 dotnet_diagnostic.CA1848.severity = none
+dotnet_diagnostic.CA1873.severity = none
 # Interfaces and IReadOnlyList returns are deliberate
 dotnet_diagnostic.CA1859.severity = none
 # The command bases share their context with commands through protected fields

@@ -23,7 +23,7 @@ namespace DungeonWorldBot.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong>("CharacterID")
+                    b.Property<long>("CharacterID")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Description")
@@ -58,7 +58,7 @@ namespace DungeonWorldBot.Data.Migrations
                     b.Property<int>("Amount")
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong?>("CharacterID")
+                    b.Property<long?>("CharacterID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Duration")
@@ -84,10 +84,10 @@ namespace DungeonWorldBot.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong?>("CharacterID")
+                    b.Property<long?>("CharacterID")
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong>("TargetID")
+                    b.Property<long>("TargetID")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("TargetName")
@@ -103,7 +103,7 @@ namespace DungeonWorldBot.Data.Migrations
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Character", b =>
                 {
-                    b.Property<ulong>("ID")
+                    b.Property<long>("ID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Alignment")
@@ -156,10 +156,10 @@ namespace DungeonWorldBot.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTimeOffset>("At")
+                    b.Property<DateTime>("At")
                         .HasColumnType("TEXT");
 
-                    b.Property<ulong>("CharacterID")
+                    b.Property<long>("CharacterID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("From")
@@ -183,7 +183,7 @@ namespace DungeonWorldBot.Data.Migrations
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.CharacterPortrait", b =>
                 {
-                    b.Property<ulong>("CharacterID")
+                    b.Property<long>("CharacterID")
                         .HasColumnType("INTEGER")
                         .HasColumnName("ID");
 
@@ -213,7 +213,7 @@ namespace DungeonWorldBot.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong>("CharacterID")
+                    b.Property<long>("CharacterID")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Name")
@@ -236,7 +236,7 @@ namespace DungeonWorldBot.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong>("CharacterID")
+                    b.Property<long>("CharacterID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Type")
@@ -256,7 +256,7 @@ namespace DungeonWorldBot.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong?>("CharacterID")
+                    b.Property<long?>("CharacterID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Modifier")
@@ -278,13 +278,13 @@ namespace DungeonWorldBot.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTimeOffset?>("AnnouncedAt")
+                    b.Property<DateTime?>("AnnouncedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTimeOffset?>("EndAnnouncedAt")
+                    b.Property<DateTime?>("EndAnnouncedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTimeOffset?>("EndedAt")
+                    b.Property<DateTime?>("EndedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Name")
@@ -300,10 +300,14 @@ namespace DungeonWorldBot.Data.Migrations
                     b.Property<string>("SceneUrl")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTimeOffset>("StartedAt")
+                    b.Property<DateTime>("StartedAt")
                         .HasColumnType("TEXT");
 
                     b.HasKey("ID");
+
+                    b.HasIndex("SceneID")
+                        .IsUnique()
+                        .HasFilter("\"EndedAt\" IS NULL");
 
                     b.ToTable("Encounters");
                 });
@@ -322,10 +326,10 @@ namespace DungeonWorldBot.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTimeOffset>("At")
+                    b.Property<DateTime>("At")
                         .HasColumnType("TEXT");
 
-                    b.Property<ulong?>("CharacterID")
+                    b.Property<long?>("CharacterID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("EncounterID")
@@ -334,7 +338,7 @@ namespace DungeonWorldBot.Data.Migrations
                     b.Property<int?>("EnemyID")
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong?>("MessageID")
+                    b.Property<long?>("MessageID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("NpcID")
@@ -366,7 +370,7 @@ namespace DungeonWorldBot.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong?>("CharacterID")
+                    b.Property<long?>("CharacterID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("EncounterID")
@@ -394,6 +398,7 @@ namespace DungeonWorldBot.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("CurrentHP")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Damage")
@@ -436,10 +441,10 @@ namespace DungeonWorldBot.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTimeOffset?>("EndedAt")
+                    b.Property<DateTime?>("EndedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTimeOffset>("StartedAt")
+                    b.Property<DateTime>("StartedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<string>("Title")
@@ -456,7 +461,7 @@ namespace DungeonWorldBot.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong?>("CharacterID")
+                    b.Property<long?>("CharacterID")
                         .HasColumnType("INTEGER");
 
                     b.Property<bool>("Completed")
@@ -479,10 +484,11 @@ namespace DungeonWorldBot.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong>("CharacterID")
+                    b.Property<long>("CharacterID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("CurrentHP")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("MaxHP")
@@ -502,7 +508,7 @@ namespace DungeonWorldBot.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong>("CharacterID")
+                    b.Property<long>("CharacterID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("CurrentLoad")
@@ -528,6 +534,11 @@ namespace DungeonWorldBot.Data.Migrations
                     b.Property<int>("Amount")
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("Discriminator")
+                        .IsRequired()
+                        .HasMaxLength(13)
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("InventoryID")
                         .HasColumnType("INTEGER");
 
@@ -543,6 +554,10 @@ namespace DungeonWorldBot.Data.Migrations
                     b.HasIndex("InventoryID");
 
                     b.ToTable("Item");
+
+                    b.HasDiscriminator<string>("Discriminator").HasValue("Item");
+
+                    b.UseTphMappingStrategy();
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Location", b =>
@@ -614,7 +629,7 @@ namespace DungeonWorldBot.Data.Migrations
                     b.Property<int>("Bonus")
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong?>("CharacterID")
+                    b.Property<long?>("CharacterID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("EncounterID")
@@ -635,13 +650,13 @@ namespace DungeonWorldBot.Data.Migrations
                     b.Property<string>("Move")
                         .HasColumnType("TEXT");
 
-                    b.Property<DateTimeOffset>("RequestedAt")
+                    b.Property<DateTime>("RequestedAt")
                         .HasColumnType("TEXT");
 
-                    b.Property<ulong?>("RequestedBy")
+                    b.Property<long?>("RequestedBy")
                         .HasColumnType("INTEGER");
 
-                    b.Property<DateTimeOffset?>("ResolvedAt")
+                    b.Property<DateTime?>("ResolvedAt")
                         .HasColumnType("TEXT");
 
                     b.Property<int?>("Stat")
@@ -650,7 +665,7 @@ namespace DungeonWorldBot.Data.Migrations
                     b.Property<string>("Summary")
                         .HasColumnType("TEXT");
 
-                    b.Property<ulong?>("TargetCharacterID")
+                    b.Property<long?>("TargetCharacterID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("TargetEnemyID")
@@ -682,7 +697,7 @@ namespace DungeonWorldBot.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong?>("CharacterID")
+                    b.Property<long?>("CharacterID")
                         .HasColumnType("INTEGER");
 
                     b.Property<DateTime>("CreatedAt")
@@ -718,6 +733,7 @@ namespace DungeonWorldBot.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.Property<int>("CurrentHP")
+                        .IsConcurrencyToken()
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Damage")
@@ -726,7 +742,7 @@ namespace DungeonWorldBot.Data.Migrations
                     b.Property<int>("Dex")
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong?>("FollowsID")
+                    b.Property<long?>("FollowsID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("Int")
@@ -768,10 +784,10 @@ namespace DungeonWorldBot.Data.Migrations
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.RollRecord", b =>
                 {
-                    b.Property<ulong>("MessageID")
+                    b.Property<long>("MessageID")
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong?>("ChangedBy")
+                    b.Property<long?>("ChangedBy")
                         .HasColumnType("INTEGER");
 
                     b.Property<int?>("ChangedOutcome")
@@ -780,7 +796,7 @@ namespace DungeonWorldBot.Data.Migrations
                     b.Property<string>("ChangedReason")
                         .HasColumnType("TEXT");
 
-                    b.Property<ulong>("ChannelID")
+                    b.Property<long>("ChannelID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("First")
@@ -804,7 +820,7 @@ namespace DungeonWorldBot.Data.Migrations
                     b.Property<int>("Total")
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong>("UserID")
+                    b.Property<long>("UserID")
                         .HasColumnType("INTEGER");
 
                     b.HasKey("MessageID");
@@ -820,7 +836,7 @@ namespace DungeonWorldBot.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong>("CharacterID")
+                    b.Property<long>("CharacterID")
                         .HasColumnType("INTEGER");
 
                     b.Property<int>("StatType")
@@ -836,13 +852,39 @@ namespace DungeonWorldBot.Data.Migrations
                     b.ToTable("Stat");
                 });
 
+            modelBuilder.Entity("DungeonWorldBot.Data.Entities.Technique", b =>
+                {
+                    b.Property<int>("ID")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<long>("CharacterID")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("IsSignature")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Tags")
+                        .HasColumnType("INTEGER");
+
+                    b.HasKey("ID");
+
+                    b.HasIndex("CharacterID");
+
+                    b.ToTable("Technique");
+                });
+
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Transformation", b =>
                 {
                     b.Property<int>("ID")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
-                    b.Property<ulong>("CharacterID")
+                    b.Property<long>("CharacterID")
                         .HasColumnType("INTEGER");
 
                     b.Property<string>("Description")
@@ -866,6 +908,40 @@ namespace DungeonWorldBot.Data.Migrations
                     b.HasIndex("CharacterID");
 
                     b.ToTable("Transformation");
+                });
+
+            modelBuilder.Entity("DungeonWorldBot.Data.Entities.Armor", b =>
+                {
+                    b.HasBaseType("DungeonWorldBot.Data.Entities.Item");
+
+                    b.Property<int>("ArmorRating")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("INTEGER");
+
+                    b.HasDiscriminator().HasValue("Armor");
+                });
+
+            modelBuilder.Entity("DungeonWorldBot.Data.Entities.HexedJars", b =>
+                {
+                    b.HasBaseType("DungeonWorldBot.Data.Entities.Item");
+
+                    b.PrimitiveCollection<string>("Contents")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasDiscriminator().HasValue("HexedJars");
+                });
+
+            modelBuilder.Entity("DungeonWorldBot.Data.Entities.Weapon", b =>
+                {
+                    b.HasBaseType("DungeonWorldBot.Data.Entities.Item");
+
+                    b.Property<int>("Damage")
+                        .HasColumnType("INTEGER");
+
+                    b.HasDiscriminator().HasValue("Weapon");
                 });
 
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Ability", b =>
@@ -1084,6 +1160,17 @@ namespace DungeonWorldBot.Data.Migrations
                     b.Navigation("Character");
                 });
 
+            modelBuilder.Entity("DungeonWorldBot.Data.Entities.Technique", b =>
+                {
+                    b.HasOne("DungeonWorldBot.Data.Entities.Character", "Character")
+                        .WithMany("Techniques")
+                        .HasForeignKey("CharacterID")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Character");
+                });
+
             modelBuilder.Entity("DungeonWorldBot.Data.Entities.Transformation", b =>
                 {
                     b.HasOne("DungeonWorldBot.Data.Entities.Character", "Character")
@@ -1123,6 +1210,8 @@ namespace DungeonWorldBot.Data.Migrations
                     b.Navigation("Resources");
 
                     b.Navigation("Stats");
+
+                    b.Navigation("Techniques");
 
                     b.Navigation("Transformations");
                 });
