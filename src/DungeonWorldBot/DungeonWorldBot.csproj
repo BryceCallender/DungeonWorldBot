@@ -34,7 +34,8 @@
       <InternalsVisibleTo Include="DungeonWorldBot.Tests" />
     </ItemGroup>
 
-    <ItemGroup>
+    <!-- Not committed, since it holds the token, so a fresh clone (like CI's) builds without it -->
+    <ItemGroup Condition="Exists('appsettings.json')">
         <Content Include="appsettings.json">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>
