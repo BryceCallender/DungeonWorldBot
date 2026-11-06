@@ -19,7 +19,7 @@ public static class SpiritCatcherRules
     public static ClassMove Move => Shaman.Sheet.FindMove(SpiritCatcher)!;
 
     public static Ability? Catcher(Character character) =>
-        character.Abilities?.FirstOrDefault(a => a.Name.Equals(SpiritCatcher, StringComparison.OrdinalIgnoreCase));
+        character.Abilities.FirstOrDefault(a => a.Name.Equals(SpiritCatcher, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// The spirit in the totem, e.g. "a dire wolf", or null when it's empty.

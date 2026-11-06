@@ -63,7 +63,7 @@ public static class TacticRules
         if (!UsesTactics(character))
             return null;
 
-        var active = character.Abilities?.FirstOrDefault(a => a.Name.Equals(ActiveTactic, StringComparison.OrdinalIgnoreCase));
+        var active = character.Abilities.FirstOrDefault(a => a.Name.Equals(ActiveTactic, StringComparison.OrdinalIgnoreCase));
         return Find(active?.Description) ?? Default(character);
     }
 

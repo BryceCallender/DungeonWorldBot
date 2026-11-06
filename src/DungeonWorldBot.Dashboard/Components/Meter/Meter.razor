@@ -1,0 +1,46 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* A named amount out of a most, like HP or a class resource: the name and "value / max" over a bar. With no most it's
+   just the name and the value. Over the most, the number turns red and the bar critical. *@
+<div class="hp-label">
+    <span>
+        @if (Icon is not null)
+        {
+            <Icon Name="@Icon" />
+        }
+        @Label
+    </span>
+    <strong class="@(IsOver ? "over" : "")">@Value@(Max is { } max ? $" / {max}" : "")</strong>
+</div>
+@if (Max is > 0 and var most)
+{
+    <Bar Value="Value" Max="most" Fill="@(IsOver ? "critical" : Fill)" />
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public string Label { get; set; } = "";
+
+    [Parameter]
+    public string? Icon { get; set; }
+
+    [Parameter, EditorRequired]
+    public int Value { get; set; }
+
+    /// <summary>
+    /// The most it can be, or null for a count with no limit (and no bar).
+    /// </summary>
+    [Parameter]
+    public int? Max { get; set; }
+
+    /// <inheritdoc cref="Bar.Fill"/>
+    [Parameter]
+    public string Fill { get; set; } = "good";
+
+    /// <summary>
+    /// Whether going past the most is a problem worth showing, like spell levels or load. HP just stops at the top.
+    /// </summary>
+    [Parameter]
+    public bool WarnOver { get; set; }
+
+    private bool IsOver => WarnOver && Value > Max;
+}

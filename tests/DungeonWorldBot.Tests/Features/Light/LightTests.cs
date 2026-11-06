@@ -89,7 +89,7 @@ public sealed class LightTests : IDisposable
         Assert.True(piercing.ResetsOnCamp);
         Assert.Equal(2, resources.GetValue(lantern, piercing));
 
-        lantern.Abilities!.Add(new Ability { Name = Lantern.GiftFromGod });
+        lantern.Abilities.Add(new Ability { Name = Lantern.GiftFromGod });
         Assert.Equal(3, resources.GetResetValue(lantern, piercing));
     }
 

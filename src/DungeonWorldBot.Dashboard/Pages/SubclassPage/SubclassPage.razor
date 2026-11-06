@@ -31,15 +31,15 @@ else
         <div class="hero-chips">
             @if (subclass.Classes.Count == 0)
             {
-                <span class="chip">Any class</span>
+                <Chip>Any class</Chip>
             }
             @foreach (var type in subclass.Classes)
             {
-                <a class="chip class classed" style="@Lookup.ColorOf(type)" href="@Lookup.ClassUrl(type)"><ClassIcon Type="type" />@PartyReader.ClassName(type)</a>
+                <Chip Kind="class classed" style="@Lookup.ColorOf(type)" Href="@Lookup.ClassUrl(type)"><ClassIcon Type="type" />@PartyReader.ClassName(type)</Chip>
             }
             @if (_character is { } who)
             {
-                <span class="chip accent">Showing @who.Name · level @who.Level</span>
+                <Chip Kind="accent">Showing @who.Name · level @who.Level</Chip>
             }
         </div>
         @if (_members.Count > 0)
@@ -74,7 +74,7 @@ else
                 @if (move.Hidden && !Viewer.IsDungeonMaster && !_known.Knows(move.Move))
                 {
                     <li class="locked">
-                        <div class="move-name">🔒 ??? <span class="chip">Level @move.Level</span></div>
+                        <div class="move-name">🔒 ??? <Chip>Level @move.Level</Chip></div>
                         <div class="small">Kept secret until the GM reveals it.</div>
                     </li>
                 }

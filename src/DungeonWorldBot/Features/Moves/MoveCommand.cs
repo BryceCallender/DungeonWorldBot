@@ -110,7 +110,7 @@ public class MoveCommand(
         if (character is null)
             return await ReplyWithErrorAsync(NoMoverMessage);
 
-        var bonds = character.Bonds?.Count(b => b.TargetID == user.ID) ?? 0;
+        var bonds = character.Bonds.Count(b => b.TargetID == user.ID);
         var ally = await _characterService.GetCharacterNameAsync(user.ID) ?? user.Username;
         return await ReplyWithMoveAsync(character, BasicMoves.AidOrInterfere, $"Bond with {user.Username}", bonds, bonus, ally: ally, prepared: prepared, appetite: pursuing);
     }

@@ -92,11 +92,11 @@ public class CharacterCommand(
             : "None"));
         embedFields.Add(new EmbedField(Name: "Armor", Value: DamageRules.Summary(character)));
         embedFields.Add(new EmbedField(Name: "Bonds", Value:
-            character.Bonds?.Count > 0 ? string.Join(", ", character.Bonds.Select(b => b.TargetName)) : "None"));
-        var abilities = character.Abilities?.Count > 0 ? string.Join(", ", character.Abilities.Select(a => a.ToDisplay())) : "None";
+            character.Bonds.Count > 0 ? string.Join(", ", character.Bonds.Select(b => b.TargetName)) : "None"));
+        var abilities = character.Abilities.Count > 0 ? string.Join(", ", character.Abilities.Select(a => a.ToDisplay())) : "None";
         // Embed field values are capped at 1024 characters
         embedFields.Add(new EmbedField(Name: "Abilities", Value:
-            abilities.Length <= 1024 ? abilities : $"{character.Abilities!.Count} abilities. See /ability list"));
+            abilities.Length <= 1024 ? abilities : $"{character.Abilities.Count} abilities. See /ability list"));
 
         if (_leveling.GetStatPoints(character) is > 0 and var statPoints)
         {
@@ -159,10 +159,10 @@ public class CharacterCommand(
         var character = await GetOwnCharacterAsync();
         var bondTo = await _characterService.GetCharacterFromUserAsync(user.ID);
 
-        if (character is null || bondTo is null)
-        {
-            return await ReplyWithErrorAsync("Either you do not have a character or the requested user does not have a character.");
-        }
+        if (character is null)
+            return await ReplyNoCharacterAsync(null);
+        if (bondTo is null)
+            return await ReplyNoCharacterAsync(user);
 
         await _characterService.BondWithAsync(character, bondTo);
 
@@ -187,9 +187,7 @@ public class CharacterCommand(
     {
         var character = await _characterService.GetCharacterFromUserAsync(user.ID);
         if (character is null)
-        {
-            return await ReplyWithErrorAsync($"{user.Username} does not have a character.");
-        }
+            return await ReplyNoCharacterAsync(user);
 
         if (!diceRoller.TryRoll(damage, out var roll))
         {
@@ -217,9 +215,7 @@ public class CharacterCommand(
     {
         var character = await _characterService.GetCharacterFromUserAsync(user.ID);
         if (character is null)
-        {
-            return await ReplyWithErrorAsync($"{user.Username} does not have a character.");
-        }
+            return await ReplyNoCharacterAsync(user);
 
         string description;
         if (string.IsNullOrWhiteSpace(heal))

@@ -17,13 +17,13 @@
         <a href="@Url("basic")">Basic moves</a>
         <a href="@Url("classes")">Class moves</a>
         <a href="@Url("subclasses")">Subclass moves</a>
-        <input type="search" class="filter jump-filter" placeholder="Search moves…" aria-label="Search moves" data-filter />
+        <FilterBox What="moves" Class="jump-filter" />
     </nav>
 
     @if (_character is { } who)
     {
         <p class="hero-chips">
-            <span class="chip accent">Marking @who.Name's moves</span>
+            <Chip Kind="accent">Marking @who.Name's moves</Chip>
             <a class="small" href="moves">Clear</a>
         </p>
     }
@@ -44,18 +44,14 @@
         <ul class="moves">
             @foreach (var move in BasicMoves.All)
             {
-                <li>
-                    <details data-key="@move.Name">
-                        <summary>
-                            <span class="move-name">
-                                @move.Name
-                                @if (move.Stat is { } stat)
-                                {
-                                    <span class="chip">+@stat.ToString().ToUpper()</span>
-                                }
-                            </span>
-                            <span class="preview">@move.Trigger</span>
-                        </summary>
+                <ExpandableItem Name="@move.Name" Preview="@move.Trigger">
+                    <Chips>
+                        @if (move.Stat is { } stat)
+                        {
+                            <Chip>+@stat.ToString().ToUpper()</Chip>
+                        }
+                    </Chips>
+                    <ChildContent>
                         <div class="small basic-move">
                             <p>@move.Trigger@(move.Stat is { } rolled ? $", roll +{rolled.ToString().ToUpper()}" : "").</p>
                             <dl>
@@ -76,8 +72,8 @@
                                 </ul>
                             }
                         </div>
-                    </details>
-                </li>
+                    </ChildContent>
+                </ExpandableItem>
             }
         </ul>
     </section>
@@ -122,7 +118,7 @@
         </section>
     }
 
-    <p class="empty no-matches" hidden>No moves match.</p>
+    <NoMatches>No moves match.</NoMatches>
 </div>
 
 @code {

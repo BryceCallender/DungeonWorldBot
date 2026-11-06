@@ -60,7 +60,7 @@ public static class ClassSheetLibrary
     /// The names of every move and ability the character has.
     /// </summary>
     public static IReadOnlyCollection<string> KnownMoves(Character character) =>
-        character.Abilities?.Select(a => a.Name).ToList() ?? [];
+        character.Abilities.Select(a => a.Name).ToList();
 
     /// <summary>
     /// Whether the character has this move or ability.

@@ -1,0 +1,91 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@inject DashboardSettings Settings
+@* What a character carries, with their load when the DM tracks weight. A long list gets a search box (app.js filters it). *@
+<section class="card wide" id="inventory">
+    @if (Items.Count > SearchableFrom)
+    {
+        <CardHeader Title="Inventory" Count="Items.Count" CountOf="item">
+            <Tools><FilterBox What="items" /></Tools>
+        </CardHeader>
+    }
+    else
+    {
+        <CardHeader Title="Inventory" Count="Items.Count" CountOf="item" />
+    }
+    @if (Inventory is not null)
+    {
+        @if (Settings.TrackWeight && Inventory.MaxLoad > 0)
+        {
+            <Meter Label="Load" Value="Inventory.CurrentLoad" Max="Inventory.MaxLoad" WarnOver />
+        }
+        else if (Settings.TrackWeight && Items.Sum(i => i.Weight) is > 0 and var weight)
+        {
+            <div class="muted">Carrying @weight weight</div>
+        }
+        @if (Items.Count > 0)
+        {
+            <ul class="items">
+                @foreach (var item in Items.OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase))
+                {
+                    <li>
+                        <span class="item-name">
+                            @Capitalized(item.Name)
+                            @if (Detail(item) is { Length: > 0 } detail)
+                            {
+                                <span class="small">@detail</span>
+                            }
+                            @if (item is HexedJars { Contents.Count: > 0 } jars)
+                            {
+                                <span class="jar-contents">
+                                    @foreach (var content in jars.Contents)
+                                    {
+                                        <Chip Kind="@(content.Equals("Empty", StringComparison.OrdinalIgnoreCase) ? null : "accent")">@content</Chip>
+                                    }
+                                </span>
+                            }
+                        </span>
+                        <span class="item-meta">
+                            @if (Settings.TrackWeight && item.Weight > 0)
+                            {
+                                <span class="small" title="Weight">@item.Weight wt</span>
+                            }
+                            @if (item.Amount > 1)
+                            {
+                                <strong>×@item.Amount</strong>
+                            }
+                        </span>
+                    </li>
+                }
+            </ul>
+            <NoMatches>No items match.</NoMatches>
+        }
+        else
+        {
+            <p class="empty">Nothing carried.</p>
+        }
+    }
+</section>
+
+@code {
+    // Up to this many fit at a glance; more get a search box
+    private const int SearchableFrom = 6;
+
+    /// <summary>
+    /// Their inventory, or null when it wasn't read with them.
+    /// </summary>
+    [Parameter]
+    public Inventory? Inventory { get; set; }
+
+    private IReadOnlyList<Item> Items => Inventory?.Items ?? [];
+
+    // Items are often typed in lowercase in Discord
+    private static string Capitalized(string name) =>
+        name.Length == 0 ? name : char.ToUpper(name[0]) + name[1..];
+
+    private static string Detail(Item item) => item switch
+    {
+        Armor armor => $"{armor.ArmorRating} {armor.Type.ToString().ToLower()} armor",
+        Weapon { Damage: not 0 } weapon => $"{Signed(weapon.Damage)} damage",
+        _ => string.Empty,
+    };
+}

@@ -169,7 +169,7 @@ public class ClassSheetTests
         var tactic = draft.Sheet!.Features.Single();
         draft.FeatureChoices[tactic.Name] = [tactic.Options[1]];
 
-        var abilities = draft.Build(new Snowflake(1)).Abilities!.Select(a => a.Name).ToList();
+        var abilities = draft.Build(new Snowflake(1)).Abilities.Select(a => a.Name).ToList();
 
         Assert.Contains("Gambit", abilities);
         Assert.Contains("Change Tactics", abilities);
@@ -188,7 +188,7 @@ public class ClassSheetTests
         draft.SetClass(ClassKits.All.Single(k => k.Type == ClassType.Ranger), new DiceRoller());
 
         Assert.Empty(draft.FeatureChoices);
-        var abilities = draft.Build(new Snowflake(1)).Abilities!.Select(a => a.Name).ToList();
+        var abilities = draft.Build(new Snowflake(1)).Abilities.Select(a => a.Name).ToList();
         Assert.Contains("Hunt and Track", abilities);
         Assert.DoesNotContain("Tenacity", abilities);
     }

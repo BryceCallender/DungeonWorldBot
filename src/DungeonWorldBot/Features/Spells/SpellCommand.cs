@@ -137,14 +137,10 @@ public class SpellCommand(
         [Description("The user to see the spells of. Don't specify a user to see your own.")]
         IUser? user = null)
     {
-        var character = await characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
+        var character = await characterService.GetCharacterToShowAsync(TargetOf(user));
 
         if (character is null)
-        {
-            return await ReplyWithErrorAsync(user is null
-                ? NoCharacterMessage
-                : $"{user.Username} does not have a character.");
-        }
+            return await ReplyNoCharacterAsync(user);
 
         var known = SpellCasting.KnownSpells(character);
         var access = SpellCasting.Access(character);

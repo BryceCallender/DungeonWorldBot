@@ -43,7 +43,7 @@ public static class BrandRules
         Options.FirstOrDefault(o => o.Equals(value.Trim(), StringComparison.OrdinalIgnoreCase));
 
     public static Weapon? Brand(Character character) =>
-        character.Inventory?.Items?.OfType<Weapon>().FirstOrDefault(w => w.Name.StartsWith(BurningBrand, StringComparison.OrdinalIgnoreCase));
+        character.Inventory?.Items.OfType<Weapon>().FirstOrDefault(w => w.Name.StartsWith(BurningBrand, StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// The brand as an item: its tags in its name, e.g. "Burning Brand (fiery, touch, dangerous, hand)", and its damage.

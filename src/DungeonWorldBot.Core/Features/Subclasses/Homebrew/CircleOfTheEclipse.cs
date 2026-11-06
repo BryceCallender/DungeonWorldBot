@@ -88,7 +88,7 @@ public static class CircleOfTheEclipse
 
     public static EclipseAspect? AspectOf(Character character)
     {
-        var ability = character.Abilities?.FirstOrDefault(a => a.Name.Equals(CurrentAspect, StringComparison.OrdinalIgnoreCase));
+        var ability = character.Abilities.FirstOrDefault(a => a.Name.Equals(CurrentAspect, StringComparison.OrdinalIgnoreCase));
         return Enum.TryParse<EclipseAspect>(ability?.Description?.Trim(), ignoreCase: true, out var aspect) ? aspect : null;
     }
 

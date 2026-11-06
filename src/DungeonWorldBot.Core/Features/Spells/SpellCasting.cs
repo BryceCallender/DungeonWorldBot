@@ -47,7 +47,7 @@ public static class SpellCasting
     /// The spells the character has learned.
     /// </summary>
     public static IReadOnlyList<Spell> KnownSpells(Character character) =>
-        (character.Abilities ?? [])
+        character.Abilities
             .Select(a => SpellLists.Find(a.Name).FirstOrDefault(s => a.Description?.Contains(ListNote(s.List)) == true))
             .OfType<Spell>()
             .ToList();

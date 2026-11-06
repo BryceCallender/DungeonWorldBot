@@ -57,9 +57,9 @@ public class GearCommand(
             return await ReplyAsync(found.Name, Describe(found), ModeFields(found, active: null));
         }
 
-        var character = await characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
+        var character = await characterService.GetCharacterToShowAsync(TargetOf(user));
         if (character is null)
-            return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
+            return await ReplyNoCharacterAsync(user);
 
         var owned = GearRules.Owned(character);
         if (owned.Count == 0)
@@ -86,7 +86,7 @@ public class GearCommand(
 
         var character = await GetCharacterAsync(user);
         if (character is null)
-            return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
+            return await ReplyNoCharacterAsync(user);
 
         if (GearLibrary.Find(gear) is not { } found)
             return await ReplyWithErrorAsync($"There's no custom gear called {gear}. See /gear list");
@@ -113,7 +113,7 @@ public class GearCommand(
 
         var character = await GetCharacterAsync(user);
         if (character is null)
-            return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
+            return await ReplyNoCharacterAsync(user);
 
         if (GearLibrary.Find(gear) is not { } found || GearRules.Owned(character).All(o => o.Gear != found))
             return await ReplyWithErrorAsync($"{character.Name} doesn't have {gear}.");
@@ -272,13 +272,5 @@ public class GearCommand(
         return await ReplyWithErrorAsync($"Only someone with the {gameMaster.RoleName} role can change someone else's gear.");
     }
 
-    private async Task<Character?> GetCharacterAsync(IUser? user)
-    {
-        if (user is not null)
-            return await characterService.GetCharacterFromUserAsync(user.ID);
-
-        var userId = GetUserId();
-
-        return await characterService.GetCharacterFromUserAsync(userId);
-    }
+    private Task<Character?> GetCharacterAsync(IUser? user) => characterService.GetCharacterFromUserAsync(TargetOf(user));
 }

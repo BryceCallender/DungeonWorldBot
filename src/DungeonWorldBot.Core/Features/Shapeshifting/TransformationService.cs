@@ -21,7 +21,6 @@ public class TransformationService(
             Moves = Clean(moves),
         };
 
-        character.Transformations ??= [];
         character.Transformations.Add(form);
 
         await dungeonWorldContext.SaveChangesAsync();
@@ -40,14 +39,14 @@ public class TransformationService(
 
     public async Task ForgetAsync(Character character, Transformation form)
     {
-        character.Transformations?.Remove(form);
+        character.Transformations.Remove(form);
         dungeonWorldContext.Remove(form);
         await dungeonWorldContext.SaveChangesAsync();
     }
 
     public async Task ShiftAsync(Character character, IReadOnlyList<Transformation> forms, int hold)
     {
-        foreach (var form in character.Transformations ?? [])
+        foreach (var form in character.Transformations)
             form.IsActive = forms.Contains(form);
 
         foreach (var form in forms)

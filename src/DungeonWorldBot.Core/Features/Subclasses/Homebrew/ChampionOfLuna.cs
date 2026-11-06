@@ -117,7 +117,7 @@ public static partial class ChampionOfLuna
 
     public static LunaVow? ActiveVowOf(Character character)
     {
-        var ability = character.Abilities?.FirstOrDefault(a => a.Name.Equals(ActiveVow, StringComparison.OrdinalIgnoreCase));
+        var ability = character.Abilities.FirstOrDefault(a => a.Name.Equals(ActiveVow, StringComparison.OrdinalIgnoreCase));
         if (ability?.Description is not { } description || StoredVow().Match(description) is not { Success: true } match)
             return null;
 

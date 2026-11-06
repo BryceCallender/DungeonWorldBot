@@ -77,14 +77,10 @@ public class JarCommand(
         [Description("The user to see the jars of. Don't specify a user to see your own.")]
         IUser? user = null)
     {
-        var character = await _characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
+        var character = await _characterService.GetCharacterToShowAsync(TargetOf(user));
 
         if (character is null)
-        {
-            return await ReplyWithErrorAsync(user is null
-                ? NoCharacterMessage
-                : $"{user.Username} does not have a character.");
-        }
+            return await ReplyNoCharacterAsync(user);
 
         if (!JarRules.CanCollect(character))
             return await ReplyWithErrorAsync($"{character.Name} doesn't keep corpses in jars.");

@@ -1,0 +1,22 @@
+ul.items {
+    list-style: none;
+    margin: .5rem 0 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: .4rem;
+}
+
+ul.items li {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: .75rem;
+    padding: .45rem .65rem;
+    border-radius: 8px;
+    background: var(--surface-2);
+}
+
+.item-name { display: flex; flex-direction: column; }
+.jar-contents { display: flex; flex-wrap: wrap; gap: .25rem; margin-top: .25rem; }
+.item-meta { display: flex; gap: .6rem; align-items: baseline; white-space: nowrap; }

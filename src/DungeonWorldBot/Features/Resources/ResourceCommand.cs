@@ -29,14 +29,10 @@ public class ResourceCommand(
         [Description("The user to see the resources of. Don't specify a user to see your own.")]
         IUser? user = null)
     {
-        var character = await characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
+        var character = await characterService.GetCharacterToShowAsync(TargetOf(user));
 
         if (character is null)
-        {
-            return await ReplyWithErrorAsync(user is null
-                ? NoCharacterMessage
-                : $"{user.Username} does not have a character.");
-        }
+            return await ReplyNoCharacterAsync(user);
 
         var resources = ClassSheetLibrary.ResourcesOf(character);
         if (resources.Count == 0)

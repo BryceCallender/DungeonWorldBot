@@ -30,6 +30,11 @@
     </ItemGroup>
 
     <ItemGroup>
+      <!-- So the tests can build the bot's host as Program does, without starting it -->
+      <InternalsVisibleTo Include="DungeonWorldBot.Tests" />
+    </ItemGroup>
+
+    <ItemGroup>
         <Content Include="appsettings.json">
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </Content>

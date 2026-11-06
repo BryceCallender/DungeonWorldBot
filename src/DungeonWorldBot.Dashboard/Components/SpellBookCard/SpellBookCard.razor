@@ -1,0 +1,47 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* One list of spells a character has prepared, with how many spell levels they're using of what their caster level allows *@
+<section class="card wide" id="spells">
+    <CardHeader Title="@($"{Book.List} spells")" Count="Book.Spells.Count" Expandable="Book.Spells.Count > 0">
+        <Subtitle>Caster level @Book.CasterLevel from @Book.GrantedBy</Subtitle>
+        <Tools><a class="tool" href="@Lookup.SpellsUrl(Slug)#@ListAnchor">Browse @ListAnchor spells →</a></Tools>
+    </CardHeader>
+    <Meter Label="Spell levels in use" Value="Book.LevelsUsed" Max="Book.LevelsAllowed" Fill="class" WarnOver />
+    @if (Book.OverLimit)
+    {
+        <p class="small over-note">
+            @Plural(Book.LevelsUsed - Book.LevelsAllowed, "spell level") over what caster level @Book.CasterLevel allows
+            (spells up to level @Book.CasterLevel, @Book.LevelsAllowed levels in total).
+        </p>
+    }
+    @if (Book.Spells.Count == 0)
+    {
+        <p class="empty">No spells prepared.</p>
+    }
+    <ul class="moves">
+        @foreach (var spell in Book.Spells)
+        {
+            <ExpandableItem Name="@spell.Name" Preview="@spell.Description">
+                <Chips>
+                    <Chip>@spell.LevelLabel</Chip>
+                    @foreach (var tag in spell.Tags)
+                    {
+                        <Chip>@tag</Chip>
+                    }
+                </Chips>
+            </ExpandableItem>
+        }
+    </ul>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public SpellBook Book { get; set; } = null!;
+
+    /// <summary>
+    /// The character's slug, for the link to the spells they could prepare.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Slug { get; set; } = null!;
+
+    private string ListAnchor => Book.List.ToString().ToLower();
+}

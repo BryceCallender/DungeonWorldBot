@@ -88,7 +88,6 @@ public class CharacterService(DungeonWorldContext dungeonWorldContext) : ICharac
 
     public async Task BondWithAsync(Character character, Character bonder)
     {
-        character.Bonds ??= [];
         character.Bonds.Add(new Bond { TargetID = bonder.ID, TargetName = bonder.Name });
 
         await dungeonWorldContext.SaveChangesAsync();
@@ -114,7 +113,7 @@ public class CharacterService(DungeonWorldContext dungeonWorldContext) : ICharac
 
     public async Task UpdateCharacterStatAsync(Character character, StatType statType, int value)
     {
-        var stat = character.Stats?.FirstOrDefault(s => s.StatType == statType);
+        var stat = character.Stats.FirstOrDefault(s => s.StatType == statType);
         stat?.Value = value;
 
         // Max HP is derived from constitution

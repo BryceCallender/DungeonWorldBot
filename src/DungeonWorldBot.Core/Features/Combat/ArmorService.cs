@@ -49,7 +49,6 @@ public class ArmorService(DungeonWorldContext dungeonWorldContext) : IArmorServi
     {
         foreach (var character in characters)
         {
-            character.ArmorBonuses ??= [];
             character.ArmorBonuses.Add(new ArmorBonus { Source = source, Type = type, Amount = amount, Duration = duration });
         }
 
@@ -106,10 +105,10 @@ public class ArmorService(DungeonWorldContext dungeonWorldContext) : IArmorServi
 
     private List<ArmorBonus> Remove(Character character, Func<ArmorBonus, bool> predicate)
     {
-        var removed = character.ArmorBonuses?.Where(predicate).ToList() ?? [];
+        var removed = character.ArmorBonuses.Where(predicate).ToList();
         foreach (var bonus in removed)
         {
-            character.ArmorBonuses!.Remove(bonus);
+            character.ArmorBonuses.Remove(bonus);
             dungeonWorldContext.Remove(bonus);
         }
 

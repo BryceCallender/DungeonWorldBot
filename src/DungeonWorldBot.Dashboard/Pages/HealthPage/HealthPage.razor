@@ -130,8 +130,8 @@ else if (_report is { } report)
                 {
                     <li class="card">
                         <div class="desk-line">
-                            <span class="chip @(entry.From == "Bot" ? "accent" : null)">@entry.From</span>
-                            <span class="chip warn">@entry.Error.Level</span>
+                            <Chip Kind="@(entry.From == "Bot" ? "accent" : null)">@entry.From</Chip>
+                            <Chip Kind="warn">@entry.Error.Level</Chip>
                             <span class="small" title="@entry.Error.At.LocalDateTime.ToString("f")">@Ago(entry.Error.At, Time.GetUtcNow())</span>
                             <span class="small health-category">@ShortCategory(entry.Error.Category)</span>
                         </div>

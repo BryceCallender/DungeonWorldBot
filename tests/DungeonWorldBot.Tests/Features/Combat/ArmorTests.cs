@@ -108,7 +108,7 @@ public sealed class ArmorTests : IDisposable
         {
             var character = (await new CharacterService(context).GetCharacterFromUserAsync(UserId))!;
             Assert.Equal(16, character.Health.CurrentHP);
-            Assert.Equal("Shield wall", Assert.Single(character.ArmorBonuses!).Source);
+            Assert.Equal("Shield wall", Assert.Single(character.ArmorBonuses).Source);
         }
     }
 
@@ -125,10 +125,10 @@ public sealed class ArmorTests : IDisposable
         var removed = await armor.EndFightAsync(character);
 
         Assert.Equal(2, removed.Count);
-        Assert.Equal("Ring of Warding", Assert.Single(character.ArmorBonuses!).Source);
+        Assert.Equal("Ring of Warding", Assert.Single(character.ArmorBonuses).Source);
 
         Assert.Single(await armor.RemoveBonusesAsync(character, "ring of warding"));
-        Assert.Empty(character.ArmorBonuses!);
+        Assert.Empty(character.ArmorBonuses);
     }
 
     [Fact]
@@ -145,8 +145,8 @@ public sealed class ArmorTests : IDisposable
         var only = Assert.Single(cleared);
         Assert.Equal("Bram", only.Name);
         Assert.Equal("Lightning barrier", Assert.Single(only.Removed).Source);
-        Assert.Empty(bram.ArmorBonuses!);
-        Assert.Equal("Lightning barrier", Assert.Single(arthur.ArmorBonuses!).Source);
+        Assert.Empty(bram.ArmorBonuses);
+        Assert.Equal("Lightning barrier", Assert.Single(arthur.ArmorBonuses).Source);
     }
 
     [Fact]

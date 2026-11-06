@@ -1,10 +1,6 @@
 @namespace DungeonWorldBot.Dashboard.Components
 <div class="hp">
-    <div class="hp-label">
-        <span><Icon Name="heart" />HP</span>
-        <strong>@CurrentHP / @MaxHP</strong>
-    </div>
-    <div class="bar"><div class="fill @Band" style="width: @Num(Percent)%"></div></div>
+    <Meter Label="HP" Icon="heart" Value="CurrentHP" Max="MaxHP" Fill="@Band" />
 </div>
 
 @code {

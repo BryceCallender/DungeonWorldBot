@@ -34,6 +34,19 @@ public abstract class DungeonWorldCommandBase(ICommandContext context, FeedbackS
     }
 
     /// <summary>
+    /// The user a command acts on: the one picked, or whoever ran it when nobody was.
+    /// </summary>
+    protected Snowflake TargetOf(IUser? user) => user?.ID ?? GetUserId();
+
+    /// <summary>
+    /// Why there's no character to act on, for whoever <see cref="TargetOf"/> picked.
+    /// </summary>
+    protected static string NoCharacterFor(IUser? user) =>
+        user is null ? NoCharacterMessage : $"{user.Username} does not have a character.";
+
+    protected Task<Result> ReplyNoCharacterAsync(IUser? user) => ReplyWithErrorAsync(NoCharacterFor(user));
+
+    /// <summary>
     /// The most fields an embed can have.
     /// </summary>
     protected const int MaxEmbedFields = EmbedLimits.MaxFields;

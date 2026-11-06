@@ -12,5 +12,5 @@ public class Inventory
     public int CurrentLoad { get; set; }
     public int MaxLoad { get; set; }
     
-    public List<Item>? Items { get; set; }
+    public List<Item> Items { get; set; } = [];
 }

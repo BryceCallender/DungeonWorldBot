@@ -46,7 +46,7 @@ public sealed class TransformationTests : IDisposable
         var character = await AddDruidAsync(context, ShapeshiftRules.Shapeshifter);
 
         Assert.True(ShapeshiftRules.CanShapeshift(character));
-        Assert.Empty(character.Transformations ?? []);
+        Assert.Empty(character.Transformations);
         Assert.Equal("Natural form", ShapeshiftRules.Status(character, "0"));
     }
 
@@ -70,7 +70,7 @@ public sealed class TransformationTests : IDisposable
         await using var reloaded = CreateContext();
         var saved = await new CharacterService(reloaded).GetCharacterFromUserAsync(UserId);
 
-        Assert.Equal(["Bear", "Hawk"], saved!.Transformations!.Select(t => t.Name).Order());
+        Assert.Equal(["Bear", "Hawk"], saved!.Transformations.Select(t => t.Name).Order());
         Assert.Equal("Fly; Spot prey from afar", ShapeshiftRules.Find(saved, "hawk")!.Moves);
     }
 
@@ -105,7 +105,7 @@ public sealed class TransformationTests : IDisposable
         var druid = await AddDruidAsync(context, ShapeshiftRules.Shapeshifter);
         Assert.Equal(1, ShapeshiftRules.MaxShapes(druid));
 
-        druid.Abilities!.Add(new Ability { Name = ShapeshiftRules.Chimera });
+        druid.Abilities.Add(new Ability { Name = ShapeshiftRules.Chimera });
         Assert.Equal(3, ShapeshiftRules.MaxShapes(druid));
     }
 }

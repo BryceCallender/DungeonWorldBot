@@ -1,0 +1,53 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@using DungeonWorldBot.Features.Subclasses
+@inject Viewer Viewer
+@* A character's subclass and its moves, locked until their level reaches them. Secret ones stay hidden from all but the DM. *@
+<section class="card wide" id="subclass">
+    <CardHeader Expandable>
+        <TitleContent>@if (SubclassLibrary.Find(Subclass.Name) is { } rules) { <a href="@Lookup.SubclassUrl(rules, Slug)">@Subclass.Name</a> } else { @Subclass.Name }</TitleContent>
+        <Subtitle>@Subclass.Title</Subtitle>
+    </CardHeader>
+    @if (Subclass.Status is not null)
+    {
+        <p class="callout">@ToHtml(Subclass.Status)</p>
+    }
+    <ul class="moves">
+        @foreach (var move in Subclass.Moves)
+        {
+            @if (move.Unlocked)
+            {
+                <ExpandableItem Name="@move.Name" Preview="@move.Summary">
+                    <Chips><Chip>Level @move.Level</Chip></Chips>
+                </ExpandableItem>
+            }
+            else if (move.Hidden && Viewer.IsDungeonMaster)
+            {
+                @* Only the DM sees secret moves before they're revealed *@
+                <ExpandableItem Name="@($"🔒 {move.Name}")" Key="@move.Name" Preview="@move.Summary" Class="locked">
+                    <Chips><Chip>Level @move.Level</Chip> <Chip Kind="warn">Secret</Chip></Chips>
+                </ExpandableItem>
+            }
+            else
+            {
+                <li class="locked">
+                    <div class="move-name">
+                        🔒 @(move.Hidden ? "???" : move.Name)
+                        <Chip>Level @move.Level</Chip>
+                    </div>
+                    <div class="small">@(move.Hidden ? "Kept secret until the GM reveals it." : $"Unlocks at level {move.Level}.")</div>
+                </li>
+            }
+        }
+    </ul>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public SubclassView Subclass { get; set; } = null!;
+
+    /// <summary>
+    /// The character's slug, for links that open the subclass's page from their sheet.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string Slug { get; set; } = null!;
+}

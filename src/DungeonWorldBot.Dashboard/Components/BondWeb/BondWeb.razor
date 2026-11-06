@@ -81,7 +81,7 @@
     protected override void OnParametersSet()
     {
         var bonds = Party
-            .SelectMany(c => (c.Character.Bonds ?? []).Select(b => (From: c.Character.ID.Value, To: b.TargetID.Value, b.TargetName)))
+            .SelectMany(c => c.Character.Bonds.Select(b => (From: c.Character.ID.Value, To: b.TargetID.Value, b.TargetName)))
             .Where(b => b.From != b.To)
             .Distinct()
             .ToList();

@@ -59,7 +59,7 @@ public static class DamageRules
     /// The character's own armor plus their temporary armor of this type, never below 0.
     /// </summary>
     public static int Armor(Character character, ArmorType type) =>
-        Math.Max(0, BaseArmor(character, type) + (character.ArmorBonuses?.Where(b => b.Type == type).Sum(b => b.Amount) ?? 0));
+        Math.Max(0, BaseArmor(character, type) + (character.ArmorBonuses.Where(b => b.Type == type).Sum(b => b.Amount)));
 
     public static int ArmorAgainst(Character character, DamageType type) =>
         ArmorFor(type) is { } armor ? Armor(character, armor) : 0;

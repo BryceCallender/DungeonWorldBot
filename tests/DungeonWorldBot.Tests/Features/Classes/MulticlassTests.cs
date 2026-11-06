@@ -27,7 +27,7 @@ public class MulticlassTests
 
         Assert.Null(WhyNot(ranger, "Channel"));
 
-        ranger.Abilities!.Add(new Ability { ID = 10, Name = "Channel" });
+        ranger.Abilities.Add(new Ability { ID = 10, Name = "Channel" });
         Assert.Contains("already used", WhyNot(ranger, "Raise the Dead"));
     }
 
@@ -97,7 +97,7 @@ public class MulticlassTests
     public void KnownForeignMoves_UseTheSourceNoteForSharedNames()
     {
         var ranger = Character(ClassType.Ranger, 7, "Special Trick");
-        ranger.Abilities!.Add(new Ability { ID = 5, Name = "Protector", Description = "...\n" + Multiclassing.SourceNote(Sheet(ClassType.Shaman)) });
+        ranger.Abilities.Add(new Ability { ID = 5, Name = "Protector", Description = "...\n" + Multiclassing.SourceNote(Sheet(ClassType.Shaman)) });
 
         var known = Multiclassing.KnownForeignMoves(ranger, Sheet(ClassType.Ranger));
 

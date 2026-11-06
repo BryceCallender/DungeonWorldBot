@@ -18,7 +18,7 @@
             <a class="card lookup-card classed" style="@Lookup.ColorOf(sheet.Type)" href="@Lookup.ClassUrl(sheet.Type)">
                 <div class="member-head">
                     <h3 class="class-name"><ClassIcon Type="sheet.Type" />@PartyReader.ClassName(sheet.Type)</h3>
-                    <span class="chip class" title="Damage die">@damage</span>
+                    <Chip Kind="class" Title="Damage die">@damage</Chip>
                 </div>
                 <div class="small">
                     @(hp)+CON HP ·
@@ -33,7 +33,7 @@
                     <div class="resource-chips">
                         @foreach (var resource in sheet.Resources)
                         {
-                            <span class="chip class" title="@resource.Summary">@resource.Name</span>
+                            <Chip Kind="class" Title="@resource.Summary">@resource.Name</Chip>
                         }
                     </div>
                 }

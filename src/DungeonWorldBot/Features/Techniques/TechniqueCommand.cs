@@ -146,19 +146,15 @@ public class TechniqueCommand(
         [Description("The user to see the Techniques of. Don't specify a user to see your own.")]
         IUser? user = null)
     {
-        var character = await _characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
+        var character = await _characterService.GetCharacterToShowAsync(TargetOf(user));
 
         if (character is null)
-        {
-            return await ReplyWithErrorAsync(user is null
-                ? NoCharacterMessage
-                : $"{user.Username} does not have a character.");
-        }
+            return await ReplyNoCharacterAsync(user);
 
         if (!TechniqueRules.CanChannel(character))
             return await ReplyWithErrorAsync($"{character.Name} can't Channel.");
 
-        var techniques = character.Techniques?.OrderByDescending(t => t.IsSignature).ThenBy(t => t.Name).ToList() ?? [];
+        var techniques = character.Techniques.OrderByDescending(t => t.IsSignature).ThenBy(t => t.Name).ToList();
         var fields = techniques
             .Select(t => (IEmbedField)new EmbedField(Heading(t), TechniqueRules.Describe(t, character)))
             .ToList();

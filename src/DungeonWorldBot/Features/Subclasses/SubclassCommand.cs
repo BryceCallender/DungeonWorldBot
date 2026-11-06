@@ -61,9 +61,9 @@ public class SubclassCommand(
         }
         else
         {
-            character = await characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
+            character = await characterService.GetCharacterToShowAsync(TargetOf(user));
             if (character is null)
-                return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
+                return await ReplyNoCharacterAsync(user);
 
             found = SubclassLibrary.Of(character);
             if (found is null)
@@ -110,7 +110,7 @@ public class SubclassCommand(
 
         var character = await GetCharacterAsync(user);
         if (character is null)
-            return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
+            return await ReplyNoCharacterAsync(user);
 
         if (SubclassLibrary.Find(subclass) is not { } found)
             return await ReplyWithErrorAsync($"There's no subclass called {subclass}. See /subclass list");
@@ -151,7 +151,7 @@ public class SubclassCommand(
 
         var character = await GetCharacterAsync(user);
         if (character is null)
-            return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
+            return await ReplyNoCharacterAsync(user);
 
         if (SubclassLibrary.Of(character) is not { } current)
             return await ReplyWithErrorAsync($"{character.Name} doesn't have a subclass.");
@@ -169,15 +169,7 @@ public class SubclassCommand(
         return await ReplyWithErrorAsync($"Only someone with the {gameMaster.RoleName} role can change someone else's subclass.");
     }
 
-    private async Task<Character?> GetCharacterAsync(IUser? user)
-    {
-        if (user is not null)
-            return await characterService.GetCharacterFromUserAsync(user.ID);
-
-        var userId = GetUserId();
-
-        return await characterService.GetCharacterFromUserAsync(userId);
-    }
+    private Task<Character?> GetCharacterAsync(IUser? user) => characterService.GetCharacterFromUserAsync(TargetOf(user));
 
     private async Task<IResult> ReplyAsync(string title, string description, Character character)
     {

@@ -47,10 +47,33 @@ public sealed class DatabaseTests : IDisposable
             Assert.Equal(Alignment.NeutralEvil, character.Alignment);
             Assert.Equal(ClassType.Necromancer, character.Class.Type);
             Assert.Equal(6, character.Stats.Count);
-            Assert.Contains(character.Inventory.Items!, i => i.Name == "Hexed Canopic Jars");
+            Assert.Contains(character.Inventory.Items, i => i.Name == "Hexed Canopic Jars");
 
             await service.DamageAsync(character, 100);
             Assert.Equal(0, character.Health.CurrentHP);
         }
+    }
+
+    // New inventories all have an ID of 0 until they're saved, so noticing what changed can't tell them apart by it
+    [Fact]
+    public async Task SeveralCharacters_CanBeMadeInOneSave()
+    {
+        await using var context = CreateContext();
+        Character Hero(ulong id, string name, string item) => new()
+        {
+            ID = new Snowflake(id),
+            Name = name,
+            Class = new Class { Type = ClassType.Fighter },
+            Health = new Health { CurrentHP = 10, MaxHP = 10 },
+            Inventory = new Inventory { Items = [new Item { Name = item }] },
+        };
+        context.Characters.AddRange(Hero(1, "Aria", "Rope"), Hero(2, "Bram", "Lantern"));
+
+        await context.SaveChangesAsync();
+
+        // Each gets the one event for being made, not one for everything they start with
+        var events = await context.CharacterEvents.OrderBy(e => e.CharacterID).ToListAsync();
+        Assert.Equal([new Snowflake(1), new Snowflake(2)], events.Select(e => e.CharacterID));
+        Assert.All(events, e => Assert.Equal(CharacterEventKind.Created, e.Kind));
     }
 }

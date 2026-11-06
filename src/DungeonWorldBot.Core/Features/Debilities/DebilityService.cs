@@ -13,7 +13,6 @@ public class DebilityService(DungeonWorldContext dungeonWorldContext) : IDebilit
         if (DebilityRules.Has(character, debility))
             return false;
 
-        character.Debilities ??= [];
         character.Debilities.Add(new Debility { StatType = DebilityRules.StatFor(debility), Modifier = DebilityRules.Penalty });
 
         await dungeonWorldContext.SaveChangesAsync();
@@ -41,10 +40,10 @@ public class DebilityService(DungeonWorldContext dungeonWorldContext) : IDebilit
     private bool Remove(Character character, DebilityType debility)
     {
         var stat = DebilityRules.StatFor(debility);
-        var matching = character.Debilities?.Where(d => d.StatType == stat).ToList() ?? [];
+        var matching = character.Debilities.Where(d => d.StatType == stat).ToList();
         foreach (var entry in matching)
         {
-            character.Debilities!.Remove(entry);
+            character.Debilities.Remove(entry);
             dungeonWorldContext.Remove(entry);
         }
 
@@ -54,9 +53,9 @@ public class DebilityService(DungeonWorldContext dungeonWorldContext) : IDebilit
     public async Task<IReadOnlyList<DebilityType>> ClearAsync(Character character)
     {
         var removed = DebilityRules.Current(character);
-        foreach (var entry in character.Debilities?.ToList() ?? [])
+        foreach (var entry in character.Debilities.ToList())
         {
-            character.Debilities!.Remove(entry);
+            character.Debilities.Remove(entry);
             dungeonWorldContext.Remove(entry);
         }
 

@@ -117,25 +117,25 @@ List<Character> characters =
     (morrow, ziedrich), (morrow, edena),
 ];
 foreach (var (from, to) in bonds)
-    characters.Single(c => c.ID == from).Bonds!.Add(new Bond { TargetID = to, TargetName = characters.Single(c => c.ID == to).Name });
+    characters.Single(c => c.ID == from).Bonds.Add(new Bond { TargetID = to, TargetName = characters.Single(c => c.ID == to).Name });
 
 Character Find(Snowflake id) => characters.Single(c => c.ID == id);
-Find(ziedrich).Debilities!.Add(new Debility { StatType = StatType.Con, Modifier = -1 });
-Find(morrow).Debilities!.AddRange([new Debility { StatType = StatType.Str, Modifier = -1 }, new Debility { StatType = StatType.Int, Modifier = -1 }]);
+Find(ziedrich).Debilities.Add(new Debility { StatType = StatType.Con, Modifier = -1 });
+Find(morrow).Debilities.AddRange([new Debility { StatType = StatType.Str, Modifier = -1 }, new Debility { StatType = StatType.Int, Modifier = -1 }]);
 Find(morrow).Status = Status.Alive;
-Find(hatter).ArmorBonuses!.Add(new ArmorBonus { Source = "Guardian's Stand", Type = ArmorType.Physical, Amount = 1, Duration = ArmorDuration.Fight });
-Find(ziedrich).ArmorBonuses!.Add(new ArmorBonus { Source = "Blessed Ward", Type = ArmorType.Divine, Amount = 2, Duration = ArmorDuration.UntilRemoved });
+Find(hatter).ArmorBonuses.Add(new ArmorBonus { Source = "Guardian's Stand", Type = ArmorType.Physical, Amount = 1, Duration = ArmorDuration.Fight });
+Find(ziedrich).ArmorBonuses.Add(new ArmorBonus { Source = "Blessed Ward", Type = ArmorType.Divine, Amount = 2, Duration = ArmorDuration.UntilRemoved });
 Find(ziedrich).DivineArmor = 1;
 Find(edena).MagicArmor = 1;
-Find(edena).Transformations!.AddRange([
+Find(edena).Transformations.AddRange([
     new() { Name = "Gray Wolf", Description = "Keen nose, fast over open ground; no hands.", Moves = "Track by scent; Pounce and pin; Howl for the pack", TimesTaken = 6 },
     new() { Name = "Marsh Heron", Description = "Flies, wades, sees fish under murky water.", Moves = "Take to the air; Spear a small creature", TimesTaken = 2, IsActive = true },
     new() { Name = "Owlbear", Description = "Studied essence. Huge and strong; terrible eyesight.", Moves = "Crushing hug; Rend armor; Terrifying screech" },
 ]);
 foreach (var character in characters)
 {
-    character.Goals!.AddRange([new() { Text = $"Find out who hired the bandits on the Mirefen road" }, new() { Text = "Earn enough coin to rebuild the waystation", Completed = rng.NextDouble() < 0.5 }]);
-    character.Notes!.AddRange([
+    character.Goals.AddRange([new() { Text = $"Find out who hired the bandits on the Mirefen road" }, new() { Text = "Earn enough coin to rebuild the waystation", Completed = rng.NextDouble() < 0.5 }]);
+    character.Notes.AddRange([
         new() { Text = "Varrow mentioned a \"drowned tower\" before he fled.", CreatedAt = DateTime.UtcNow.AddDays(-30) },
         new() { Text = "The hag owes us a favor. **Don't** cash it in lightly.", CreatedAt = DateTime.UtcNow.AddDays(-9) },
     ]);

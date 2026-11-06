@@ -24,7 +24,7 @@ public class CharacterJournal(GameWrites writes, TimeProvider time)
         ChangeAsync(characterID, c => c.Backstory = Text(text));
 
     public Task<bool> AddGoalAsync(ulong characterID, string text) =>
-        ChangeAsync(characterID, c => (c.Goals ??= []).Add(new Goal { Text = text.Trim() }));
+        ChangeAsync(characterID, c => c.Goals.Add(new Goal { Text = text.Trim() }));
 
     public Task<bool> EditGoalAsync(ulong characterID, int goalID, string text) =>
         ChangeGoalAsync(characterID, goalID, (_, g) => g.Text = text.Trim());
@@ -33,16 +33,16 @@ public class CharacterJournal(GameWrites writes, TimeProvider time)
         ChangeGoalAsync(characterID, goalID, (_, g) => g.Completed = completed);
 
     public Task<bool> RemoveGoalAsync(ulong characterID, int goalID) =>
-        ChangeGoalAsync(characterID, goalID, (c, g) => c.Goals!.Remove(g));
+        ChangeGoalAsync(characterID, goalID, (c, g) => c.Goals.Remove(g));
 
     public Task<bool> AddNoteAsync(ulong characterID, string text) =>
-        ChangeAsync(characterID, c => (c.Notes ??= []).Add(new Note { Text = text.Trim(), CreatedAt = time.GetUtcNow().UtcDateTime }));
+        ChangeAsync(characterID, c => c.Notes.Add(new Note { Text = text.Trim(), CreatedAt = time.GetUtcNow().UtcDateTime }));
 
     public Task<bool> EditNoteAsync(ulong characterID, int noteID, string text) =>
         ChangeNoteAsync(characterID, noteID, (_, n) => n.Text = text.Trim());
 
     public Task<bool> RemoveNoteAsync(ulong characterID, int noteID) =>
-        ChangeNoteAsync(characterID, noteID, (c, n) => c.Notes!.Remove(n));
+        ChangeNoteAsync(characterID, noteID, (c, n) => c.Notes.Remove(n));
 
     // Blank means none, so an emptied box clears it
     private static string? Text(string? text) =>
@@ -51,7 +51,7 @@ public class CharacterJournal(GameWrites writes, TimeProvider time)
     private Task<bool> ChangeGoalAsync(ulong characterID, int goalID, Action<Character, Goal> change) =>
         ChangeAsync(characterID, c =>
         {
-            if (c.Goals?.FirstOrDefault(g => g.ID == goalID) is not { } goal)
+            if (c.Goals.FirstOrDefault(g => g.ID == goalID) is not { } goal)
                 return false;
 
             change(c, goal);
@@ -61,7 +61,7 @@ public class CharacterJournal(GameWrites writes, TimeProvider time)
     private Task<bool> ChangeNoteAsync(ulong characterID, int noteID, Action<Character, Note> change) =>
         ChangeAsync(characterID, c =>
         {
-            if (c.Notes?.FirstOrDefault(n => n.ID == noteID) is not { } note)
+            if (c.Notes.FirstOrDefault(n => n.ID == noteID) is not { } note)
                 return false;
 
             change(c, note);

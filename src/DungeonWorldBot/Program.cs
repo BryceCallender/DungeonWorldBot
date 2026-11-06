@@ -75,7 +75,14 @@ public class Program
             log.LogWarning("Failed to clear the global slash commands: {Reason}", cleared.Error?.Message);
     }
     
-    private static IHostBuilder CreateHostBuilder(string[] args) => Host.CreateDefaultBuilder(args)
+    internal static IHostBuilder CreateHostBuilder(string[] args) => Host.CreateDefaultBuilder(args)
+        // Checked in every environment, not only Development: a service that can't be built, or a singleton holding on to a
+        // scoped one, stops the bot at startup rather than misbehaving partway through a command
+        .UseDefaultServiceProvider(o =>
+        {
+            o.ValidateScopes = true;
+            o.ValidateOnBuild = true;
+        })
         // The default builder only reads user secrets in Development, and the bot runs as Production. Where none are
         // set (like on the Pi), the token comes from appsettings.json or the environment as before.
         // The environment and command line are read again after them, so either can still override a secret

@@ -40,7 +40,7 @@
 
 /* Who's had the spotlight, under the enemies: the quiet ones first, marked */
 .encounter-panel .spotlight-head { display: flex; align-items: center; justify-content: space-between; gap: .5rem; margin-top: .25rem; }
-.spotlight-head .chip { font-size: .7rem; }
+.spotlight-head ::deep .chip { font-size: .7rem; }
 .spotlight-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .15rem; }
 .spotlight-side h3 { margin: .35rem 0 .15rem; font-size: .7rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
 .spotlight { display: flex; flex-direction: column; gap: .1rem; padding: .25rem .5rem; border-radius: 6px; font-size: .8rem; }

@@ -27,16 +27,16 @@ public class Character
     
     public int Level { get; set; } = 1;
 
-    public List<Stat> Stats { get; set; } = null!;
-    public List<Bond>? Bonds { get; set; }
-    public List<Debility>? Debilities { get; set; }
-    public List<Ability>? Abilities { get; set; }
-    public List<CharacterResource>? Resources { get; set; }
-    public List<ArmorBonus>? ArmorBonuses { get; set; }
-    public List<Transformation>? Transformations { get; set; }
-    public List<Technique>? Techniques { get; set; }
-    public List<Goal>? Goals { get; set; }
-    public List<Note>? Notes { get; set; }
+    public List<Stat> Stats { get; set; } = [];
+    public List<Bond> Bonds { get; set; } = [];
+    public List<Debility> Debilities { get; set; } = [];
+    public List<Ability> Abilities { get; set; } = [];
+    public List<CharacterResource> Resources { get; set; } = [];
+    public List<ArmorBonus> ArmorBonuses { get; set; } = [];
+    public List<Transformation> Transformations { get; set; } = [];
+    public List<Technique> Techniques { get; set; } = [];
+    public List<Goal> Goals { get; set; } = [];
+    public List<Note> Notes { get; set; } = [];
 
     public Status? Status { get; set; }
     public Alignment Alignment { get; set; }

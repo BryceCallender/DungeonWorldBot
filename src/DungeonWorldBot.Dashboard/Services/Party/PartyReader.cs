@@ -121,7 +121,7 @@ public class PartyReader(
             subclass is null ? null : DescribeSubclass(character, subclass, known),
             SpellBooks(character, spells),
             gear.Select(g => new GearView(g.Gear.Name, g.Gear.ModeKind, g.Mode?.Name, g.Mode?.Title, g.Mode?.Effect)).ToList(),
-            (character.Abilities ?? [])
+            character.Abilities
                 .Where(a => !shownElsewhere.Contains(a.Name))
                 .OrderBy(a => a.ID)
                 .Select(a => new AbilityLine(a.Name, a.Description, a.Uses, a.MaxUses, spellGrants.TryGetValue(a.Name, out var list) ? list : null))
@@ -137,7 +137,7 @@ public class PartyReader(
 
     private static IReadOnlyList<StatLine> Stats(Character character) =>
         Enum.GetValues<StatType>()
-            .Select(type => character.Stats?.FirstOrDefault(s => s.StatType == type) is { } stat
+            .Select(type => character.Stats.FirstOrDefault(s => s.StatType == type) is { } stat
                 ? new StatLine(
                     type,
                     stat.Value,
@@ -155,7 +155,7 @@ public class PartyReader(
         DamageRules.BaseArmor(character, ArmorType.Physical),
         DamageRules.BaseArmor(character, ArmorType.Magical),
         DamageRules.BaseArmor(character, ArmorType.Divine),
-        (character.ArmorBonuses ?? []).Select(DamageRules.Describe).ToList());
+        character.ArmorBonuses.Select(DamageRules.Describe).ToList());
 
     private IReadOnlyList<ResourceLine> Resources(Character character, ClassSheet? sheet, IReadOnlyCollection<string> known, IReadOnlyList<OwnedGear> gear)
     {
@@ -180,7 +180,7 @@ public class PartyReader(
         var tracked = SpellCasting.KnownSpells(character);
         var lists = SpellCasting.Access(character).Select(a => a.List).ToHashSet();
 
-        var untracked = (character.Abilities ?? [])
+        var untracked = character.Abilities
             .Where(a => !tracked.Any(s => s.Name.Equals(a.Name, StringComparison.OrdinalIgnoreCase)))
             .Select(a => SpellLists.Find(a.Name).FirstOrDefault(s =>
                 lists.Contains(s.List)

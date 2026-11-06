@@ -62,7 +62,7 @@ public static partial class Multiclassing
     {
         List<ForeignMove> known = [];
 
-        foreach (var ability in character.Abilities?.OrderBy(a => a.ID) ?? Enumerable.Empty<Ability>())
+        foreach (var ability in character.Abilities.OrderBy(a => a.ID))
         {
             if (own.FindMove(ability.Name) is not null)
                 continue;

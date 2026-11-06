@@ -89,10 +89,10 @@ public class DebilityCommand(
         [Description("The user to see the debilities of. Don't specify a user to see your own.")]
         IUser? user = null)
     {
-        var character = await characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
+        var character = await characterService.GetCharacterToShowAsync(TargetOf(user));
 
         if (character is null)
-            return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
+            return await ReplyNoCharacterAsync(user);
 
         return await ReplyAsync($"{character.Name}'s Debilities", Summary(character));
     }
@@ -120,15 +120,10 @@ public class DebilityCommand(
         if (!await gameMaster.MayChangeAsync(user?.ID, CancellationToken))
             return new InvalidOperationError($"Only someone with the {gameMaster.RoleName} role can change someone else's debilities.");
 
-        var character = user is not null
-            ? await characterService.GetCharacterFromUserAsync(user.ID)
-            : await GetOwnCharacterAsync();
+        var character = await characterService.GetCharacterFromUserAsync(TargetOf(user));
 
         return character is not null
             ? character
-            : new InvalidOperationError(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
+            : new InvalidOperationError(NoCharacterFor(user));
     }
-
-    private async Task<Character?> GetOwnCharacterAsync() =>
-        await characterService.GetCharacterFromUserAsync(GetUserId());
 }

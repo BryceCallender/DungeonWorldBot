@@ -146,7 +146,7 @@ else
     @<div class="card desk-card @(enemy.Condition == EnemyCondition.Defeated ? "defeated" : null)" id="enemy-@enemy.ID">
         <div class="member-head">
             <h2>@enemy.Name</h2>
-            <span class="chip condition @enemy.Condition.ToString().ToLowerInvariant()" title="What the players see">@EnemyConditions.Describe(enemy.Condition)</span>
+            <Chip Kind="@($"condition {enemy.Condition.ToString().ToLowerInvariant()}")" Title="What the players see">@EnemyConditions.Describe(enemy.Condition)</Chip>
         </div>
         <HealthBar Current="enemy.CurrentHP" Max="enemy.MaxHP" />
         <HpChangeForm Action="@($"api/enemies/{enemy.ID}/hp")" Name="@enemy.Name" />
@@ -161,7 +161,7 @@ else
     @<div class="card desk-card" id="monster-@monster.ID">
         <div class="member-head">
             <h2>@monster.Name</h2>
-            <span class="chip"><Icon Name="heart" />@monster.MaxHP HP</span>
+            <Chip Icon="heart">@monster.MaxHP HP</Chip>
         </div>
         @Sheet(monster.Armor, monster.Damage, monster.Tags, monster.Instinct, monster.Moves, monster.Notes)
         <div class="desk-actions">

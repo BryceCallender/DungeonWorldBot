@@ -201,7 +201,7 @@ else
 
     // Characters share their player's Discord ID
     private RenderFragment Player(ulong userID) => userID == _dungeonMaster
-        ? @<span class="chip accent">DM</span>
+        ? @<Chip Kind="accent">DM</Chip>
         : _names.TryGetValue(userID.ToString(), out var name)
             ? @<a href="character/@Lookup.Slug(name)">@name</a>
             : @<span>Player @userID</span>;

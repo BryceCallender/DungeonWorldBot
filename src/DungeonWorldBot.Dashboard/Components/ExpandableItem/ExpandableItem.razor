@@ -1,0 +1,61 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* One entry in a list of moves, spells, shapes and the like (ul.moves): its name and chips, a line of preview while it's
+   closed, and the whole of it once opened. app.js remembers which are open by data-key and filters them by their text. *@
+<li class="@Class">
+    <details open="@Open" data-key="@(Key ?? Name)">
+        <summary>
+            <span class="move-name">@Name @Chips</span>
+            @if (Preview is not null)
+            {
+                <span class="preview">@ToHtml(Preview)</span>
+            }
+        </summary>
+        @if (ChildContent is not null)
+        {
+            @ChildContent
+        }
+        else
+        {
+            <div class="small">@ToHtml(Preview)</div>
+        }
+    </details>
+</li>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Name { get; set; } = "";
+
+    /// <summary>
+    /// Chips after the name, like a level or "✓ Has".
+    /// </summary>
+    [Parameter]
+    public RenderFragment? Chips { get; set; }
+
+    /// <summary>
+    /// Its description, in the bot's markdown: shortened under the name while closed, and in full once opened unless
+    /// <see cref="ChildContent"/> says otherwise.
+    /// </summary>
+    [Parameter]
+    public string? Preview { get; set; }
+
+    /// <summary>
+    /// What it shows once opened, in place of the preview in full.
+    /// </summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// What app.js remembers it by, when the name alone isn't unique on the page. Defaults to the name.
+    /// </summary>
+    [Parameter]
+    public string? Key { get; set; }
+
+    [Parameter]
+    public bool Open { get; set; }
+
+    /// <summary>
+    /// Classes on the list item, like "owned" or "locked".
+    /// </summary>
+    [Parameter]
+    public string? Class { get; set; }
+}

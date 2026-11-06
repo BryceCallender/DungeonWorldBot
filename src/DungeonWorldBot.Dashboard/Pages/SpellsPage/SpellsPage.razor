@@ -14,16 +14,16 @@
         {
             <a href="@Lookup.SpellsUrl(For)#@list.ToString().ToLower()">@list</a>
         }
-        <input type="search" class="filter jump-filter" placeholder="Search spells…" aria-label="Search spells" data-filter />
+        <FilterBox What="spells" Class="jump-filter" />
     </nav>
 
     @if (_character is { } who)
     {
         <p class="hero-chips">
-            <span class="chip accent">Showing @who.Name's spells</span>
+            <Chip Kind="accent">Showing @who.Name's spells</Chip>
             @foreach (var book in who.SpellBooks)
             {
-                <span class="chip">@book.List level @book.CasterLevel · @book.LevelsUsed / @book.LevelsAllowed in use</span>
+                <Chip>@book.List level @book.CasterLevel · @book.LevelsUsed / @book.LevelsAllowed in use</Chip>
             }
             <a class="small" href="spells">Clear</a>
         </p>
@@ -52,29 +52,22 @@
                         @foreach (var spell in level.OrderBy(s => s.Name))
                         {
                             var has = _known.Contains(spell);
-                            <li class="@(has ? "owned" : "")">
-                                <details data-key="@spell.Qualified">
-                                    <summary>
-                                        <span class="move-name">
-                                            @spell.Name
-                                            @foreach (var tag in spell.Tags)
-                                            {
-                                                <span class="chip">@tag</span>
-                                            }
-                                            @if (has)
-                                            {
-                                                <span class="chip good">✓ Known</span>
-                                            }
-                                            else if (CanLearn(spell))
-                                            {
-                                                <span class="chip accent">Can learn</span>
-                                            }
-                                        </span>
-                                        <span class="preview">@ToHtml(spell.Description)</span>
-                                    </summary>
-                                    <div class="small">@ToHtml(spell.Description)</div>
-                                </details>
-                            </li>
+                            <ExpandableItem Name="@spell.Name" Key="@spell.Qualified" Preview="@spell.Description" Class="@(has ? "owned" : null)">
+                                <Chips>
+                                    @foreach (var tag in spell.Tags)
+                                    {
+                                        <Chip>@tag</Chip>
+                                    }
+                                    @if (has)
+                                    {
+                                        <Chip Kind="good">✓ Known</Chip>
+                                    }
+                                    else if (CanLearn(spell))
+                                    {
+                                        <Chip Kind="accent">Can learn</Chip>
+                                    }
+                                </Chips>
+                            </ExpandableItem>
                         }
                     </ul>
                 </div>
@@ -82,7 +75,7 @@
         </section>
     }
 
-    <p class="empty no-matches" hidden>No spells match.</p>
+    <NoMatches>No spells match.</NoMatches>
 </div>
 
 @code {

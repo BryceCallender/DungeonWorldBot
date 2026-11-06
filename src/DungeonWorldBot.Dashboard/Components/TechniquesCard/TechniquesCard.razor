@@ -1,0 +1,31 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@using DungeonWorldBot.Rules
+@* Changed with /technique in Discord, where the rules for tags and slots are checked *@
+<section class="card wide" id="techniques">
+    <h2>Techniques <span class="small">· @Character.Techniques.Count of @TechniqueRules.MaxTechniques(Character)</span></h2>
+    <ul class="moves">
+        @foreach (var technique in Character.Techniques.OrderByDescending(t => t.IsSignature).ThenBy(t => t.Name))
+        {
+            <ExpandableItem Name="@technique.Name">
+                <Chips>
+                    @if (technique.IsSignature)
+                    {
+                        <Chip Kind="accent">Signature</Chip>
+                    }
+                    @foreach (var tag in TechniqueRules.TagsOf(technique.Tags))
+                    {
+                        <Chip>@tag</Chip>
+                    }
+                </Chips>
+                <ChildContent>
+                    <div class="small">@ToHtml(TechniqueRules.Describe(technique, Character))</div>
+                </ChildContent>
+            </ExpandableItem>
+        }
+    </ul>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public Character Character { get; set; } = null!;
+}

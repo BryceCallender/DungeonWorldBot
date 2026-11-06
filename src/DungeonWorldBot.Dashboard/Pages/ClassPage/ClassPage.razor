@@ -26,7 +26,7 @@
             @if (_character is { } who)
             {
                 <div class="hero-chips">
-                    <span class="chip accent">Showing @who.Name's moves · level @who.Level</span>
+                    <Chip Kind="accent">Showing @who.Name's moves · level @who.Level</Chip>
                     <a class="small" href="@Lookup.ClassUrl(sheet.Type)">Clear</a>
                 </div>
             }
@@ -43,26 +43,12 @@
             }
         </div>
         <div class="hero-vitals">
-            <div class="vital heart">
-                <span class="tile-label"><Icon Name="heart" />HP</span>
-                <strong>@_basics.BaseHP + CON</strong>
-            </div>
-            <div class="vital damage">
-                <span class="tile-label"><Icon Name="sword" />Damage</span>
-                <strong>@_basics.Damage</strong>
-            </div>
-            <div class="vital armor">
-                <span class="tile-label"><Icon Name="shield" />Armor</span>
-                <strong>@(_kit?.BaseArmor ?? 0)</strong>
-                <span class="small">before gear</span>
-            </div>
+            <Vital Kind="heart" Icon="heart" Label="HP">@_basics.BaseHP + CON</Vital>
+            <Vital Kind="damage" Icon="sword" Label="Damage">@_basics.Damage</Vital>
+            <Vital Kind="armor" Icon="shield" Label="Armor" Note="before gear">@(_kit?.BaseArmor ?? 0)</Vital>
             @if (_character is { } c)
             {
-                <div class="vital">
-                    <span class="tile-label">Advances</span>
-                    <strong>@sheet.AdvancesTaken(_known) / @Math.Max(0, c.Level - 1)</strong>
-                    <span class="small">taken</span>
-                </div>
+                <Vital Label="Advances" Note="taken">@sheet.AdvancesTaken(_known) / @Math.Max(0, c.Level - 1)</Vital>
             }
         </div>
     </header>
@@ -91,7 +77,7 @@
         {
             <a href="@Here#gear">Starting gear</a>
         }
-        <input type="search" class="filter jump-filter" placeholder="Search this class…" aria-label="Search this class" data-filter />
+        <FilterBox What="this class" Class="jump-filter" />
     </nav>
 
     <div class="sheet">
@@ -158,14 +144,14 @@
                         <li>
                             <div class="move-name">
                                 @resource.Name
-                                <span class="chip">Starts at @resource.Start</span>
+                                <Chip>Starts at @resource.Start</Chip>
                                 @if (resource.Max is { } max)
                                 {
-                                    <span class="chip">Max @max</span>
+                                    <Chip>Max @max</Chip>
                                 }
                                 @if (resource.GrantedBy is { } grantedBy)
                                 {
-                                    <span class="chip">From @grantedBy</span>
+                                    <Chip>From @grantedBy</Chip>
                                 }
                             </div>
                             <div class="small">@ToHtml(resource.Summary)</div>
@@ -185,7 +171,7 @@
                     <div class="resource-chips kit-base">
                         @foreach (var item in _baseItems)
                         {
-                            <span class="chip">@item</span>
+                            <Chip>@item</Chip>
                         }
                     </div>
                 }
@@ -199,11 +185,11 @@
                                 @choice.Label
                                 @if (choice.Armor != 0)
                                 {
-                                    <span class="chip">@Signed(choice.Armor) armor</span>
+                                    <Chip>@Signed(choice.Armor) armor</Chip>
                                 }
                                 @if (choice.Damage != 0)
                                 {
-                                    <span class="chip">@Signed(choice.Damage) damage</span>
+                                    <Chip>@Signed(choice.Damage) damage</Chip>
                                 }
                             </li>
                         }
@@ -213,7 +199,7 @@
         }
     </div>
 
-    <p class="empty no-matches" hidden>Nothing in this class matches.</p>
+    <NoMatches>Nothing in this class matches.</NoMatches>
 </div>
 
 @code {

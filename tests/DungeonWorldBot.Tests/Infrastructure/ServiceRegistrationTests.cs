@@ -93,4 +93,15 @@ public class ServiceRegistrationTests
 
         using var provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
     }
+
+    // The bot's host checks every service when it's built, so a broken registration would stop it at startup
+    [Fact]
+    public void BotHost_Builds_WithEveryServiceValid()
+    {
+        using var host = Program.CreateHostBuilder(
+        [
+            "--REMORA_BOT_TOKEN=test-token",
+            "--ConnectionStrings:DungeonWorldConnectionString=Data Source=:memory:",
+        ]).Build();
+    }
 }

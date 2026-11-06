@@ -43,10 +43,10 @@ public static class ShapeshiftRules
     };
 
     public static IReadOnlyList<Transformation> Active(Character character) =>
-        character.Transformations?.Where(t => t.IsActive).OrderBy(t => t.Name).ToList() ?? [];
+        character.Transformations.Where(t => t.IsActive).OrderBy(t => t.Name).ToList();
 
     public static Transformation? Find(Character character, string name) =>
-        character.Transformations?.FirstOrDefault(t => t.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase));
+        character.Transformations.FirstOrDefault(t => t.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// The current form's name, e.g. "Bear" or "Bear-Eagle-Snake" when merged.

@@ -144,7 +144,7 @@ public class DowntimeCommand(
         if (character is null)
             return await ReplyWithErrorAsync(NoMoverMessage);
 
-        var poison = character.Abilities?.FirstOrDefault(a => a.IsLimited && a.Name.StartsWith(Thief.PoisonPrefix, StringComparison.OrdinalIgnoreCase));
+        var poison = character.Abilities.FirstOrDefault(a => a.IsLimited && a.Name.StartsWith(Thief.PoisonPrefix, StringComparison.OrdinalIgnoreCase));
         if (poison is null)
             return await ReplyWithErrorAsync($"{character.Name} hasn't mastered a poison to brew.");
 

@@ -16,10 +16,10 @@
         {
             @* Plain links, filtered on the server, so they need no script *@
             <nav class="canvas-filters" aria-label="Show">
-                <a class="chip@(_kind is null ? " on" : "")" href="scenes">All</a>
+                <Chip Kind="@(_kind is null ? "on" : null)" Href="scenes">All</Chip>
                 @foreach (var kind in Enum.GetValues<CanvasKind>())
                 {
-                    <a class="chip@(_kind == kind ? " on" : "")" href="scenes?kind=@kind">@KindName(kind)</a>
+                    <Chip Kind="@(_kind == kind ? "on" : null)" Href="@($"scenes?kind={kind}")">@KindName(kind)</Chip>
                 }
             </nav>
         }
@@ -98,7 +98,7 @@ else
                 </a>
 
                 <div class="canvas-description">
-                    <span class="chip @KindClass(c.Kind)"><Icon Name="@KindIcon(c.Kind)" /> @c.Kind</span>
+                    <Chip Kind="@KindClass(c.Kind)" Icon="@KindIcon(c.Kind)">@c.Kind</Chip>
                     @* Shown as "2 minutes ago" by app.js, in the viewer's own time zone *@
                     <time datetime="@DateTime.SpecifyKind(c.UpdatedAt, DateTimeKind.Utc).ToString("o")" data-ago>@c.UpdatedAt.ToString("MMM d")</time>
 

@@ -156,5 +156,5 @@ public static class SpecialMoveRules
             .MaxBy(i => i.Amount);
 
     public static Item? Coins(Character character) =>
-        character.Inventory.Items?.FirstOrDefault(i => i.Name.Equals("Coins", StringComparison.OrdinalIgnoreCase));
+        character.Inventory.Items.FirstOrDefault(i => i.Name.Equals("Coins", StringComparison.OrdinalIgnoreCase));
 }

@@ -16,7 +16,7 @@ public class TransformationAutocomplete(ContextInjectionService contextInjection
     public override string Identity => ID;
 
     protected override IEnumerable<Suggestion> OwnClassCandidates(Character character, ClassSheet sheet) =>
-        (character.Transformations ?? []).Select(t => new Suggestion(t.Name, t.IsActive ? $"{t.Name} (current)" : t.Name));
+        character.Transformations.Select(t => new Suggestion(t.Name, t.IsActive ? $"{t.Name} (current)" : t.Name));
 
     protected override IEnumerable<Suggestion> AllCandidates() => [];
 }

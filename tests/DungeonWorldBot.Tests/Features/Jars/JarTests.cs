@@ -51,8 +51,8 @@ public sealed class JarTests : IDisposable
         var saved = await ReloadAsync();
 
         Assert.Equal(["A Skinless Hound"], JarRules.Corpses(saved));
-        Assert.Equal(1, saved.Inventory.Items!.OfType<Weapon>().Single().Damage);
-        Assert.Equal(1, saved.Inventory.Items!.OfType<Armor>().Single().ArmorRating);
+        Assert.Equal(1, saved.Inventory.Items.OfType<Weapon>().Single().Damage);
+        Assert.Equal(1, saved.Inventory.Items.OfType<Armor>().Single().ArmorRating);
     }
 
     [Fact]
@@ -81,7 +81,7 @@ public sealed class JarTests : IDisposable
 
         Assert.NotNull(JarRules.WhyCannotStore(character, "Four"));
 
-        character.Abilities!.Add(new Ability { Name = JarRules.TrueCollector });
+        character.Abilities.Add(new Ability { Name = JarRules.TrueCollector });
         Assert.Null(JarRules.WhyCannotStore(character, "Four"));
     }
 

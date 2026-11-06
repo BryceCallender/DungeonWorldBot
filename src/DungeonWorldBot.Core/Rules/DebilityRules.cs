@@ -43,7 +43,7 @@ public static class DebilityRules
     public static string Describe(DebilityType type) => $"{type} ({StatFor(type).ToString().ToUpper()})";
 
     public static IReadOnlyList<DebilityType> Current(Character character) =>
-        (character.Debilities ?? []).Select(d => For(d.StatType)).Distinct().OrderBy(d => d).ToList();
+        character.Debilities.Select(d => For(d.StatType)).Distinct().OrderBy(d => d).ToList();
 
     public static bool Has(Character character, DebilityType type) => Current(character).Contains(type);
 

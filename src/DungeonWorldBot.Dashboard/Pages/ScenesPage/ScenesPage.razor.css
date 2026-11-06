@@ -1,7 +1,7 @@
 /* Laid out like the canvases mockup: a header with filters and "New scene", then a grid of cards */
 .canvas-filters { display: flex; gap: .35rem; flex-wrap: wrap; }
-.canvas-filters .chip { text-decoration: none; color: var(--muted); }
-.canvas-filters .chip.on { background: var(--accent-soft); color: var(--accent); }
+.canvas-filters ::deep .chip { text-decoration: none; color: var(--muted); }
+.canvas-filters ::deep .chip.on { background: var(--accent-soft); color: var(--accent); }
 
 
 .canvas-grid {
@@ -63,7 +63,8 @@
     color: var(--muted);
 }
 
-.canvas-description .chip { display: inline-flex; align-items: center; gap: .25rem; }
+/* The chip spaces its own icon (has-icon) */
+.canvas-description ::deep .chip { display: inline-flex; align-items: center; }
 
 /* Who's on it right now, on the picture's corner */
 .here {

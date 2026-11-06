@@ -1,0 +1,112 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@using DungeonWorldBot.Features.Subclasses
+@inject Viewer Viewer
+@* The top of a character's sheet: who they are, their picture, and their health, armor and damage *@
+<header class="card hero classed" style="@Lookup.ColorOf(View.Character.Class.Type)">
+    <div class="hero-main">
+        @* Backstory, goals and notes have their own page, and so does everything that's happened to them; the links sit with
+           the name, since they're about who they are *@
+        <div class="hero-title">
+            <span class="portrait"><Face Name="@View.Name" Picture="@Portrait" /></span>
+            <h1>@View.Name</h1>
+            <a class="story-link" href="@View.Url/story"><Icon Name="notes" />Story →</a>
+            <a class="story-link" href="@View.Url/timeline"><Icon Name="clock" />Timeline →</a>
+        </div>
+        @* Their tokens on the board show it. app.js shrinks the picture and sends it as soon as one's picked. *@
+        @if (PortraitEndpoints.CanChange(View.Character.ID.Value, Viewer))
+        {
+            <div class="portrait-actions">
+                <form method="post" enctype="multipart/form-data" action="api/characters/@View.ID/portrait">
+                    <AntiforgeryToken />
+                    <label class="portrait-button">
+                        @(Portrait is null ? "Add a picture" : "Change picture")
+                        <input type="file" name="picture" accept="image/png,image/jpeg,image/webp,image/gif" hidden data-portrait />
+                    </label>
+                </form>
+                @if (Portrait is not null)
+                {
+                    <form method="post" action="api/characters/@View.ID/portrait/remove">
+                        <AntiforgeryToken />
+                        <button class="portrait-button">Remove picture</button>
+                    </form>
+                }
+            </div>
+        }
+        <div class="muted">
+            Level @View.Level <a href="@Lookup.ClassUrl(View.Character.Class.Type, View.Slug)" title="See the @View.ClassName class" class="class-name"><ClassIcon Type="View.Character.Class.Type" />@View.ClassName</a> · @View.Character.Race · @PartyReader.Spaced(View.Character.Alignment.ToString())
+        </div>
+        <div class="hero-chips">
+            @if (View.Character.Status is { } status && status != Status.Alive)
+            {
+                <Chip Kind="warn">@status</Chip>
+            }
+            @if (View.Subclass is { } sub && SubclassLibrary.Find(sub.Name) is { } subclassRules)
+            {
+                <Chip Kind="class" Href="@Lookup.SubclassUrl(subclassRules, View.Slug)">@sub.Name</Chip>
+            }
+            @if (View.ActiveShapes is { Count: > 0 } shapes)
+            {
+                <Chip Kind="accent" Icon="paw">@string.Join(" + ", shapes)</Chip>
+            }
+            @if (View.StatPoints > 0)
+            {
+                <Chip Kind="accent">@Plural(View.StatPoints, "unspent stat point")</Chip>
+            }
+        </div>
+        @if (View.Character.Bonds is { Count: > 0 } bonds)
+        {
+            <div class="small bonds">
+                Bonds with
+                @for (var i = 0; i < bonds.Count; i++)
+                {
+                    var bond = bonds[i];
+                    <a href="character/@bond.TargetID.Value">@bond.TargetName</a>@(i < bonds.Count - 1 ? ", " : "")
+                }
+            </div>
+        }
+    </div>
+
+    <div class="hero-vitals">
+        <div class="vital vital-hp">
+            <HealthBar View="View" />
+        </div>
+        <Vital Kind="armor" Icon="shield" Label="Armor" Title="@ArmorTitle("Physical armor", View.Armor.Physical, View.Armor.BasePhysical)"
+               Note="@BaseNote(View.Armor.Physical, View.Armor.BasePhysical)">@View.Armor.Physical</Vital>
+        <Vital Kind="magic" Icon="magic" Label="Magic armor" Title="@ArmorTitle("Magical armor", View.Armor.Magical, View.Armor.BaseMagical)"
+               Note="@BaseNote(View.Armor.Magical, View.Armor.BaseMagical)">@View.Armor.Magical</Vital>
+        @if (View.Armor.Divine != 0 || View.Armor.BaseDivine != 0)
+        {
+            <Vital Kind="divine" Icon="divine" Label="Divine armor" Title="@ArmorTitle("Divine armor: only divine weapons get through", View.Armor.Divine, View.Armor.BaseDivine)"
+                   Note="@BaseNote(View.Armor.Divine, View.Armor.BaseDivine)">@View.Armor.Divine</Vital>
+        }
+        <Vital Kind="damage" Icon="sword" Label="Damage" Note="@GearDamageNote">@View.Damage</Vital>
+    </div>
+
+    @if (View.Armor.Bonuses.Count > 0)
+    {
+        <div class="hero-bonuses">
+            @foreach (var bonus in View.Armor.Bonuses)
+            {
+                <Chip>@bonus</Chip>
+            }
+        </div>
+    }
+</header>
+
+@code {
+    [Parameter, EditorRequired]
+    public CharacterView View { get; set; } = null!;
+
+    /// <summary>
+    /// Their picture's address, or null for their initials.
+    /// </summary>
+    [Parameter]
+    public string? Portrait { get; set; }
+
+    // Armor shows what it is before bonuses whenever they change it
+    private static string ArmorTitle(string kind, int value, int before) => value == before ? kind : $"{kind} (base {before})";
+
+    private static string? BaseNote(int value, int before) => value == before ? null : $"base {before}";
+
+    private string? GearDamageNote => View.Character.DamageRating == 0 ? null : $"{Signed(View.Character.DamageRating)} from gear";
+}

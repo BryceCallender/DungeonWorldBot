@@ -78,7 +78,6 @@ public class ResourceService(DungeonWorldContext dungeonWorldContext) : IResourc
         if (stored is null)
         {
             stored = new CharacterResource { Name = resource.Name };
-            character.Resources ??= [];
             character.Resources.Add(stored);
         }
 
@@ -122,9 +121,9 @@ public class ResourceService(DungeonWorldContext dungeonWorldContext) : IResourc
         if (grantedBy is null)
             return new(true, null);
 
-        return new(false, character.Abilities?.FirstOrDefault(a => a.Name.Equals(grantedBy, StringComparison.OrdinalIgnoreCase)));
+        return new(false, character.Abilities.FirstOrDefault(a => a.Name.Equals(grantedBy, StringComparison.OrdinalIgnoreCase)));
     }
 
     private static CharacterResource? Find(Character character, ClassResource resource) =>
-        character.Resources?.FirstOrDefault(r => r.Name.Equals(resource.Name, StringComparison.OrdinalIgnoreCase));
+        character.Resources.FirstOrDefault(r => r.Name.Equals(resource.Name, StringComparison.OrdinalIgnoreCase));
 }

@@ -45,11 +45,11 @@ else
                     {
                         @if (who.Url is { } url)
                         {
-                            <a class="chip @alert.Severity" href="@url">@who.Label</a>
+                            <Chip Kind="@alert.Severity" Href="@url">@who.Label</Chip>
                         }
                         else
                         {
-                            <span class="chip @alert.Severity">@who.Label</span>
+                            <Chip Kind="@alert.Severity">@who.Label</Chip>
                         }
                     }
                 </div>
@@ -67,24 +67,24 @@ else
                             <h2>@c.Name</h2>
                             @if (Viewer.Is(c.ID))
                             {
-                                <span class="chip accent">You</span>
+                                <Chip Kind="accent">You</Chip>
                             }
                             @if (_streaks.GetValueOrDefault(c.Character.ID.Value) is { } streak)
                             {
-                                <span class="chip streak @(streak.Hot ? "hot" : "cold")" title="@streak.Describe()">@streak.Icon @streak.Length</span>
+                                <Chip Kind="@(streak.Hot ? "streak hot" : "streak cold")" Title="@streak.Describe()">@streak.Icon @streak.Length</Chip>
                             }
                         </div>
                         <div class="muted class-line">
                             <span>Level @c.Level <span class="class-name"><ClassIcon Type="c.Character.Class.Type" />@c.ClassName</span></span>
                             @if (c.Subclass is { } sub)
                             {
-                                <span class="chip class" title="@sub.Name">@sub.Name</span>
+                                <Chip Kind="class" Title="@sub.Name">@sub.Name</Chip>
                             }
                         </div>
                     </div>
                     @if (c.Character.Status is { } status && status != Status.Alive)
                     {
-                        <span class="chip warn">@status</span>
+                        <Chip Kind="warn">@status</Chip>
                     }
                 </div>
 
@@ -124,15 +124,15 @@ else
                             <div class="resource-chips">
                                 @foreach (var pick in c.Picks)
                                 {
-                                    <span class="chip class" title="@pick.Feature">@pick.Choice</span>
+                                    <Chip Kind="class" Title="@pick.Feature">@pick.Choice</Chip>
                                 }
                                 @foreach (var r in c.Resources)
                                 {
-                                    <span class="chip class" title="@r.Summary">@r.Name @r.Value@(r.Max is { } max ? $"/{max}" : "")</span>
+                                    <Chip Kind="class" Title="@r.Summary">@r.Name @r.Value@(r.Max is { } max ? $"/{max}" : "")</Chip>
                                 }
                                 @if (c.StatPoints > 0)
                                 {
-                                    <span class="chip accent">@Plural(c.StatPoints, "stat point")</span>
+                                    <Chip Kind="accent">@Plural(c.StatPoints, "stat point")</Chip>
                                 }
                             </div>
                         }
@@ -146,10 +146,10 @@ else
                     }
                     else
                     {
-                        <span class="has-icon"><Icon Name="bag" />@Plural(c.Character.Inventory?.Items?.Count ?? 0, "item")</span>
+                        <span class="has-icon"><Icon Name="bag" />@Plural(c.Character.Inventory?.Items.Count ?? 0, "item")</span>
                     }
                     <span class="has-icon"><Icon Name="coin" />@Coin(c)</span>
-                    <span class="has-icon"><Icon Name="link" />@Plural(c.Character.Bonds?.Count ?? 0, "bond")</span>
+                    <span class="has-icon"><Icon Name="link" />@Plural(c.Character.Bonds.Count, "bond")</span>
                 </div>
             </a>
         }

@@ -71,16 +71,12 @@ public class AbilityCommand(
         [Description("The user to see the abilities of. Don't specify a user to see your own.")]
         IUser? user = null)
     {
-        var character = await characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
+        var character = await characterService.GetCharacterToShowAsync(TargetOf(user));
 
         if (character is null)
-        {
-            return await ReplyWithErrorAsync(user is null
-                ? NoCharacterMessage
-                : $"{user.Username} does not have a character.");
-        }
+            return await ReplyNoCharacterAsync(user);
 
-        var abilities = character.Abilities?.OrderBy(a => a.Name).ToList() ?? [];
+        var abilities = character.Abilities.OrderBy(a => a.Name).ToList();
         if (abilities.Count == 0)
             return await ReplyAsync($"{character.Name}'s Abilities", "No abilities yet. Add one with /ability add");
 

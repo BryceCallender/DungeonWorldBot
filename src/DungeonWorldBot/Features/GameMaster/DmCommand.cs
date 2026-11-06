@@ -56,9 +56,7 @@ public partial class DmCommand : CommandGroup
         {
             var character = await GetCharacterAsync(user);
             if (character is null)
-            {
-                return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
-            }
+                return await ReplyNoCharacterAsync(user);
 
             await _characterService.UpdateCharacterStatAsync(character, type, value);
 
@@ -83,9 +81,7 @@ public partial class DmCommand : CommandGroup
         {
             var character = await _characterService.GetCharacterFromUserAsync(user.ID);
             if (character is null)
-            {
-                return await ReplyWithErrorAsync($"{user.Username} does not have a character.");
-            }
+                return await ReplyNoCharacterAsync(user);
 
             await _leveling.GrantStatPointsAsync(character, amount);
 
@@ -152,9 +148,7 @@ public partial class DmCommand : CommandGroup
 
             var character = await GetCharacterAsync(user);
             if (character is null)
-            {
-                return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
-            }
+                return await ReplyNoCharacterAsync(user);
 
             await _leveling.ChangeLevelAsync(character, level);
 

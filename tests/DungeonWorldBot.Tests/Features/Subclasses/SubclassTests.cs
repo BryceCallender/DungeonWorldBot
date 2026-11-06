@@ -82,7 +82,7 @@ public sealed class SubclassTests : IDisposable
         Assert.Null(CircleOfTheEclipse.AspectOf(druid));
         Assert.Contains("/eclipse aspect", CircleOfTheEclipse.Subclass.Status!(druid));
 
-        druid.Abilities!.Add(new Ability { Name = CircleOfTheEclipse.CurrentAspect, Description = "Moonward" });
+        druid.Abilities.Add(new Ability { Name = CircleOfTheEclipse.CurrentAspect, Description = "Moonward" });
         Assert.Equal(EclipseAspect.Moonward, CircleOfTheEclipse.AspectOf(druid));
         Assert.Contains("Moonward", CircleOfTheEclipse.Subclass.Status!(druid));
         Assert.Contains(CircleOfTheEclipse.CurrentAspect, CircleOfTheEclipse.Subclass.StateAbilities);

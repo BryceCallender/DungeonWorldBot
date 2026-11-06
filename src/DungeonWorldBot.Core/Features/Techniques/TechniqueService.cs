@@ -21,7 +21,6 @@ public class TechniqueService(
             IsSignature = signature,
         };
 
-        character.Techniques ??= [];
         character.Techniques.Add(technique);
 
         await dungeonWorldContext.SaveChangesAsync();
@@ -40,7 +39,7 @@ public class TechniqueService(
 
     public async Task ForgetAsync(Character character, Technique technique)
     {
-        character.Techniques?.Remove(technique);
+        character.Techniques.Remove(technique);
         dungeonWorldContext.Remove(technique);
         await dungeonWorldContext.SaveChangesAsync();
     }

@@ -31,7 +31,7 @@ public static class JarRules
     public static int Capacity(Character character) => BaseJars + (ClassSheetLibrary.Knows(character, TrueCollector) ? 1 : 0);
 
     public static HexedJars? Jars(Character character) =>
-        character.Inventory?.Items?.OfType<HexedJars>().FirstOrDefault();
+        character.Inventory?.Items.OfType<HexedJars>().FirstOrDefault();
 
     public static bool IsEmpty(string content) => content.Equals(Empty, StringComparison.OrdinalIgnoreCase);
 

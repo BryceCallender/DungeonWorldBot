@@ -89,13 +89,13 @@ else
                     <span>@(npc.Role ?? "NPC")</span>
                     @if (Follows(npc) is { } leader)
                     {
-                        <span class="chip accent">follows @leader</span>
+                        <Chip Kind="accent">follows @leader</Chip>
                     }
                 </div>
             </div>
             @if (npc.CurrentHP == 0)
             {
-                <span class="chip warn">Down</span>
+                <Chip Kind="warn">Down</Chip>
             }
         </div>
 

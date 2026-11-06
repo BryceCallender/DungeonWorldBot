@@ -37,7 +37,6 @@ public class JarService(DungeonWorldContext dungeonWorldContext) : IJarService
     private static HexedJars AddJars(Character character)
     {
         var jars = new HexedJars { Name = JarRules.JarsName, Amount = JarRules.BaseJars, Weight = 1 };
-        character.Inventory.Items ??= [];
         character.Inventory.Items.Add(jars);
         return jars;
     }

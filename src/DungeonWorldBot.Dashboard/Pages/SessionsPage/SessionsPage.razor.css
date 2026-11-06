@@ -10,7 +10,7 @@
 
 .session-main { display: flex; flex-direction: column; gap: .15rem; min-width: 0; }
 .session-main strong { font-size: 1.05rem; }
-.session-main .chip { display: inline-flex; align-items: center; gap: .35rem; margin-left: .35rem; }
+.session-main ::deep .chip { display: inline-flex; align-items: center; gap: .35rem; margin-left: .35rem; }
 .session-fights { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Columns of a fixed width, so the numbers line up down the list whether or not a session had a natural 12 */

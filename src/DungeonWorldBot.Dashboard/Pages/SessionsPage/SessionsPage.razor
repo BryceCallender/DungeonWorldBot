@@ -33,7 +33,7 @@ else
                             @s.Session.StartedAt.ToLocalTime().ToString("ddd d MMM yyyy, h:mm tt")
                             @if (s.Live)
                             {
-                                <span class="chip accent"><i class="live-dot"></i> Going on now · <time datetime="@s.Session.StartedAt.ToString("o")" data-since>@SessionBar.Elapsed(s.Length)</time></span>
+                                <Chip Kind="accent"><i class="live-dot"></i> Going on now · <time datetime="@s.Session.StartedAt.ToString("o")" data-since>@SessionBar.Elapsed(s.Length)</time></Chip>
                             }
                             else
                             {

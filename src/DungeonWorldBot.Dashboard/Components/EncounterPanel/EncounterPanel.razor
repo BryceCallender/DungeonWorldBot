@@ -117,7 +117,7 @@
                 <span>Spotlight</span>
                 @if (spotlight.Misses > 0)
                 {
-                    <span class="chip warn" title="Misses this fight: each is a chance for a DM move">@spotlight.Misses 6-</span>
+                    <Chip Kind="warn" Title="Misses this fight: each is a chance for a DM move">@spotlight.Misses 6-</Chip>
                 }
             </h2>
             @if (spotlight.Party.Count > 0)
@@ -256,7 +256,7 @@
     private static RenderFragment Head(Enemy enemy) =>
         @<span class="enemy-row">
             <span class="name">@enemy.Name</span>
-            <span class="chip condition @enemy.Condition.ToString().ToLowerInvariant()">@EnemyConditions.Describe(enemy.Condition)</span>
+            <Chip Kind="@($"condition {enemy.Condition.ToString().ToLowerInvariant()}")">@EnemyConditions.Describe(enemy.Condition)</Chip>
         </span>;
 
     private static RenderFragment Details(Enemy enemy) =>

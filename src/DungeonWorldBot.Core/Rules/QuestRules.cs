@@ -57,7 +57,7 @@ public static class QuestRules
     public static ClassMove QuestMove => Paladin.Sheet.FindMove(Quest)!;
 
     public static Ability? QuestAbility(Character character) =>
-        character.Abilities?.FirstOrDefault(a => a.Name.Equals(Quest, StringComparison.OrdinalIgnoreCase));
+        character.Abilities.FirstOrDefault(a => a.Name.Equals(Quest, StringComparison.OrdinalIgnoreCase));
 
     public static string? Mission(Character character) =>
         QuestAbility(character)?.Description is { } description && description.StartsWith(MissionPrefix)
@@ -125,5 +125,5 @@ public static class QuestRules
     }
 
     private static IReadOnlyList<Ability> WithPrefix(Character character, string prefix) =>
-        character.Abilities?.Where(a => a.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).OrderBy(a => a.Name).ToList() ?? [];
+        character.Abilities.Where(a => a.Name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)).OrderBy(a => a.Name).ToList();
 }

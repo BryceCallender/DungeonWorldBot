@@ -93,10 +93,10 @@ public static class TechniqueRules
         Enum.TryParse<TechniqueTag>(value?.Trim(), ignoreCase: true, out var tag) && AllTags.Contains(tag) ? tag : null;
 
     public static Technique? Find(Character character, string name) =>
-        character.Techniques?.FirstOrDefault(t => t.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase));
+        character.Techniques.FirstOrDefault(t => t.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase));
 
     public static Technique? Signature(Character character) =>
-        character.Techniques?.FirstOrDefault(t => t.IsSignature);
+        character.Techniques.FirstOrDefault(t => t.IsSignature);
 
     /// <summary>
     /// Why a Technique can't have these tags, or null if it can.
@@ -133,7 +133,7 @@ public static class TechniqueRules
             return null;
 
         // Signature Technique's extra slot is for the 3-tag Technique only, so ordinary ones still stop at 3
-        var ordinary = character.Techniques?.Count(t => !t.IsSignature) ?? 0;
+        var ordinary = character.Techniques.Count(t => !t.IsSignature);
         return ordinary >= BaseSlots
             ? $"{character.Name} already knows {ordinary} Techniques, all they can hold. Replace one with /technique edit, or forget one with /technique forget"
             : null;

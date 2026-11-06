@@ -1,0 +1,44 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* The shapes a shapeshifter has learned, the ones they're in now first and open *@
+<section class="card wide" id="shapes">
+    <h2>Shapes</h2>
+    <div class="muted">
+        @if (View.ActiveShapes is { Count: > 0 } active)
+        {
+            <text>In the shape of <strong>@string.Join(" + ", active)</strong></text>
+        }
+        else
+        {
+            <text>In their own shape</text>
+        }
+    </div>
+    <ul class="moves">
+        @foreach (var form in View.Character.Transformations.OrderByDescending(f => f.IsActive).ThenBy(f => f.Name))
+        {
+            <ExpandableItem Name="@form.Name" Preview="@form.Description" Open="form.IsActive" Class="@(form.IsActive ? "active" : null)">
+                <Chips>
+                    @if (form.IsActive)
+                    {
+                        <Chip Kind="accent">Active</Chip>
+                    }
+                    <Chip>Taken @form.TimesTaken×</Chip>
+                </Chips>
+                <ChildContent>
+                    @if (!string.IsNullOrWhiteSpace(form.Description))
+                    {
+                        <div class="small">@ToHtml(form.Description)</div>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(form.Moves))
+                    {
+                        <div class="small"><strong>Moves (1 hold each):</strong><br>@ToHtml(form.Moves)</div>
+                    }
+                </ChildContent>
+            </ExpandableItem>
+        }
+    </ul>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public CharacterView View { get; set; } = null!;
+}

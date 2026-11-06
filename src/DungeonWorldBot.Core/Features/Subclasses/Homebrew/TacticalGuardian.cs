@@ -155,5 +155,5 @@ public static class TacticalGuardian
     }
 
     private static Ability? Find(Character character, string name) =>
-        character.Abilities?.FirstOrDefault(a => a.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
+        character.Abilities.FirstOrDefault(a => a.Name.Equals(name, StringComparison.OrdinalIgnoreCase));
 }

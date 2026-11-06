@@ -10,7 +10,7 @@ public class AbilityService(DungeonWorldContext dungeonWorldContext) : IAbilityS
 {
     public Ability? FindAbility(Character character, string name)
     {
-        return character.Abilities?.FirstOrDefault(a => a.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase));
+        return character.Abilities.FirstOrDefault(a => a.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<Ability> AddAbilityAsync(Character character, string name, string? description, int? maxUses) =>
@@ -27,7 +27,6 @@ public class AbilityService(DungeonWorldContext dungeonWorldContext) : IAbilityS
             LevelTaken = character.Level,
         }).ToList();
 
-        character.Abilities ??= [];
         character.Abilities.AddRange(added);
 
         await dungeonWorldContext.SaveChangesAsync();
@@ -40,7 +39,7 @@ public class AbilityService(DungeonWorldContext dungeonWorldContext) : IAbilityS
     {
         foreach (var ability in abilities.Distinct().ToList())
         {
-            character.Abilities?.Remove(ability);
+            character.Abilities.Remove(ability);
             dungeonWorldContext.Remove(ability);
         }
 
@@ -76,7 +75,7 @@ public class AbilityService(DungeonWorldContext dungeonWorldContext) : IAbilityS
     {
         var sheet = ClassSheetLibrary.For(character.Class.Type);
         List<Ability> kept = [];
-        foreach (var ability in character.Abilities ?? [])
+        foreach (var ability in character.Abilities)
         {
             if (ability.MaxUses is not { } max)
                 continue;

@@ -36,7 +36,7 @@ public class CharacterHistory(DungeonWorldContext context, ISessionService sessi
             .. (await EventsAsync(character)).Select(Describe).OfType<HistoryEntry>(),
             .. (await RollsAsync(character)).Select(Describe).OfType<HistoryEntry>(),
             .. await FightsAsync(character),
-            .. (character.Notes ?? []).Select(Describe),
+            .. character.Notes.Select(Describe),
         ];
 
         return await ChaptersAsync(entries);

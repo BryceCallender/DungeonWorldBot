@@ -1,0 +1,49 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* A small rounded label, like "✓ Has", a level or a status. With an address it's a link, with a little more room around
+   it to tap. Anything else set on it, like a style, is passed through. *@
+@if (Href is not null)
+{
+    <a class="@Classes" href="@Href" title="@Title" @attributes="Attributes">@Content</a>
+}
+else
+{
+    <span class="@Classes" title="@Title" @attributes="Attributes">@Content</span>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>
+    /// Its look: "accent", "good", "warn", "class" (the character's class color), or another class the page styles, like
+    /// "streak hot". Plain grey when left out.
+    /// </summary>
+    [Parameter]
+    public string? Kind { get; set; }
+
+    /// <summary>
+    /// An <see cref="Components.Icon"/> before the text, by name.
+    /// </summary>
+    [Parameter]
+    public string? Icon { get; set; }
+
+    /// <summary>
+    /// Where it links to, or null for a plain label.
+    /// </summary>
+    [Parameter]
+    public string? Href { get; set; }
+
+    /// <summary>
+    /// Shown on hover.
+    /// </summary>
+    [Parameter]
+    public string? Title { get; set; }
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? Attributes { get; set; }
+
+    private string Classes => string.Join(' ', new[] { "chip", Kind, Icon is null ? null : "has-icon" }.Where(c => !string.IsNullOrEmpty(c)));
+
+    // Named in full, since the Icon parameter would otherwise stand in for the component of the same name
+    private RenderFragment Content => @<text>@if (Icon is not null) { <DungeonWorldBot.Dashboard.Components.Icon Name="@Icon" /> }@ChildContent</text>;
+}

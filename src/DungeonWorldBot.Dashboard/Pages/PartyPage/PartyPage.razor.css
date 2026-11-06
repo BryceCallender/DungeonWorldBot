@@ -21,14 +21,14 @@
 /* The name, with a "You" chip beside your own character's, centered on it */
 .member-name { display: flex; align-items: center; gap: .5rem; min-width: 0; }
 .member-name h2 { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.member-name .chip { flex: none; }
+.member-name ::deep .chip { flex: none; }
 
 .armor-row { display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; font-weight: 600; }
 .armor-row span { display: inline-flex; align-items: center; gap: .3rem; }
 
 /* Class and subclass on one line, the pill shortening rather than wrapping so every card's header is the same height */
 .class-line { display: flex; align-items: center; gap: .45rem; min-width: 0; white-space: nowrap; }
-.class-line .chip { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.class-line ::deep .chip { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 
 .member-extra { display: flex; flex-direction: column; gap: .5rem; padding-top: .75rem; border-top: 1px solid var(--border); }
 .member-foot { display: flex; flex-wrap: wrap; gap: .9rem; margin-top: auto; padding-top: .5rem; border-top: 1px solid var(--border); }
@@ -53,22 +53,22 @@
 .alert-head .tile-label { color: var(--tone-text, var(--tone)); }
 .alert-head strong { font-size: 1.2rem; font-variant-numeric: tabular-nums; }
 
-.alert .chip.critical { background: var(--warn-soft); color: var(--critical-text); }
-.alert .chip.low { background: color-mix(in srgb, var(--low) 18%, transparent); color: var(--low-text); }
-.alert .chip.accent { background: var(--accent-soft); color: var(--accent); }
-.alert a.chip:hover { text-decoration: underline; }
+.alert ::deep .chip.critical { background: var(--warn-soft); color: var(--critical-text); }
+.alert ::deep .chip.low { background: color-mix(in srgb, var(--low) 18%, transparent); color: var(--low-text); }
+.alert ::deep .chip.accent { background: var(--accent-soft); color: var(--accent); }
+.alert ::deep a.chip:hover { text-decoration: underline; }
 
 .bonds-card { margin-top: .75rem; padding: 1.25rem .75rem; }
 
 /* On a streak of hits (🔥) or misses (🧊), from their latest rolls */
-.chip.streak { font-variant-numeric: tabular-nums; }
-.chip.streak.hot { background: color-mix(in srgb, var(--damage) 20%, transparent); color: var(--damage-text); animation: streak-flicker 1.6s ease-in-out infinite; }
-.chip.streak.cold { background: color-mix(in srgb, var(--armor) 20%, transparent); color: var(--armor); }
+::deep .chip.streak { font-variant-numeric: tabular-nums; }
+::deep .chip.streak.hot { background: color-mix(in srgb, var(--damage) 20%, transparent); color: var(--damage-text); animation: streak-flicker 1.6s ease-in-out infinite; }
+::deep .chip.streak.cold { background: color-mix(in srgb, var(--armor) 20%, transparent); color: var(--armor); }
 
 @keyframes streak-flicker {
     50% { box-shadow: 0 0 10px -2px var(--damage); }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .chip.streak.hot { animation: none; }
+    ::deep .chip.streak.hot { animation: none; }
 }

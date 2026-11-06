@@ -78,9 +78,6 @@ public class InventoryCommand(
 
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to add to its inventory. Try using /character create");
-        if (character.Inventory.Items == null)
-            return await ReplyWithErrorAsync("Your Inventory Doesn't Exist");
-
         if (amount < 0)
             return await ReplyWithErrorAsync($"You cannot add a negative amount of an item to your inventory");
 
@@ -104,8 +101,6 @@ public class InventoryCommand(
 
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to remove from its inventory. Try using /character create");
-        if (character.Inventory.Items == null)
-            return await ReplyWithErrorAsync("Your Inventory Doesn't Exist");
         if (character.Inventory.Items.Count == 0)
             return await ReplyWithErrorAsync("You don't have any items to remove");
 
@@ -148,9 +143,6 @@ public class InventoryCommand(
 
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to add to its inventory. Try using /character create");
-        if (character.Inventory.Items == null)
-            return await ReplyWithErrorAsync("Your Inventory Doesn't Exist");
-
         if(amount < 0)
             return await ReplyWithErrorAsync($"You cannot add a negative amount of coins to your inventory");
 
@@ -174,9 +166,6 @@ public class InventoryCommand(
 
         if (character is null)
             return await ReplyWithErrorAsync("You must have a character to add to its inventory. Try using /character create");
-        if (character.Inventory.Items == null)
-            return await ReplyWithErrorAsync("Your Inventory Doesn't Exist");
-
         if (character.Inventory.Items.Exists(item => item.Name.Equals("Coins", StringComparison.CurrentCultureIgnoreCase)))
         {
             var foundItem = character.Inventory.Items.Single(item => item.Name.Equals("Coins", StringComparison.CurrentCultureIgnoreCase));
@@ -219,10 +208,7 @@ public class InventoryCommand(
 
         var recipient = await characterService.GetCharacterFromUserAsync(user.ID);
         if (recipient is null)
-            return await ReplyWithErrorAsync($"{user.Username} does not have a character");
-
-        if (character.Inventory.Items == null || recipient.Inventory.Items == null)
-            return await ReplyWithErrorAsync("Inventory Doesn't Exist");
+            return await ReplyNoCharacterAsync(user);
 
         if (amount <= 0)
             return await ReplyWithErrorAsync("You must give at least 1 coin");

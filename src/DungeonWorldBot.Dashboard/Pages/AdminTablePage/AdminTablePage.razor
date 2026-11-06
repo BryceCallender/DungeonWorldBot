@@ -26,7 +26,7 @@
     {
         <PageHeader Title="@rows.Table">
             <ChildContent>
-                <span class="chip">@Name(database)</span>
+                <Chip>@Name(database)</Chip>
                 <form method="get" class="admin-search">
                     <input class="filter" type="search" name="q" value="@Q" placeholder="Search every column" />
                     @if (Sort is not null)

@@ -80,7 +80,7 @@ public sealed class TechniqueTests : IDisposable
         Assert.NotNull(TechniqueRules.WhyCannotHave(character, plain, TechniqueTag.Blast | TechniqueTag.Forceful | TechniqueTag.Hazard));
         Assert.NotNull(TechniqueRules.WhyCannotHave(character, plain, TechniqueTag.Teleport | TechniqueTag.Barrier));
 
-        character.Abilities!.Add(new Ability { Name = TechniqueRules.Teleport });
+        character.Abilities.Add(new Ability { Name = TechniqueRules.Teleport });
         Assert.Null(TechniqueRules.WhyCannotHave(character, plain, TechniqueTag.Teleport | TechniqueTag.Barrier));
         Assert.Null(TechniqueRules.WhyCannotHave(character, new Technique { IsSignature = true }, TechniqueTag.Blast | TechniqueTag.Forceful | TechniqueTag.Hazard));
     }
@@ -97,7 +97,7 @@ public sealed class TechniqueTests : IDisposable
         Assert.NotNull(TechniqueRules.WhyCannotDevelop(character, "Four", signature: false));
         Assert.NotNull(TechniqueRules.WhyCannotDevelop(character, "Four", signature: true));
 
-        character.Abilities!.Add(new Ability { Name = TechniqueRules.SignatureTechnique });
+        character.Abilities.Add(new Ability { Name = TechniqueRules.SignatureTechnique });
         Assert.Equal(4, TechniqueRules.MaxTechniques(character));
         Assert.Null(TechniqueRules.WhyCannotDevelop(character, "Four", signature: true));
         Assert.NotNull(TechniqueRules.WhyCannotDevelop(character, "Four", signature: false));
@@ -125,11 +125,11 @@ public sealed class TechniqueTests : IDisposable
         var service = ServiceFor(context);
 
         Assert.Equal(2, await service.RaiseBarrierAsync(character));
-        Assert.Contains(character.ArmorBonuses!, b => b.Source == TechniqueRules.BarrierSource && b.Amount == 2);
+        Assert.Contains(character.ArmorBonuses, b => b.Source == TechniqueRules.BarrierSource && b.Amount == 2);
 
         var dropped = await service.DropBarrierAsync(character);
         Assert.Single(dropped);
-        Assert.DoesNotContain(character.ArmorBonuses ?? [], b => b.Source == TechniqueRules.BarrierSource);
+        Assert.DoesNotContain(character.ArmorBonuses, b => b.Source == TechniqueRules.BarrierSource);
     }
 
     [Fact]

@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\DungeonWorldBot\DungeonWorldBot.csproj" />
+    <ProjectReference Include="..\..\src\DungeonWorldBot.Dashboard\DungeonWorldBot.Dashboard.csproj" />
   </ItemGroup>
 
 </Project>

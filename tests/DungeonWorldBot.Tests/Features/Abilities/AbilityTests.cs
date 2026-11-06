@@ -48,7 +48,7 @@ public sealed class AbilityTests : IDisposable
             var character = await new CharacterService(context).GetCharacterFromUserAsync(UserId);
 
             Assert.NotNull(character);
-            Assert.Equal(2, character.Abilities!.Count);
+            Assert.Equal(2, character.Abilities.Count);
 
             var raiseDead = new AbilityService(context).FindAbility(character, "raise dead");
             Assert.NotNull(raiseDead);

@@ -28,8 +28,7 @@ public abstract class CharacterCommandBase(
     protected readonly ILevelingService _leveling = leveling;
     protected readonly IGameSettingsService _settings = settings;
 
-    protected async Task<Character?> GetCharacterAsync(IUser? user) =>
-        user is null ? await GetOwnCharacterAsync() : await _characterService.GetCharacterFromUserAsync(user.ID);
+    protected Task<Character?> GetCharacterAsync(IUser? user) => _characterService.GetCharacterFromUserAsync(TargetOf(user));
 
     protected async Task<Character?> GetOwnCharacterAsync() =>
         await _characterService.GetCharacterFromUserAsync(GetUserId());

@@ -82,7 +82,7 @@ public class LightCommand(
         if (ally is not null && ally.ID != character!.ID)
         {
             if (await _characterService.GetCharacterFromUserAsync(ally.ID) is not { } allyCharacter)
-                return await ReplyWithErrorAsync($"{ally.Username} does not have a character.");
+                return await ReplyNoCharacterAsync(ally);
             holder = allyCharacter;
         }
 

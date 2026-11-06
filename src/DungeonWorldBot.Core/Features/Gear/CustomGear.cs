@@ -100,7 +100,7 @@ public static class GearRules
     /// </summary>
     public static IReadOnlyList<OwnedGear> Owned(Character character) =>
         GearLibrary.All
-            .Select(g => (Gear: g, Ability: character.Abilities?.FirstOrDefault(a => a.Name.Equals(g.Name, StringComparison.OrdinalIgnoreCase))))
+            .Select(g => (Gear: g, Ability: character.Abilities.FirstOrDefault(a => a.Name.Equals(g.Name, StringComparison.OrdinalIgnoreCase))))
             .Where(g => g.Ability is not null)
             .Select(g => new OwnedGear(g.Gear, ModeFrom(g.Gear, g.Ability!.Description)))
             .ToList();

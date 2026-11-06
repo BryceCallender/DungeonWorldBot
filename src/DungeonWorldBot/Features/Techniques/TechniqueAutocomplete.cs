@@ -17,7 +17,7 @@ public class TechniqueAutocomplete(ContextInjectionService contextInjection, ICh
     public override string Identity => ID;
 
     protected override IEnumerable<Suggestion> OwnClassCandidates(Character character, ClassSheet sheet) =>
-        (character.Techniques ?? []).Select(t => new Suggestion(t.Name, $"{t.Name} ({TechniqueRules.TagLine(t.Tags)})"));
+        character.Techniques.Select(t => new Suggestion(t.Name, $"{t.Name} ({TechniqueRules.TagLine(t.Tags)})"));
 
     protected override IEnumerable<Suggestion> AllCandidates() => [];
 }

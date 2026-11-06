@@ -1,0 +1,17 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* A search box that app.js filters the card or page around it by, as it's typed in. Pair it with <NoMatches>. *@
+<input type="search" class="filter @Class" placeholder="Search @What…" aria-label="Search @What" data-filter />
+
+@code {
+    /// <summary>
+    /// What's being searched, as in "Search moves…".
+    /// </summary>
+    [Parameter, EditorRequired]
+    public string What { get; set; } = "";
+
+    /// <summary>
+    /// "jump-filter" for one that sits in a page's jump bar.
+    /// </summary>
+    [Parameter]
+    public string? Class { get; set; }
+}

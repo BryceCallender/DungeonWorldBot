@@ -64,7 +64,7 @@ public sealed class LevelingServiceTests : IDisposable
     {
         await using var context = CreateContext();
         var (character, leveling, resources) = await SetupAsync(context);
-        character.Abilities![0].LevelTaken = 2;
+        character.Abilities[0].LevelTaken = 2;
         var clericLevel = SpellCasting.Access(character).Single().LevelResource;
 
         Assert.Equal(1, resources.GetValue(character, clericLevel));
@@ -82,7 +82,7 @@ public sealed class LevelingServiceTests : IDisposable
         var clericLevel = SpellCasting.Access(character).Single().LevelResource;
 
         // Taken before levels were recorded: set it once and it follows from then on
-        Assert.Null(character.Abilities![0].LevelTaken);
+        Assert.Null(character.Abilities[0].LevelTaken);
         Assert.Equal(2, await resources.SetValueAsync(character, clericLevel, 2));
         Assert.Equal(1, character.Abilities[0].LevelTaken);
 
@@ -98,7 +98,7 @@ public sealed class LevelingServiceTests : IDisposable
         character.Level = 5;
         var clericLevel = SpellCasting.Access(character).Single().LevelResource;
 
-        await new AbilityService(context).SetLevelTakenAsync(character.Abilities![0], 3);
+        await new AbilityService(context).SetLevelTakenAsync(character.Abilities[0], 3);
 
         Assert.Equal(3, character.Abilities[0].LevelTaken);
         Assert.Equal(3, resources.GetValue(character, clericLevel));

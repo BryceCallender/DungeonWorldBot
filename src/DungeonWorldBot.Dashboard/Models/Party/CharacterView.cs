@@ -44,5 +44,5 @@ public record CharacterView(
     /// The names of the shapes the character has taken on right now.
     /// </summary>
     public IReadOnlyList<string> ActiveShapes =>
-        (Character.Transformations ?? []).Where(f => f.IsActive).Select(f => f.Name).ToList();
+        Character.Transformations.Where(f => f.IsActive).Select(f => f.Name).ToList();
 }

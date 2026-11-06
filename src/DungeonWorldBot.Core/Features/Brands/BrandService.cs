@@ -28,7 +28,6 @@ public class BrandService(IResourceService resourceService) : IBrandService
         RemoveBrand(character);
 
         var brand = BrandRules.Forge(tags);
-        character.Inventory.Items ??= [];
         character.Inventory.Items.Add(brand);
 
         // Saves the brand too
@@ -48,6 +47,6 @@ public class BrandService(IResourceService resourceService) : IBrandService
     private static void RemoveBrand(Character character)
     {
         if (BrandRules.Brand(character) is { } old)
-            character.Inventory.Items!.Remove(old);
+            character.Inventory.Items.Remove(old);
     }
 }

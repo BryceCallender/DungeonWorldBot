@@ -220,7 +220,7 @@ public partial class DmCommand
             Character? character = null;
             Npc? ally = null;
             if (user is not null && (character = await characterService.GetCharacterFromUserAsync(user.ID)) is null)
-                return await ReplyWithErrorAsync($"{user.Username} does not have a character.");
+                return await ReplyNoCharacterAsync(user);
             if (Text(npc) is { } npcName && (ally = await npcService.FindAsync(npcName)) is null)
                 return await ReplyWithErrorAsync(NpcCommand.NotFound(npcName));
 

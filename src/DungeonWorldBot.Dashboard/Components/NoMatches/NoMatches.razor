@@ -1,0 +1,11 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* Shown by app.js when a <FilterBox> hides everything around it *@
+<p class="empty no-matches" hidden>@ChildContent</p>
+
+@code {
+    /// <summary>
+    /// What to say, like "No moves match."
+    /// </summary>
+    [Parameter, EditorRequired]
+    public RenderFragment? ChildContent { get; set; }
+}

@@ -83,7 +83,7 @@ public sealed class BrandTests : IDisposable
         await service.ConjureAsync(character, ["hand"]);
         await service.ConjureAsync(character, ["thrown, near"]);
 
-        Assert.Single(character.Inventory.Items!.OfType<Weapon>());
+        Assert.Single(character.Inventory.Items.OfType<Weapon>());
         Assert.Contains("thrown", BrandRules.Brand(character)!.Name);
     }
 }

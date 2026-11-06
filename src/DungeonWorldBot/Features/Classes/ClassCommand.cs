@@ -34,14 +34,10 @@ public class ClassCommand(
         [Description("The user to see the class sheet of. Don't specify a user to see your own.")]
         IUser? user = null)
     {
-        var character = await characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
+        var character = await characterService.GetCharacterToShowAsync(TargetOf(user));
 
         if (character is null)
-        {
-            return await ReplyWithErrorAsync(user is null
-                ? NoCharacterMessage
-                : $"{user.Username} does not have a character.");
-        }
+            return await ReplyNoCharacterAsync(user);
 
         if (ClassSheetLibrary.For(character.Class.Type) is not { } sheet)
             return await ReplyWithNoSheetAsync(character);

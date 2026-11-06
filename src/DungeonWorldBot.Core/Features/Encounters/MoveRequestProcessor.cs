@@ -129,7 +129,7 @@ public class MoveRequestProcessor(
         {
             if (ally is null)
                 return PreparedMove.Failed("Pick whose character you're helping or hindering.");
-            var bonds = character.Bonds?.Count(b => b.TargetID == ally.ID) ?? 0;
+            var bonds = character.Bonds.Count(b => b.TargetID == ally.ID);
             return new PreparedMove(null, move, new MoveInput($"Bond with {ally.Name}", bonds, 0));
         }
 

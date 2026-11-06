@@ -34,7 +34,7 @@ public sealed class InventoryTests : IDisposable
         await using (var context = _db.CreateContext())
         {
             var character = (await new CharacterService(context).GetCharacterFromUserAsync(UserId))!;
-            character.Inventory.Items!.RemoveAll(i => i.Name == "Rope");
+            character.Inventory.Items.RemoveAll(i => i.Name == "Rope");
             await context.SaveChangesAsync();
         }
 

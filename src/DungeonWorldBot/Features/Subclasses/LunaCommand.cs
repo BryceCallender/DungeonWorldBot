@@ -133,7 +133,7 @@ public class LunaCommand(
         {
             var allyCharacter = await Characters.GetCharacterFromUserAsync(ally.ID);
             if (allyCharacter is null)
-                return await ReplyWithErrorAsync($"{ally.Username} does not have a character.");
+                return await ReplyNoCharacterAsync(ally);
             if (allyCharacter.ID == character.ID)
                 return await ReplyWithErrorAsync("Put your own sacrifice in the sacrifice option.");
 

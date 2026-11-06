@@ -35,9 +35,9 @@ public class ArmorCommand(
         [Description("The user to see the armor of. Don't specify a user to see your own.")]
         IUser? user = null)
     {
-        var character = await characterService.GetCharacterToShowAsync(user?.ID ?? GetUserId());
+        var character = await characterService.GetCharacterToShowAsync(TargetOf(user));
         if (character is null)
-            return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
+            return await ReplyNoCharacterAsync(user);
 
         return await ReplyAsync($"{character.Name}'s Armor", DamageRules.Summary(character));
     }
@@ -58,7 +58,7 @@ public class ArmorCommand(
 
         var character = await GetCharacterAsync(user);
         if (character is null)
-            return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
+            return await ReplyNoCharacterAsync(user);
 
         var before = DamageRules.BaseArmor(character, type);
         await armorService.SetArmorAsync(character, type, value);
@@ -95,7 +95,7 @@ public class ArmorCommand(
         {
             var character = await GetCharacterAsync(user);
             if (character is null)
-                return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
+                return await ReplyNoCharacterAsync(user);
             characters = [character];
         }
 
@@ -118,7 +118,7 @@ public class ArmorCommand(
     {
         var character = await GetCharacterAsync(user);
         if (character is null)
-            return await ReplyWithErrorAsync(user is null ? NoCharacterMessage : $"{user.Username} does not have a character.");
+            return await ReplyNoCharacterAsync(user);
 
         var removed = await armorService.RemoveBonusesAsync(character, string.IsNullOrWhiteSpace(source) ? null : source);
         if (removed.Count == 0)
@@ -140,15 +140,7 @@ public class ArmorCommand(
         return await ReplyAsync("Fight Over", DescribeCleared(cleared));
     }
 
-    private async Task<Character?> GetCharacterAsync(IUser? user)
-    {
-        if (user is not null)
-            return await characterService.GetCharacterFromUserAsync(user.ID);
-
-        var userId = GetUserId();
-
-        return await characterService.GetCharacterFromUserAsync(userId);
-    }
+    private Task<Character?> GetCharacterAsync(IUser? user) => characterService.GetCharacterFromUserAsync(TargetOf(user));
 
     /// <summary>
     /// What ending the fight took off everyone, for the reply.

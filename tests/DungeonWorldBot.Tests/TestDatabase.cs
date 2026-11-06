@@ -32,6 +32,16 @@ public sealed class TestDatabase : IDisposable
 
     public DungeonWorldContext CreateContext() => CreateContext(_connection);
 
+    /// <summary>
+    /// Saves this database to a file, for what opens the database by its path rather than through a context.
+    /// </summary>
+    public void CopyTo(string path)
+    {
+        using var file = new SqliteConnection($"Data Source={path};Pooling=False");
+        file.Open();
+        _connection.BackupDatabase(file);
+    }
+
     public void Dispose() => _connection.Dispose();
 
     private static DungeonWorldContext CreateContext(SqliteConnection connection) =>

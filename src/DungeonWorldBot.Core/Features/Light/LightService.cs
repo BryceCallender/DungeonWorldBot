@@ -54,7 +54,7 @@ public class LightService(DungeonWorldContext dungeonWorldContext, IArmorService
         // Only whoever holds it, with just their armor, rather than every character's whole sheet
         var holders = await dungeonWorldContext.Characters
             .Include(c => c.ArmorBonuses)
-            .Where(c => c.ArmorBonuses!.Any(b => b.Source == source))
+            .Where(c => c.ArmorBonuses.Any(b => b.Source == source))
             .ToListAsync();
 
         await armorService.RemoveBonusesAsync(holders, source);

@@ -103,8 +103,9 @@ internal static class CharacterEvents
             Add(joined, CharacterEventKind.ShapeLearned, entry.Entity.Name);
         }
 
-        // Items hang off the inventory rather than the character
-        var inventories = tracker.Entries<Inventory>().ToDictionary(e => e.Entity.ID, e => e.Entity.CharacterID);
+        // Items hang off the inventory rather than the character. Keyed by what EF tracks, since new inventories all have
+        // an ID of 0 until they're saved, while EF gives each one a temporary ID of its own that their items point at
+        var inventories = tracker.Entries<Inventory>().ToDictionary(e => (int)e.Property(nameof(Inventory.ID)).CurrentValue!, e => e.Entity.CharacterID);
         Snowflake? OwnerOfInventory(object? id) => id is int key && inventories.TryGetValue(key, out var c) ? c : null;
 
         foreach (var entry in tracker.Entries<Item>())

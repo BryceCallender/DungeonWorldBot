@@ -71,11 +71,11 @@ public sealed class QuestTests : IDisposable
 
         await service.DeclareAsync(character, "Defend the village", []);
         Assert.Equal("1d4", QuestRules.SmiteDamage(character));
-        Assert.Contains(character.ArmorBonuses!, b => b.Source == QuestRules.ArmorSource && b.Amount == 1);
+        Assert.Contains(character.ArmorBonuses, b => b.Source == QuestRules.ArmorSource && b.Amount == 1);
 
         await service.EndAsync(character);
         Assert.Null(QuestRules.SmiteDamage(character));
-        Assert.Empty(character.ArmorBonuses ?? []);
+        Assert.Empty(character.ArmorBonuses);
         Assert.Equal(QuestRules.QuestMove.Summary, QuestRules.QuestAbility(character)!.Description);
     }
 

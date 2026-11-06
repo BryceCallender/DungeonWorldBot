@@ -27,8 +27,8 @@
 @{
     var mine = Viewer.Is(c.ID);
     var back = $"/{c.Url}/story";
-    var goals = c.Character.Goals ?? [];
-    var notes = c.Character.Notes ?? [];
+    var goals = c.Character.Goals;
+    var notes = c.Character.Notes;
     var done = goals.Count(g => g.Completed);
 }
 <div class="story" data-no-live>
@@ -82,7 +82,7 @@
         @if (goals.Count > 0)
         {
             <div class="goal-progress" title="@done of @goals.Count done">
-                <div class="bar"><div class="fill good" style="width: @BarWidth(done, goals.Count)%"></div></div>
+                <Bar Value="done" Max="goals.Count" />
             </div>
             <ul class="goals">
                 @foreach (var goal in goals.OrderBy(g => g.Completed).ThenBy(g => g.ID))

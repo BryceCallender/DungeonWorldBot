@@ -1,0 +1,38 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* A character's moves and abilities, searchable once there are any *@
+<section class="card wide" id="moves">
+    @if (View.Moves.Count > 0)
+    {
+        <CardHeader Title="Moves & abilities" Count="View.Moves.Count" Expandable>
+            <Tools><FilterBox What="moves" /></Tools>
+        </CardHeader>
+    }
+    else
+    {
+        <CardHeader Title="Moves & abilities" Count="0" />
+        <p class="empty">None yet.</p>
+    }
+    <ul class="moves">
+        @foreach (var move in View.Moves)
+        {
+            <ExpandableItem Name="@move.Name" Preview="@move.Description">
+                <Chips>
+                    @if (move.MaxUses is { } max)
+                    {
+                        <Chip Kind="@(move.Uses == 0 ? "warn" : null)">@move.Uses / @max</Chip>
+                    }
+                    @if (move.GrantsSpells is { } list)
+                    {
+                        <Chip Kind="class" Href="@($"{Lookup.SpellsUrl(View.Slug)}#{list.ToString().ToLower()}")">@list spells →</Chip>
+                    }
+                </Chips>
+            </ExpandableItem>
+        }
+    </ul>
+    <NoMatches>No moves match.</NoMatches>
+</section>
+
+@code {
+    [Parameter, EditorRequired]
+    public CharacterView View { get; set; } = null!;
+}

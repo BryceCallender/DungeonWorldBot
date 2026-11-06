@@ -1,0 +1,2 @@
+/* ExpandableItem draws the list items, so they need ::deep to be reached from here */
+ul.moves ::deep li.active { outline: 2px solid var(--accent); }

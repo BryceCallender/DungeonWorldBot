@@ -113,19 +113,15 @@ public class ShapeshiftCommand(
         [Description("The user to see the forms of. Don't specify a user to see your own.")]
         IUser? user = null)
     {
-        var character = await Characters.GetCharacterToShowAsync(user?.ID ?? GetUserId());
+        var character = await Characters.GetCharacterToShowAsync(TargetOf(user));
 
         if (character is null)
-        {
-            return await ReplyWithErrorAsync(user is null
-                ? NoCharacterMessage
-                : $"{user.Username} does not have a character.");
-        }
+            return await ReplyNoCharacterAsync(user);
 
         if (!ShapeshiftRules.CanShapeshift(character))
             return await ReplyWithErrorAsync($"{character.Name} can't shapeshift.");
 
-        var forms = character.Transformations?.OrderByDescending(t => t.IsActive).ThenBy(t => t.Name).ToList() ?? [];
+        var forms = character.Transformations.OrderByDescending(t => t.IsActive).ThenBy(t => t.Name).ToList();
 
         // Embeds hold at most 25 fields
         var fields = forms.Take(24)

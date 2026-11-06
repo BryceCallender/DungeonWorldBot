@@ -16,7 +16,7 @@ public class SpecialMoveService(DungeonWorldContext dungeonWorldContext, IDebili
         {
             rations.Amount--;
             if (rations.Amount == 0)
-                character.Inventory.Items!.Remove(rations);
+                character.Inventory.Items.Remove(rations);
         }
 
         var healed = slept ? Heal(character, SpecialMoveRules.HealOnWaking(character)) : 0;
@@ -48,7 +48,7 @@ public class SpecialMoveService(DungeonWorldContext dungeonWorldContext, IDebili
 
         coins.Amount -= amount;
         if (coins.Amount == 0)
-            character.Inventory.Items!.Remove(coins);
+            character.Inventory.Items.Remove(coins);
 
         await dungeonWorldContext.SaveChangesAsync();
         return true;

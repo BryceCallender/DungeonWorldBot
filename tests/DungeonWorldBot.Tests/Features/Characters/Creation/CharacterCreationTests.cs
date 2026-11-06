@@ -124,7 +124,7 @@ public class CharacterCreationTests
         var draft = DraftWithChoices(ClassType.Thief);
         draft.FeatureChoices["Poison"] = [Thief.Sheet.Features.Single(f => f.Name == "Poison").Options[1]];
 
-        var poison = draft.Build(new Snowflake(1)).Abilities!.Single(a => a.Name.StartsWith(Thief.PoisonPrefix));
+        var poison = draft.Build(new Snowflake(1)).Abilities.Single(a => a.Name.StartsWith(Thief.PoisonPrefix));
 
         Assert.Equal("Poison: Bloodweed", poison.Name);
         Assert.Equal(Thief.PoisonDoses, poison.MaxUses);
@@ -170,6 +170,6 @@ public class CharacterCreationTests
         Assert.Equal(12 + 10, character.Health.MaxHP); // Con 12 + Paladin 10
         Assert.Equal(character.Health.MaxHP, character.Health.CurrentHP);
         Assert.Equal(CharacterDraft.StatOrder, character.Stats.Select(s => s.StatType));
-        Assert.Equal(draft.Items.Count, character.Inventory.Items!.Count);
+        Assert.Equal(draft.Items.Count, character.Inventory.Items.Count);
     }
 }

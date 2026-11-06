@@ -1,0 +1,17 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* A filled bar, for how far along something is: health, spell levels, load, goals done *@
+<div class="bar"><div class="fill @Fill" style="width: @BarWidth(Value, Max)%"></div></div>
+
+@code {
+    [Parameter, EditorRequired]
+    public int Value { get; set; }
+
+    [Parameter, EditorRequired]
+    public int Max { get; set; }
+
+    /// <summary>
+    /// Its color: "good", "low", "critical", "accent", or "class" for the character's class color.
+    /// </summary>
+    [Parameter]
+    public string Fill { get; set; } = "good";
+}
