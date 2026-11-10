@@ -1,0 +1,38 @@
+.journey-head { margin-bottom: 1rem; }
+.journey-head h1 { margin-bottom: .25rem; }
+
+.clue-card { padding: .75rem 1rem; overflow-x: auto; }
+.clue-chart { display: block; width: 100%; min-width: 560px; height: auto; cursor: crosshair; }
+.clue-chart .grid { stroke: var(--border); stroke-dasharray: 3 4; }
+.clue-chart .axis { font-size: 11px; fill: var(--muted); }
+.clue-chart .lane { stroke: var(--border); }
+.clue-chart .who { font-size: 12px; fill: var(--text); }
+.clue-chart .tick { stroke-width: 3; stroke-linecap: round; }
+.clue-chart .tick.strong { stroke: var(--good); }
+.clue-chart .tick.weak { stroke: var(--low); }
+.clue-chart .tick.miss { stroke: var(--critical); }
+.clue-chart .clue-stop circle { stroke-width: 2; }
+.clue-chart .clue-stop text { font-size: 11px; font-weight: 700; }
+.clue-chart .clue-stop.fight circle { fill: var(--surface); stroke: var(--muted); }
+.clue-chart .clue-stop.fight text { fill: var(--muted); }
+.clue-chart .clue-stop.logged circle { fill: var(--accent-soft); stroke: var(--accent); }
+.clue-chart .clue-stop.logged text { fill: var(--accent); }
+.clue-chart .clue-cursor { stroke: var(--accent); stroke-width: 2; opacity: .8; pointer-events: none; }
+
+.journey-edit { display: grid; grid-template-columns: minmax(0, 340px) minmax(0, 1fr); gap: 1rem; margin-top: 1rem; align-items: start; }
+.journey-edit h2 { margin: 0 0 .75rem; font-size: 1.05rem; }
+.journey-add form { display: flex; flex-direction: column; gap: .4rem; }
+.journey-add button { align-self: flex-start; margin-top: .5rem; }
+.journey-who { display: flex; flex-wrap: wrap; gap: .3rem 1rem; margin: .4rem 0 0; padding: 0; border: 0; }
+.journey-who legend { padding: 0; margin-bottom: .3rem; }
+.journey-who label { display: flex; align-items: center; gap: .35rem; font-size: .9rem; }
+
+.journey-edit-stops { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .5rem; }
+.journey-edit-stops li { display: flex; align-items: center; gap: .6rem; }
+.journey-edit-body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.journey-edit-stops form { margin: 0; }
+.journey-number { flex: none; display: grid; place-items: center; width: 1.4rem; height: 1.4rem; border-radius: 50%; border: 2px solid #c2410c; background: #fff; color: #7c2d12; font-size: .75rem; font-weight: 700; }
+
+@media (max-width: 760px) {
+    .journey-edit { grid-template-columns: minmax(0, 1fr); }
+}

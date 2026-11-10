@@ -5,6 +5,7 @@
 @using DungeonWorldBot.Dashboard.Services.Admin
 @using static DungeonWorldBot.Dashboard.Helpers.AdminFormat
 @inject AdminDesk Desk
+@inject AdminSchema Schema
 @inject Viewer Viewer
 @inject NavigationManager Nav
 
@@ -101,7 +102,7 @@
         if (!Viewer.CanAdminister || _database is not { } database)
             return;
 
-        _columns = await Desk.GetColumnsAsync(database, Table);
+        _columns = await Schema.GetColumnsAsync(database, Table);
         if (RowID is { } id)
             _row = await Desk.GetRowAsync(database, Table, id);
     }
@@ -127,11 +128,16 @@
     private string Shown(AdminColumn column, object? stored) =>
         _posted?.TryGetValue($"v:{column.Name}", out var typed) == true ? typed.ToString() : Raw(stored);
 
-    private bool ShownNull(AdminColumn column, object? stored) =>
-        _posted is not null ? _posted.ContainsKey($"null:{column.Name}") : RowID is not null && stored is null;
-
     private bool ShownFlag(AdminColumn column, object? stored, AdminChoice choice) =>
         _posted?.TryGetValue($"v:{column.Name}", out var typed) == true ? typed.Contains(choice.Value) : column.Has(stored, choice);
+
+    // What leaving a field blank does, when it does anything: SQLite fills in a new row's, or it's left with nothing
+    private string? BlankMeans(AdminColumn column)
+    {
+        if (RowID is null && (column.HasDefault || column.PrimaryKey))
+            return "Leave blank for the default";
+        return column.Nullable ? "Blank for nothing (NULL)" : null;
+    }
 
     // Checkboxes and free text get the whole row; numbers and pick-lists sit side by side
     private static bool IsWide(AdminColumn column) => column.Flags || (!column.IsNumber && column.Choices.Count == 0);
@@ -164,6 +170,10 @@
                 {
                     <option value="" selected="@(shown == "")">(default)</option>
                 }
+                else if (column.Nullable)
+                {
+                    <option value="" selected="@(shown == "")">(none)</option>
+                }
                 @if (shown != "" && column.Choices.All(c => c.Value != shown))
                 {
                     <option value="@shown" selected>@shown (not one the bot knows)</option>
@@ -177,16 +187,12 @@
         else if (column.IsNumber)
         {
             <input class="filter" name="v:@column.Name" value="@Shown(column, stored)" inputmode="@(column.IsInteger ? "numeric" : "decimal")"
-                   placeholder="@(RowID is null && (column.HasDefault || column.PrimaryKey) ? "Leave blank for the default" : null)" />
+                   placeholder="@BlankMeans(column)" />
         }
         else
         {
             <textarea class="filter admin-code" name="v:@column.Name" rows="@Math.Clamp(Shown(column, stored).Length / 70 + 1, 1, 12)"
-                      placeholder="@(RowID is null && column.HasDefault ? "Leave blank for the default" : null)">@Shown(column, stored)</textarea>
-        }
-        @if (!column.NotNull && !column.PrimaryKey && !column.IsBlob)
-        {
-            <label class="admin-check small"><input type="checkbox" name="null:@column.Name" checked="@ShownNull(column, stored)" />NULL</label>
+                      placeholder="@BlankMeans(column)">@Shown(column, stored)</textarea>
         }
     </div>;
 }

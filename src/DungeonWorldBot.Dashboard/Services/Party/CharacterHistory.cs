@@ -1,3 +1,4 @@
+using System.Linq.Expressions;
 using DungeonWorldBot.Dashboard.Helpers;
 using DungeonWorldBot.Dashboard.Models.Party;
 using DungeonWorldBot.Dashboard.Services.Shared;
@@ -33,13 +34,27 @@ public class CharacterHistory(DungeonWorldContext context, ISessionService sessi
     {
         List<HistoryEntry> entries =
         [
-            .. (await EventsAsync(character)).Select(Describe).OfType<HistoryEntry>(),
+            .. (await EventsAsync(e => e.CharacterID == character.ID)).Select(Describe).OfType<HistoryEntry>(),
             .. (await RollsAsync(character)).Select(Describe).OfType<HistoryEntry>(),
             .. await FightsAsync(character),
             .. character.Notes.Select(Describe),
         ];
 
         return await ChaptersAsync(entries);
+    }
+
+    /// <summary>
+    /// What changed on each character between two times, like over a session. Only those with something worth showing.
+    /// </summary>
+    public async Task<List<CharacterChanges>> GetChangesAsync(DateTimeOffset from, DateTimeOffset to)
+    {
+        var events = await EventsAsync(e => e.At >= from && e.At <= to);
+
+        return events
+            .GroupBy(e => e.CharacterID)
+            .Select(g => new CharacterChanges(g.Key, g.OrderBy(e => e.At).Select(Describe).OfType<HistoryEntry>().ToList()))
+            .Where(c => c.Entries.Count > 0)
+            .ToList();
     }
 
     // In sessions where they were played, and by day in between, newest first
@@ -81,11 +96,11 @@ public class CharacterHistory(DungeonWorldContext context, ISessionService sessi
         }
     }
 
-    private async Task<List<CharacterEvent>> EventsAsync(Character character)
+    private async Task<List<CharacterEvent>> EventsAsync(Expression<Func<CharacterEvent, bool>> which)
     {
         try
         {
-            return await context.CharacterEvents.AsNoTracking().Where(e => e.CharacterID == character.ID).ToListAsync();
+            return await context.CharacterEvents.AsNoTracking().Where(which).ToListAsync();
         }
         // Before the bot's database had them
         catch (SqliteException e) when (e.IsMissingTable())

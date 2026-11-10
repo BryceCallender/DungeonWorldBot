@@ -27,7 +27,6 @@
     white-space: nowrap;
     text-shadow: 0 0 12px #ff8a3aaa;
 }
-.brand span { margin-right: .4rem; }
 
 /* Scrolling sideways when there are more tabs than room, rather than running into the viewer's corner. The shadow keeps
    the tabs readable over the sun. */
@@ -51,6 +50,10 @@
 main { max-width: 1200px; margin: 0 auto; padding: 1.5rem; }
 /* Scenes side by side want every bit of the width */
 main:has(.side-page) { max-width: none; }
+/* A scene's board takes the height left under the session bar, while there is one (the body is the screen's height) */
+@media (min-width: 801px) {
+    :root:not(.embedded) main:has(.board-page) { display: flex; flex-direction: column; box-sizing: border-box; width: 100%; min-height: 0; }
+}
 
 /* Signed-in viewer and live updates */
 

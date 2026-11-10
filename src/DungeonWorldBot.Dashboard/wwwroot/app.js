@@ -172,6 +172,13 @@ markSection();
 // Tells the rest of the page (like the roll feed) that the live stream saw a change, whichever stream heard it
 const changed = () => document.dispatchEvent(new Event('live-change'));
 
+// A change on the live stream says where it was: "game" (the bot's database), "scenes" (the boards) or both. Boards
+// change with every stroke, so only what shows them listens for those.
+const inGame = e => e.data.split(' ').includes('game');
+const inScenes = e => e.data.split(' ').includes('scenes');
+// Looked up fresh each time, since live updates swap the page out from under it
+const showsScenes = () => !!document.querySelector('[data-live-scenes]');
+
 // Live updates: the server says when the bot changed the database, and the page swaps in a fresh copy of itself,
 // keeping open moves, searches and scroll position.
 (() => {
@@ -215,10 +222,10 @@ const changed = () => document.dispatchEvent(new Event('live-change'));
             setLive(true);
             expectPing();
         });
-        current.onmessage = () => {
+        current.onmessage = e => {
             expectPing();
-            refresh();
-            changed();
+            if (inGame(e) || (inScenes(e) && showsScenes())) refresh();
+            if (inGame(e)) changed();
         };
         current.onerror = () => {
             if (current !== source) return;
@@ -487,7 +494,8 @@ const changed = () => document.dispatchEvent(new Event('live-change'));
         if (connectedBefore) { refresh(); changed(); }
         connectedBefore = true;
     };
-    source.onmessage = () => { refresh(); changed(); };
+    // Both are the game's: the board itself hears of changes to it through its own connection
+    source.onmessage = e => { if (inGame(e)) { refresh(); changed(); } };
 })();
 
 // Dialogs: buttons with data-open-dialog open the one with that ID, data-close-dialog closes its own, and clicking
@@ -831,6 +839,6 @@ document.addEventListener('pointerout', e => {
             if (connectedBefore) check();
             connectedBefore = true;
         };
-        source.onmessage = check;
+        source.onmessage = e => { if (inGame(e)) check(); };
     })();
 })();

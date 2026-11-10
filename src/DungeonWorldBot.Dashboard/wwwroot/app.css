@@ -71,6 +71,12 @@ body {
     font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
 }
 
+/* A scene is exactly as tall as the screen, so its board can fill what's left under the bars (see ScenePage) and the
+   page never scrolls. Phones stack the board's parts instead, and scroll. */
+@media (min-width: 801px) {
+    :root:not(.embedded) body:has(.board-page) { display: grid; grid-template: auto minmax(0, 1fr) / minmax(0, 1fr); height: 100dvh; }
+}
+
 a { color: var(--accent); }
 
 h1 { font-size: 1.8rem; margin: 0 0 .25rem; }

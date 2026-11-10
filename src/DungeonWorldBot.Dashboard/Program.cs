@@ -96,6 +96,7 @@ IEndpointConventionBuilder[] membersOnly =
     app.MapLiveUpdates(),
     app.MapHub<CanvasHub>("/hubs/canvas"),
     app.MapCanvasEndpoints(),
+    app.MapMapEndpoints(),
     app.MapCharacterJournalEndpoints(),
     app.MapPortraitEndpoints(),
     app.MapEncounterEndpoints(),

@@ -21,6 +21,11 @@ else
         <StatTile Label="Fights">@_sessions.Sum(s => s.Recap.Fights.Count)</StatTile>
     </div>
 
+    @if (_sessions.Any(s => s.Recap.Fights.Count > 0))
+    {
+        <p class="sessions-journey"><a class="tool has-icon" href="journey"><Icon Name="compass" />Play the whole journey</a></p>
+    }
+
     <ol class="session-list">
         @foreach (var s in _sessions)
         {

@@ -152,6 +152,9 @@ public class DungeonWorldContext(DbContextOptions<DungeonWorldContext> options) 
             character.HasOne(c => c.Portrait)
                 .WithOne()
                 .HasForeignKey<CharacterPortrait>(p => p.CharacterID);
+
+            // Someone plays one character at a time
+            character.HasIndex(c => c.ControlledByID).IsUnique();
         });
 
         modelBuilder.Entity<CharacterPortrait>(portrait =>

@@ -9,6 +9,7 @@
 @inject SessionReader Sessions
 @inject RollReader RollReader
 @inject PartyReader PartyReader
+@inject CharacterHistory History
 @inject DashboardSettings Settings
 @inject TimeProvider Time
 
@@ -27,6 +28,10 @@
 <nav class="session-nav">
     <a class="back" href="sessions">← Sessions</a>
     <span class="session-pager">
+        @if (_fights.Count > 0)
+        {
+            <a class="tool has-icon" href="@s.Url/journey"><Icon Name="compass" />The journey</a>
+        }
         @if (Number > 1)
         {
             <a class="tool" href="session/@(Number - 1)">‹ Session @(Number - 1)</a>
@@ -77,6 +82,20 @@ else
         <h2 class="section-title">Awards</h2>
         <AwardCards Awards="awards.Awards" Party="_party" />
     }
+}
+
+@if (_changes.Count > 0)
+{
+    <h2 class="section-title">What changed</h2>
+    <div class="session-changes">
+        @foreach (var changes in _changes)
+        {
+            <section class="card">
+                <h3>@CharacterLink(changes.CharacterID.Value)</h3>
+                <Moments Entries="changes.Entries" />
+            </section>
+        }
+    </div>
 }
 
 @if (_fights.Count > 0)
@@ -138,6 +157,7 @@ else
     private int _count;
     private List<RollRecord> _rolls = [];
     private List<Encounter> _fights = [];
+    private List<CharacterChanges> _changes = [];
     private SessionAwards? _awards;
     private IReadOnlyList<CharacterView> _party = [];
 
@@ -153,10 +173,15 @@ else
         _awards = await RollReader.GetAwardsAsync(s.Session.StartedAt, to, leaveOut: Settings.DungeonMasterID);
         _fights = await Sessions.GetFightsAsync(s);
         _party = await PartyReader.GetPartyAsync();
+        _changes = (await History.GetChangesAsync(s.Session.StartedAt, to)).OrderBy(c => Who(c.CharacterID.Value)).ToList();
     }
 
     private string Who(ulong userID) =>
         userID == Settings.DungeonMasterID ? "DM" : _party.PlayedBy(userID)?.Name ?? "Player";
+
+    private RenderFragment CharacterLink(ulong id) => _party.PlayedBy(id) is { } c
+        ? @<a href="@c.Url">@c.Name</a>
+        : @<span>@Who(id)</span>;
 
     private static string MoveLabel(string? move, string? stat) =>
         string.Join(" ", new[] { move, stat is null ? null : $"+{stat.ToUpper()}" }.OfType<string>()) is { Length: > 0 } label ? label : "–";

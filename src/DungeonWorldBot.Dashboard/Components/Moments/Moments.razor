@@ -1,0 +1,49 @@
+@namespace DungeonWorldBot.Dashboard.Components
+
+@* Moments from a character's timeline down a line, an icon on it for each: a chapter of their timeline, or what changed
+   on them over a session *@
+<ol class="moments">
+    @foreach (var entry in Entries)
+    {
+        <li class="moment moment-@entry.Kind.ToString().ToLowerInvariant()">
+            <span class="moment-icon"><Icon Name="@IconFor(entry.Kind)" /></span>
+            <div class="moment-body">
+                <div class="moment-row">
+                    @if (entry.Url is { } link)
+                    {
+                        <a class="moment-text" href="@link">@entry.Text</a>
+                    }
+                    else
+                    {
+                        <span class="moment-text">@entry.Text</span>
+                    }
+                    <span class="moment-time">@entry.At.ToLocalTime().ToString("t")</span>
+                </div>
+                @if (entry.Detail is { } detail)
+                {
+                    <div class="moment-detail">@ToHtml(detail)</div>
+                }
+            </div>
+        </li>
+    }
+</ol>
+
+@code {
+    [Parameter, EditorRequired]
+    public IReadOnlyList<HistoryEntry> Entries { get; set; } = [];
+
+    private static string IconFor(HistoryKind kind) => kind switch
+    {
+        HistoryKind.Milestone or HistoryKind.Level => "sparkle",
+        HistoryKind.Move => "magic",
+        HistoryKind.Stat => "shield",
+        HistoryKind.Hurt or HistoryKind.Healed => "heart",
+        HistoryKind.Bond => "link",
+        HistoryKind.Goal => "compass",
+        HistoryKind.Item => "bag",
+        HistoryKind.Coins => "coin",
+        HistoryKind.Roll => "dice",
+        HistoryKind.Fight => "sword",
+        _ => "pen",
+    };
+}

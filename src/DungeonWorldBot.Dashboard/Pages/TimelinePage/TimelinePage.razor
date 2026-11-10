@@ -42,31 +42,7 @@ else
                     @chapter.Title
                 }
             </h2>
-            <ol class="moments">
-                @foreach (var entry in chapter.Entries)
-                {
-                    <li class="moment moment-@entry.Kind.ToString().ToLowerInvariant()">
-                        <span class="moment-icon"><Icon Name="@IconFor(entry.Kind)" /></span>
-                        <div class="moment-body">
-                            <div class="moment-row">
-                                @if (entry.Url is { } link)
-                                {
-                                    <a class="moment-text" href="@link">@entry.Text</a>
-                                }
-                                else
-                                {
-                                    <span class="moment-text">@entry.Text</span>
-                                }
-                                <span class="moment-time">@entry.At.ToLocalTime().ToString("t")</span>
-                            </div>
-                            @if (entry.Detail is { } detail)
-                            {
-                                <div class="moment-detail">@ToHtml(detail)</div>
-                            }
-                        </div>
-                    </li>
-                }
-            </ol>
+            <Moments Entries="chapter.Entries" />
         </section>
     }
     <p class="small timeline-note">Level-ups, moves, gear and the rest are recorded from when the timeline was added, so
@@ -89,19 +65,4 @@ else
         if (_view is not null && Id != _view.Slug)
             Navigation.NavigateTo($"{_view.Url}/timeline", replace: true);
     }
-
-    private static string IconFor(HistoryKind kind) => kind switch
-    {
-        HistoryKind.Milestone or HistoryKind.Level => "sparkle",
-        HistoryKind.Move => "magic",
-        HistoryKind.Stat => "shield",
-        HistoryKind.Hurt or HistoryKind.Healed => "heart",
-        HistoryKind.Bond => "link",
-        HistoryKind.Goal => "compass",
-        HistoryKind.Item => "bag",
-        HistoryKind.Coins => "coin",
-        HistoryKind.Roll => "dice",
-        HistoryKind.Fight => "sword",
-        _ => "pen",
-    };
 }

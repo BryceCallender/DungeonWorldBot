@@ -17,6 +17,7 @@ public static class SceneServices
     {
         services.AddSqlite<CanvasContext>($"Data Source={databases.CanvasPath}");
         services.AddScoped<CanvasStore>();
+        services.AddScoped<CampaignMap>();
         services.AddSingleton<CanvasPresence>();
 
         // The default 32 KB is less than one long freehand stroke; CanvasStore.MaxItemLength sets the real limit per item

@@ -1,0 +1,181 @@
+@page "/journey"
+@page "/session/{Number:int}/journey"
+@namespace DungeonWorldBot.Dashboard.Pages
+@using System.Text.Json
+@using DungeonWorldBot.Dashboard.Models.Sessions
+@using DungeonWorldBot.Dashboard.Services.Scenes
+@using DungeonWorldBot.Dashboard.Services.Sessions
+@inject SessionReader Sessions
+@inject JourneyReader Journeys
+@inject Viewer Viewer
+
+@* Where the party went, played back on the campaign's map: over one session, or the whole campaign a session after
+   another. It starts on the whole map, then follows the party from stop to stop, zooming in on each leg with the trail
+   drawing behind them, and shows what happened at each. journey.js plays it from the data below; it doesn't refresh
+   itself (data-no-live), so it isn't cut off. *@
+@if (_journey is not { } j)
+{
+    <PageTitle>Not found · Sana Solem</PageTitle>
+    <h1>Not found</h1>
+    <p class="empty">No session @Number yet. <a href="sessions">All sessions</a></p>
+    return;
+}
+
+<PageTitle>@Title · Sana Solem</PageTitle>
+
+@if (_session is { } single)
+{
+    <a class="back" href="@single.Url">← @single.Name</a>
+}
+else
+{
+    <a class="back" href="sessions">← Sessions</a>
+}
+
+<header class="journey-head">
+    <h1 class="has-icon"><Icon Name="compass" />@(_session is null ? "The whole journey" : "The journey")</h1>
+    <div class="muted">
+        @(_session?.Name ?? $"{Format.Plural(j.Sessions.Count, "session")} on the road, from the first")
+        @if (j.Map.Url is { } map)
+        {
+            <span> · on <a href="@map">the map</a></span>
+        }
+        @if (_session is { } current)
+        {
+            <span> · <a href="journey">the whole campaign</a></span>
+            @if (Viewer.CanRunGame)
+            {
+                <span> · <a href="@current.Url/journey/edit">fill in the road</a></span>
+            }
+        }
+    </div>
+</header>
+
+@if (!j.Stops.Any())
+{
+    <p class="empty">@EmptyLine Stops come from the scenes fights are on.</p>
+    return;
+}
+
+<div class="journey" data-no-live data-journey>
+    <div class="journey-stage">
+        <svg class="journey-map" data-map role="img" aria-label="The campaign map, with the party's road across it"></svg>
+        @* A session's name, big over the map, as its part of the road begins *@
+        <div class="journey-title" data-title aria-live="polite" hidden></div>
+        <div class="journey-caption card" data-caption aria-live="polite" hidden></div>
+        <div class="journey-ask card" data-ask hidden>
+            <span data-ask-text></span>
+            <button type="button" class="tool" data-ask-skip>Skip</button>
+        </div>
+    </div>
+
+    <div class="journey-controls card">
+        <button type="button" class="tool has-icon" data-play><Icon Name="compass" /><span data-play-label>Play the journey</span></button>
+        <select class="filter" data-speed aria-label="Speed">
+            <option value="1.6">Slow</option>
+            <option value="1" selected>Normal</option>
+            <option value="0.5">Fast</option>
+        </select>
+        <span class="small muted" data-status>@StatusLine(j)</span>
+    </div>
+
+    <ol class="journey-stops card" data-stops>
+        @{ var number = 0; }
+        @foreach (var session in j.Sessions)
+        {
+            if (_session is null)
+            {
+                <li class="journey-session"><a href="@session.Session.Url/journey">@session.Session.Name</a></li>
+            }
+            foreach (var stop in session.Stops)
+            {
+                <li data-stop="@number">
+                    <div class="journey-stop-head">
+                        <span class="journey-number">@(number + 1)</span>
+                        <strong>@stop.Place</strong>
+                        <span class="small muted">@stop.At.ToLocalTime().ToString("h:mm tt")</span>
+                        @if (Viewer.CanRunGame)
+                        {
+                            <button type="button" class="tool journey-pin" data-pin="@stop.Place" title="Click the map where @stop.Place is">
+                                @(j.Map.Places.ContainsKey(stop.Place) ? "Move" : "Pin")
+                            </button>
+                        }
+                    </div>
+                    @if (!stop.WholeParty)
+                    {
+                        <p class="small muted journey-who-went">@string.Join(", ", stop.Who)</p>
+                    }
+                    @if (stop.Moments.Count > 0)
+                    {
+                        <Moments Entries="stop.Moments" />
+                    }
+                    else
+                    {
+                        <p class="small muted journey-quiet">Passed through.</p>
+                    }
+                </li>
+                number++;
+            }
+        }
+    </ol>
+</div>
+
+<AntiforgeryToken />
+<script type="application/json" data-journey-data>@((MarkupString)_json)</script>
+<script src="journey.js" defer></script>
+
+@code {
+    /// <summary>
+    /// The session to follow, or none for the whole campaign.
+    /// </summary>
+    [Parameter]
+    public int? Number { get; set; }
+
+    private SessionSummary? _session;
+    private CampaignJourney? _journey;
+    private string _json = "{}";
+
+    private string Title => _session is { } s ? $"The journey · {s.Name}" : "The whole journey";
+
+    private string EmptyLine => _session is null
+        ? "The party hasn't fought anywhere yet, so there's no road to follow."
+        : "The party didn't fight anywhere this session, so there's no road to follow.";
+
+    protected override async Task OnParametersSetAsync()
+    {
+        _journey = await JourneyAsync();
+        if (_journey is not { } j)
+            return;
+
+        _json = JsonSerializer.Serialize(new
+        {
+            canPlace = Viewer.CanRunGame,
+            frame = j.Map.Frame,
+            pictures = j.Map.Pictures,
+            places = j.Map.Places.ToDictionary(p => p.Key.ToLowerInvariant(), p => p.Value),
+            sessions = j.Sessions.Select(s => s.Session.Name),
+            stops = j.Sessions.SelectMany((s, i) => s.Stops.Select(stop => new { stop.Place, Session = i })),
+        }, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+    }
+
+    // One session's, as the only one in the campaign's, or the lot
+    private async Task<CampaignJourney?> JourneyAsync()
+    {
+        if (Number is not { } number)
+            return await Journeys.GetCampaignAsync();
+
+        _session = await Sessions.GetAsync(number);
+        if (_session is null)
+            return null;
+
+        var journey = await Journeys.GetAsync(_session);
+        return new CampaignJourney(journey.Map, [journey]);
+    }
+
+    private string StatusLine(CampaignJourney j) => j.Unplaced.Count() switch
+    {
+        0 => Format.Plural(j.Stops.Count(), "stop"),
+        var missing when Viewer.CanRunGame => $"{Format.Plural(missing, "place")} to pin on the map first",
+        var missing => $"{Format.Plural(missing, "place")} not on the map yet, so the journey skips {(missing == 1 ? "it" : "them")}",
+    };
+}

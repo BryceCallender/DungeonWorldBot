@@ -557,6 +557,27 @@
 .pick-count { display: flex; align-items: center; justify-content: space-between; gap: .75rem; font-size: .9rem; }
 .pick-count input { width: 4.5rem; flex: none; }
 
+/* Off a phone, the board fills the screen under whatever's above it (the session bar comes and goes), rather than
+   guessing at its height: MainLayout makes main a column as tall as what's left. 432px is the least the card can be. */
+@media (min-width: 801px) {
+    :root:not(.embedded) .board-layout { flex: 1 1 0; min-height: 432px; grid-template-rows: minmax(0, 1fr); }
+    :root:not(.embedded) .board-page { display: flex; flex-direction: column; align-self: stretch; }
+    :root:not(.embedded) .board-body { flex: 1; height: auto; min-height: 0; }
+}
+
+/* The timeline beside the board is no taller than it: the board's height, less the timeline's own header */
+@media (min-width: 1101px) {
+    :root:not(.embedded) .board-layout { container-type: size; }
+    :root:not(.embedded) .board-timeline ::deep .timeline-list { max-height: calc(100cqb - 44px); }
+}
+
+/* The timeline under the board: the two sit in main's column themselves, the board with what the timeline leaves */
+@media (min-width: 801px) and (max-width: 1100px) {
+    :root:not(.embedded) .board-layout:has(.timeline-card) { display: contents; }
+    :root:not(.embedded) .board-layout:has(.timeline-card) .board-page { flex: 1 0 432px; }
+    :root:not(.embedded) .board-layout:has(.timeline-card) .board-timeline { flex: none; margin-top: 1rem; }
+}
+
 /* In a frame beside other scenes: the whole frame, edge to edge, with no way back to the list (the page around it has
    that). The board takes whatever height is left under the header. */
 :root.embedded .board-page { display: flex; flex-direction: column; height: 100dvh; border: 0; border-radius: 0; }

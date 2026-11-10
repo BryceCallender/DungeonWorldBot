@@ -30,3 +30,8 @@
 .roll-log .total-weak { color: var(--low-text); }
 .roll-log .total-miss { color: var(--critical-text); }
 .roll-log .changed { display: block; font-size: .75rem; color: var(--muted); white-space: normal; }
+
+.session-changes { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: .75rem; margin-top: .75rem; }
+.session-changes h3 { margin: 0 0 .6rem; font-size: 1.05rem; }
+.session-changes h3 a { color: inherit; text-decoration: none; }
+.session-changes h3 a:hover { color: var(--accent); }

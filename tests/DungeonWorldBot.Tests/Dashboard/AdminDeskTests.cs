@@ -15,10 +15,16 @@ namespace DungeonWorldBot.Tests.Dashboard;
 public sealed class AdminDeskTests : IAsyncLifetime
 {
     private readonly string _folder = Directory.CreateTempSubdirectory("admin-desk-").FullName;
+    private readonly AdminSchema _schema;
     private readonly AdminDesk _desk;
+    private readonly AdminConsole _console;
 
-    public AdminDeskTests() =>
-        _desk = new AdminDesk(new DashboardDatabases(Path.Combine(_folder, "game.db"), Path.Combine(_folder, "canvases.db")));
+    public AdminDeskTests()
+    {
+        _schema = new AdminSchema(new DashboardDatabases(Path.Combine(_folder, "game.db"), Path.Combine(_folder, "canvases.db")));
+        _desk = new AdminDesk(_schema);
+        _console = new AdminConsole(_schema);
+    }
 
     public async Task InitializeAsync()
     {
@@ -46,7 +52,7 @@ public sealed class AdminDeskTests : IAsyncLifetime
     [Fact]
     public async Task Tables_AreListedWithTheirRowCounts()
     {
-        var tables = await _desk.GetTablesAsync(AdminDatabase.Game);
+        var tables = await _schema.GetTablesAsync(AdminDatabase.Game);
 
         Assert.Equal(3, tables.Single(t => t.Name == "Enemies").Rows);
         Assert.Equal(1, tables.Single(t => t.Name == "Encounters").Rows);
@@ -56,12 +62,12 @@ public sealed class AdminDeskTests : IAsyncLifetime
     [Fact]
     public async Task Columns_KnowWhatTheyPointAt()
     {
-        var columns = await _desk.GetColumnsAsync(AdminDatabase.Game, "enemies");
+        var columns = await _schema.GetColumnsAsync(AdminDatabase.Game, "enemies");
 
         Assert.NotNull(columns);
         Assert.Equal("Encounters", columns.Single(c => c.Name == "EncounterID").References);
         Assert.True(columns.Single(c => c.Name == "ID").PrimaryKey);
-        Assert.Null(await _desk.GetColumnsAsync(AdminDatabase.Game, "NoSuchTable"));
+        Assert.Null(await _schema.GetColumnsAsync(AdminDatabase.Game, "NoSuchTable"));
     }
 
     [Fact]
@@ -88,9 +94,24 @@ public sealed class AdminDeskTests : IAsyncLifetime
         Assert.Equal("CurrentHP takes a whole number.",
             await _desk.SaveAsync(AdminDatabase.Game, "Enemies", first.RowID, Form(new() { ["v:CurrentHP"] = "lots" })));
 
-        var columns = (await _desk.GetColumnsAsync(AdminDatabase.Game, "Enemies"))!.ToList();
+        var columns = (await _schema.GetColumnsAsync(AdminDatabase.Game, "Enemies"))!.ToList();
         var saved = (await _desk.GetRowAsync(AdminDatabase.Game, "Enemies", first.RowID))!;
         Assert.Equal(1L, saved.Values[columns.FindIndex(c => c.Name == "CurrentHP")]);
+    }
+
+    [Fact]
+    public async Task Save_LeavesNothingWhereABlankCanBe()
+    {
+        var first = (await _desk.GetPageAsync(AdminDatabase.Game, "Encounters", null, null, false, 1))!.Rows[0];
+        var columns = (await _schema.GetColumnsAsync(AdminDatabase.Game, "Encounters"))!.ToList();
+
+        Assert.Null(await _desk.SaveAsync(AdminDatabase.Game, "Encounters", first.RowID,
+            Form(new() { ["v:SceneName"] = "", ["v:Name"] = "" })));
+
+        // A scene's name can be nothing; a fight's own name can't, so it's kept as empty text
+        var saved = (await _desk.GetRowAsync(AdminDatabase.Game, "Encounters", first.RowID))!;
+        Assert.Null(saved.Values[columns.FindIndex(c => c.Name == "SceneName")]);
+        Assert.Equal("", saved.Values[columns.FindIndex(c => c.Name == "Name")]);
     }
 
     [Fact]
@@ -112,17 +133,17 @@ public sealed class AdminDeskTests : IAsyncLifetime
 
         Assert.Null(await _desk.DeleteAsync(AdminDatabase.Game, "Encounters", fight.RowID));
 
-        var tables = await _desk.GetTablesAsync(AdminDatabase.Game);
+        var tables = await _schema.GetTablesAsync(AdminDatabase.Game);
         Assert.Equal(0, tables.Single(t => t.Name == "Enemies").Rows);
     }
 
     [Fact]
     public async Task Run_ShowsTheFirstRowsRead_OrHowManyChanged()
     {
-        var read = await _desk.RunAsync(AdminDatabase.Game, "SELECT Name FROM Enemies ORDER BY Name");
-        var changed = await _desk.RunAsync(AdminDatabase.Game, "UPDATE Enemies SET Armor = 2");
-        var broken = await _desk.RunAsync(AdminDatabase.Game, "SELEC nonsense");
-        var blank = await _desk.RunAsync(AdminDatabase.Game, "  ");
+        var read = await _console.RunAsync(AdminDatabase.Game, "SELECT Name FROM Enemies ORDER BY Name");
+        var changed = await _console.RunAsync(AdminDatabase.Game, "UPDATE Enemies SET Armor = 2");
+        var broken = await _console.RunAsync(AdminDatabase.Game, "SELEC nonsense");
+        var blank = await _console.RunAsync(AdminDatabase.Game, "  ");
 
         Assert.Equal(["Name"], read.Columns);
         Assert.Equal(["Goblin 1", "Goblin 2", "Goblin 3"], read.Rows.Select(r => r[0]));

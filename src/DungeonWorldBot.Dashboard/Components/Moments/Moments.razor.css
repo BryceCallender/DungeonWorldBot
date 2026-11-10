@@ -1,0 +1,33 @@
+/* Down a line, an icon on it for each moment, tinted by what sort it is */
+.moments { list-style: none; margin: 0; padding: 0; }
+.moment { position: relative; display: flex; gap: .7rem; padding: .35rem 0; }
+.moment::before { content: ''; position: absolute; left: .75rem; top: 0; bottom: 0; width: 1px; background: var(--border); }
+.moment:first-child::before { top: 1rem; }
+.moment:last-child::before { bottom: auto; height: 1rem; }
+.moment:only-child::before { display: none; }
+
+.moment-icon {
+    position: relative;
+    flex: none;
+    display: grid;
+    place-items: center;
+    width: 1.5rem;
+    height: 1.5rem;
+    border-radius: 50%;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+}
+.moment-body { flex: 1; min-width: 0; padding-top: .15rem; }
+.moment-row { display: flex; align-items: baseline; justify-content: space-between; gap: .75rem; }
+.moment-text { min-width: 0; overflow-wrap: anywhere; }
+a.moment-text { color: inherit; }
+a.moment-text:hover { color: var(--accent); }
+.moment-time { flex: none; font-size: .75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.moment-detail { margin-top: .1rem; font-size: .85rem; color: var(--muted); overflow-wrap: anywhere; }
+
+/* Levels and milestones stand out; hurts in red, recoveries in green */
+.moment-level .moment-text, .moment-milestone .moment-text { font-weight: 700; }
+.moment-level .moment-icon, .moment-milestone .moment-icon { color: var(--accent); border-color: var(--accent); background: var(--accent-soft); }
+.moment-hurt .moment-icon { color: var(--critical); border-color: var(--critical); }
+.moment-healed .moment-icon { color: var(--good); border-color: var(--good); }

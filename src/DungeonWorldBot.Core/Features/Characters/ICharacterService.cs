@@ -43,6 +43,17 @@ public interface ICharacterService
     /// </summary>
     Task<List<Character>> GetCharacterAbilitiesAsync();
 
+    /// <summary>
+    /// Has the user play the character until they release it: the character's sheet stands in for their own in the
+    /// commands they run. Whoever they were playing before is let go.
+    /// </summary>
+    Task TakeOverAsync(Snowflake characterId, Snowflake userId);
+
+    /// <summary>
+    /// Hands the character back, so nobody else is playing it.
+    /// </summary>
+    Task ReleaseAsync(Snowflake characterId);
+
     Task AddCharacterAsync(Character character);
 
     Task HealAsync(Character character, int amount);

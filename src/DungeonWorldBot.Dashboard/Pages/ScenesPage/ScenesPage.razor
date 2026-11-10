@@ -61,6 +61,9 @@
     </Modal>
 }
 
+@* The list changes with the boards' database, which most pages leave alone: this has app.js refresh for it too *@
+<span data-live-scenes hidden></span>
+
 @if (_canvasList.Count == 0)
 {
     <p class="empty">

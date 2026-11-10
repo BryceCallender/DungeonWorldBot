@@ -1,3 +1,4 @@
+using DungeonWorldBot.Dashboard.Models.Live;
 using Microsoft.Data.Sqlite;
 
 namespace DungeonWorldBot.Dashboard.Services.Live;
@@ -10,33 +11,37 @@ namespace DungeonWorldBot.Dashboard.Services.Live;
 /// catches every committed write in any journal mode, and only once it's committed, so a refresh never lands halfway
 /// through one. Each file is checked too, in case it's swapped for another copy, which needs a fresh connection.
 /// </remarks>
-public class DatabaseWatcher(IEnumerable<string> databasePaths, ILogger<DatabaseWatcher> logger) : BackgroundService
+public class DatabaseWatcher(IEnumerable<WatchedDatabase> databases, ILogger<DatabaseWatcher> logger) : BackgroundService
 {
     private static readonly TimeSpan Interval = TimeSpan.FromSeconds(1);
 
-    private readonly IReadOnlyList<string> _paths = databasePaths.ToList();
-    private TaskCompletionSource _next = NewSignal();
+    private readonly IReadOnlyList<WatchedDatabase> _databases = databases.ToList();
+    private TaskCompletionSource<IReadOnlyList<string>> _next = NewSignal();
 
     /// <summary>
-    /// Completes the next time the database changes.
+    /// Completes the next time a database changes, with the names of those that did (see <see cref="WatchedDatabase"/>),
+    /// so a page that shows nothing from one needn't refresh for it.
     /// </summary>
-    public Task NextChange => Volatile.Read(ref _next).Task;
+    public Task<IReadOnlyList<string>> NextChange => Volatile.Read(ref _next).Task;
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var watched = _paths.Select(path => new WatchedFile(path) { LastFile = FileIdentity(path) }).ToList();
+        var watched = _databases.Select(d => new WatchedFile(d.Name, d.Path) { LastFile = FileIdentity(d.Path) }).ToList();
         using var timer = new PeriodicTimer(Interval);
 
         try
         {
             while (await timer.WaitForNextTickAsync(stoppingToken))
             {
-                var changed = false;
+                List<string> changed = [];
                 foreach (var file in watched)
-                    changed |= Check(file);
+                {
+                    if (Check(file))
+                        changed.Add(file.Name);
+                }
 
-                if (changed)
-                    Interlocked.Exchange(ref _next, NewSignal()).TrySetResult();
+                if (changed.Count > 0)
+                    Interlocked.Exchange(ref _next, NewSignal()).TrySetResult(changed);
             }
         }
         finally
@@ -101,10 +106,10 @@ public class DatabaseWatcher(IEnumerable<string> databasePaths, ILogger<Database
     private static string FileIdentity(string path) =>
         new FileInfo(path) is { Exists: true } file ? file.CreationTimeUtc.Ticks.ToString() : "-";
 
-    private static TaskCompletionSource NewSignal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private static TaskCompletionSource<IReadOnlyList<string>> NewSignal() => new(TaskCreationOptions.RunContinuationsAsynchronously);
 
     // One database being watched, and what it looked like last tick
-    private record WatchedFile(string Path)
+    private record WatchedFile(string Name, string Path)
     {
         public SqliteConnection? Connection { get; set; }
         public long? LastVersion { get; set; }

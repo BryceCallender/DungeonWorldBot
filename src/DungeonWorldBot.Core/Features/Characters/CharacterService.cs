@@ -7,7 +7,7 @@ using Remora.Rest.Core;
 namespace DungeonWorldBot.Features.Characters;
 
 [Scoped<ICharacterService>]
-public class CharacterService(DungeonWorldContext dungeonWorldContext) : ICharacterService
+public class CharacterService(DungeonWorldContext dungeonWorldContext, ICommandUser? commandUser = null) : ICharacterService
 {
     // Everything the rules read, one query per table: joining them all at once multiplies every list by every other
     // (tens of thousands of rows). Goals and notes are left out, since only the dashboard's journal shows them.
@@ -27,28 +27,48 @@ public class CharacterService(DungeonWorldContext dungeonWorldContext) : ICharac
             .Include(c => c.Inventory)
             .ThenInclude(i => i.Items);
 
-    public Task<Character?> GetCharacterFromUserAsync(Snowflake userId)
+    public async Task<Character?> GetCharacterFromUserAsync(Snowflake userId)
     {
-        return CharactersWithDetails.FirstOrDefaultAsync(c => c.ID == userId);
+        var id = await PlayedByAsync(userId);
+        return await CharactersWithDetails.FirstOrDefaultAsync(c => c.ID == id);
     }
 
-    public Task<Character?> GetCharacterToShowAsync(Snowflake userId)
+    public async Task<Character?> GetCharacterToShowAsync(Snowflake userId)
     {
-        return CharactersWithDetails.AsNoTracking().FirstOrDefaultAsync(c => c.ID == userId);
+        var id = await PlayedByAsync(userId);
+        return await CharactersWithDetails.AsNoTracking().FirstOrDefaultAsync(c => c.ID == id);
     }
 
-    public Task<Character?> GetCharacterWithJournalAsync(Snowflake userId)
+    public async Task<Character?> GetCharacterWithJournalAsync(Snowflake userId)
     {
-        return CharactersWithDetails.AsNoTracking().Include(c => c.Goals).Include(c => c.Notes).FirstOrDefaultAsync(c => c.ID == userId);
+        var id = await PlayedByAsync(userId);
+        return await CharactersWithDetails.AsNoTracking().Include(c => c.Goals).Include(c => c.Notes).FirstOrDefaultAsync(c => c.ID == id);
     }
 
-    public Task<Character?> GetCharacterMovesAsync(Snowflake userId)
+    public async Task<Character?> GetCharacterMovesAsync(Snowflake userId)
     {
-        return dungeonWorldContext.Characters
+        var id = await PlayedByAsync(userId);
+        return await dungeonWorldContext.Characters
             .AsNoTracking()
             .Include(c => c.Class)
             .Include(c => c.Abilities)
-            .FirstOrDefaultAsync(c => c.ID == userId);
+            .FirstOrDefaultAsync(c => c.ID == id);
+    }
+
+    /// <summary>
+    /// The character the user is playing: one they've taken over, when they're the one running the command, or else
+    /// their own. Anyone else asked about is left as they are, so their own character can still be picked out.
+    /// </summary>
+    private async Task<Snowflake> PlayedByAsync(Snowflake userId)
+    {
+        if (commandUser?.ID != userId)
+            return userId;
+
+        var taken = await dungeonWorldContext.Characters
+            .Where(c => c.ControlledByID == userId)
+            .Select(c => c.ID)
+            .ToListAsync();
+        return taken is [var id] ? id : userId;
     }
 
     public Task<List<Character>> GetCharactersAsync()
@@ -60,14 +80,15 @@ public class CharacterService(DungeonWorldContext dungeonWorldContext) : ICharac
     {
         // The full sheets join a dozen tables into tens of thousands of rows, which is too slow for autocomplete
         return dungeonWorldContext.Characters
-            .Select(c => new CharacterName(c.ID, c.Name, c.Class.Type))
+            .Select(c => new CharacterName(c.ID, c.Name, c.Class.Type, c.ControlledByID))
             .ToListAsync();
     }
 
-    public Task<string?> GetCharacterNameAsync(Snowflake userId)
+    public async Task<string?> GetCharacterNameAsync(Snowflake userId)
     {
-        return dungeonWorldContext.Characters
-            .Where(c => c.ID == userId)
+        var id = await PlayedByAsync(userId);
+        return await dungeonWorldContext.Characters
+            .Where(c => c.ID == id)
             .Select(c => c.Name)
             .FirstOrDefaultAsync();
     }
@@ -78,6 +99,26 @@ public class CharacterService(DungeonWorldContext dungeonWorldContext) : ICharac
             .AsNoTracking()
             .Include(c => c.Abilities)
             .ToListAsync();
+    }
+
+    public async Task TakeOverAsync(Snowflake characterId, Snowflake userId)
+    {
+        // Let go of whoever they were playing first, since someone plays one character at a time
+        await using var transaction = await dungeonWorldContext.Database.BeginTransactionAsync();
+        await dungeonWorldContext.Characters
+            .Where(c => c.ControlledByID == userId)
+            .ExecuteUpdateAsync(c => c.SetProperty(x => x.ControlledByID, (Snowflake?)null));
+        await dungeonWorldContext.Characters
+            .Where(c => c.ID == characterId)
+            .ExecuteUpdateAsync(c => c.SetProperty(x => x.ControlledByID, userId));
+        await transaction.CommitAsync();
+    }
+
+    public Task ReleaseAsync(Snowflake characterId)
+    {
+        return dungeonWorldContext.Characters
+            .Where(c => c.ID == characterId)
+            .ExecuteUpdateAsync(c => c.SetProperty(x => x.ControlledByID, (Snowflake?)null));
     }
 
     public async Task AddCharacterAsync(Character character)

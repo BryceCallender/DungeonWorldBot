@@ -8,5 +8,8 @@ public static class AdminServices
     /// An admin changing anything in either database, past the bot's rules.
     /// </summary>
     public static IServiceCollection AddAdmin(this IServiceCollection services, DashboardDatabases databases) =>
-        services.AddSingleton(new AdminDesk(databases));
+        services
+            .AddSingleton(new AdminSchema(databases))
+            .AddSingleton<AdminDesk>()
+            .AddSingleton<AdminConsole>();
 }

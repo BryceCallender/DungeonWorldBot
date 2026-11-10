@@ -29,6 +29,11 @@ public record AdminColumn(
     public bool IsNumber => IsInteger || IsReal;
 
     /// <summary>
+    /// Whether it can be left with nothing in it (NULL).
+    /// </summary>
+    public bool Nullable => !NotNull && !PrimaryKey;
+
+    /// <summary>
     /// Pictures and the like, which are shown by size and left as they are.
     /// </summary>
     public bool IsBlob => Type.Contains("BLOB", StringComparison.OrdinalIgnoreCase);

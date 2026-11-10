@@ -46,6 +46,12 @@ public class Character
     public string? DamageModifier { get; set; }
 
     /// <summary>
+    /// Someone else playing the character for now, through /character takeover: their commands act on this character
+    /// instead of their own until they release it.
+    /// </summary>
+    public Snowflake? ControlledByID { get; set; }
+
+    /// <summary>
     /// Where the character comes from, written by their player on the dashboard.
     /// </summary>
     public string? Backstory { get; set; }

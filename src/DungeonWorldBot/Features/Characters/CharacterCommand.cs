@@ -33,7 +33,8 @@ public class CharacterCommand(
     IResourceService resourceService,
     ILevelingService leveling,
     IGameSettingsService settings,
-    IDamageService damageService)
+    IDamageService damageService,
+    IGameMasterService gameMaster)
     : CharacterCommandBase(context, feedbackService, characterService, leveling, settings)
 {
     [Command("create")]
@@ -66,11 +67,7 @@ public class CharacterCommand(
         [AutocompleteProvider(CharacterAutocomplete.ID)]
         string? name = null)
     {
-        // Matched in full rather than by Contains, since people can send their own text instead of a suggestion
-        var id = name is not null
-            ? (await _characterService.GetCharacterNamesAsync())
-                .FirstOrDefault(c => c.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase))?.ID
-            : GetUserId();
+        var id = name is not null ? (await FindNamedAsync(name))?.ID : GetUserId();
         var character = id is { } found ? await _characterService.GetCharacterToShowAsync(found) : null;
 
         if (character is null)
@@ -87,6 +84,8 @@ public class CharacterCommand(
         embedFields.Add(new EmbedField(Name: "Health", Value: character.Health.ToDisplay(), IsInline: false));
         embedFields.Add(new EmbedField(Name: "Status", Value: character.Status?.ToString() ?? "Unknown..."));
         embedFields.Add(new EmbedField(Name: "Alignment", Value: character.Alignment.ToString()));
+        if (character.ControlledByID is { } controller)
+            embedFields.Add(new EmbedField(Name: "Played By", Value: $"<@{controller}>, for now"));
         embedFields.Add(new EmbedField(Name: "Debilities", Value: DebilityRules.Current(character) is { Count: > 0 } debilities
             ? string.Join(", ", debilities.Select(DebilityRules.Describe))
             : "None"));
@@ -271,6 +270,56 @@ public class CharacterCommand(
             )
         );
     }
+
+    [Command("takeover")]
+    [Description("Play someone else's character: your commands act on them until you release them")]
+    public async Task<IResult> TakeOverAsync(
+        [Description("The character to play")]
+        [AutocompleteProvider(CharacterAutocomplete.ID)]
+        string name)
+    {
+        var userId = GetUserId();
+        var character = await FindNamedAsync(name);
+        if (character is null)
+            return await ReplyWithErrorAsync($"No character is named {name}.");
+        if (character.ID == userId)
+            return await ReplyWithErrorAsync("That's your own character. Use /character release to go back to them.");
+        if (character.ControlledByID is { } other && other != userId)
+            return await ReplyWithErrorAsync($"<@{other}> is already playing {character.Name}.");
+
+        await _characterService.TakeOverAsync(character.ID, userId);
+        return await ReplyAsync($"Playing {character.Name}",
+            $"Your rolls, moves and spells go to {character.Name} until you use /character release.");
+    }
+
+    [Command("release")]
+    [Description("Stop playing a character you took over, or hand back yours from whoever took it over")]
+    public async Task<IResult> ReleaseAsync(
+        [Description("The character to hand back. Leave it out for the one you're playing.")]
+        [AutocompleteProvider(CharacterAutocomplete.ID)]
+        string? name = null)
+    {
+        var userId = GetUserId();
+        var character = name is not null
+            ? await FindNamedAsync(name)
+            : (await _characterService.GetCharacterNamesAsync()).FirstOrDefault(c => c.ControlledByID == userId);
+        if (character is null)
+            return await ReplyWithErrorAsync(name is null ? "You aren't playing anyone else's character." : $"No character is named {name}.");
+        if (character.ControlledByID is not { } controller)
+            return await ReplyWithErrorAsync($"Nobody has taken over {character.Name}.");
+
+        // Whoever took them over, their own player, or the DM
+        if (controller != userId && character.ID != userId && !await gameMaster.IsGameMasterAsync(CancellationToken))
+            return await ReplyWithErrorAsync($"Only <@{controller}>, {character.Name}'s player or the DM can release them.");
+
+        await _characterService.ReleaseAsync(character.ID);
+        return await ReplyAsync($"{character.Name} Released", $"<@{controller}> is no longer playing {character.Name}.");
+    }
+
+    // Matched in full rather than by Contains, since people can send their own text instead of a suggestion
+    private async Task<CharacterName?> FindNamedAsync(string name) =>
+        (await _characterService.GetCharacterNamesAsync())
+            .FirstOrDefault(c => c.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase));
 
     /// <summary>
     /// Spending the stat points the DM gives out when the party levels up. Levels and points per level are set under /dm level.

@@ -3,6 +3,10 @@ namespace DungeonWorldBot.Dashboard.Services.Live;
 /// <summary>
 /// A server-sent event stream that tells open pages when the bot changed something, so they can refresh in place.
 /// </summary>
+/// <remarks>
+/// A change says which databases it was in, like "game" or "game scenes" (see <see cref="Models.Live.WatchedDatabase"/>).
+/// Boards change with every stroke, and most pages show nothing from them, so app.js leaves those changes alone.
+/// </remarks>
 public static class LiveUpdates
 {
     // Comfortably inside the idle timeouts of tunnels and proxies (Cloudflare's is 100 seconds)
@@ -32,7 +36,7 @@ public static class LiveUpdates
                 {
                     var change = watcher.NextChange;
                     var finished = await Task.WhenAny(change, Task.Delay(Heartbeat, ct));
-                    await SendAsync(context, finished == change ? "data: changed\n\n" : Ping);
+                    await SendAsync(context, finished == change ? $"data: {string.Join(' ', await change)}\n\n" : Ping);
                 }
             }
             catch (OperationCanceledException)

@@ -3,7 +3,8 @@
 @using DungeonWorldBot.Dashboard.Models.Admin
 @using DungeonWorldBot.Dashboard.Services.Admin
 @using static DungeonWorldBot.Dashboard.Helpers.AdminFormat
-@inject AdminDesk Desk
+@inject AdminSchema Schema
+@inject AdminConsole Console
 @inject Viewer Viewer
 
 @* An admin's way past the bot's rules: every table in both databases to open and change a row at a time, and a box for
@@ -41,7 +42,7 @@
         <section class="desk-section" id="sql">
             <div class="desk-head">
                 <h2>SQL</h2>
-                <span class="small">Runs as typed. Up to @AdminDesk.MaxQueryRows rows are shown.</span>
+                <span class="small">Runs as typed. Up to @AdminConsole.MaxRows rows are shown.</span>
             </div>
             <form method="post" @formname="admin-sql" @onsubmit="RunAsync" action="admin#sql" class="card admin-sql">
                 <AntiforgeryToken />
@@ -75,7 +76,7 @@
                 }
                 else
                 {
-                    <p class="small">@Plural(result.Rows.Count, "row")@(result.Truncated ? $", cut off at {AdminDesk.MaxQueryRows}" : "")</p>
+                    <p class="small">@Plural(result.Rows.Count, "row")@(result.Truncated ? $", cut off at {AdminConsole.MaxRows}" : "")</p>
                     <div class="card admin-grid">
                         <table>
                             <thead>
@@ -124,7 +125,7 @@
         if (!Viewer.CanAdminister)
             return;
 
-        _result = await Desk.RunAsync(Query!.Database, Query.Sql ?? "");
+        _result = await Console.RunAsync(Query!.Database, Query.Sql ?? "");
         // What it changed shows in the counts too
         await LoadTablesAsync();
     }
@@ -132,7 +133,7 @@
     private async Task LoadTablesAsync()
     {
         foreach (var database in Enum.GetValues<AdminDatabase>())
-            _tables[database] = await Desk.GetTablesAsync(database);
+            _tables[database] = await Schema.GetTablesAsync(database);
     }
 
     private class SqlForm

@@ -1,0 +1,201 @@
+@page "/session/{Number:int}/journey/edit"
+@namespace DungeonWorldBot.Dashboard.Pages
+@using DungeonWorldBot.Dashboard.Models.Sessions
+@using DungeonWorldBot.Dashboard.Services.Rolls
+@using DungeonWorldBot.Dashboard.Services.Sessions
+@using DungeonWorldBot.Features.Rolls
+@inject SessionReader Sessions
+@inject JourneyReader Journeys
+@inject RollReader RollReader
+@inject PartyReader PartyReader
+@inject DashboardSettings Settings
+@inject Viewer Viewer
+
+@* For the DM to fill in where the party went in a session the fights don't show, like an older one: the stops so far,
+   a form for adding one, and clues from what the bot kept, chiefly who was rolling when. Someone quiet for a long
+   stretch while others rolled was likely off somewhere else. Each roll links to its message in Discord, for reading
+   what was going on around it. *@
+@if (_journey is not { } j)
+{
+    <PageTitle>Not found · Sana Solem</PageTitle>
+    <h1>Not found</h1>
+    <p class="empty">No session @Number yet. <a href="sessions">All sessions</a></p>
+    return;
+}
+
+<PageTitle>Fill in the road · @j.Session.Name · Sana Solem</PageTitle>
+
+<a class="back" href="@j.Session.Url/journey">← The journey</a>
+
+<header class="journey-head">
+    <h1 class="has-icon"><Icon Name="compass" />Fill in the road</h1>
+    <div class="muted">@j.Session.Name · @j.Session.Session.StartedAt.ToLocalTime().ToString("dddd d MMMM yyyy")</div>
+</header>
+
+@if (!Viewer.CanRunGame)
+{
+    <p class="empty">Only the DM fills in where the party went.</p>
+    return;
+}
+
+@if (Error is { } error)
+{
+    <p class="form-error">@error</p>
+}
+
+<h2 class="section-title">Who was rolling when</h2>
+<p class="small">Each tick is a roll, green strong, amber weak, red a miss@(Settings.GuildID is null ? "" : "; click one to read around it in Discord"). Someone quiet while the others rolled was likely somewhere else. Numbers along the top are the stops so far. Click the chart to set a new stop's time.</p>
+<section class="card clue-card">@Clues(j)</section>
+
+<div class="journey-edit">
+    <section class="card journey-add" id="add-stop">
+        <h2>Add a stop</h2>
+        <form method="post" action="api/map/sessions/@Number/stops">
+            <AntiforgeryToken />
+            <label class="field-label" for="stop-place">Where</label>
+            <input id="stop-place" name="place" list="stop-places" maxlength="80" required placeholder="Mirefen Bridge" />
+            <datalist id="stop-places">
+                @foreach (var place in _places)
+                {
+                    <option value="@place"></option>
+                }
+            </datalist>
+
+            <label class="field-label" for="stop-at">When they got there</label>
+            <input id="stop-at" name="at" type="datetime-local" required data-stop-at
+                   min="@Local(j.Session.Session.StartedAt)" max="@Local(_end)" value="@Local(j.Session.Session.StartedAt)" />
+
+            <fieldset class="journey-who">
+                <legend class="field-label">Who went</legend>
+                @foreach (var c in _party)
+                {
+                    <label><input type="checkbox" name="who" value="@c.ID" checked /> @c.Name</label>
+                }
+            </fieldset>
+
+            <button type="submit" class="tool">Add the stop</button>
+        </form>
+    </section>
+
+    <section class="card journey-so-far">
+        <h2>The road so far</h2>
+        @if (j.Stops.Count == 0)
+        {
+            <p class="small muted">No stops yet. Fights add theirs; add the rest here.</p>
+        }
+        <ol class="journey-edit-stops">
+            @foreach (var (stop, i) in j.Stops.Select((s, i) => (s, i)))
+            {
+                <li>
+                    <span class="journey-number">@(i + 1)</span>
+                    <div class="journey-edit-body">
+                        <strong>@stop.Place</strong>
+                        <span class="small muted">@stop.At.ToLocalTime().ToString("h:mm tt") · @WhoLine(stop)</span>
+                    </div>
+                    @if (stop.LoggedID is { } id)
+                    {
+                        <form method="post" action="api/map/sessions/@Number/stops/@id/delete">
+                            <AntiforgeryToken />
+                            <button type="submit" class="tool" title="Take this stop away">Remove</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <span class="small muted" title="Stops from fights come from the bot">Fight</span>
+                    }
+                </li>
+            }
+        </ol>
+    </section>
+</div>
+
+<script src="journey-edit.js" defer></script>
+
+@code {
+    [Parameter]
+    public int Number { get; set; }
+
+    [SupplyParameterFromQuery]
+    public string? Error { get; set; }
+
+    private const double Width = 760, Left = 120, Right = 12, Lane = 34, Row = 26;
+
+    private Journey? _journey;
+    private IReadOnlyList<CharacterView> _party = [];
+    private List<RollRecord> _rolls = [];
+    private List<string> _places = [];
+    private DateTimeOffset _end;
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (await Sessions.GetAsync(Number) is not { } session)
+            return;
+
+        _journey = await Journeys.GetAsync(session);
+        _party = await PartyReader.GetPartyAsync();
+        _end = session.Session.EndedAt ?? session.AsOf;
+        _rolls = await RollReader.GetRollsAsync(session.Session.StartedAt, _end);
+        _places = _journey.Map.Places.Keys.Concat(_journey.Stops.Select(s => s.Place))
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .Order(StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    private static string Local(DateTimeOffset at) => at.ToLocalTime().ToString("yyyy-MM-ddTHH:mm");
+
+    private static string WhoLine(JourneyStop stop) => stop.WholeParty ? "everyone" : string.Join(", ", stop.Who);
+
+    // Across the session from left to right, a row for each character with their rolls on it, and the stops on top
+    private RenderFragment Clues(Journey j)
+    {
+        var start = j.Session.Session.StartedAt;
+        var span = Math.Max(60, (_end - start).TotalSeconds);
+        var plot = Width - Left - Right;
+        double XAt(DateTimeOffset at) => Left + Math.Clamp((at - start).TotalSeconds / span, 0, 1) * plot;
+        string X(DateTimeOffset at) => Num(XAt(at));
+        double RowY(int i) => Lane + i * Row + Row / 2;
+        var height = Lane + _party.Count * Row + 22;
+        var halfHours = Enumerable.Range(0, (int)(span / 1800) + 1).Select(n => start.AddMinutes(n * 30));
+
+        return @<svg class="clue-chart" viewBox="0 0 @Num(Width) @Num(height)" role="img" aria-label="Who rolled when over the session"
+                     data-clues data-start="@start.ToUnixTimeMilliseconds()" data-span="@Num(span * 1000)" data-left="@Num(Left)" data-plot="@Num(plot)">
+            @foreach (var at in halfHours)
+            {
+                <g>
+                    <line class="grid" x1="@X(at)" x2="@X(at)" y1="@Num(Lane - 6)" y2="@Num(height - 18)" />
+                    <text class="axis" x="@X(at)" y="@Num(height - 4)" text-anchor="middle">@at.ToLocalTime().ToString("h:mm")</text>
+                </g>
+            }
+            @foreach (var (stop, i) in j.Stops.Select((s, i) => (s, i)))
+            {
+                <g class="clue-stop @(stop.LoggedID is null ? "fight" : "logged")">
+                    <circle cx="@X(stop.At)" cy="14" r="10" />
+                    <text x="@X(stop.At)" y="18" text-anchor="middle">@(i + 1)</text>
+                    <title>@(i + 1). @stop.Place, @stop.At.ToLocalTime().ToString("h:mm tt") (@WhoLine(stop))</title>
+                </g>
+            }
+            @foreach (var (c, i) in _party.Select((c, i) => (c, i)))
+            {
+                <g>
+                    <line class="lane" x1="@Num(Left)" x2="@Num(Width - Right)" y1="@Num(RowY(i))" y2="@Num(RowY(i))" />
+                    <text class="who" x="@Num(Left - 8)" y="@Num(RowY(i) + 4)" text-anchor="end">@c.Name</text>
+                </g>
+                @foreach (var roll in _rolls.Where(r => r.UserID.Value == c.Character.ID.Value))
+                {
+                    @RollTick(roll, XAt(roll.MessageID.Timestamp), RowY(i))
+                }
+            }
+            <line class="clue-cursor" data-cursor x1="@Num(Left)" x2="@Num(Left)" y1="@Num(Lane - 6)" y2="@Num(height - 18)" />
+        </svg>;
+    }
+
+    private RenderFragment RollTick(RollRecord roll, double x, double y)
+    {
+        var dice = MoveDice.Of(roll);
+        var tip = $"{roll.MessageID.Timestamp.ToLocalTime():h:mm tt} · {roll.Move ?? "Roll"} · {roll.Total}";
+        RenderFragment tick = @<line class="tick @OutcomeClass(dice.Outcome)" x1="@Num(x)" x2="@Num(x)" y1="@Num(y - 8)" y2="@Num(y + 8)"><title>@tip</title></line>;
+        return Settings.MessageUrl(roll.ChannelID.Value, roll.MessageID.Value) is { } url
+            ? @<a href="@url" target="_blank" rel="noopener">@tick</a>
+            : tick;
+    }
+}
