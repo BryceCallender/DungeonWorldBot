@@ -53,7 +53,7 @@ else
 
 @if (!j.Stops.Any())
 {
-    <p class="empty">@EmptyLine Stops come from the scenes fights are on.</p>
+    <p class="empty">@EmptyLine Stops come from the scenes made during a session, and the ones fights are on.</p>
     return;
 }
 
@@ -138,8 +138,8 @@ else
     private string Title => _session is { } s ? $"The journey · {s.Name}" : "The whole journey";
 
     private string EmptyLine => _session is null
-        ? "The party hasn't fought anywhere yet, so there's no road to follow."
-        : "The party didn't fight anywhere this session, so there's no road to follow.";
+        ? "The party hasn't been anywhere yet, so there's no road to follow."
+        : "The party didn't go anywhere this session, so there's no road to follow.";
 
     protected override async Task OnParametersSetAsync()
     {

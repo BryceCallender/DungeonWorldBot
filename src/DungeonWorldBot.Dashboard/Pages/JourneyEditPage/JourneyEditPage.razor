@@ -11,7 +11,7 @@
 @inject DashboardSettings Settings
 @inject Viewer Viewer
 
-@* For the DM to fill in where the party went in a session the fights don't show, like an older one: the stops so far,
+@* For the DM to fill in where the party went in a session its scenes and fights don't show, like an older one: the stops so far,
    a form for adding one, and clues from what the bot kept, chiefly who was rolling when. Someone quiet for a long
    stretch while others rolled was likely off somewhere else. Each roll links to its message in Discord, for reading
    what was going on around it. *@
@@ -81,7 +81,7 @@
         <h2>The road so far</h2>
         @if (j.Stops.Count == 0)
         {
-            <p class="small muted">No stops yet. Fights add theirs; add the rest here.</p>
+            <p class="small muted">No stops yet. Scenes and fights add theirs; add the rest here.</p>
         }
         <ol class="journey-edit-stops">
             @foreach (var (stop, i) in j.Stops.Select((s, i) => (s, i)))
@@ -101,7 +101,7 @@
                     }
                     else
                     {
-                        <span class="small muted" title="Stops from fights come from the bot">Fight</span>
+                        <span class="small muted" title="Stops from scenes and fights add themselves">@(stop.Fought ? "Fight" : "Scene")</span>
                     }
                 </li>
             }

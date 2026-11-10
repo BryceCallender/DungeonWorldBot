@@ -7,6 +7,7 @@
 @using DungeonWorldBot.Features.Moves
 @using DungeonWorldBot.Features.Rolls
 @inject SessionReader Sessions
+@inject JourneyReader Journeys
 @inject RollReader RollReader
 @inject PartyReader PartyReader
 @inject CharacterHistory History
@@ -28,7 +29,7 @@
 <nav class="session-nav">
     <a class="back" href="sessions">← Sessions</a>
     <span class="session-pager">
-        @if (_fights.Count > 0)
+        @if (_hasJourney)
         {
             <a class="tool has-icon" href="@s.Url/journey"><Icon Name="compass" />The journey</a>
         }
@@ -157,6 +158,7 @@ else
     private int _count;
     private List<RollRecord> _rolls = [];
     private List<Encounter> _fights = [];
+    private bool _hasJourney;
     private List<CharacterChanges> _changes = [];
     private SessionAwards? _awards;
     private IReadOnlyList<CharacterView> _party = [];
@@ -172,6 +174,7 @@ else
         _rolls = await RollReader.GetRollsAsync(s.Session.StartedAt, to);
         _awards = await RollReader.GetAwardsAsync(s.Session.StartedAt, to, leaveOut: Settings.DungeonMasterID);
         _fights = await Sessions.GetFightsAsync(s);
+        _hasJourney = (await Journeys.GetAsync(s)).Stops.Count > 0;
         _party = await PartyReader.GetPartyAsync();
         _changes = (await History.GetChangesAsync(s.Session.StartedAt, to)).OrderBy(c => Who(c.CharacterID.Value)).ToList();
     }

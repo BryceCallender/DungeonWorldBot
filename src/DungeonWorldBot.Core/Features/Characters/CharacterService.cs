@@ -52,6 +52,7 @@ public class CharacterService(DungeonWorldContext dungeonWorldContext, ICommandU
             .AsNoTracking()
             .Include(c => c.Class)
             .Include(c => c.Abilities)
+            .Include(c => c.Transformations)
             .FirstOrDefaultAsync(c => c.ID == id);
     }
 

@@ -25,6 +25,18 @@ public class CanvasStore(CanvasContext db, TimeProvider time)
             .OrderByDescending(c => c.UpdatedAt)
             .ToListAsync();
 
+    /// <returns>The encounter scenes made in a stretch of time, oldest first, whether or not they've been put away
+    /// since.</returns>
+    public Task<List<Canvas>> MadeBetweenAsync(DateTimeOffset from, DateTimeOffset? to)
+    {
+        var start = from.UtcDateTime;
+        var end = to?.UtcDateTime;
+        return db.Canvases.AsNoTracking()
+            .Where(c => c.Kind == CanvasKind.Encounter && c.CreatedAt >= start && (end == null || c.CreatedAt <= end))
+            .OrderBy(c => c.CreatedAt)
+            .ToListAsync();
+    }
+
     public Task<Canvas?> FindAsync(int id) =>
         db.Canvases.AsNoTracking().FirstOrDefaultAsync(c => c.ID == id);
 

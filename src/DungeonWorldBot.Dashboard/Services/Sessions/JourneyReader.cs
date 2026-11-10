@@ -10,8 +10,8 @@ using Microsoft.EntityFrameworkCore;
 namespace DungeonWorldBot.Dashboard.Services.Sessions;
 
 /// <summary>
-/// Where the party went over a session, for playing back on the campaign's map: a stop for each scene they fought on,
-/// and each stop the DM added by hand, in order, with who went and what happened there.
+/// Where the party went over a session, for playing back on the campaign's map: a stop for each scene made during it,
+/// each scene they fought on, and each stop the DM added by hand, in order, with who went and what happened there.
 /// </summary>
 /// <remarks>
 /// Everything belongs to the stop the party was at when it happened, from arriving until the next stop; anything from
@@ -22,6 +22,7 @@ public class JourneyReader(
     CharacterHistory history,
     PartyReader party,
     CampaignMap map,
+    CanvasStore scenes,
     DungeonWorldContext context,
     TimeProvider time)
 {
@@ -62,8 +63,10 @@ public class JourneyReader(
         var everyone = characters.Select(c => c.Character.ID.Value).ToList();
         var logged = logs.GetValueOrDefault(session.Session.ID) ?? [];
 
+        var fought = (await FightArrivalsAsync(fights, everyone)).ToList();
         var arrivals = Merged([
-            .. await FightArrivalsAsync(fights, everyone),
+            .. await SceneArrivalsAsync(session, fought, everyone),
+            .. fought,
             .. logged.Select(l => new Arrival(l.Place, l.At, l.Who, l.ID)),
         ]);
 
@@ -95,7 +98,21 @@ public class JourneyReader(
         return fights.Select(f => new Arrival(PlaceOf(f), f.StartedAt, fighters[f.ID].Any() ? [.. fighters[f.ID]] : everyone));
     }
 
-    // In order, back-to-back fights in one place by the same people being one stop
+    // Each scene made during the session, from when it was made. Whoever first fought on it went, so the scene and its
+    // fight are one stop; everyone did when nobody has fought there
+    private async Task<IEnumerable<Arrival>> SceneArrivalsAsync(
+        SessionSummary session,
+        IReadOnlyList<Arrival> fought,
+        IReadOnlyList<ulong> everyone)
+    {
+        var made = await scenes.MadeBetweenAsync(session.Session.StartedAt, session.Session.EndedAt);
+        return made.Select(scene => new Arrival(
+            scene.Name,
+            new DateTimeOffset(DateTime.SpecifyKind(scene.CreatedAt, DateTimeKind.Utc)),
+            fought.FirstOrDefault(f => f.IsAt(scene.Name))?.Who ?? everyone));
+    }
+
+    // In order, a scene and the fights on it, or back-to-back fights in one place, by the same people being one stop
     private static List<Arrival> Merged(IEnumerable<Arrival> arrivals) =>
         arrivals.OrderBy(a => a.At)
             .Aggregate(new List<Arrival>(), (merged, next) =>
@@ -118,13 +135,13 @@ public class JourneyReader(
     private static string Led(string? name, string text) =>
         name is null || text.Length == 0 ? text : $"{name} {char.ToLowerInvariant(text[0])}{text[1..]}";
 
-    /// <param name="LoggedID">For a stop the DM added by hand; null for a fight's.</param>
+    /// <param name="LoggedID">For a stop the DM added by hand; null for a scene's or a fight's.</param>
     private record Arrival(string Place, DateTimeOffset At, IReadOnlyList<ulong> Who, string? LoggedID = null)
     {
-        // The same fighters still in the same place, rather than somewhere new
+        public bool IsAt(string place) => string.Equals(Place, place, StringComparison.OrdinalIgnoreCase);
+
+        // The same people still in the same place, rather than somewhere new
         public bool Continues(Arrival next) =>
-            LoggedID is null && next.LoggedID is null
-            && string.Equals(Place, next.Place, StringComparison.OrdinalIgnoreCase)
-            && Who.Order().SequenceEqual(next.Who.Order());
+            LoggedID is null && next.LoggedID is null && IsAt(next.Place) && Who.Order().SequenceEqual(next.Who.Order());
     }
 }
