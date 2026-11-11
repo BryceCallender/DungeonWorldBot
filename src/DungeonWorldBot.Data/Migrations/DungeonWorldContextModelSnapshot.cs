@@ -115,6 +115,9 @@ namespace DungeonWorldBot.Data.Migrations
                     b.Property<string>("Backstory")
                         .HasColumnType("TEXT");
 
+                    b.Property<long?>("ControlledByID")
+                        .HasColumnType("INTEGER");
+
                     b.Property<string>("DamageModifier")
                         .HasColumnType("TEXT");
 
@@ -144,6 +147,9 @@ namespace DungeonWorldBot.Data.Migrations
                         .HasColumnType("INTEGER");
 
                     b.HasKey("ID");
+
+                    b.HasIndex("ControlledByID")
+                        .IsUnique();
 
                     b.HasIndex("LocationID");
 
