@@ -29,6 +29,7 @@ public class ClassCommand(
     private const int MovesPerPage = 6;
 
     [Command("sheet")]
+    [DisplayName("See your class sheet")]
     [Description("Show a character's class sheet: resources, choices still to make, and advanced moves")]
     public async Task<IResult> ShowSheetAsync(
         [Description("The user to see the class sheet of. Don't specify a user to see your own.")]
@@ -104,6 +105,7 @@ public class ClassCommand(
     }
 
     [Command("setup")]
+    [DisplayName("Add missing starting moves")]
     [Description("Add any starting moves from your class sheet that your character is missing")]
     public async Task<IResult> SetupAsync()
     {
@@ -134,6 +136,7 @@ public class ClassCommand(
     }
 
     [Command("moves")]
+    [DisplayName("See moves you can take")]
     [Description("List the advanced moves you can choose from at your level")]
     public async Task<IResult> ListMovesAsync()
     {
@@ -173,6 +176,7 @@ public class ClassCommand(
     }
 
     [Command("learn")]
+    [DisplayName("Learn a class move")]
     [Description("Learn a move from your class sheet: an advanced move, a class choice, or a Shaman spirit totem")]
     public async Task<IResult> LearnAsync(
         [Description("The move to learn")]
@@ -223,6 +227,7 @@ public class ClassCommand(
     }
 
     [Command("info")]
+    [DisplayName("Read a class move")]
     [Description("Read any move from a class sheet")]
     public async Task<IResult> InfoAsync(
         [Description("The move to look up")]

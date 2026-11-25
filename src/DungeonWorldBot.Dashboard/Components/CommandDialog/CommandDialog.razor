@@ -1,0 +1,28 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* The one dialog every bot command runs from (commands.js): opened by a button with data-run-command, it's filled in
+   with that command's options, sends it to the bot and shows what the bot said. Outside main, so a live update of the
+   page doesn't close it partway. *@
+@inject Viewer Viewer
+
+<dialog id="command-dialog" class="modal command-dialog" aria-labelledby="command-dialog-title"
+        data-command-dialog data-as="@Viewer.ID">
+    <form data-command-form novalidate>
+        <AntiforgeryToken />
+        <div class="modal-head">
+            <h2 id="command-dialog-title" data-command-title></h2>
+            <button type="button" class="modal-close" data-close-dialog aria-label="Close">×</button>
+        </div>
+        <div class="modal-body">
+            <p class="muted" data-command-description></p>
+            @* For anyone who'd like to learn it, the same thing in Discord *@
+            <p class="small command-discord" data-command-discord></p>
+            <div class="desk-fields" data-command-fields></div>
+            <p class="form-error" data-command-error role="alert" hidden></p>
+            <div class="modal-actions">
+                <button type="button" class="tool" data-close-dialog>Close</button>
+                <button class="tool create" data-command-submit>Run</button>
+            </div>
+            <div class="command-reply" data-command-reply aria-live="polite"></div>
+        </div>
+    </form>
+</dialog>

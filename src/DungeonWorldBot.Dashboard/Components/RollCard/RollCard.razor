@@ -1,0 +1,92 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* Roll buttons for every move the character can make, for whoever's playing them (anyone, with sign-in off). app.js sends
+   each to the bot, which rolls it into game chat like /move, and says here how it went. *@
+@using DungeonWorldBot.Dashboard.Models.Encounters
+@inject RollableMoves Rollable
+@inject PartyReader Party
+
+@if (_moves.Count > 0)
+{
+    <section class="card wide classed roll-card" id="roll" style="@Lookup.ColorOf(View.Character.Class.Type)"
+             data-roll-card data-roll-url="@($"api/characters/{View.ID}/rolls")">
+        <CardHeader Title="Roll">
+            <Subtitle>Rolled by the bot into game chat, like /move</Subtitle>
+            <Tools>
+                <span class="roll-bonus" title="Any +forward, ongoing bonus or penalty, for the next roll">
+                    <button type="button" class="tool" data-roll-bonus-step="-1" aria-label="Lower the bonus">−</button>
+                    <span><span class="small">Bonus</span> <strong data-roll-bonus>+0</strong></span>
+                    <button type="button" class="tool" data-roll-bonus-step="1" aria-label="Raise the bonus">+</button>
+                </span>
+            </Tools>
+        </CardHeader>
+        <AntiforgeryToken />
+        <p class="roll-status" data-roll-status role="status" aria-live="polite" hidden></p>
+
+        @foreach (var group in Groups())
+        {
+            <h3 class="roll-group">@group.Key</h3>
+            <ul class="roll-moves">
+                @foreach (var move in group)
+                {
+                    <li>
+                        <form class="roll-move" data-roll>
+                            <input type="hidden" name="move" value="@move.Name" />
+                            <input type="hidden" name="classMove" value="@(move.Kind == MoveRequestKind.ClassMove ? "true" : "false")" />
+                            <span class="roll-name">@move.Name</span>
+                            @if (move.StatModifiers is { } stats)
+                            {
+                                <select class="filter" name="stat" aria-label="Stat to roll @move.Name with">
+                                    @foreach (var (stat, modifier) in stats)
+                                    {
+                                        <option value="@stat">@stat.ToUpper() @Signed(modifier)</option>
+                                    }
+                                </select>
+                            }
+                            else if (move.Modifier is { } modifier)
+                            {
+                                <span class="roll-mod">@Signed(modifier)</span>
+                            }
+                            @if (move.Aim == BoardAim.Ally)
+                            {
+                                <select class="filter" name="ally" aria-label="Whose character to help or hinder">
+                                    @foreach (var ally in _allies)
+                                    {
+                                        <option value="@ally.ID">@ally.Name</option>
+                                    }
+                                </select>
+                            }
+                            <button type="submit" class="tool roll-button">Roll</button>
+                        </form>
+                    </li>
+                }
+            </ul>
+        }
+    </section>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public CharacterView View { get; set; } = null!;
+
+    /// <summary>
+    /// Whether the viewer plays the character (see <see cref="SheetRolls.CanRollAsync"/>), so the card shows at all.
+    /// </summary>
+    [Parameter]
+    public bool Playable { get; set; }
+
+    private IReadOnlyList<BoardMove> _moves = [];
+    private IReadOnlyList<CharacterView> _allies = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (!Playable)
+            return;
+
+        // Aid needs someone to aid, so it's left off when there's nobody else in the party
+        _allies = (await Party.GetPartyAsync()).Where(c => c.ID != View.ID).ToList();
+        _moves = Rollable.For(View.Character).Where(m => m.Aim != BoardAim.Ally || _allies.Count > 0).ToList();
+    }
+
+    private IEnumerable<IGrouping<string, BoardMove>> Groups() =>
+        _moves.GroupBy(m => m.Kind == MoveRequestKind.ClassMove ? "Class moves" : "Basic moves");
+}

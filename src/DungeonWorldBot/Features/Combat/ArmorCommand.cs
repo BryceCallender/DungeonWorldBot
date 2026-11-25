@@ -30,6 +30,7 @@ public class ArmorCommand(
     private const string DefaultSource = "Bonus armor";
 
     [Command("show")]
+    [DisplayName("See armor")]
     [Description("Show a character's physical, magical and divine armor, and any temporary armor")]
     public async Task<IResult> ShowAsync(
         [Description("The user to see the armor of. Don't specify a user to see your own.")]
@@ -43,6 +44,7 @@ public class ArmorCommand(
     }
 
     [Command("set")]
+    [DisplayName("Set your armor")]
     [Description("Set your own physical, magical or divine armor, e.g. after changing gear (the DM can set anyone's)")]
     public async Task<IResult> SetAsync(
         [Description("Physical stops physical damage, magical stops magical, divine stops divine weapons and powers")]
@@ -68,6 +70,7 @@ public class ArmorCommand(
     }
 
     [Command("add")]
+    [DisplayName("Add temporary armor")]
     [Description("Give temporary armor, like Guardian's Stand or a Lightning barrier")]
     public async Task<IResult> AddAsync(
         [Description("How much armor. Negative lowers it, e.g. sundered armor")]
@@ -109,6 +112,7 @@ public class ArmorCommand(
     }
 
     [Command("remove")]
+    [DisplayName("Remove temporary armor")]
     [Description("Remove temporary armor by its source, or all of it")]
     public async Task<IResult> RemoveAsync(
         [Description("The source it was added with. Leave blank to remove all temporary armor")]
@@ -133,6 +137,7 @@ public class ArmorCommand(
     }
 
     [Command("end-fight")]
+    [DisplayName("Clear fight armor")]
     [Description("The fight is over: remove everyone's temporary armor that lasted for the fight or until hit")]
     public async Task<IResult> EndFightAsync()
     {

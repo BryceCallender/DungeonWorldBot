@@ -38,6 +38,7 @@ public class CharacterCommand(
     : CharacterCommandBase(context, feedbackService, characterService, leveling, settings)
 {
     [Command("create")]
+    [DisplayName("Create a character")]
     [Description("Create your character for the campaign")]
     public async Task<IResult> CreateCharacterAsync()
     {
@@ -61,6 +62,7 @@ public class CharacterCommand(
     }
 
     [Command("profile")]
+    [DisplayName("See a character sheet")]
     [Description("Show a character sheet")]
     public async Task<IResult> ShowCharacterSheetAsync(
         [Description("The character to show. Leave it out to see your own.")]
@@ -150,6 +152,7 @@ public class CharacterCommand(
     }
 
     [Command("bond")]
+    [DisplayName("Form a bond")]
     [Description("Form a bond with another player's character")]
     public async Task<IResult> AddCharacterBondAsync(
         [Description("The user to bond with")]
@@ -172,6 +175,7 @@ public class CharacterCommand(
     }
 
     [Command("damage")]
+    [DisplayName("Apply damage")]
     [Description("Apply damage to a player's character, reduced by their armor against its type")]
     public async Task<IResult> DamagePlayerAsync(
         [Description("The user to apply damage to.")]
@@ -205,6 +209,7 @@ public class CharacterCommand(
     }
 
     [Command("heal")]
+    [DisplayName("Heal a character")]
     [Description("Heal a player's character")]
     public async Task<IResult> HealPlayerAsync(
         [Description("The user to apply healing to.")]
@@ -244,6 +249,7 @@ public class CharacterCommand(
     }
 
     [Command("damage-dice")]
+    [DisplayName("Change damage dice")]
     [Description("Change the dice your character rolls for damage")]
     public async Task<IResult> ChangeDamageModifierAsync(
         [Description("Dice notation for your damage, e.g. d8+1")]
@@ -272,6 +278,7 @@ public class CharacterCommand(
     }
 
     [Command("takeover")]
+    [DisplayName("Play someone else's character")]
     [Description("Play someone else's character: your commands act on them until you release them")]
     public async Task<IResult> TakeOverAsync(
         [Description("The character to play")]
@@ -293,6 +300,7 @@ public class CharacterCommand(
     }
 
     [Command("release")]
+    [DisplayName("Hand a character back")]
     [Description("Stop playing a character you took over, or hand back yours from whoever took it over")]
     public async Task<IResult> ReleaseAsync(
         [Description("The character to hand back. Leave it out for the one you're playing.")]
@@ -334,6 +342,7 @@ public class CharacterCommand(
         : CharacterCommandBase(context, feedbackService, characterService, leveling, settings)
     {
         [Command("allocate")]
+        [DisplayName("Raise a stat")]
         [Description("Spend a stat point from leveling up to raise a stat by 1 (max 18)")]
         public async Task<IResult> AllocateStatAsync(
             [Description("The stat to raise")]
@@ -367,6 +376,7 @@ public class CharacterCommand(
         }
 
         [Command("points")]
+        [DisplayName("See stat points per level")]
         [Description("Show how many stat points each level gives")]
         public async Task<IResult> ShowLevelPointsAsync()
         {

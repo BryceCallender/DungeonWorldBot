@@ -2,6 +2,7 @@ using System.ComponentModel;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Abilities;
 using DungeonWorldBot.Features.Characters;
+using DungeonWorldBot.Features.Classes;
 using DungeonWorldBot.Features.Combat;
 using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Rolls;
@@ -30,6 +31,7 @@ public enum VowEnding
 /// The Champion of Luna's moves that need more than a plain roll. Revelation is rolled with /move class.
 /// </summary>
 [Group("luna")]
+[ForClassMechanic(ClassMechanic.ChampionOfLuna)]
 public class LunaCommand(
     ICommandContext context,
     FeedbackService feedbackService,
@@ -44,6 +46,7 @@ public class LunaCommand(
 {
 
     [Command("vow")]
+    [DisplayName("Make a vow")]
     [Description("Declare an objective in Luna's name and choose a Boon of Luna")]
     public async Task<IResult> VowAsync(
         [Description("Wrath: +damage, Aptitude: +a stat, Veil: touch magic, Fortune: +Last Breath")]
@@ -77,6 +80,7 @@ public class LunaCommand(
     }
 
     [Command("vow-end")]
+    [DisplayName("End your vow")]
     [Description("End your Vow: the objective was completed, abandoned, or became impossible")]
     public async Task<IResult> EndVowAsync(
         [Description("How the Vow ended")]
@@ -104,6 +108,7 @@ public class LunaCommand(
     }
 
     [Command("blood-moon")]
+    [DisplayName("Blood moon")]
     [Description("Sacrifice HP to empower an attack that hit, then roll +CHA to recover it")]
     public async Task<IResult> BloodMoonAsync(
         [Description("How much of your own HP to sacrifice")]
@@ -203,6 +208,7 @@ public class LunaCommand(
     }
 
     [Command("lunar-barrage")]
+    [DisplayName("Lunar barrage")]
     [Description("Channel Luna into your bow: exploding d10 damage to up to 3 enemies (+DEX)")]
     public async Task<IResult> LunarBarrageAsync(
         [Description(BonusDescription)] int bonus = 0,
@@ -240,6 +246,7 @@ public class LunaCommand(
     }
 
     [Command("life-for-life")]
+    [DisplayName("Life for life")]
     [Description("Trade your life for an enemy's: they die, you drop to 0 HP and roll Last Breath")]
     public async Task<IResult> LifeForLifeAsync(
         [Option("enemy-level")]

@@ -1,23 +1,47 @@
 @namespace DungeonWorldBot.Dashboard.Components
+@using DungeonWorldBot.Dashboard.Services.Bridge
 @using DungeonWorldBot.Features.Classes.Guides
-@* Numbered steps, each with the slash commands that do it on Discord: a class's guide, or what a character can use *@
+@inject CommandCatalogReader Catalog
+@* Numbered steps, each with the bot commands that do it: a class's guide or someone else's character, as slash
+   commands to copy into Discord; or, for whoever plays the character, buttons that run them (commands.js), called by
+   their plain titles, like "Change shape", with what they're picked for, like a move's name, first *@
 <ol class="guide-steps">
     @foreach (var step in Steps)
     {
         <li>
             <h3>@step.Title</h3>
-            <p>@ToHtml(step.Text)</p>
+            @* The steps explain the slash commands, which a button to run doesn't need *@
+            @if (!Compact && RunAs is null)
+            {
+                <p>@ToHtml(step.Text)</p>
+            }
             <div class="guide-commands">
                 @foreach (var command in step.Commands)
                 {
-                    @* Clicking copies the command to paste into Discord, which then asks for the pick *@
-                    <button type="button" class="command" data-copy="@command.Command" title="Copy @command.Command (@Describe(command))"><code>@command.Command</code>@if (command.Pick is { } pick)
+                    @if (RunAs is { } runAs)
                     {
-                        <span class="pick">@pick</span>
-                    }@if (command.Note is { } note)
+                        var title = TitleOf(command);
+                        <button type="button" class="command runnable" data-run-command="@PathOf(command)" data-run-as="@runAs"
+                                data-run-pick="@command.Pick" title="@Describe(command.Pick, title, command.Note)"><span class="command-title">@(command.Pick ?? title)</span>@if (command.Pick is not null)
+                        {
+                            <span class="pick">@title</span>
+                        }@if (command.Note is { } note)
+                        {
+                            <span class="note">@note</span>
+                        }</button>
+                    }
+                    else
                     {
-                        <span class="note">@note</span>
-                    }</button>
+                        @* Copied to paste into Discord, which then asks for the pick *@
+                        <button type="button" class="command" data-copy="@command.Command"
+                                title="Copy @Describe(command.Command, command.Pick, command.Note)"><code>@command.Command</code>@if (command.Pick is { } pick)
+                        {
+                            <span class="pick">@pick</span>
+                        }@if (command.Note is { } note)
+                        {
+                            <span class="note">@note</span>
+                        }</button>
+                    }
                 }
             </div>
         </li>
@@ -28,6 +52,30 @@
     [Parameter, EditorRequired]
     public IReadOnlyList<GuideStep> Steps { get; set; } = [];
 
-    private static string Describe(GuideCommand command) =>
-        string.Join(" ", new[] { command.Command, command.Pick, command.Note }.OfType<string>());
+    /// <summary>
+    /// Whose Discord ID the commands run as, when the viewer plays them. Null leaves them to copy into Discord.
+    /// </summary>
+    [Parameter]
+    public ulong? RunAs { get; set; }
+
+    /// <summary>
+    /// Just the commands under each step's title, without the step's explanation, for a tight space.
+    /// </summary>
+    [Parameter]
+    public bool Compact { get; set; }
+
+    private IReadOnlyDictionary<string, string> _titles = new Dictionary<string, string>();
+
+    protected override async Task OnParametersSetAsync()
+    {
+        if (RunAs is not null && await Catalog.ReadAsync() is { } catalog)
+            _titles = catalog.Commands.ToDictionary(c => c.Path, c => c.Name, StringComparer.OrdinalIgnoreCase);
+    }
+
+    private static string PathOf(GuideCommand command) => command.Command.TrimStart('/');
+
+    // Its slash command when the bot hasn't given it a title
+    private string TitleOf(GuideCommand command) => _titles.GetValueOrDefault(PathOf(command)) ?? command.Command;
+
+    private static string Describe(params string?[] parts) => string.Join(" ", parts.OfType<string>());
 }

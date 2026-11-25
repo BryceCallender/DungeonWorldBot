@@ -2,6 +2,7 @@ using System.ComponentModel;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Abilities;
 using DungeonWorldBot.Features.Characters;
+using DungeonWorldBot.Features.Classes;
 using DungeonWorldBot.Features.Resources;
 using DungeonWorldBot.Infrastructure;
 using Remora.Commands.Attributes;
@@ -16,6 +17,7 @@ using Remora.Results;
 namespace DungeonWorldBot.Features.Spells;
 
 [Group("spell")]
+[ForClassMechanic(ClassMechanic.Spellcasting)]
 public class SpellCommand(
     ICommandContext context,
     FeedbackService feedbackService,
@@ -28,6 +30,7 @@ public class SpellCommand(
     private const int SpellsPerPage = 6;
 
     [Command("list")]
+    [DisplayName("See a spell list")]
     [Description("List the spells on a spell list, optionally just one level")]
     public async Task<IResult> ListAsync(
         [Description("The spell list")]
@@ -59,6 +62,7 @@ public class SpellCommand(
     }
 
     [Command("info")]
+    [DisplayName("Read a spell")]
     [Description("Read a spell")]
     public async Task<IResult> InfoAsync(
         [Description("The spell")]
@@ -78,6 +82,7 @@ public class SpellCommand(
     }
 
     [Command("learn")]
+    [DisplayName("Learn a spell")]
     [Description("Add a spell your deity grants you (Commune) or that you prepare")]
     public async Task<IResult> LearnAsync(
         [Description("The spell")]
@@ -132,6 +137,7 @@ public class SpellCommand(
     }
 
     [Command("known")]
+    [DisplayName("See your spells")]
     [Description("Show a character's spells and how many spell levels they're using")]
     public async Task<IResult> KnownAsync(
         [Description("The user to see the spells of. Don't specify a user to see your own.")]
@@ -170,6 +176,7 @@ public class SpellCommand(
     }
 
     [Command("clear")]
+    [DisplayName("Clear your spells")]
     [Description("Remove your granted or prepared spells (not rotes or cantrips), e.g. when you Commune")]
     public async Task<IResult> ClearAsync(
         [Description("The spell list to clear")]

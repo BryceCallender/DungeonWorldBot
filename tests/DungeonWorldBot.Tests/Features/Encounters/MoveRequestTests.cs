@@ -77,7 +77,7 @@ public sealed class MoveRequestTests : IDisposable
         };
         var processed = await Processor(context).ProcessAsync(request);
 
-        var move = Assert.IsType<ProcessedMove>(processed.Move);
+        var move = Assert.IsType<ProcessedMove>(processed.Value);
         // 10 + STR 2 is a strong hit; d10 = 5 less the goblin's 1 armor
         Assert.Equal("Strong hit · -4", move.Summary);
         Assert.Equal(2, goblin.CurrentHP);
@@ -104,7 +104,7 @@ public sealed class MoveRequestTests : IDisposable
             Move = "Stab",
         });
 
-        var move = Assert.IsType<ProcessedMove>(processed.Move);
+        var move = Assert.IsType<ProcessedMove>(processed.Value);
         Assert.Equal("-4", move.Summary);
         Assert.Null(move.Roller);
         Assert.Equal(16, (await new CharacterService(context).GetCharacterFromUserAsync(UserId))!.Health.CurrentHP);
@@ -128,7 +128,7 @@ public sealed class MoveRequestTests : IDisposable
             CharacterID = UserId,
             TargetEnemyID = orc.ID,
         });
-        Assert.Null(elsewhere.Move);
+        Assert.IsType<string>(elsewhere.Value);
         Assert.Equal(8, orc.CurrentHP);
 
         await encounters.EndAsync(fight, announced: true);
@@ -139,7 +139,7 @@ public sealed class MoveRequestTests : IDisposable
             CharacterID = UserId,
             TargetEnemyID = goblin.ID,
         });
-        Assert.Equal("The fight is over.", over.Error);
+        Assert.Equal("The fight is over.", over.Value);
         Assert.Equal(6, goblin.CurrentHP);
     }
 
@@ -158,7 +158,7 @@ public sealed class MoveRequestTests : IDisposable
             Stat = StatType.Str,
         });
 
-        var move = Assert.IsType<ProcessedMove>(processed.Move);
+        var move = Assert.IsType<ProcessedMove>(processed.Value);
         Assert.Equal("Strong hit", move.Summary);
         Assert.Contains("Arthur: Defy Danger", move.Embed.Title.Value);
         Assert.Equal(6, goblin.CurrentHP);
@@ -175,13 +175,13 @@ public sealed class MoveRequestTests : IDisposable
         {
             EncounterID = fight.ID, Kind = MoveRequestKind.BasicMove, CharacterID = UserId, Move = "Defy Danger",
         });
-        Assert.Equal("Pick a stat to roll Defy Danger with.", noStat.Error);
+        Assert.Equal("Pick a stat to roll Defy Danger with.", noStat.Value);
 
         var unknown = await Processor(context).ProcessAsync(new MoveRequest
         {
             EncounterID = fight.ID, Kind = MoveRequestKind.ClassMove, CharacterID = UserId, Move = "Lay on Hands",
         });
-        Assert.Null(unknown.Move);
+        Assert.IsType<string>(unknown.Value);
         Assert.Empty(context.EncounterActions);
     }
 
@@ -204,7 +204,49 @@ public sealed class MoveRequestTests : IDisposable
             EncounterID = fight.ID, Kind = MoveRequestKind.ClassMove, CharacterID = UserId, Move = ChampionOfLuna.Revelation,
         });
 
-        var move = Assert.IsType<ProcessedMove>(processed.Move);
+        var move = Assert.IsType<ProcessedMove>(processed.Value);
         Assert.Contains("Arthur: Revelation", move.Embed.Title.Value);
+    }
+
+    [Fact]
+    public async Task FromASheet_WithNoFight_RollsLikeMove_AndSaysWhereItCameFrom()
+    {
+        await using var context = _db.CreateContext();
+        await SetupAsync(context);
+        var fights = new EncounterService(context, TimeProvider.System);
+        await fights.EndAsync(await context.Encounters.SingleAsync(), announced: true);
+
+        var processed = await Processor(context).ProcessAsync(new MoveRequest
+        {
+            Kind = MoveRequestKind.BasicMove,
+            CharacterID = UserId,
+            Move = "Defy Danger",
+            Stat = StatType.Str,
+            Bonus = -5,
+        });
+
+        var move = Assert.IsType<ProcessedMove>(processed.Value);
+        // 10 + STR 2 - 5 is a weak hit
+        Assert.Equal("Weak hit", move.Summary);
+        Assert.Equal("Rolled from the dashboard", move.Embed.Footer.Value.Text);
+        Assert.Equal(UserId, move.Roller);
+        // No fight to put it in
+        Assert.Empty(context.EncounterActions);
+    }
+
+    [Fact]
+    public async Task EnemyAttack_WithNoFight_IsRefused()
+    {
+        await using var context = _db.CreateContext();
+        var (_, goblin) = await SetupAsync(context);
+
+        var processed = await Processor(context).ProcessAsync(new MoveRequest
+        {
+            Kind = MoveRequestKind.EnemyAttack,
+            EnemyID = goblin.ID,
+            TargetCharacterID = UserId,
+        });
+
+        Assert.Equal("Enemies only attack in a fight.", processed.Value);
     }
 }

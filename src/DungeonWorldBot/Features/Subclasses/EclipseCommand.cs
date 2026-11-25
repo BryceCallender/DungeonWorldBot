@@ -2,6 +2,7 @@ using System.ComponentModel;
 using DungeonWorldBot.Features.Abilities;
 using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Features.Classes.DungeonWorld;
+using DungeonWorldBot.Features.Classes;
 using DungeonWorldBot.Features.Resources;
 using DungeonWorldBot.Features.Shapeshifting;
 using DungeonWorldBot.Features.Subclasses.Homebrew;
@@ -32,6 +33,7 @@ public enum AspectChange
 /// The Circle of the Eclipse's aspect. Its rolled moves are rolled with /move class.
 /// </summary>
 [Group("eclipse")]
+[ForClassMechanic(ClassMechanic.CircleOfTheEclipse)]
 public class EclipseCommand(
     ICommandContext context,
     FeedbackService feedbackService,
@@ -44,6 +46,7 @@ public class EclipseCommand(
     private const string ShapeshiftHold = "Shapeshift Hold";
 
     [Command("aspect")]
+    [DisplayName("Choose your aspect")]
     [Description("Attune yourself to the Sunward or Moonward aspect")]
     public async Task<IResult> AspectAsync(
         [Description("Sunward: healing and radiance. Moonward: phasing and shadow.")]

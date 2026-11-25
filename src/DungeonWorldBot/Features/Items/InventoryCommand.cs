@@ -26,6 +26,7 @@ public class InventoryCommand(
     private const int PAGE_SIZE = 20;
 
     [Command("show")]
+    [DisplayName("See your inventory")]
     [Description("Shows a paginated list of all your inventory items")]
     public async Task<IResult> DisplayInventory()
     {
@@ -69,6 +70,7 @@ public class InventoryCommand(
     }
     
     [Command("store")]
+    [DisplayName("Add an item")]
     [Description("Adds an item to your inventory (Careful of the spelling)")]
     public async Task<IResult> StoreInInventoryAsync(string itemName, int amount)
     {
@@ -92,6 +94,7 @@ public class InventoryCommand(
     }
 
     [Command("remove")]
+    [DisplayName("Remove an item")]
     [Description("Removes an item or specified amount from your inventory (Careful of the spelling)")]
     public async Task<IResult> RemoveInInventoryAsync(string itemName, int amount = -1)
     {
@@ -134,6 +137,7 @@ public class InventoryCommand(
     }
 
     [Command("receive-coins")]
+    [DisplayName("Receive coins")]
     [Description("Adds more coins to your inventory")]
     public async Task<IResult> ReceiveInventoryAsync(int amount)
     {
@@ -157,6 +161,7 @@ public class InventoryCommand(
     }
 
     [Command("pay-coins")]
+    [DisplayName("Pay coins")]
     [Description("Uses the specified amount of coins and takes them out of your inventory")]
     public async Task<IResult> PayFromInventoryAsync(int amount)
     {
@@ -189,6 +194,7 @@ public class InventoryCommand(
     }
 
     [Command("give-coins")]
+    [DisplayName("Give coins")]
     [Description("Gives the specified amount of your coins to another player")]
     public async Task<IResult> GiveCoinsAsync(
         [Description("The player to give coins to")]

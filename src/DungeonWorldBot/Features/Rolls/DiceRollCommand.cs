@@ -33,6 +33,7 @@ public class DiceRollCommand(
 
     
     [Command("die")]
+    [DisplayName("Roll dice")]
     [Description("Roll a dice like d6 or 2d6. Defaults to a 2d6")]
     public async Task<IResult> RollDiceAsync(string value = "2d6")
     {
@@ -43,6 +44,7 @@ public class DiceRollCommand(
     }
 
     [Command("stat")]
+    [DisplayName("Roll a stat")]
     [Description("Rolls a default 2d6 dice and adds your stat modifier")]
     public async Task<IResult> RollDiceWithStatAsync(StatType statType, string value = "2d6")
     {
@@ -71,6 +73,7 @@ public class DiceRollCommand(
     }
     
     [Command("damage")]
+    [DisplayName("Roll damage")]
     [Description("Rolls your respective classes damage dice. Can also add on modifiers as needed.")]
     public async Task<IResult> RollDamageDiceAsync(string modifiers = "")
     {

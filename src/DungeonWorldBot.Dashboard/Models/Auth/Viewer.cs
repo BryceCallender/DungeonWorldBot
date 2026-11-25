@@ -30,6 +30,12 @@ public record Viewer(bool SignInEnabled, ulong? ID, string? Name, string? Avatar
     public bool CanAdminister => !SignedIn || IsAdmin;
 
     /// <summary>
+    /// Whether they can play as the character (or the DM) with that Discord ID: roll their moves and run the bot's
+    /// commands as them. Only as themselves, or as anyone when sign-in is off.
+    /// </summary>
+    public bool CanActAs(ulong id) => !SignedIn || Is(id);
+
+    /// <summary>
     /// Whether they can put a scene away, bring it back or delete it: whoever runs the game, or whoever made it, so
     /// nobody clears the board in the middle of a fight.
     /// </summary>

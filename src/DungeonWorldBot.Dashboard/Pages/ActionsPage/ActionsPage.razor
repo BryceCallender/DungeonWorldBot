@@ -1,0 +1,111 @@
+@page "/actions"
+@namespace DungeonWorldBot.Dashboard.Pages
+@using DungeonWorldBot.Dashboard.Models.Bridge
+@using DungeonWorldBot.Dashboard.Services.Bridge
+@using DungeonWorldBot.Features.Bridge
+@using DungeonWorldBot.Features.Classes
+@inject CommandDesk Desk
+@inject PartyReader Party
+@inject Viewer Viewer
+@inject DashboardSettings Settings
+
+@* Every command the bot has, for doing anything Discord can from here: tapping one opens it to fill in and run
+   (commands.js), as the viewer, or whoever's picked with sign-in off. A player sees everyone's commands and those for
+   what their character has (see ForClassMechanicAttribute), like /shapeshift for a druid. With sign-in off, each
+   command says what it's for and each person who can be picked what they have, and commands.js hides the rest. *@
+<PageTitle>Actions · Sana Solem</PageTitle>
+
+<PageHeader Title="Actions" Description="Everything the bot can do in Discord. Tap one, fill it in and run it: the bot answers here and in game chat." />
+
+@if (_menu.Commands.Count == 0)
+{
+    <p class="empty">The bot hasn't said what it can do yet. It does when it starts.</p>
+    return;
+}
+
+<div data-filter-scope>
+    <nav class="jump">
+        @foreach (var group in _groups)
+        {
+            <a href="actions#@group.Key">@Title(group.Key)</a>
+        }
+        <FilterBox What="actions" Class="jump-filter" />
+    </nav>
+
+    @if (!Viewer.SignedIn)
+    {
+        @* Nobody's signed in, so say who's acting *@
+        <p class="act-as">
+            <label class="field-label" for="act-as">Act as</label>
+            <select id="act-as" class="filter" data-act-as>
+                @foreach (var person in _party)
+                {
+                    <option value="@person.ID" data-mechanics="@MechanicsOf(person.Character)">@person.Name</option>
+                }
+                <option value="@Settings.DungeonMasterID" data-dm>The DM</option>
+            </select>
+        </p>
+    }
+
+    @foreach (var group in _groups)
+    {
+        <section class="card action-group" id="@group.Key" data-filter-group>
+            <CardHeader Title="@Title(group.Key)" />
+            @if (group.First().GroupDescription is { } description)
+            {
+                <p class="muted">@description</p>
+            }
+            <ul class="items action-list">
+                @foreach (var command in group)
+                {
+                    <li data-mechanic="@command.Mechanic" data-dm="@command.GameMasterOnly">
+                        <button type="button" class="action" data-run-command="@command.Path"
+                                data-run-as="@(Viewer.SignedIn ? Viewer.ID : null)">
+                            <span class="action-title">
+                                @command.Name
+                                @if (command.GameMasterOnly)
+                                {
+                                    <Chip Kind="accent">DM</Chip>
+                                }
+                            </span>
+                            <span class="small">@command.Description</span>
+                        </button>
+                    </li>
+                }
+            </ul>
+        </section>
+    }
+    <NoMatches>No actions match.</NoMatches>
+</div>
+
+@code {
+    private CommandMenu _menu = new([], []);
+    private IReadOnlyList<CharacterView> _party = [];
+    private IReadOnlyList<IGrouping<string, CatalogCommand>> _groups = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        _menu = await Desk.MenuAsync(Viewer);
+        IEnumerable<CatalogCommand> commands = _menu.Commands;
+        if (!Viewer.SignedIn)
+            _party = await Party.GetPartyAsync();
+        // The DM has no character, so they see every command
+        else if (_menu.Playing is { } playing && await Party.GetCharacterAsync(playing) is { } character)
+            commands = commands.Where(c => c.Mechanic is not { } needs || character.Character.Has(needs));
+
+        // The players' commands first, then the DM's own
+        _groups = commands
+            .GroupBy(c => c.Group)
+            .OrderBy(g => g.All(c => c.GameMasterOnly))
+            .ThenBy(g => g.Key)
+            .ToList();
+    }
+
+    // "Shapeshifting Quest", for commands.js to show only the commands for what the character picked has
+    private static string MechanicsOf(Character character) =>
+        string.Join(' ', Enum.GetValues<ClassMechanic>().Where(character.Has));
+
+    // "dice-stats" reads as "Dice stats", and the DM's own as "DM"
+    private static string Title(string group) =>
+        group == "dm" ? "DM" : char.ToUpperInvariant(group[0]) + group[1..].Replace('-', ' ');
+}

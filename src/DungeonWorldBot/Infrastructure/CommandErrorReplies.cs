@@ -1,3 +1,4 @@
+using DungeonWorldBot.Features.Bridge;
 using DungeonWorldBot.Features.GameMaster;
 using DungeonWorldBot.Infrastructure.Telemetry;
 using Microsoft.EntityFrameworkCore;
@@ -23,8 +24,11 @@ public class CommandErrorReplies(FeedbackService feedbackService, ILogger<Comman
     public Task<Result> PreparationFailed(IOperationContext context, IResult preparationResult, CancellationToken ct = default) =>
         ReplyToFailureAsync(preparationResult, "that command", ct);
 
+    // A command run from the dashboard says what went wrong there instead (see CommandBridge), not in game chat
     public Task<Result> AfterExecutionAsync(ICommandContext context, IResult commandResult, CancellationToken ct = default) =>
-        ReplyToFailureAsync(commandResult, $"/{CommandTelemetry.NameOf(context)}", ct);
+        context is DashboardCommandContext
+            ? Task.FromResult(Result.Success)
+            : ReplyToFailureAsync(commandResult, $"/{CommandTelemetry.NameOf(context)}", ct);
 
     private async Task<Result> ReplyToFailureAsync(IResult result, string command, CancellationToken ct)
     {

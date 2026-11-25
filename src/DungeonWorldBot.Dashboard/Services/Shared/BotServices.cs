@@ -19,6 +19,7 @@ public static class BotServices
     {
         services.AddScoped<GameAccess>();
         services.AddSingleton<GameWrites>();
+        services.AddScoped<RollableMoves>();
         services.AddDbContext<DungeonWorldContext>((provider, options) => options.UseSqlite(
             provider.GetRequiredService<GameAccess>().Writable
                 ? $"Data Source={databases.GamePath};Mode=ReadWrite"

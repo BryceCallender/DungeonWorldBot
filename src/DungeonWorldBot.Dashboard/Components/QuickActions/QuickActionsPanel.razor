@@ -1,0 +1,128 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@using DungeonWorldBot.Dashboard.Models.Bridge
+@using DungeonWorldBot.Dashboard.Services.Bridge
+@using DungeonWorldBot.Features.Bridge
+@using DungeonWorldBot.Features.Classes
+@using DungeonWorldBot.Features.Classes.Guides
+@inject PartyReader Party
+@inject CommandDesk Desk
+@inject Viewer Viewer
+
+@* What someone can do right now, from any page (QuickActions opens it, fetched from api/commands/quick/{id}): for the
+   character they're playing, their class and subclass moves, their class's mechanics, their resources and the basic
+   moves first (see PlayPanelSections), then everything else that applies to them folded away; for the DM, their own
+   commands. Each opens the command dialog, and runs as them, so the bot acts on that character as it would for a
+   command typed in Discord. *@
+<div class="quick-panel" data-quick-panel>
+    @* A plain 2d6, the roll asked for most, then any other die, or whatever's typed like 3d6+1, each in one tap:
+       data-run-now rolls without the form, and commands.js shows the result below *@
+    <button type="button" class="quick-roll" data-run-command="roll die" data-run-as="@As" data-run-now>
+        <Icon Name="dice" />Roll 2d6
+    </button>
+    <div class="quick-dice">
+        @foreach (var die in Dice)
+        {
+            <button type="button" class="tool" data-run-command="roll die" data-run-as="@As" data-run-pick="@die" data-run-now>@die</button>
+        }
+        <form class="quick-custom" data-quick-dice data-run-as="@As">
+            <input class="filter" name="dice" placeholder="3d6+1" aria-label="Dice to roll" autocomplete="off" required />
+            <button class="tool">Roll</button>
+        </form>
+    </div>
+    @* What the bot said about the last roll here (commands.js), the same as in game chat *@
+    <div class="quick-result command-reply" data-quick-result aria-live="polite"></div>
+    @if (_character is { } c)
+    {
+        <div class="quick-who classed" style="@Lookup.ColorOf(c.Character.Class.Type)">
+            <a class="quick-name" href="@c.Url">@c.Name</a>
+            <HealthBar View="c" />
+            @foreach (var own in _played.Others)
+            {
+                @* Playing someone else's character: commands act on them until they're handed back *@
+                <button type="button" class="tool quick-switch" data-run-command="character release" data-run-as="@As">
+                    Back to @own.Name
+                </button>
+            }
+        </div>
+        <GuideSteps Steps="_sections.First" RunAs="As" Compact />
+        @* Kept to hand but out of the way: reading their sheet, learning moves, downtime and every other command *@
+        @if (_sections.Rest.Count > 0 || _more.Count > 0)
+        {
+            <details class="quick-rest">
+                <summary>Everything else</summary>
+                <GuideSteps Steps="_sections.Rest" RunAs="As" Compact />
+                @Groups(_more)
+            </details>
+        }
+    }
+    else if (_more.Count > 0)
+    {
+        <p class="muted">Your DM commands. Tap one to run it.</p>
+        @Groups(_more)
+    }
+    else
+    {
+        <p class="empty">No character here yet. Make one in Discord with /character create.</p>
+    }
+    <a class="tool quick-more" href="actions">All commands →</a>
+</div>
+
+@code {
+    /// <summary>
+    /// Whose Discord ID it's for: a player's, which is their character's, or the DM's.
+    /// </summary>
+    [Parameter, EditorRequired]
+    public ulong As { get; set; }
+
+    private static readonly string[] Dice = ["d4", "d6", "d8", "d10", "d12", "d20", "d100"];
+
+    private PlayedCharacters _played = new(null, []);
+    private CharacterView? _character;
+    private PanelSections _sections = new([], []);
+    private IReadOnlyList<IGrouping<string, CatalogCommand>> _more = [];
+
+    protected override async Task OnParametersSetAsync()
+    {
+        // Whoever they're playing, as the bot decides for their commands: one they've taken over, or else their own
+        _played = await Party.PlayedByAsync(As);
+        _character = _played.Playing is { } playing ? await Party.GetCharacterAsync(playing.ID.Value.ToString()) : null;
+        var commands = (await Desk.MenuAsync(Viewer)).Commands;
+
+        if (_character is null)
+        {
+            _more = Viewer.CanRunGame ? Group(commands.Where(c => c.GameMasterOnly)) : [];
+            return;
+        }
+
+        // The rest of the players' commands, past what the guide shows: everyone's, and those marked for something
+        // only some characters have (like /shapeshift) when this one has it
+        var guide = CharacterCommands.For(_character.Character);
+        var shown = guide.SelectMany(s => s.Commands).Select(c => c.Command.TrimStart('/')).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var unlisted = commands.Where(c => !c.GameMasterOnly && !shown.Contains(c.Path) && IsFor(c, _character.Character)).ToList();
+
+        // Their class's mechanics first with the rest of their class, however the guide lists them; everyone's last
+        _sections = PlayPanelSections.Of(guide, commands.ToDictionary(c => c.Path, StringComparer.OrdinalIgnoreCase), unlisted.Where(c => c.Mechanic is not null));
+        _more = Group(unlisted.Where(c => c.Mechanic is null));
+    }
+
+    private static bool IsFor(CatalogCommand command, Character character) =>
+        command.Mechanic is not { } needs || character.Has(needs);
+
+    private static IReadOnlyList<IGrouping<string, CatalogCommand>> Group(IEnumerable<CatalogCommand> commands) =>
+        commands.GroupBy(c => c.Group).OrderBy(g => g.Key).ToList();
+
+    private RenderFragment Groups(IReadOnlyList<IGrouping<string, CatalogCommand>> groups) =>
+        @<text>
+            @foreach (var group in groups)
+            {
+                <h4 class="quick-group">@group.Key.Replace('-', ' ')</h4>
+                <div class="guide-commands">
+                    @foreach (var command in group)
+                    {
+                        <button type="button" class="command runnable" data-run-command="@command.Path" data-run-as="@As"
+                                title="@command.Description"><span class="command-title">@command.Name</span></button>
+                    }
+                </div>
+            }
+        </text>;
+}

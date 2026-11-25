@@ -27,6 +27,7 @@ public class EncounterCommand(
     private const string FightDescription = "Which fight, when there's more than one going on. Yours, if you leave it blank";
 
     [Command("show")]
+    [DisplayName("See the enemies")]
     [Description("See who you're fighting and how hurt they look")]
     public async Task<IResult> ShowAsync(
         [Description(FightDescription)]
@@ -41,6 +42,7 @@ public class EncounterCommand(
     }
 
     [Command("spotlight")]
+    [DisplayName("See the spotlight")]
     [Description("See who's had the spotlight in the fight, what they did last, and who's due a turn")]
     public async Task<IResult> SpotlightAsync(
         [Description(FightDescription)]

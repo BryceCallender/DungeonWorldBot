@@ -1,4 +1,5 @@
 using DungeonWorldBot.Data;
+using DungeonWorldBot.Features.Bridge;
 using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Features.Encounters;
 using DungeonWorldBot.Infrastructure;
@@ -112,8 +113,10 @@ public class Program
                     .AddCoreServices()
                     .AddAttributedServices(typeof(Program).Assembly)
                     .AddRemoraServices()
+                    .AddReplyCapture()
                     .AddHostedService<EncounterAnnouncer>()
-                    .AddHostedService<MoveRequestWorker>();
+                    .AddHostedService<MoveRequestWorker>()
+                    .AddHostedService<CommandRequestWorker>();
                 AddTelemetry(context, services);
             }
         )
@@ -140,8 +143,12 @@ public class Program
             .AddPostExecutionEvent<CommandTelemetry.After>();
 
         var databasePath = new SqliteConnectionStringBuilder(context.Configuration.GetConnectionString("DungeonWorldConnectionString")).DataSource;
-        if (!string.IsNullOrEmpty(databasePath))
-            services.AddHostedService(provider => ActivatorUtilities.CreateInstance<BotStatusWriter>(provider, Path.GetFullPath(databasePath)));
+        if (string.IsNullOrEmpty(databasePath))
+            return;
+
+        services.AddHostedService(provider => ActivatorUtilities.CreateInstance<BotStatusWriter>(provider, Path.GetFullPath(databasePath)));
+        // Beside it, the commands the dashboard can run
+        services.AddHostedService(provider => ActivatorUtilities.CreateInstance<CommandCatalogWriter>(provider, Path.GetFullPath(databasePath)));
     }
 
     /// <summary>

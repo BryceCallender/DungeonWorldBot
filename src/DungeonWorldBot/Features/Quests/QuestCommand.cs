@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Characters;
+using DungeonWorldBot.Features.Classes;
 using DungeonWorldBot.Infrastructure;
 using DungeonWorldBot.Rules;
 using Remora.Commands.Attributes;
@@ -26,6 +27,7 @@ public record BoonPicks(IReadOnlyList<QuestBoonChoice> Boons, string? Error = nu
 /// The Paladin's Quest: declaring a mission with its boons, recording the GM's vows, and ending it.
 /// </summary>
 [Group("quest")]
+[ForClassMechanic(ClassMechanic.Quest)]
 public class QuestCommand(
     ICommandContext context,
     FeedbackService feedbackService,
@@ -37,6 +39,7 @@ public class QuestCommand(
     private const string DetailDescription = "Fills the boon's blank, e.g. fire for Invulnerability";
 
     [Command("declare")]
+    [DisplayName("Declare a quest")]
     [Description("Dedicate yourself to a mission through prayer and ritual cleansing, choosing its boons")]
     public async Task<IResult> DeclareAsync(
         [Description("The mission, e.g. Slay the Wyrm of Ashfall")]
@@ -77,6 +80,7 @@ public class QuestCommand(
     }
 
     [Command("vow")]
+    [DisplayName("Record a vow")]
     [Description("Record a vow the GM has set for your quest")]
     public async Task<IResult> VowAsync(
         [Description("The vow")] [AutocompleteProvider(QuestVowAutocomplete.ID)]
@@ -101,6 +105,7 @@ public class QuestCommand(
     }
 
     [Command("end")]
+    [DisplayName("End your quest")]
     [Description("End your quest, fulfilled or abandoned, losing its boons and vows")]
     public async Task<IResult> EndAsync()
     {
@@ -117,6 +122,7 @@ public class QuestCommand(
     }
 
     [Command("show")]
+    [DisplayName("See a quest")]
     [Description("See a Paladin's quest")]
     public async Task<IResult> ShowAsync(
         [Description("The user to see the quest of. Don't specify a user to see your own.")]

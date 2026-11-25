@@ -23,6 +23,7 @@ public class SubclassCommand(
     : DungeonWorldCommandBase(context, feedbackService)
 {
     [Command("list")]
+    [DisplayName("See all subclasses")]
     [Description("List every subclass and which classes can take it")]
     public async Task<IResult> ListAsync()
     {
@@ -43,6 +44,7 @@ public class SubclassCommand(
     }
 
     [Command("info")]
+    [DisplayName("Read a subclass")]
     [Description("Read a subclass's moves, or see your own subclass")]
     public async Task<IResult> InfoAsync(
         [Description("The subclass to read. Leave blank to see your own.")]
@@ -97,6 +99,7 @@ public class SubclassCommand(
     }
 
     [Command("join")]
+    [DisplayName("Take a subclass")]
     [Description("Take a subclass. Its moves unlock as you level (the DM can choose for someone else)")]
     public async Task<IResult> JoinAsync(
         [Description("The subclass to take")]
@@ -141,6 +144,7 @@ public class SubclassCommand(
     }
 
     [Command("leave")]
+    [DisplayName("Leave your subclass")]
     [Description("Give up your subclass and its moves (the DM can do this for someone else)")]
     public async Task<IResult> LeaveAsync(
         [Description("DM only: the player whose character leaves it. Leave blank for your own.")]

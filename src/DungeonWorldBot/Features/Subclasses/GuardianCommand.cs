@@ -2,6 +2,7 @@ using System.ComponentModel;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Abilities;
 using DungeonWorldBot.Features.Characters;
+using DungeonWorldBot.Features.Classes;
 using DungeonWorldBot.Features.Combat;
 using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Rolls;
@@ -24,6 +25,7 @@ namespace DungeonWorldBot.Features.Subclasses;
 /// Assault's short-rest limit. Flashstep Exchange and Guardian's Stand are rolled with /move class.
 /// </summary>
 [Group("guardian")]
+[ForClassMechanic(ClassMechanic.TacticalGuardian)]
 public class GuardianCommand(
     ICommandContext context,
     FeedbackService feedbackService,
@@ -39,6 +41,7 @@ public class GuardianCommand(
 {
 
     [Command("read-the-room")]
+    [DisplayName("Read the room")]
     [Description("A fight is about to break out: roll +INT and gain a strategy pool of d6s equal to your roll")]
     public async Task<IResult> ReadTheRoomAsync([Description(BonusDescription)] int bonus = 0)
     {
@@ -67,6 +70,7 @@ public class GuardianCommand(
     }
 
     [Command("one-step-ahead")]
+    [DisplayName("One step ahead")]
     [Description("When someone else acts in combat, swap one die of their roll for one from your strategy pool")]
     public async Task<IResult> OneStepAheadAsync(
         [Description("The die from your strategy pool to use")]
@@ -98,6 +102,7 @@ public class GuardianCommand(
     }
 
     [Command("pool")]
+    [DisplayName("See your strategy pool")]
     [Description("See your strategy pool and stored damage")]
     public async Task<IResult> PoolAsync()
     {
@@ -116,6 +121,7 @@ public class GuardianCommand(
     }
 
     [Command("take-hit")]
+    [DisplayName("Take a hit")]
     [Description("Take damage while defending. With Shielded Pursuit, half of it is stored")]
     public async Task<IResult> TakeHitAsync(
         [Description("The damage dealt, before your armor")]
@@ -158,6 +164,7 @@ public class GuardianCommand(
     }
 
     [Command("release")]
+    [DisplayName("Release stored damage")]
     [Description("Shielded Pursuit: add your stored damage to an attack")]
     public async Task<IResult> ReleaseAsync(
         [Description("The damage your attack already rolled. Leave blank to roll your damage now.")]
@@ -196,6 +203,7 @@ public class GuardianCommand(
     }
 
     [Command("end-fight")]
+    [DisplayName("Clear your strategy pool")]
     [Description("The battle is over: clear your strategy pool and stored damage")]
     public async Task<IResult> EndFightAsync()
     {
@@ -219,6 +227,7 @@ public class GuardianCommand(
     }
 
     [Command("perfected-assault")]
+    [DisplayName("Perfected assault")]
     [Description("Orchestrate a coordinated strike with every ally near you (+INT, once per short rest)")]
     public async Task<IResult> PerfectedAssaultAsync([Description(BonusDescription)] int bonus = 0)
     {

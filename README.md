@@ -42,7 +42,7 @@ editor and a Health page.
 
 ## Requirements
 
-- [.NET 10 SDK](https://dotnet.microsoft.com/download)
+- [.NET 11 SDK](https://dotnet.microsoft.com/download)
 - [Node.js](https://nodejs.org) with npm, for the dashboard's canvas scripts (built automatically on `dotnet build`)
 - A Discord application with a bot token, invited to your server with the `applications.commands` scope. The bot uses
   the **Message Content** intent, so turn that on in the developer portal.

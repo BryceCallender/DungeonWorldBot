@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Characters;
+using DungeonWorldBot.Features.Classes;
 using DungeonWorldBot.Features.Combat;
 using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Resources;
@@ -23,6 +24,7 @@ namespace DungeonWorldBot.Features.Shapeshifting;
 /// The forms a shapeshifter knows, the form they're in, and the hold they spend on its moves.
 /// </summary>
 [Group("shapeshift")]
+[ForClassMechanic(ClassMechanic.Shapeshifting)]
 public class ShapeshiftCommand(
     ICommandContext context,
     FeedbackService feedbackService,
@@ -37,6 +39,7 @@ public class ShapeshiftCommand(
     private const string FormDescription = "One of the forms you know";
 
     [Command("learn")]
+    [DisplayName("Learn a form")]
     [Description("Add a form you can take: a species from your land, or one whose essence you've studied")]
     public async Task<IResult> LearnAsync(
         [Description("The form, e.g. Bear, Hawk or Giant Spider")]
@@ -60,6 +63,7 @@ public class ShapeshiftCommand(
     }
 
     [Command("edit")]
+    [DisplayName("Change a form")]
     [Description("Change a form's description or the moves the GM gave it")]
     public async Task<IResult> EditAsync(
         [Description(FormDescription)]
@@ -86,6 +90,7 @@ public class ShapeshiftCommand(
     }
 
     [Command("forget")]
+    [DisplayName("Forget a form")]
     [Description("Remove a form you can no longer take")]
     public async Task<IResult> ForgetAsync(
         [Description(FormDescription)]
@@ -108,6 +113,7 @@ public class ShapeshiftCommand(
     }
 
     [Command("forms")]
+    [DisplayName("See your forms")]
     [Description("See the forms a character knows and the one they're in")]
     public async Task<IResult> FormsAsync(
         [Description("The user to see the forms of. Don't specify a user to see your own.")]
@@ -138,6 +144,7 @@ public class ShapeshiftCommand(
     }
 
     [Command("into")]
+    [DisplayName("Change shape")]
     [Description("Call on the spirits to change your shape: roll Shapeshifter (+WIS) and gain hold")]
     public async Task<IResult> IntoAsync(
         [Description(FormDescription)]
@@ -210,6 +217,7 @@ public class ShapeshiftCommand(
     }
 
     [Command("move")]
+    [DisplayName("Use your form's move")]
     [Description("Spend hold to make one of your form's moves")]
     public async Task<IResult> MoveAsync(
         [Description("What you do, e.g. Maul or Fly to the treetops")]
@@ -247,6 +255,7 @@ public class ShapeshiftCommand(
     }
 
     [Command("revert")]
+    [DisplayName("Return to your own form")]
     [Description("Return to your natural form, losing any hold left")]
     public async Task<IResult> RevertAsync(
         [Description("Shed: you're reverting to negate damage you just took")]

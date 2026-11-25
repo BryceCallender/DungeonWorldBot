@@ -24,6 +24,7 @@ public class ResourceCommand(
     private const string NameDescription = "The resource, e.g. Gambit, Control, Power, Thirst or Wrath";
 
     [Command("show")]
+    [DisplayName("See resources")]
     [Description("Show a character's class resources")]
     public async Task<IResult> ShowAsync(
         [Description("The user to see the resources of. Don't specify a user to see your own.")]
@@ -48,6 +49,7 @@ public class ResourceCommand(
     }
 
     [Command("gain")]
+    [DisplayName("Gain a resource")]
     [Description("Gain points of a class resource")]
     public async Task<IResult> GainAsync(
         [Description(NameDescription)]
@@ -76,6 +78,7 @@ public class ResourceCommand(
     }
 
     [Command("spend")]
+    [DisplayName("Spend a resource")]
     [Description("Spend points of a class resource")]
     public async Task<IResult> SpendAsync(
         [Description(NameDescription)]
@@ -100,6 +103,7 @@ public class ResourceCommand(
     }
 
     [Command("set")]
+    [DisplayName("Set a resource")]
     [Description("Set a class resource to an exact value")]
     public async Task<IResult> SetAsync(
         [Description(NameDescription)]
@@ -127,6 +131,7 @@ public class ResourceCommand(
     }
 
     [Command("reset")]
+    [DisplayName("Reset resources")]
     [Description("Reset class resources, e.g. Gambits after a battle. Leave blank to reset all of them")]
     public async Task<IResult> ResetAsync(
         [Description("The resource to reset. Leave blank to reset all of them")]

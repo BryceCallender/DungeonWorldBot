@@ -24,6 +24,7 @@ public class DebilityCommand(
     private const string UserDescription = "DM only: the player whose character to change. Leave blank for your own.";
 
     [Command("add")]
+    [DisplayName("Mark a debility")]
     [Description("Mark a debility: -1 to rolls with its stat until it's removed")]
     public async Task<IResult> AddAsync(
         [Description("Weak (STR), Shaky (DEX), Sick (CON), Stunned (INT), Confused (WIS) or Scarred (CHA)")]
@@ -50,6 +51,7 @@ public class DebilityCommand(
     }
 
     [Command("remove")]
+    [DisplayName("Clear a debility")]
     [Description("Clear one debility")]
     public async Task<IResult> RemoveAsync(
         [Description("The debility to clear")]
@@ -68,6 +70,7 @@ public class DebilityCommand(
     }
 
     [Command("clear")]
+    [DisplayName("Clear all debilities")]
     [Description("Clear every debility, e.g. after recovering")]
     public async Task<IResult> ClearAsync(
         [Description(UserDescription)]
@@ -84,6 +87,7 @@ public class DebilityCommand(
     }
 
     [Command("show")]
+    [DisplayName("See debilities")]
     [Description("Show a character's debilities")]
     public async Task<IResult> ShowAsync(
         [Description("The user to see the debilities of. Don't specify a user to see your own.")]

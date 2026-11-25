@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Characters;
+using DungeonWorldBot.Features.Classes;
 using DungeonWorldBot.Features.Combat;
 using DungeonWorldBot.Features.Encounters;
 using DungeonWorldBot.Features.Moves;
@@ -27,6 +28,7 @@ public record TagChoice(TechniqueTag Tags, string? Error = null);
 /// The Channeler's Techniques: developing them, and channeling one with its tags doing their work.
 /// </summary>
 [Group("technique")]
+[ForClassMechanic(ClassMechanic.Techniques)]
 public class TechniqueCommand(
     ICommandContext context,
     FeedbackService feedbackService,
@@ -47,6 +49,7 @@ public class TechniqueCommand(
     private const string DevastationDie = "1d4";
 
     [Command("develop")]
+    [DisplayName("Develop a Technique")]
     [Description("Develop a new Technique: a name and its tags")]
     public async Task<IResult> DevelopAsync(
         [Description("What you call it, e.g. Ember Lance")]
@@ -80,6 +83,7 @@ public class TechniqueCommand(
     }
 
     [Command("edit")]
+    [DisplayName("Change a Technique")]
     [Description("Rename a Technique or replace its tags")]
     public async Task<IResult> EditAsync(
         [Description(TechniqueDescription)] [AutocompleteProvider(TechniqueAutocomplete.ID)]
@@ -123,6 +127,7 @@ public class TechniqueCommand(
     }
 
     [Command("forget")]
+    [DisplayName("Forget a Technique")]
     [Description("Let go of a Technique to make room for a new one")]
     public async Task<IResult> ForgetAsync(
         [Description(TechniqueDescription)] [AutocompleteProvider(TechniqueAutocomplete.ID)]
@@ -141,6 +146,7 @@ public class TechniqueCommand(
     }
 
     [Command("list")]
+    [DisplayName("See your Techniques")]
     [Description("See the Techniques a character knows")]
     public async Task<IResult> ListAsync(
         [Description("The user to see the Techniques of. Don't specify a user to see your own.")]
@@ -167,6 +173,7 @@ public class TechniqueCommand(
     }
 
     [Command("channel")]
+    [DisplayName("Channel a Technique")]
     [Description("Channel (+CON) using one of your Techniques, rolling its damage on a hit")]
     public async Task<IResult> ChannelAsync(
         [Description(TechniqueDescription)] [AutocompleteProvider(TechniqueAutocomplete.ID)]
@@ -211,24 +218,23 @@ public class TechniqueCommand(
         if (WhyCannotThread(character!, damage, threadDice) is { } cannotThread)
             return await ReplyWithErrorAsync(cannotThread);
 
-        var channel = characterMoves.PrepareClassMove(character!, TechniqueRules.Channel);
-        if (channel.Error is { } error)
-            return await ReplyWithErrorAsync(error);
-
-        var input = channel.Input!;
         var moveDamage = damage is null ? null : new MoveDamage(damage.Dice, damage.Tag.ToString(), damage.Piercing, threadDice);
-        return await ReplyWithMoveAsync(
-            character!,
-            channel.Move! with { RollsDamage = damage is not null },
-            input.ModifierLabel,
-            input.Modifier,
-            bonus,
-            input.Stat,
-            target: target,
-            extraDamage: extraDamage,
-            prepared: prepared,
-            damage: moveDamage,
-            aftermath: resolution => AftermathAsync(resolution, known, tags, wave));
+        return characterMoves.PrepareClassMove(character!, TechniqueRules.Channel) switch
+        {
+            string error => await ReplyWithErrorAsync(error),
+            ReadyMove(var channel, var input) => await ReplyWithMoveAsync(
+                character!,
+                channel with { RollsDamage = damage is not null },
+                input.ModifierLabel,
+                input.Modifier,
+                bonus,
+                input.Stat,
+                target: target,
+                extraDamage: extraDamage,
+                prepared: prepared,
+                damage: moveDamage,
+                aftermath: resolution => AftermathAsync(resolution, known, tags, wave)),
+        };
     }
 
     /// <summary>

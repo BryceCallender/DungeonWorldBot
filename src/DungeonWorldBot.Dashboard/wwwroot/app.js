@@ -322,6 +322,8 @@ const showsScenes = () => !!document.querySelector('[data-live-scenes]');
             markSection();
             document.title = next.title;
             pulse();
+            // For anything that keeps its own state on the page, like a roll waiting on the bot, to put it back
+            document.dispatchEvent(new Event('live-refreshed'));
         } catch {
             retrySoon();
         } finally {
@@ -525,6 +527,93 @@ if (document.querySelector('dialog[data-open-on-load]')) {
     history.replaceState(history.state, '', url);
 }
 
+// ---- Rolling from a sheet --------------------------------------------------------------------------------------
+
+// A character's Roll buttons ask the bot to roll the move, which it posts in game chat like /move, and the dice tumble
+// onto the page from there. The card says it's rolling, then how it went or why the bot couldn't. The bonus is for the
+// next roll only, like +1 forward, so it goes back to +0 once it's used. Both are kept here and put back after a live
+// update swaps the card out.
+(() => {
+    const maxBonus = 10;
+    const checkEvery = 1000;
+    let bonus = 0;
+    let status = null;
+
+    const card = () => document.querySelector('[data-roll-card]');
+    const signed = n => (n >= 0 ? '+' : '') + n;
+
+    function paint() {
+        const el = card();
+        if (!el) return;
+        const shown = el.querySelector('[data-roll-bonus]');
+        if (shown) shown.textContent = signed(bonus);
+        const line = el.querySelector('[data-roll-status]');
+        if (!line) return;
+        line.hidden = !status;
+        if (!status) return;
+        line.textContent = status.text;
+        line.dataset.kind = status.kind;
+    }
+
+    const show = (text, kind) => { status = { text, kind }; paint(); };
+
+    document.addEventListener('live-refreshed', paint);
+
+    document.addEventListener('click', e => {
+        const step = e.target.closest('[data-roll-bonus-step]');
+        if (!step) return;
+        bonus = Math.max(-maxBonus, Math.min(maxBonus, bonus + Number(step.dataset.rollBonusStep)));
+        paint();
+    });
+
+    document.addEventListener('submit', async e => {
+        const form = e.target.closest('form[data-roll]');
+        if (!form) return;
+        e.preventDefault();
+
+        const el = card();
+        const data = new FormData(form);
+        data.append('bonus', bonus);
+        data.append('__RequestVerificationToken', el.querySelector('input[name="__RequestVerificationToken"]')?.value ?? '');
+        const name = data.get('move');
+        show(`Rolling ${name}…`, 'waiting');
+
+        try {
+            const response = await fetch(el.dataset.rollUrl, { method: 'POST', body: data, credentials: 'same-origin' });
+            const asked = await response.json().catch(() => null);
+            if (!response.ok || !asked || asked.error) {
+                show(asked?.error ?? "Couldn't ask the bot to roll it. Reload and try again.", 'error');
+                return;
+            }
+            bonus = 0;
+            follow(`${el.dataset.rollUrl}/${asked.id}`, name);
+        } catch {
+            show("Couldn't reach the dashboard. Try again.", 'error');
+        }
+    });
+
+    // Asks after the roll until the bot has rolled it, or the server says it's given up waiting
+    async function follow(url, name) {
+        try {
+            const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store' });
+            // Not theirs, or gone: asking again won't help
+            if (response.status >= 400 && response.status < 500) {
+                show("Couldn't find that roll. Check game chat.", 'error');
+                return;
+            }
+            const roll = response.ok ? await response.json() : null;
+            if (roll?.rolled) {
+                if (roll.error) show(roll.error, 'error');
+                else show(`${name}: ${roll.summary ?? 'rolled'}. It's in game chat.`, 'done');
+                return;
+            }
+        } catch {
+            // A hiccup (the server restarting): ask again
+        }
+        setTimeout(() => follow(url, name), checkEvery);
+    }
+})();
+
 // ---- Square pictures ---------------------------------------------------------------------------------------------
 
 // A character's picture is cropped square before it's sent, in a dialog showing the circle their face fills. It opens
@@ -605,12 +694,14 @@ function cropDialog() {
                 <h2>Frame the picture</h2>
                 <button class="modal-close" value="" aria-label="Close">×</button>
             </div>
-            <p class="small">Drag to move it, and zoom to fit the face in the circle.</p>
-            <div class="crop-frame"><canvas width="640" height="640"></canvas></div>
-            <label class="crop-zoom"><span class="field-label">Zoom</span><input type="range" min="1" max="4" step="0.01" value="1" /></label>
-            <div class="modal-actions">
-                <button class="tool" value="">Cancel</button>
-                <button class="tool create" value="use">Use picture</button>
+            <div class="modal-body">
+                <p class="small">Drag to move it, and zoom to fit the face in the circle.</p>
+                <div class="crop-frame"><canvas width="640" height="640"></canvas></div>
+                <label class="crop-zoom"><span class="field-label">Zoom</span><input type="range" min="1" max="4" step="0.01" value="1" /></label>
+                <div class="modal-actions">
+                    <button class="tool" value="">Cancel</button>
+                    <button class="tool create" value="use">Use picture</button>
+                </div>
             </div>
         </form>`;
     document.body.append(dialog);

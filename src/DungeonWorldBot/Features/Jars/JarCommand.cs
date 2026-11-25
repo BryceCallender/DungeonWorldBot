@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Characters;
+using DungeonWorldBot.Features.Classes;
 using DungeonWorldBot.Features.Encounters;
 using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Resources;
@@ -20,6 +21,7 @@ namespace DungeonWorldBot.Features.Jars;
 /// The Necromancer's Hexed Canopic Jars: storing corpses, dropping them out, and raising them.
 /// </summary>
 [Group("jar")]
+[ForClassMechanic(ClassMechanic.HexedJars)]
 public class JarCommand(
     ICommandContext context,
     FeedbackService feedbackService,
@@ -36,6 +38,7 @@ public class JarCommand(
     private const string CorpseDescription = "A corpse in one of your jars";
 
     [Command("store")]
+    [DisplayName("Store a corpse")]
     [Description("Spend a few minutes storing a corpse of any size in an empty jar")]
     public async Task<IResult> StoreAsync(
         [Description("Who or what it was, e.g. A Skinless Hound")]
@@ -54,6 +57,7 @@ public class JarCommand(
     }
 
     [Command("open")]
+    [DisplayName("Open a jar")]
     [Description("Open a jar, dropping its corpse in front of you")]
     public async Task<IResult> OpenAsync(
         [Description(CorpseDescription)] [AutocompleteProvider(JarAutocomplete.ID)]
@@ -72,6 +76,7 @@ public class JarCommand(
     }
 
     [Command("list")]
+    [DisplayName("See your jars")]
     [Description("See what's in a Necromancer's jars")]
     public async Task<IResult> ListAsync(
         [Description("The user to see the jars of. Don't specify a user to see your own.")]
@@ -89,6 +94,7 @@ public class JarCommand(
     }
 
     [Command("raise")]
+    [DisplayName("Raise the dead")]
     [Description("Raise the Dead (+INT) with a corpse from one of your jars")]
     public async Task<IResult> RaiseAsync(
         [Description(CorpseDescription)] [AutocompleteProvider(JarAutocomplete.ID)]
@@ -103,20 +109,19 @@ public class JarCommand(
         if (JarRules.Find(character!, corpse) is not { } stored)
             return await ReplyWithErrorAsync(NotStored(character!, corpse));
 
-        var raise = characterMoves.PrepareClassMove(character!, JarRules.RaiseTheDead);
-        if (raise.Error is { } error)
-            return await ReplyWithErrorAsync(error);
-
-        var input = raise.Input!;
-        return await ReplyWithMoveAsync(
-            character!,
-            raise.Move!,
-            input.ModifierLabel,
-            input.Modifier,
-            bonus,
-            input.Stat,
-            prepared: prepared,
-            aftermath: resolution => RisesAsync(resolution, stored));
+        return characterMoves.PrepareClassMove(character!, JarRules.RaiseTheDead) switch
+        {
+            string error => await ReplyWithErrorAsync(error),
+            ReadyMove(var raise, var input) => await ReplyWithMoveAsync(
+                character!,
+                raise,
+                input.ModifierLabel,
+                input.Modifier,
+                bonus,
+                input.Stat,
+                prepared: prepared,
+                aftermath: resolution => RisesAsync(resolution, stored)),
+        };
     }
 
     /// <summary>

@@ -27,11 +27,10 @@ public record EnemyAttackInput(
 /// <param name="Taken">The damage that got through their armor.</param>
 public record EnemyAttack(string Title, string Description, string Target, int Taken, EncounterAction Action);
 
-/// <param name="Error">Why it couldn't attack, or null when it did.</param>
-public record EnemyAttackResult(string? Error, EnemyAttack? Attack)
-{
-    public static EnemyAttackResult Failed(string error) => new(error, null);
-}
+/// <summary>
+/// The attack that landed, or why it couldn't attack.
+/// </summary>
+public union EnemyAttackResult(EnemyAttack, string);
 
 /// <summary>
 /// Rolls an enemy's damage against whoever it attacks, through their armor. Used by /dm encounter attack and by attacks
@@ -46,17 +45,17 @@ public class EnemyAttackResolver(IDiceRoller diceRoller, IDamageService damageSe
     {
         var attacker = input.Attacker;
         if (attacker.CurrentHP == 0)
-            return EnemyAttackResult.Failed($"{attacker.Name} is defeated, so it can't attack.");
+            return $"{attacker.Name} is defeated, so it can't attack.";
 
         if ((input.Character is null) == (input.Npc is null))
-            return EnemyAttackResult.Failed("Pick who it attacks: a player's character or an NPC.");
+            return "Pick who it attacks: a player's character or an NPC.";
 
         var dice = Text(input.Damage) ?? attacker.Damage;
         if (dice is null)
-            return EnemyAttackResult.Failed($"{attacker.Name} has no damage dice. Give it some with /dm encounter edit, or fill in damage.");
+            return $"{attacker.Name} has no damage dice. Give it some with /dm encounter edit, or fill in damage.";
 
         if (!diceRoller.TryRoll(dice, out var roll))
-            return EnemyAttackResult.Failed($"`{dice}` is not a valid amount or dice roll.");
+            return $"`{dice}` is not a valid amount or dice roll.";
 
         string target, description;
         int taken;
@@ -73,7 +72,7 @@ public class EnemyAttackResolver(IDiceRoller diceRoller, IDamageService damageSe
         }
 
         var action = Text(input.Move) ?? AttackAction;
-        return new EnemyAttackResult(null, new EnemyAttack(
+        return new EnemyAttack(
             $"⚔️ {attacker.Name}: {action}",
             $"**{attacker.Name}** attacks **{target}**! `{dice}` → **{roll.Value}**\n\n{description}",
             target,
@@ -86,7 +85,7 @@ public class EnemyAttackResolver(IDiceRoller diceRoller, IDamageService damageSe
                 Roll = $"{dice} = {roll.Value}",
                 Target = target,
                 Result = $"💥 {taken} damage",
-            }));
+            });
     }
 
     private static string? Text(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();

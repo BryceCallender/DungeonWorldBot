@@ -8,7 +8,6 @@ using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Characters;
 using DungeonWorldBot.Features.Encounters;
 using DungeonWorldBot.Features.Moves;
-using DungeonWorldBot.Rules;
 using Microsoft.EntityFrameworkCore;
 using Remora.Rest.Core;
 
@@ -22,7 +21,7 @@ namespace DungeonWorldBot.Dashboard.Services.Encounters;
 /// Players make their own character's moves (any of them, see <see cref="CharacterMoves"/>), and whoever runs fights (see <see cref="Viewer.CanRunGame"/>)
 /// makes the enemies'. With sign-in off, anyone can do either, as with the rest of the fight.
 /// </remarks>
-public class FightMoves(CanvasStore store, IEncounterService encounters, ICharacterService characters, DungeonWorldContext context, EncounterDesk desk, CharacterMoves characterMoves)
+public class FightMoves(CanvasStore store, IEncounterService encounters, ICharacterService characters, DungeonWorldContext context, EncounterDesk desk, RollableMoves rollable)
 {
     public const int MaxBonus = 10;
     public const int MaxMoveLength = 80;
@@ -42,33 +41,13 @@ public class FightMoves(CanvasStore store, IEncounterService encounters, ICharac
         {
             case FighterKind.Character when OwnCharacter(fight, viewer, actor) is { } id
                                            && await characters.GetCharacterFromUserAsync(new Snowflake(id)) is { } character:
-                var stats = character.Stats.ToDictionary(s => s.StatType.ToString().ToLowerInvariant(), s => s.Modifier + Penalty(character, s.StatType));
-                return CharacterMoves.For(character).Select(m => new BoardMove(
-                    m.IsClassMove ? MoveRequestKind.ClassMove : MoveRequestKind.BasicMove,
-                    m.Name,
-                    m.Aim switch { MoveAim.Enemy => BoardAim.Enemy, MoveAim.Ally => BoardAim.Ally, _ => BoardAim.None },
-                    m.PicksStat,
-                    m.RollsDamage,
-                    m.PicksStat ? null : ModifierFor(character, m),
-                    m.PicksStat ? stats : null)).ToList();
+                return rollable.For(character);
             case FighterKind.Enemy when viewer.CanRunGame && EnemyIn(fight, actor) is { CurrentHP: > 0 }:
                 return [new BoardMove(MoveRequestKind.EnemyAttack, "Attack", BoardAim.Party)];
             default:
                 return [];
         }
     }
-
-    // What a move adds to its 2d6, worked out as the bot will when it rolls it, debilities and all
-    private int? ModifierFor(Character character, CharacterMove move)
-    {
-        var input = move.IsClassMove
-            ? characterMoves.PrepareClassMove(character, move.Name).Input
-            : BasicMoves.All.FirstOrDefault(b => b.Name == move.Name) is { Stat: { } stat } ? MoveInput.ForStat(character, stat, 0) : null;
-
-        return input is null ? null : input.Modifier + (input.Stat is { } rolled ? Penalty(character, rolled) : 0);
-    }
-
-    private static int Penalty(Character character, StatType stat) => DebilityRules.RollPenalty(character, stat)?.Penalty ?? 0;
 
     public async Task<MoveAsked> AskAsync(int canvasID, Viewer viewer, MoveAsk ask)
     {

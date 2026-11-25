@@ -37,6 +37,7 @@ public class DowntimeCommand(
     : MoveCommandBase(context, feedbackService, characterService, rollStatsService, encounterService, moveResolver, resourceService, rollReveal)
 {
     [Command("make-camp")]
+    [DisplayName("Make camp")]
     [Description("Settle in to rest: eat a ration, and heal half your max HP if you sleep a few hours")]
     public async Task<IResult> MakeCampAsync(
         [Description("Whether you got a few uninterrupted hours of sleep (default yes)")]
@@ -75,6 +76,7 @@ public class DowntimeCommand(
     }
 
     [Command("take-watch")]
+    [DisplayName("Take watch")]
     [Description("You're on watch and something approaches the camp (+WIS)")]
     public Task<IResult> TakeWatchAsync(
         [Description(BonusDescription)] int bonus = 0,
@@ -82,6 +84,7 @@ public class DowntimeCommand(
         => MakeStatMoveAsync(SpecialMoves.TakeWatch, StatType.Wis, bonus, prepared: prepared);
 
     [Command("perilous-journey")]
+    [DisplayName("Perilous journey")]
     [Description("Do your job while the party travels through hostile territory (+WIS)")]
     public Task<IResult> PerilousJourneyAsync(
         [Description("Trailblazer: cut travel time, Scout: spot trouble, Quartermaster: save rations")]
@@ -91,6 +94,7 @@ public class DowntimeCommand(
         => MakeStatMoveAsync(SpecialMoves.PerilousJourney(role), StatType.Wis, bonus, prepared: prepared);
 
     [Command("recover")]
+    [DisplayName("Recover")]
     [Description("Rest in comfort and safety: heal all your HP, and clear debilities after enough days")]
     public async Task<IResult> RecoverAsync(
         [Description("How many days you rested")]
@@ -118,6 +122,7 @@ public class DowntimeCommand(
     }
 
     [Command("bolster")]
+    [DisplayName("Bolster")]
     [Description("Spend your leisure time in study, meditation, or hard practice to take Preparation")]
     public async Task<IResult> BolsterAsync(
         [Description("Week: a week or more, for 1 Preparation. Month: a month or longer, for 3")]
@@ -137,6 +142,7 @@ public class DowntimeCommand(
     }
 
     [Command("brew")]
+    [DisplayName("Brew poison")]
     [Description("Thief: with time to gather materials and a safe place, brew 3 more doses of your mastered poison")]
     public async Task<IResult> BrewAsync()
     {
@@ -158,6 +164,7 @@ public class DowntimeCommand(
     }
 
     [Command("supply")]
+    [DisplayName("Supply")]
     [Description("Buy something special or beyond what's usually for sale here (+CHA)")]
     public Task<IResult> SupplyAsync(
         [Description(BonusDescription)] int bonus = 0,
@@ -165,6 +172,7 @@ public class DowntimeCommand(
         => MakeStatMoveAsync(SpecialMoves.Supply, StatType.Cha, bonus, prepared: prepared);
 
     [Command("carouse")]
+    [DisplayName("Carouse")]
     [Description("Throw a big party: spend 100 coin, +1 for each extra 100 you spend")]
     public async Task<IResult> CarouseAsync(
         [Description("How many extra 100s of coin to spend, for +1 each")]
@@ -188,6 +196,7 @@ public class DowntimeCommand(
     }
 
     [Command("outstanding-warrants")]
+    [DisplayName("Outstanding warrants")]
     [Description("Return to a civilized place where you've caused trouble before (+CHA)")]
     public Task<IResult> OutstandingWarrantsAsync(
         [Description(BonusDescription)] int bonus = 0,

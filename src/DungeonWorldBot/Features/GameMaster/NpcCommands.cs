@@ -24,6 +24,7 @@ public partial class DmCommand
         private const string NameDescription = "The NPC";
 
         [Command("add")]
+        [DisplayName("Add an NPC")]
         [Description("Add an NPC to the party: a hireling, guide, companion or anyone else traveling with them")]
         public async Task<IResult> AddAsync(
             [Description("Their name")]
@@ -76,6 +77,7 @@ public partial class DmCommand
         }
 
         [Command("edit")]
+        [DisplayName("Change an NPC")]
         [Description("Change an NPC. Only what you fill in changes")]
         public async Task<IResult> EditAsync(
             [Description(NameDescription)]
@@ -154,6 +156,7 @@ public partial class DmCommand
         }
 
         [Command("stats")]
+        [DisplayName("Set an NPC's stats")]
         [Description("Set an NPC's stat modifiers (-3 to +3). Only what you fill in changes")]
         public async Task<IResult> SetStatsAsync(
             [Description(NameDescription)]
@@ -187,6 +190,7 @@ public partial class DmCommand
         }
 
         [Command("remove")]
+        [DisplayName("Remove an NPC")]
         [Description("Take an NPC off the party for good: they left, or they're dead")]
         public async Task<IResult> RemoveAsync(
             [Description(NameDescription)]

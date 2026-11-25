@@ -92,19 +92,19 @@ public class MoveRequestWorker(IServiceScopeFactory scopes, ILogger<MoveRequestW
         // Taken before rolling, so it's never rolled again
         await context.SaveChangesAsync();
 
-        ProcessedMove move;
+        ProcessedMoveResult processed;
         try
         {
-            var processed = await services.GetRequiredService<MoveRequestProcessor>().ProcessAsync(request);
-            if (processed.Move is null)
+            processed = await services.GetRequiredService<MoveRequestProcessor>().ProcessAsync(request);
+            switch (processed)
             {
-                request.Error = processed.Error;
-                await context.SaveChangesAsync();
-                return;
+                case string error:
+                    request.Error = error;
+                    break;
+                case ProcessedMove rolled:
+                    request.Summary = rolled.Summary;
+                    break;
             }
-
-            move = processed.Move;
-            request.Summary = move.Summary;
             await context.SaveChangesAsync();
         }
         catch (Exception e) when (e is not OperationCanceledException)
@@ -115,7 +115,8 @@ public class MoveRequestWorker(IServiceScopeFactory scopes, ILogger<MoveRequestW
             return;
         }
 
-        await TellGameChatAsync(services, move);
+        if (processed is ProcessedMove move)
+            await TellGameChatAsync(services, move);
     }
 
     /// <summary>

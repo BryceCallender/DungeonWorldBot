@@ -34,6 +34,7 @@ public class SessionCommand(
     private readonly ISessionService _sessions = sessions;
 
     [Command("start")]
+    [DisplayName("Start the session")]
     [Description("Start tonight's session. Rolls from now until /session end count as one game night")]
     public async Task<IResult> StartAsync(
         [Description("What tonight's about, e.g. Into the Sunken Abbey")]
@@ -59,6 +60,7 @@ public class SessionCommand(
     }
 
     [Command("end")]
+    [DisplayName("End the session")]
     [Description("End tonight's session, with a recap of how the dice went")]
     public async Task<IResult> EndAsync()
     {
@@ -88,6 +90,7 @@ public class SessionCommand(
     }
 
     [Command("rename")]
+    [DisplayName("Rename a session")]
     [Description("Rename a session. Defaults to the one going on now, or the last one if none is")]
     public async Task<IResult> RenameAsync(
         [Description("Its new title, e.g. Into the Sunken Abbey")]
@@ -112,6 +115,7 @@ public class SessionCommand(
     }
 
     [Command("scan")]
+    [DisplayName("Find past sessions")]
     [Description("Add past game nights, guessed from the game chat's rolls. Safe to run again")]
     public async Task<IResult> ScanAsync()
     {

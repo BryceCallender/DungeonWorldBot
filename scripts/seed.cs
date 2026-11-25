@@ -97,7 +97,7 @@ List<Character> characters =
                 new HexedJars { Name = "Hexed Jars", Contents = ["Bog water", "A wight's finger", "Moth wings"] },
                 Gear("Halfling Pipeleaf", 2), Gear("Coin", 4)],
         abilities: [Move("Born of the Soil"), Move("By Nature Sustained"), Move("Spirit Tongue"), Move("Studied Essence"),
-                    Move("Shapeshift"), Move("Barkskin", taken: 2), Move("Circle of the Eclipse", taken: 3)],
+                    Move("Shapeshifter"), Move("Barkskin", taken: 2), Move("Circle of the Eclipse", taken: 3)],
         resources: [("Shapeshift Hold", 2)],
         backstory: "Speaks for the Whisperpine. Came to Mirefen because the trees told her the swamp was sick."),
     Sheet(morrow, "Morrow Vane", ClassType.Necromancer, Race.Human, Alignment.NeutralEvil, level: 2, hp: (0, 16), armor: 0,

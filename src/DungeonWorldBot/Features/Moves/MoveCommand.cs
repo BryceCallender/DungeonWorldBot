@@ -36,6 +36,7 @@ public class MoveCommand(
     private const string TargetDescription = "The enemy you're attacking, to take your damage off it on a hit";
 
     [Command("hack-and-slash")]
+    [DisplayName("Hack and slash")]
     [Description("Attack an enemy in melee (+STR)")]
     public Task<IResult> HackAndSlashAsync(
         [Description(BonusDescription)] int bonus = 0,
@@ -46,6 +47,7 @@ public class MoveCommand(
         => MakeStatMoveAsync(BasicMoves.HackAndSlash, StatType.Str, bonus, target, extraDamage, prepared: prepared, appetite: pursuing);
 
     [Command("volley")]
+    [DisplayName("Volley")]
     [Description("Take aim and shoot at an enemy at range (+DEX)")]
     public Task<IResult> VolleyAsync(
         [Description(BonusDescription)] int bonus = 0,
@@ -56,6 +58,7 @@ public class MoveCommand(
         => MakeStatMoveAsync(BasicMoves.Volley, StatType.Dex, bonus, target, extraDamage, prepared: prepared, appetite: pursuing);
 
     [Command("defy-danger")]
+    [DisplayName("Defy danger")]
     [Description("Act despite an imminent threat (+the stat that fits how you do it)")]
     public Task<IResult> DefyDangerAsync(
         [Description("STR: power through, DEX: dodge, CON: endure, INT: think fast, WIS: resist, CHA: charm")]
@@ -66,6 +69,7 @@ public class MoveCommand(
         => MakeStatMoveAsync(BasicMoves.DefyDanger, stat, bonus, prepared: prepared, appetite: pursuing);
 
     [Command("defend")]
+    [DisplayName("Defend")]
     [Description("Stand in defense of a person, item, or location (+CON)")]
     public Task<IResult> DefendAsync(
         [Description(BonusDescription)] int bonus = 0,
@@ -74,6 +78,7 @@ public class MoveCommand(
         => MakeStatMoveAsync(BasicMoves.Defend, StatType.Con, bonus, prepared: prepared, appetite: pursuing);
 
     [Command("spout-lore")]
+    [DisplayName("Spout lore")]
     [Description("Consult your accumulated knowledge about something (+INT)")]
     public Task<IResult> SpoutLoreAsync(
         [Description(BonusDescription)] int bonus = 0,
@@ -82,6 +87,7 @@ public class MoveCommand(
         => MakeStatMoveAsync(BasicMoves.SpoutLore, StatType.Int, bonus, prepared: prepared, appetite: pursuing);
 
     [Command("discern-realities")]
+    [DisplayName("Discern realities")]
     [Description("Closely study a situation or person (+WIS)")]
     public Task<IResult> DiscernRealitiesAsync(
         [Description(BonusDescription)] int bonus = 0,
@@ -90,6 +96,7 @@ public class MoveCommand(
         => MakeStatMoveAsync(BasicMoves.DiscernRealities, StatType.Wis, bonus, prepared: prepared, appetite: pursuing);
 
     [Command("parley")]
+    [DisplayName("Parley")]
     [Description("Use leverage to manipulate a GM character (+CHA)")]
     public Task<IResult> ParleyAsync(
         [Description(BonusDescription)] int bonus = 0,
@@ -98,6 +105,7 @@ public class MoveCommand(
         => MakeStatMoveAsync(BasicMoves.Parley, StatType.Cha, bonus, prepared: prepared, appetite: pursuing);
 
     [Command("aid")]
+    [DisplayName("Aid or interfere")]
     [Description("Help or hinder another player's character (+bonds with them)")]
     public async Task<IResult> AidOrInterfereAsync(
         [Description("The player you're helping or hindering")]
@@ -116,6 +124,7 @@ public class MoveCommand(
     }
 
     [Command("last-breath")]
+    [DisplayName("Last breath")]
     [Description("You're dying. Roll to see what lies beyond the Black Gates (+nothing)")]
     public async Task<IResult> LastBreathAsync([Description(PreparedDescription)] bool prepared = false)
     {
@@ -127,6 +136,7 @@ public class MoveCommand(
     }
 
     [Command("class")]
+    [DisplayName("Roll a class move")]
     [Description("Roll one of your class or subclass moves, like Channel or Raise the Dead")]
     public async Task<IResult> ClassMoveAsync(
         [Description("The class move to roll")]
@@ -144,11 +154,11 @@ public class MoveCommand(
         if (character is null)
             return await ReplyWithErrorAsync(NoMoverMessage);
 
-        var classMove = characterMoves.PrepareClassMove(character, move, stat);
-        if (classMove.Error is { } error)
-            return await ReplyWithErrorAsync(error);
-
-        var input = classMove.Input!;
-        return await ReplyWithMoveAsync(character, classMove.Move!, input.ModifierLabel, input.Modifier, bonus, input.Stat, extraDamage: extraDamage, prepared: prepared, appetite: pursuing);
+        return characterMoves.PrepareClassMove(character, move, stat) switch
+        {
+            string error => await ReplyWithErrorAsync(error),
+            ReadyMove(var classMove, var input) => await ReplyWithMoveAsync(
+                character, classMove, input.ModifierLabel, input.Modifier, bonus, input.Stat, extraDamage: extraDamage, prepared: prepared, appetite: pursuing),
+        };
     }
 }

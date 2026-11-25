@@ -20,6 +20,7 @@ namespace DungeonWorldBot.Features.Classes;
 /// The Battlemaster's active Tactic. Its effects are applied to their moves and damage automatically.
 /// </summary>
 [Group("tactic")]
+[ForClassMechanic(ClassMechanic.Tactics)]
 public class TacticCommand(
     ICommandContext context,
     FeedbackService feedbackService,
@@ -29,6 +30,7 @@ public class TacticCommand(
     : DungeonWorldCommandBase(context, feedbackService)
 {
     [Command("show")]
+    [DisplayName("See your Tactic")]
     [Description("See which Tactic you're in")]
     public async Task<IResult> ShowAsync(
         [Description("The user to see the Tactic of. Don't specify a user to see your own.")]
@@ -45,6 +47,7 @@ public class TacticCommand(
     }
 
     [Command("change")]
+    [DisplayName("Change Tactic")]
     [Description("Switch to a new Tactic, after Change Tactics or another move lets you")]
     public async Task<IResult> ChangeAsync(
         [Description("The Tactic to switch to")]
@@ -67,6 +70,7 @@ public class TacticCommand(
     }
 
     [Command("default")]
+    [DisplayName("Return to your Default Tactic")]
     [Description("Spend 1 Gambit to return to your Default Tactic")]
     public async Task<IResult> ReturnToDefaultAsync(
         [Description("Return without spending a Gambit, e.g. when the GM says so")]

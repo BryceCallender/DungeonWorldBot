@@ -24,6 +24,7 @@ public class StatsCommand(
     : DungeonWorldCommandBase(context, feedbackService)
 {
     [Command("show")]
+    [DisplayName("See roll stats")]
     [Description("Show how everyone's 2d6 rolls in the game chat have gone: hits, misses, nat 12s, nat 2s, modifiers")]
     public async Task<IResult> ShowStatsAsync(
         [Description("Only show this player's stats")]
@@ -63,6 +64,7 @@ public class StatsCommand(
     }
 
     [Command("scan")]
+    [DisplayName("Count old rolls")]
     [Description("Count the rolls already in the game chat's history toward roll stats. Safe to run again")]
     public async Task<IResult> ScanChannelAsync(
         [Description("The channel to scan. Defaults to the game chat; only game chat rolls count toward stats")]

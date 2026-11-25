@@ -8,14 +8,16 @@
             <h2 id="@Id-title">@Title</h2>
             <button type="button" class="modal-close" data-close-dialog aria-label="Close">×</button>
         </div>
-        @ChildContent
-        @if (_error is not null)
-        {
-            <p class="form-error">@_error</p>
-        }
-        <div class="modal-actions">
-            <button type="button" class="tool" data-close-dialog>@CancelLabel</button>
-            <button class="tool create @(Danger ? "danger" : null)">@SubmitLabel</button>
+        <div class="modal-body">
+            @ChildContent
+            @if (_error is not null)
+            {
+                <p class="form-error">@_error</p>
+            }
+            <div class="modal-actions">
+                <button type="button" class="tool" data-close-dialog>@CancelLabel</button>
+                <button class="tool create @(Danger ? "danger" : null)">@SubmitLabel</button>
+            </div>
         </div>
     </form>
 </dialog>

@@ -525,3 +525,7 @@ src/DungeonWorldBot.Dashboard/wwwroot/canvas.js.map
 # The bot's status for the dashboard's health page, rewritten every 30 seconds
 *.status.json
 *.status.json.tmp
+
+# The bot's commands for the dashboard to offer, rewritten each time it starts
+*.commands.json
+*.commands.json.tmp

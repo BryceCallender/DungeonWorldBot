@@ -1,10 +1,10 @@
 <Project>
 
     <PropertyGroup>
-        <TargetFramework>net10.0</TargetFramework>
+        <TargetFramework>net11.0</TargetFramework>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
-        <LangVersion>14</LangVersion>
+        <LangVersion>15</LangVersion>
     </PropertyGroup>
 
     <!-- Every warning fails the build, with the recommended analyzers on; .editorconfig turns off the few that don't fit.

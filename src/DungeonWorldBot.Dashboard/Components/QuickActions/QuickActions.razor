@@ -1,0 +1,42 @@
+@namespace DungeonWorldBot.Dashboard.Components
+@* A button on every page, like a scene during a fight, that opens what the viewer can do right now (QuickActionsPanel,
+   which commands.js fetches each time it opens). With sign-in off there's nobody in particular looking, so it asks who
+   to play as. Outside main, so live updates of the page leave it alone. *@
+@inject Viewer Viewer
+@inject PartyReader Party
+@inject DashboardSettings Settings
+
+<button type="button" class="quick-launch" data-quick-open aria-haspopup="dialog" title="Roll and act">
+    <Icon Name="dice" /><span>Play</span>
+</button>
+
+<dialog id="quick-actions" class="modal quick-sheet" aria-label="Your actions" data-quick-sheet data-as="@Viewer.ID">
+    <div class="modal-head">
+        @if (Viewer.SignedIn)
+        {
+            <h2>Your actions</h2>
+        }
+        else
+        {
+            <select class="filter" aria-label="Play as" data-quick-as>
+                @foreach (var person in _party)
+                {
+                    <option value="@person.ID">@person.Name</option>
+                }
+                <option value="@Settings.DungeonMasterID">The DM</option>
+            </select>
+        }
+        <button type="button" class="modal-close" data-close-dialog aria-label="Close">×</button>
+    </div>
+    <div class="modal-body quick-body" data-quick-body></div>
+</dialog>
+
+@code {
+    private IReadOnlyList<CharacterView> _party = [];
+
+    protected override async Task OnInitializedAsync()
+    {
+        if (!Viewer.SignedIn)
+            _party = await Party.GetPartyAsync();
+    }
+}

@@ -1,0 +1,25 @@
+/* Moves in columns of rows, each its name, what it adds to the roll (or the stat to pick), and its button at the end */
+.roll-group { margin: 1rem 0 .4rem; font-size: .8rem; font-weight: 700; color: var(--muted); letter-spacing: .04em; text-transform: uppercase; }
+.roll-moves { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: .4rem; }
+.roll-move { display: flex; align-items: center; gap: .5rem; padding: .35rem .35rem .35rem .7rem; border-radius: 8px; background: var(--surface-2); }
+.roll-name { flex: 1; min-width: 6rem; font-weight: 600; }
+.roll-mod { font-weight: 700; color: var(--class-text); }
+/* Narrow enough to leave the move's name room, as with Aid or Interfere's list of the party */
+.roll-move select { width: auto; min-width: 0; max-width: 9rem; padding-top: .2rem; padding-bottom: .2rem; }
+
+/* Big enough to tap on a phone, in the class's color */
+.roll-button { min-height: 2.25rem; padding: .3rem .9rem; font-weight: 600; background: var(--class); border-color: var(--class); color: var(--on-accent); }
+.roll-button:hover { background: var(--class-text); border-color: var(--class-text); color: var(--on-accent); }
+
+.roll-bonus { display: inline-flex; align-items: center; gap: .4rem; }
+.roll-bonus .tool { min-width: 2.25rem; }
+.roll-bonus strong { display: inline-block; min-width: 1.6rem; text-align: center; }
+
+/* How the last roll went: waiting, done or why not */
+.roll-status { margin: .6rem 0 0; padding: .5rem .75rem; border-radius: 8px; background: var(--surface-2); }
+.roll-status[data-kind="done"] { background: color-mix(in srgb, var(--good) 16%, transparent); color: var(--good-text); }
+.roll-status[data-kind="error"] { background: var(--warn-soft); color: var(--critical-text); }
+
+@media (max-width: 640px) {
+    .roll-moves { grid-template-columns: 1fr; }
+}

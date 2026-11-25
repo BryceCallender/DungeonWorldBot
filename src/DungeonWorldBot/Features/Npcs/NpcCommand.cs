@@ -29,6 +29,7 @@ public class NpcCommand(
     private const string NameDescription = "The NPC";
 
     [Command("list")]
+    [DisplayName("See the party's NPCs")]
     [Description("List the NPCs traveling with the party")]
     public async Task<IResult> ListAsync()
     {
@@ -44,6 +45,7 @@ public class NpcCommand(
     }
 
     [Command("show")]
+    [DisplayName("See an NPC")]
     [Description("Show an NPC's sheet")]
     public async Task<IResult> ShowAsync(
         [Description(NameDescription)]
@@ -58,6 +60,7 @@ public class NpcCommand(
     }
 
     [Command("damage")]
+    [DisplayName("Damage an NPC")]
     [Description("Damage an NPC, reduced by their armor if it's physical")]
     public async Task<IResult> DamageAsync(
         [Description(NameDescription)]
@@ -84,6 +87,7 @@ public class NpcCommand(
     }
 
     [Command("heal")]
+    [DisplayName("Heal an NPC")]
     [Description("Heal an NPC")]
     public async Task<IResult> HealAsync(
         [Description(NameDescription)]
@@ -116,6 +120,7 @@ public class NpcCommand(
     }
 
     [Command("roll")]
+    [DisplayName("Roll for an NPC")]
     [Description("Roll for an NPC: 2d6 plus a stat, their loyalty or a skill, or their damage dice")]
     public async Task<IResult> RollAsync(
         [Description(NameDescription)]

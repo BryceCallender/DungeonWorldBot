@@ -41,6 +41,7 @@ public partial class DmCommand
         private const string NoFight = "No fight is going on. Start one with /dm encounter start.";
 
         [Command("start")]
+        [DisplayName("Start a fight")]
         [Description("Start a fight. Add monsters to it with /dm encounter add, or on its scene")]
         public async Task<IResult> StartAsync(
             [Description("What to call the fight, e.g. Goblin ambush")]
@@ -69,6 +70,7 @@ public partial class DmCommand
         }
 
         [Command("end")]
+        [DisplayName("End the fight")]
         [Description("End a fight, and remove the temporary armor that lasted for it from everyone in it")]
         public async Task<IResult> EndAsync(
             [Description("Which fight, when there's more than one going on")]
@@ -87,6 +89,7 @@ public partial class DmCommand
         }
 
         [Command("add")]
+        [DisplayName("Add monsters to the fight")]
         [Description("Put saved monsters into the fight. Save them first with /dm monster save")]
         public async Task<IResult> AddAsync(
             [Description("The monster")]
@@ -114,6 +117,7 @@ public partial class DmCommand
         }
 
         [Command("add-custom")]
+        [DisplayName("Add a one-off enemy")]
         [Description("Put a one-off enemy into the fight, without saving it as a monster")]
         public async Task<IResult> AddCustomAsync(
             [Description("Its name")]
@@ -166,6 +170,7 @@ public partial class DmCommand
         }
 
         [Command("damage")]
+        [DisplayName("Damage an enemy")]
         [Description("Damage an enemy, reduced by its armor if it's physical")]
         public async Task<IResult> DamageAsync(
             [Description(EnemyDescription)]
@@ -191,6 +196,7 @@ public partial class DmCommand
         }
 
         [Command("attack")]
+        [DisplayName("Attack with an enemy")]
         [Description("Have an enemy attack a player's character or an NPC, rolling its damage against their armor")]
         public async Task<IResult> AttackAsync(
             [Description("The enemy attacking")]
@@ -225,14 +231,21 @@ public partial class DmCommand
                 return await ReplyWithErrorAsync(NpcCommand.NotFound(npcName));
 
             var attacked = await enemyAttackResolver.ResolveAsync(new EnemyAttackInput(attacker, character, ally, move, damage, type, piercing));
-            if (attacked.Attack is not { } attack)
-                return await ReplyWithErrorAsync(attacked.Error!);
+            return attacked switch
+            {
+                string error => await ReplyWithErrorAsync(error),
+                EnemyAttack attack => await ReplyWithAttackAsync(attack),
+            };
+        }
 
+        private async Task<IResult> ReplyWithAttackAsync(EnemyAttack attack)
+        {
             await encounterService.LogAsync(attack.Action);
             return await ReplyAsync(attack.Title, attack.Description);
         }
 
         [Command("heal")]
+        [DisplayName("Heal an enemy")]
         [Description("Heal an enemy")]
         public async Task<IResult> HealAsync(
             [Description(EnemyDescription)]
@@ -260,6 +273,7 @@ public partial class DmCommand
         }
 
         [Command("edit")]
+        [DisplayName("Change an enemy")]
         [Description("Change an enemy in the fight. Only what you fill in changes")]
         public async Task<IResult> EditAsync(
             [Description(EnemyDescription)]
@@ -318,6 +332,7 @@ public partial class DmCommand
         }
 
         [Command("remove")]
+        [DisplayName("Remove an enemy")]
         [Description("Take an enemy out of the fight: it fled, or it was never really there")]
         public async Task<IResult> RemoveAsync(
             [Description(EnemyDescription)]
@@ -333,6 +348,7 @@ public partial class DmCommand
         }
 
         [Command("show")]
+        [DisplayName("See the enemies")]
         [Description("See every enemy's HP, instinct and moves. Only you see the reply")]
         public async Task<IResult> ShowAsync(
             [Description("Which fight, when there's more than one going on")]

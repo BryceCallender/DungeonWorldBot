@@ -9,7 +9,6 @@
     <ItemGroup>
       <PackageReference Include="d20tek-dicenotation" />
       <PackageReference Include="Enums.NET" />
-      <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" />
       <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
       <PackageReference Include="OpenTelemetry.Exporter.OpenTelemetryProtocol" />
       <PackageReference Include="OpenTelemetry.Extensions.Hosting" />

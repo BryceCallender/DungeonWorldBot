@@ -2,6 +2,7 @@ using System.ComponentModel;
 using DungeonWorldBot.Data.Entities;
 using DungeonWorldBot.Features.Abilities;
 using DungeonWorldBot.Features.Characters;
+using DungeonWorldBot.Features.Classes;
 using DungeonWorldBot.Features.Encounters;
 using DungeonWorldBot.Features.Moves;
 using DungeonWorldBot.Features.Resources;
@@ -20,6 +21,7 @@ namespace DungeonWorldBot.Features.Spirits;
 /// The Shaman's Spirit Catcher: binding a dying creature's spirit, recording what it does, and releasing it.
 /// </summary>
 [Group("spirit")]
+[ForClassMechanic(ClassMechanic.SpiritCatcher)]
 public class SpiritCommand(
     ICommandContext context,
     FeedbackService feedbackService,
@@ -34,6 +36,7 @@ public class SpiritCommand(
     : MoveCommandBase(context, feedbackService, characterService, rollStatsService, encounterService, moveResolver, resourceService, rollReveal)
 {
     [Command("catch")]
+    [DisplayName("Catch a spirit")]
     [Description("Bind the spirit of a creature you saw die to your Spirit Catcher totem (+WIS)")]
     public async Task<IResult> CatchAsync(
         [Description("The creature whose spirit you're catching, e.g. a dire wolf")]
@@ -48,23 +51,23 @@ public class SpiritCommand(
         if (SpiritCatcherRules.Spirit(character!) is { } held)
             return await ReplyWithErrorAsync($"{character!.Name}'s Spirit Catcher already holds {held}. Release it with /spirit release first.");
 
-        var move = characterMoves.PrepareClassMove(character!, SpiritCatcherRules.SpiritCatcher);
-        if (move.Error is { } error)
-            return await ReplyWithErrorAsync(error);
-
-        var input = move.Input!;
-        return await ReplyWithMoveAsync(
-            character!,
-            move.Move!,
-            input.ModifierLabel,
-            input.Modifier,
-            bonus,
-            input.Stat,
-            prepared: prepared,
-            aftermath: resolution => BindAsync(resolution, spirit.Trim()));
+        return characterMoves.PrepareClassMove(character!, SpiritCatcherRules.SpiritCatcher) switch
+        {
+            string error => await ReplyWithErrorAsync(error),
+            ReadyMove(var move, var input) => await ReplyWithMoveAsync(
+                character!,
+                move,
+                input.ModifierLabel,
+                input.Modifier,
+                bonus,
+                input.Stat,
+                prepared: prepared,
+                aftermath: resolution => BindAsync(resolution, spirit.Trim())),
+        };
     }
 
     [Command("effect")]
+    [DisplayName("Record a spirit's effect")]
     [Description("Record what your caught spirit does when released, as the GM tells you")]
     public async Task<IResult> EffectAsync(
         [Description("Its supernatural effect when released")]
@@ -83,6 +86,7 @@ public class SpiritCommand(
     }
 
     [Command("release")]
+    [DisplayName("Release a spirit")]
     [Description("Release your caught spirit for its effect. It moves on afterwards")]
     public async Task<IResult> ReleaseAsync()
     {

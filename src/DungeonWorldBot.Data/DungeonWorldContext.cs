@@ -22,6 +22,8 @@ public class DungeonWorldContext(DbContextOptions<DungeonWorldContext> options) 
 
     public DbSet<MoveRequest> MoveRequests => Set<MoveRequest>();
 
+    public DbSet<CommandRequest> CommandRequests => Set<CommandRequest>();
+
     public DbSet<MonsterTemplate> MonsterTemplates => Set<MonsterTemplate>();
 
     public DbSet<GameSession> Sessions => Set<GameSession>();
@@ -92,7 +94,7 @@ public class DungeonWorldContext(DbContextOptions<DungeonWorldContext> options) 
 
         modelBuilder.Entity<MoveRequest>(request =>
         {
-            // Asked from a fight, so they go with it
+            // Asked from a fight, so they go with it. One rolled from a sheet has no fight.
             request.HasOne(r => r.Encounter)
                 .WithMany()
                 .HasForeignKey(r => r.EncounterID)
@@ -114,6 +116,12 @@ public class DungeonWorldContext(DbContextOptions<DungeonWorldContext> options) 
                 .HasForeignKey(r => r.ActionID)
                 .OnDelete(DeleteBehavior.SetNull);
             // The bot looks for those still waiting every second
+            request.HasIndex(r => r.ResolvedAt);
+        });
+
+        modelBuilder.Entity<CommandRequest>(request =>
+        {
+            // The bot looks for those still waiting every moment
             request.HasIndex(r => r.ResolvedAt);
         });
 

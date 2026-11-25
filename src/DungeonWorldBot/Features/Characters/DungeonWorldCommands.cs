@@ -16,6 +16,7 @@ public class DungeonWorldCommands(ICommandContext context, FeedbackService feedb
     : DungeonWorldCommandBase(context, feedbackService)
 {
     [Command("players")]
+    [DisplayName("See the party")]
     [Description("List the characters in the campaign")]
     public async Task<IResult> ShowPlayersAsync()
     {
@@ -29,6 +30,7 @@ public class DungeonWorldCommands(ICommandContext context, FeedbackService feedb
     }
 
     [Command("world", "map")]
+    [DisplayName("See the world map")]
     [Description("Show the world map")]
     public async Task<IResult> ShowMapAsync()
     {

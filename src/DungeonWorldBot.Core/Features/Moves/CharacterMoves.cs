@@ -32,12 +32,14 @@ public enum MoveAim
 public record CharacterMove(string Name, bool IsClassMove, MoveAim Aim, bool PicksStat = false, bool RollsDamage = false);
 
 /// <summary>
-/// A move worked out for a character, ready to roll with any bonus, target and extra damage added, or why it can't be.
+/// A move worked out for a character, ready to roll with any bonus, target and extra damage added.
 /// </summary>
-public record PreparedMove(string? Error, MoveDefinition? Move = null, MoveInput? Input = null)
-{
-    public static PreparedMove Failed(string error) => new(error);
-}
+public record ReadyMove(MoveDefinition Move, MoveInput Input);
+
+/// <summary>
+/// A move ready to roll, or why it can't be.
+/// </summary>
+public union PreparedMove(ReadyMove, string);
 
 /// <summary>
 /// The moves a character can make, and what their class moves roll with. Shared by /move and the dashboard's board.
@@ -76,7 +78,7 @@ public class CharacterMoves(IResourceService resourceService)
     public PreparedMove PrepareClassMove(Character character, string move, StatType? stat = null)
     {
         if (ClassSheetLibrary.For(character.Class.Type) is not { } sheet)
-            return PreparedMove.Failed($"The {character.Class.Type} doesn't have a class sheet in the bot yet.");
+            return $"The {character.Class.Type} doesn't have a class sheet in the bot yet.";
 
         var classMove = sheet.FindMove(move);
         var rollsFrom = sheet;
@@ -91,34 +93,34 @@ public class CharacterMoves(IResourceService resourceService)
         classMove ??= SubclassLibrary.Of(character)?.FindMove(move);
 
         if (classMove?.Roll is not { } definition)
-            return PreparedMove.Failed($"{character.Name} doesn't have a rolled class move called {move}.");
+            return $"{character.Name} doesn't have a rolled class move called {move}.";
 
         if (!ClassSheetLibrary.KnownMoves(character).Contains(classMove.Name, StringComparer.OrdinalIgnoreCase))
-            return PreparedMove.Failed($"{character.Name} doesn't know {classMove.Name}. Learn it with /class learn");
+            return $"{character.Name} doesn't know {classMove.Name}. Learn it with /class learn";
 
         if (stat is null && classMove.RollsWith is { } rollsWith)
         {
             if (rollsFrom.FindResource(rollsWith) is { } resource)
-                return new PreparedMove(null, definition, new MoveInput(resource.Name, resourceService.GetValue(character, resource), 0));
+                return new ReadyMove(definition, new MoveInput(resource.Name, resourceService.GetValue(character, resource), 0));
 
             if (rollsFrom.ClassStat is { } classStat && classStat.Name.Equals(rollsWith, StringComparison.OrdinalIgnoreCase))
             {
                 stat = rollsFrom == sheet ? ClassSheetLibrary.ResolveClassStat(character, sheet) : null;
                 if (stat is null)
                 {
-                    return PreparedMove.Failed(rollsFrom == sheet
+                    return rollsFrom == sheet
                         ? $"Choose your {classStat.Feature} with /class learn first, it decides your {rollsWith} stat."
-                        : $"{classMove.Name} rolls the {rollsFrom.Type}'s {rollsWith} stat. Pick which stat to use with the stat option.");
+                        : $"{classMove.Name} rolls the {rollsFrom.Type}'s {rollsWith} stat. Pick which stat to use with the stat option.";
                 }
             }
         }
 
         if ((stat ?? definition.Stat) is not { } statType)
-            return new PreparedMove(null, definition, new MoveInput(null, 0, 0));
+            return new ReadyMove(definition, new MoveInput(null, 0, 0));
 
         return MoveInput.ForStat(character, statType, 0) is { } input
-            ? new PreparedMove(null, definition, input)
-            : PreparedMove.Failed($"Your character has no {statType} stat.");
+            ? new ReadyMove(definition, input)
+            : $"Your character has no {statType} stat.";
     }
 
     // Their own class's, their subclass's, and any they learned from other classes

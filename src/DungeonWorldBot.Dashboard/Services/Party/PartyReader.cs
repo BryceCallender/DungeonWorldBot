@@ -27,6 +27,12 @@ public class PartyReader(
     INpcService npcService,
     IEncounterService encounterService)
 {
+    /// <summary>
+    /// Who a player is playing: see <see cref="PlayedCharacters.Of"/>.
+    /// </summary>
+    public async Task<PlayedCharacters> PlayedByAsync(ulong userID) =>
+        PlayedCharacters.Of(await characterService.GetCharacterNamesAsync(), userID);
+
     public async Task<IReadOnlyList<CharacterView>> GetPartyAsync() =>
         (await characterService.GetCharactersAsync())
             .OrderBy(c => c.Name)

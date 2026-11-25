@@ -24,8 +24,9 @@ public enum MoveRequestKind
 }
 
 /// <summary>
-/// A move someone made from a fight's scene on the dashboard. The dashboard can't roll it or reach Discord, so it only
-/// asks, and the bot rolls it by the same rules as its commands and tells game chat a moment later.
+/// A move someone made on the dashboard, from a fight's scene or their character's sheet. The dashboard can't roll it or
+/// reach Discord, so it only asks, and the bot rolls it by the same rules as its commands and tells game chat a moment
+/// later.
 /// </summary>
 /// <remarks>
 /// Who acts is <see cref="CharacterID"/> or <see cref="EnemyID"/>, and who it's aimed at is one of the targets, or
@@ -35,9 +36,12 @@ public class MoveRequest
 {
     public int ID { get; set; }
 
-    public int EncounterID { get; set; }
+    /// <summary>
+    /// The fight it was made from, or null for a move rolled from a character's sheet, as /move is rolled in Discord.
+    /// </summary>
+    public int? EncounterID { get; set; }
 
-    public Encounter Encounter { get; set; } = null!;
+    public Encounter? Encounter { get; set; }
 
     public DateTimeOffset RequestedAt { get; set; }
 

@@ -2,6 +2,7 @@ using DungeonWorldBot.Dashboard;
 using DungeonWorldBot.Dashboard.Models.Shared;
 using DungeonWorldBot.Dashboard.Services.Admin;
 using DungeonWorldBot.Dashboard.Services.Auth;
+using DungeonWorldBot.Dashboard.Services.Bridge;
 using DungeonWorldBot.Dashboard.Services.Encounters;
 using DungeonWorldBot.Dashboard.Services.Health;
 using DungeonWorldBot.Dashboard.Services.Live;
@@ -29,7 +30,9 @@ builder.WebHost.UseStaticWebAssets();
 var databases = DashboardDatabases.From(builder.Configuration, builder.Environment);
 builder.Services.AddSingleton(DashboardSettings.From(builder.Configuration));
 
-var signInEnabled = builder.AddDiscordSignIn();
+var discordSignIn = builder.AddDiscordSignIn();
+// Or, trying it locally, signed in as a particular player (see DevSignIn)
+var signInEnabled = discordSignIn || builder.AddDevSignIn();
 builder.Services.AddViewer(signInEnabled);
 
 builder.Services.AddRazorComponents();
@@ -42,6 +45,7 @@ builder.Services
     .AddScenes(databases)
     .AddRolls()
     .AddSessions()
+    .AddBridge(databases)
     .AddAdmin(databases)
     .AddHealth(databases, builder.Configuration);
 
@@ -54,7 +58,9 @@ else
 
 app.UpdateCanvasDatabase(databases);
 
-if (!signInEnabled)
+if (signInEnabled && !discordSignIn)
+    app.Logger.LogWarning("Signed in as {Name} for every request, for trying the dashboard as them. Development only.", app.Configuration["DevSignInName"] ?? app.Configuration["DevSignInAs"]);
+else if (!signInEnabled)
     app.Logger.LogWarning("Discord sign-in is off, so anyone who can reach the dashboard can see it. Set Discord:ClientId and Discord:ClientSecret to turn it on.");
 else if (app.Configuration["Discord:GuildId"] is null)
     app.Logger.LogWarning("Discord:GuildId isn't set, so any Discord account can sign in, not just the server's members.");
@@ -98,6 +104,8 @@ IEndpointConventionBuilder[] membersOnly =
     app.MapCanvasEndpoints(),
     app.MapMapEndpoints(),
     app.MapCharacterJournalEndpoints(),
+    app.MapSheetRollEndpoints(),
+    app.MapCommandEndpoints(),
     app.MapPortraitEndpoints(),
     app.MapEncounterEndpoints(),
     app.MapEnemyEndpoints(),
@@ -108,7 +116,8 @@ IEndpointConventionBuilder[] membersOnly =
 
 if (signInEnabled)
 {
-    app.MapDiscordSignIn();
+    if (discordSignIn)
+        app.MapDiscordSignIn();
     foreach (var endpoints in membersOnly)
         endpoints.RequireAuthorization(DiscordSignIn.Policy);
 }

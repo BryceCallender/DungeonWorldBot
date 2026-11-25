@@ -28,6 +28,7 @@ public partial class DmCommand
         private const string MonsterDescription = "The monster";
 
         [Command("save")]
+        [DisplayName("Write up a monster")]
         [Description("Write up a monster, or change one already saved. Only what you fill in changes on an existing one")]
         public async Task<IResult> SaveAsync(
             [Description("Its name, e.g. Goblin")]
@@ -80,6 +81,7 @@ public partial class DmCommand
         }
 
         [Command("from-enemy")]
+        [DisplayName("Save an enemy as a monster")]
         [Description("Save an enemy in the fight as a monster, to put into later fights")]
         public async Task<IResult> FromEnemyAsync(
             [Description("The enemy")]
@@ -112,6 +114,7 @@ public partial class DmCommand
         }
 
         [Command("list")]
+        [DisplayName("See saved monsters")]
         [Description("List the saved monsters")]
         public async Task<IResult> ListAsync()
         {
@@ -128,6 +131,7 @@ public partial class DmCommand
         }
 
         [Command("show")]
+        [DisplayName("See a monster")]
         [Description("Show a saved monster")]
         public async Task<IResult> ShowAsync(
             [Description(MonsterDescription)]
@@ -141,6 +145,7 @@ public partial class DmCommand
         }
 
         [Command("remove")]
+        [DisplayName("Delete a monster")]
         [Description("Delete a saved monster. Enemies already made from it stay in their fights")]
         public async Task<IResult> RemoveAsync(
             [Description(MonsterDescription)]

@@ -30,15 +30,14 @@ public record ProcessedMove(
     MoveOutcome? Outcome = null,
     Health? RollerHealth = null);
 
-/// <param name="Error">Why it couldn't be made, or null when it was.</param>
-public record ProcessedMoveResult(string? Error, ProcessedMove? Move)
-{
-    public static ProcessedMoveResult Failed(string error) => new(error, null);
-}
+/// <summary>
+/// The move rolled, or why it couldn't be made.
+/// </summary>
+public union ProcessedMoveResult(ProcessedMove, string);
 
 /// <summary>
-/// Rolls a move asked for from a scene on the dashboard (see <see cref="MoveRequest"/>), by the same rules as /move and
-/// /dm encounter attack, and puts it in the fight's spotlight. Telling game chat is left to <see cref="MoveRequestWorker"/>.
+/// Rolls a move asked for from a scene or a character's sheet on the dashboard (see <see cref="MoveRequest"/>), by the
+/// same rules as /move and /dm encounter attack, and puts it in the fight's spotlight. Telling game chat is left to <see cref="MoveRequestWorker"/>.
 /// </summary>
 [Scoped]
 public class MoveRequestProcessor(
@@ -51,33 +50,36 @@ public class MoveRequestProcessor(
 {
     private static readonly Color AttackColor = Color.FromArgb(0xD8, 0x5A, 0x30);
     private static readonly EmbedFooter FromScene = new("Rolled from the fight's scene");
+    private static readonly EmbedFooter FromSheet = new("Rolled from the dashboard");
 
     public async Task<ProcessedMoveResult> ProcessAsync(MoveRequest request)
     {
-        if (await context.Encounters.FindAsync(request.EncounterID) is not { EndedAt: null })
-            return ProcessedMoveResult.Failed("The fight is over.");
+        // One from a sheet has no fight of its own, though it's still logged in any the character is in, as /move is
+        if (request.EncounterID is { } fightID && await context.Encounters.FindAsync(fightID) is not { EndedAt: null })
+            return "The fight is over.";
 
         return request.Kind switch
         {
             MoveRequestKind.HackAndSlash or MoveRequestKind.Volley or MoveRequestKind.BasicMove or MoveRequestKind.ClassMove
                 => await PlayerMoveAsync(request),
+            MoveRequestKind.EnemyAttack when request.EncounterID is null => "Enemies only attack in a fight.",
             MoveRequestKind.EnemyAttack => await EnemyAttackAsync(request),
-            _ => ProcessedMoveResult.Failed("The bot doesn't know that move."),
+            _ => "The bot doesn't know that move.",
         };
     }
 
     private async Task<ProcessedMoveResult> PlayerMoveAsync(MoveRequest request)
     {
         if (request.CharacterID is not { } characterID || await characterService.GetCharacterFromUserAsync(characterID) is not { } character)
-            return ProcessedMoveResult.Failed("That character isn't around anymore.");
+            return "That character isn't around anymore.";
 
         Enemy? target = null;
         if (request.TargetEnemyID is not null && (target = await TargetEnemyAsync(request)) is null)
-            return ProcessedMoveResult.Failed("That enemy isn't in the fight anymore.");
+            return "That enemy isn't in the fight anymore.";
 
         Character? ally = null;
         if (request.TargetCharacterID is { } allyID && (ally = await characterService.GetCharacterFromUserAsync(allyID)) is null)
-            return ProcessedMoveResult.Failed("Who you're helping isn't around anymore.");
+            return "Who you're helping isn't around anymore.";
 
         var prepared = request.Kind switch
         {
@@ -86,17 +88,23 @@ public class MoveRequestProcessor(
             MoveRequestKind.ClassMove => characterMoves.PrepareClassMove(character, request.Move ?? "", request.Stat),
             _ => BasicMoves.All.FirstOrDefault(m => m.Name.Equals(request.Move?.Trim(), StringComparison.OrdinalIgnoreCase)) is { } basic
                 ? Basic(character, basic, request.Stat, ally)
-                : PreparedMove.Failed($"There's no basic move called {request.Move}."),
+                : $"There's no basic move called {request.Move}.",
         };
-        if (prepared.Error is { } error)
-            return ProcessedMoveResult.Failed(error);
 
-        var move = prepared.Move!;
-        if (TacticRules.WhyCannotMake(character, move.Name) is { } forbidden)
-            return ProcessedMoveResult.Failed(forbidden);
+        return prepared switch
+        {
+            string error => error,
+            ReadyMove ready => await RollAsync(request, character, ready, target, ally),
+        };
+    }
 
-        var input = prepared.Input! with { Bonus = request.Bonus, Target = target?.Name, ExtraDamage = request.ExtraDamage };
-        var resolution = await moveResolver.ResolveAsync(character, move, input);
+    private async Task<ProcessedMoveResult> RollAsync(MoveRequest request, Character character, ReadyMove ready, Enemy? target, Character? ally)
+    {
+        if (TacticRules.WhyCannotMake(character, ready.Move.Name) is { } forbidden)
+            return forbidden;
+
+        var input = ready.Input with { Bonus = request.Bonus, Target = target?.Name, ExtraDamage = request.ExtraDamage };
+        var resolution = await moveResolver.ResolveAsync(character, ready.Move, input);
         var action = resolution.ToAction(messageID: null, ally?.Name);
         await LogAsync(request, action);
 
@@ -108,14 +116,14 @@ public class MoveRequestProcessor(
         };
         var summary = resolution.Dealt?.Taken is { } taken ? $"{outcome} · -{taken}" : outcome;
 
-        return new ProcessedMoveResult(null, new ProcessedMove(
-            resolution.Embed with { Footer = FromScene },
+        return new ProcessedMove(
+            resolution.Embed with { Footer = request.EncounterID is null ? FromSheet : FromScene },
             action,
             summary,
             character.ID,
             resolution.Roll.Dice,
             resolution.Outcome,
-            character.Health));
+            character.Health);
     }
 
     /// <summary>
@@ -128,26 +136,26 @@ public class MoveRequestProcessor(
         if (move == BasicMoves.AidOrInterfere)
         {
             if (ally is null)
-                return PreparedMove.Failed("Pick whose character you're helping or hindering.");
+                return "Pick whose character you're helping or hindering.";
             var bonds = character.Bonds.Count(b => b.TargetID == ally.ID);
-            return new PreparedMove(null, move, new MoveInput($"Bond with {ally.Name}", bonds, 0));
+            return new ReadyMove(move, new MoveInput($"Bond with {ally.Name}", bonds, 0));
         }
 
         if (move == BasicMoves.LastBreath)
-            return new PreparedMove(null, move, new MoveInput(null, 0, 0, Kind: RollKind.LastBreath));
+            return new ReadyMove(move, new MoveInput(null, 0, 0, Kind: RollKind.LastBreath));
 
         if ((stat ?? move.Stat) is not { } rolled)
-            return PreparedMove.Failed($"Pick a stat to roll {move.Name} with.");
+            return $"Pick a stat to roll {move.Name} with.";
 
         return MoveInput.ForStat(character, rolled, 0) is { } input
-            ? new PreparedMove(null, move, input)
-            : PreparedMove.Failed($"{character.Name} has no {rolled} stat.");
+            ? new ReadyMove(move, input)
+            : $"{character.Name} has no {rolled} stat.";
     }
 
     private async Task<ProcessedMoveResult> EnemyAttackAsync(MoveRequest request)
     {
         if (request.EnemyID is not { } enemyID || await context.Enemies.FindAsync(enemyID) is not { } attacker || attacker.EncounterID != request.EncounterID)
-            return ProcessedMoveResult.Failed("That enemy isn't in the fight anymore.");
+            return "That enemy isn't in the fight anymore.";
 
         Character? character = null;
         Npc? npc = null;
@@ -156,18 +164,24 @@ public class MoveRequestProcessor(
         else if (request.TargetNpcID is { } npcID)
             npc = await context.Npcs.FindAsync(npcID);
         if (character is null && npc is null)
-            return ProcessedMoveResult.Failed("Who it attacked isn't around anymore.");
+            return "Who it attacked isn't around anymore.";
 
         var attacked = await enemyAttackResolver.ResolveAsync(new EnemyAttackInput(attacker, character, npc, request.Move));
-        if (attacked.Attack is not { } attack)
-            return ProcessedMoveResult.Failed(attacked.Error!);
+        return attacked switch
+        {
+            string error => error,
+            EnemyAttack attack => await LogAttackAsync(request, attack),
+        };
+    }
 
+    private async Task<ProcessedMove> LogAttackAsync(MoveRequest request, EnemyAttack attack)
+    {
         await LogAsync(request, attack.Action);
 
-        return new ProcessedMoveResult(null, new ProcessedMove(
+        return new ProcessedMove(
             new Embed(Title: attack.Title, Description: attack.Description, Colour: AttackColor, Footer: FromScene),
             attack.Action,
-            $"-{attack.Taken}"));
+            $"-{attack.Taken}");
     }
 
     /// <summary>

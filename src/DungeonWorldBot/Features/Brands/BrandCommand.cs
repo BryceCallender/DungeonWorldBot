@@ -23,6 +23,7 @@ namespace DungeonWorldBot.Features.Brands;
 /// The Immolator's Burning Brand: conjuring it with its tags, and attacking with it until its uses burn out.
 /// </summary>
 [Group("brand")]
+[ForClassMechanic(ClassMechanic.BurningBrand)]
 public class BrandCommand(
     ICommandContext context,
     FeedbackService feedbackService,
@@ -41,6 +42,7 @@ public class BrandCommand(
     private const string StatDescription = "Attack with INT (default), or the usual stat for the move";
 
     [Command("conjure")]
+    [DisplayName("Conjure your Burning Brand")]
     [Description("Conjure a weapon of pure flame (+CON), choosing its tags")]
     public async Task<IResult> ConjureAsync(
         [Description(TagDescription)] [AutocompleteProvider(BrandTagAutocomplete.ID)]
@@ -64,23 +66,26 @@ public class BrandCommand(
             tags.Add(option);
         }
 
-        var brand = characterMoves.PrepareClassMove(character!, BrandRules.BurningBrand);
-        if (brand.Error is { } error)
-            return await ReplyWithErrorAsync(error);
-
-        var input = brand.Input!;
-        return await ReplyWithMoveAsync(
-            character!,
-            brand.Move!,
-            input.ModifierLabel,
-            input.Modifier,
-            bonus,
-            input.Stat,
-            prepared: prepared,
-            aftermath: resolution => ForgeAsync(resolution, tags));
+        return await RollBrandAsync(character!, tags, bonus, prepared);
     }
 
+    private async Task<IResult> RollBrandAsync(Character character, IReadOnlyList<string> tags, int bonus, bool prepared) =>
+        characterMoves.PrepareClassMove(character, BrandRules.BurningBrand) switch
+        {
+            string error => await ReplyWithErrorAsync(error),
+            ReadyMove(var brand, var input) => await ReplyWithMoveAsync(
+                character,
+                brand,
+                input.ModifierLabel,
+                input.Modifier,
+                bonus,
+                input.Stat,
+                prepared: prepared,
+                aftermath: resolution => ForgeAsync(resolution, tags)),
+        };
+
     [Command("strike")]
+    [DisplayName("Strike with your Brand")]
     [Description("Hack and Slash with your Burning Brand (+INT), using one of its uses")]
     public Task<IResult> StrikeAsync(
         [Description(TargetDescription)] [AutocompleteProvider(TargetAutocomplete.ID)] string? target = null,
@@ -91,6 +96,7 @@ public class BrandCommand(
         => AttackAsync(BasicMoves.HackAndSlash, stat, target, bonus, prepared, extraDamage);
 
     [Command("throw")]
+    [DisplayName("Throw your Brand")]
     [Description("Volley your Burning Brand (+INT) if it's thrown, using one of its uses")]
     public Task<IResult> ThrowAsync(
         [Description(TargetDescription)] [AutocompleteProvider(TargetAutocomplete.ID)] string? target = null,

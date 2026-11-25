@@ -44,6 +44,7 @@ public partial class DmCommand : CommandGroup
         : CharacterCommandBase(context, feedbackService, characterService, leveling, settings)
     {
         [Command("set")]
+        [DisplayName("Set a stat")]
         [Description("Set any character's stat to a value")]
         [RequireGameMaster("Players raise stats with /character level allocate when they level up.")]
         public async Task<IResult> ChangeStatAsync(
@@ -70,6 +71,7 @@ public partial class DmCommand : CommandGroup
         }
 
         [Command("grant-points")]
+        [DisplayName("Grant stat points")]
         [RequireGameMaster]
         [Description("Give a character stat points to spend")]
         public async Task<IResult> GrantStatPointsAsync(
@@ -106,6 +108,7 @@ public partial class DmCommand : CommandGroup
         : CharacterCommandBase(context, feedbackService, characterService, leveling, settings)
     {
         [Command("set")]
+        [DisplayName("Set a level")]
         [Description("Set a character's level, or everyone's")]
         public async Task<IResult> SetLevelAsync(
             [Description("The new level")]
@@ -156,6 +159,7 @@ public partial class DmCommand : CommandGroup
         }
 
         [Command("set-points")]
+        [DisplayName("Set stat points per level")]
         [Description("Set how many stat points a level gives everyone")]
         public async Task<IResult> SetLevelPointsAsync(
             [Description("Stat points gained for reaching the level")]
@@ -185,6 +189,7 @@ public partial class DmCommand : CommandGroup
         : CharacterCommandBase(context, feedbackService, characterService, leveling, settings)
     {
         [Command("drama")]
+        [DisplayName("Turn dramatic rolls on or off")]
         [Description("Turn the dramatic reveal for big rolls (double sixes, snake eyes, Last Breath) on or off")]
         public async Task<IResult> SetDramaAsync(
             [Description("On to pause and land big rolls with a headline, off for quick rolls")]

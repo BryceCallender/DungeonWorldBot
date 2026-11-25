@@ -23,6 +23,7 @@ public class AbilityCommand(
     private const string NameDescription = "The name of the ability";
 
     [Command("add")]
+    [DisplayName("Add an ability")]
     [Description("Add a class move, spell, or feature to your character")]
     public async Task<IResult> AddAbilityAsync(
         [Description(NameDescription)]
@@ -49,6 +50,7 @@ public class AbilityCommand(
     }
 
     [Command("remove")]
+    [DisplayName("Remove an ability")]
     [Description("Remove an ability from your character")]
     public async Task<IResult> RemoveAbilityAsync([Description(NameDescription)] string name)
     {
@@ -66,6 +68,7 @@ public class AbilityCommand(
     }
 
     [Command("list")]
+    [DisplayName("See abilities")]
     [Description("Show a character's abilities")]
     public async Task<IResult> ListAbilitiesAsync(
         [Description("The user to see the abilities of. Don't specify a user to see your own.")]
@@ -100,6 +103,7 @@ public class AbilityCommand(
     }
 
     [Command("use")]
+    [DisplayName("Use an ability")]
     [Description("Use an ability, spending uses or hold if it has them")]
     public async Task<IResult> UseAbilityAsync(
         [Description(NameDescription)]
@@ -129,6 +133,7 @@ public class AbilityCommand(
     }
 
     [Command("restore")]
+    [DisplayName("Restore uses")]
     [Description("Restore uses or hold, e.g. after making camp. Leave the name blank to restore everything")]
     public async Task<IResult> RestoreAbilityAsync(
         [Description("The ability to restore. Leave blank to restore all of them")]
@@ -162,6 +167,7 @@ public class AbilityCommand(
     }
 
     [Command("set-uses")]
+    [DisplayName("Set an ability's uses")]
     [Description("Set how many uses or hold an ability has right now, e.g. after rolling for hold")]
     public async Task<IResult> SetUsesAsync(
         [Description(NameDescription)]
@@ -186,6 +192,7 @@ public class AbilityCommand(
     }
 
     [Command("set-level")]
+    [DisplayName("Set when an ability was taken")]
     [Description("Set the level you took an ability at, e.g. Divine Favor, which your cleric level counts up from")]
     public async Task<IResult> SetLevelTakenAsync(
         [Description(NameDescription)]

@@ -23,6 +23,7 @@ namespace DungeonWorldBot.Features.Light;
 /// The Lantern's little light as a weapon: loosing Arrows of Light, and forming or lending the Shield of Light.
 /// </summary>
 [Group("light")]
+[ForClassMechanic(ClassMechanic.Light)]
 public class LightCommand(
     ICommandContext context,
     FeedbackService feedbackService,
@@ -38,6 +39,7 @@ public class LightCommand(
     private static ClassResource ArrowPiercing => Lantern.Sheet.FindResource(Lantern.ArrowPiercing)!;
 
     [Command("arrows")]
+    [DisplayName("Arrows of light")]
     [Description("Volley with Arrows of Light (+INT), piercing armor")]
     public async Task<IResult> ArrowsAsync(
         [Description("The enemy you're shooting, to take your damage off it on a hit")] [AutocompleteProvider(TargetAutocomplete.ID)]
@@ -69,6 +71,7 @@ public class LightCommand(
     }
 
     [Command("shield")]
+    [DisplayName("Shield of light")]
     [Description("Form the Shield of Light (+1 armor) around you, or lend it to an ally within reach")]
     public async Task<IResult> ShieldAsync(
         [Description("The ally to lend it to. Leave blank to keep it yourself")]
@@ -99,6 +102,7 @@ public class LightCommand(
     }
 
     [Command("dim")]
+    [DisplayName("Dim your light")]
     [Description("Your little light lets its Shield of Light fade and returns to its harmless form")]
     public async Task<IResult> DimAsync()
     {

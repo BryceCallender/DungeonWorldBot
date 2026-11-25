@@ -29,6 +29,7 @@ public class GearCommand(
     : DungeonWorldCommandBase(context, feedbackService)
 {
     [Command("list")]
+    [DisplayName("See all custom gear")]
     [Description("List every piece of custom gear")]
     public async Task<IResult> ListAsync()
     {
@@ -41,6 +42,7 @@ public class GearCommand(
     }
 
     [Command("info")]
+    [DisplayName("Read gear")]
     [Description("Read a piece of custom gear, or see your own")]
     public async Task<IResult> InfoAsync(
         [Description("The gear to read. Leave blank to see your own.")]
@@ -73,6 +75,7 @@ public class GearCommand(
     }
 
     [Command("give")]
+    [DisplayName("Give gear")]
     [Description("Give a character a piece of custom gear (the DM can give it to someone else)")]
     public async Task<IResult> GiveAsync(
         [Description("The gear to give")]
@@ -100,6 +103,7 @@ public class GearCommand(
     }
 
     [Command("take")]
+    [DisplayName("Take gear away")]
     [Description("Take a piece of custom gear away from a character (the DM can take it from someone else)")]
     public async Task<IResult> TakeAsync(
         [Description("The gear to take away")]
@@ -123,6 +127,7 @@ public class GearCommand(
     }
 
     [Command("socket")]
+    [DisplayName("Change your gear's mode")]
     [Description("Change your gear's mode, like socketing a different gem in the Gem-Aspected Bow")]
     public async Task<IResult> SocketAsync(
         [Description("The mode to switch to, e.g. Ruby")]
@@ -157,6 +162,7 @@ public class GearCommand(
     }
 
     [Command("counter")]
+    [DisplayName("Track your gear's counters")]
     [Description("Gain or spend something your gear tracks, like a Ruby's Dodges or Emerald Marks")]
     public async Task<IResult> CounterAsync(
         [Description("What to change, e.g. Dodge")]
@@ -190,6 +196,7 @@ public class GearCommand(
     }
 
     [Command("end-fight")]
+    [DisplayName("Clear gear after a fight")]
     [Description("Clear anything your gear only tracks until the end of combat, like Emerald Marks")]
     public async Task<IResult> EndFightAsync()
     {
@@ -212,6 +219,7 @@ public class GearCommand(
     }
 
     [Command("action")]
+    [DisplayName("Use your gear's attack")]
     [Description("Use your gear's special attack, like the Topaz's Opportunist's Volley")]
     public async Task<IResult> ActionAsync(
         [Option(DamageService.ExtraOption)] [Description(DamageService.ExtraDescription)] int extraDamage = 0)

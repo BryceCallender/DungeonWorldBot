@@ -4,6 +4,7 @@
 @inject NavigationManager Navigation
 @inject PartyReader PartyReader
 @inject PortraitStore Portraits
+@inject Viewer Viewer
 
 @if (_view is not { } c)
 {
@@ -21,6 +22,10 @@
 
 <nav class="jump">
     <a href="@c.Url#stats">Stats</a>
+    @if (_runAs is not null)
+    {
+        <a href="@c.Url#roll">Roll</a>
+    }
     @if (c.Subclass is { } s)
     {
         <a href="@c.Url#subclass">@s.Name</a>
@@ -38,7 +43,7 @@
         <a href="@c.Url#techniques">Techniques</a>
     }
     <a href="@c.Url#moves">Moves</a>
-    <a href="@c.Url#commands">Commands</a>
+    <a href="@c.Url#commands">@(_runAs is null ? "Commands" : "Actions")</a>
     <a href="@c.Url#inventory">Inventory</a>
 </nav>
 
@@ -66,6 +71,8 @@
             </ul>
         }
     </section>
+
+    <RollCard View="c" Playable="_runAs is not null" />
 
     @if (c.Resources.Count > 0)
     {
@@ -123,10 +130,21 @@
 
     @* Not a filter group, so searching the moves leaves these where they are *@
     <section class="card wide classed" id="commands" style="@Lookup.ColorOf(c.Character.Class.Type)">
-        <CardHeader Title="Commands">
-            <Subtitle>What @c.Name can use on Discord right now</Subtitle>
-        </CardHeader>
-        <GuideSteps Steps="CharacterCommands.For(c.Character)" />
+        @if (_runAs is { } runAs)
+        {
+            <CardHeader Title="Actions">
+                <Subtitle>Everything @c.Name can do right now. Tap one to run it, as in Discord.</Subtitle>
+                <Tools><a class="tool" href="actions">All commands →</a></Tools>
+            </CardHeader>
+            <GuideSteps Steps="CharacterCommands.For(c.Character)" RunAs="runAs" />
+        }
+        else
+        {
+            <CardHeader Title="Commands">
+                <Subtitle>What @c.Name can use on Discord right now</Subtitle>
+            </CardHeader>
+            <GuideSteps Steps="CharacterCommands.For(c.Character)" />
+        }
     </section>
 
     <InventoryCard Inventory="c.Character.Inventory" />
@@ -139,13 +157,28 @@
     private CharacterView? _view;
     private string? _portrait;
 
+    /// <summary>
+    /// Whose Discord ID the character's rolls and commands run as, when the viewer plays them: the viewer's own, as
+    /// for any command they run (the bot works out it's this character), or the character's player's with sign-in
+    /// off. Null when they're someone else's, so they can only be read.
+    /// </summary>
+    private ulong? _runAs;
+
     protected override async Task OnParametersSetAsync()
     {
         _view = await PartyReader.GetCharacterAsync(Id);
         _portrait = _view is null ? null : (await Portraits.UrlsAsync()).GetValueOrDefault(_view.Character.ID.Value);
+        _runAs = _view is null ? null : await RunAsAsync(_view.Character.ID.Value);
 
         // Older links use the Discord ID; send them to the address with the character's name
         if (_view is not null && Id != _view.Slug)
             Navigation.NavigateTo(_view.Url, replace: true);
     }
+
+    private async Task<ulong?> RunAsAsync(ulong character) => Viewer switch
+    {
+        { SignedIn: false } => character,
+        { ID: { } me } when (await PartyReader.PlayedByAsync(me)).Plays(character) => me,
+        _ => null,
+    };
 }

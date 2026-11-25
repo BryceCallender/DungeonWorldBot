@@ -26,6 +26,7 @@ public partial class DmCommand
         private static partial Regex Temperature();
 
         [Command("temp")]
+        [DisplayName("Check the Pi's temperature")]
         [Description("Show the Raspberry Pi's temperature")]
         public async Task<IResult> GetPiTemperature()
         {

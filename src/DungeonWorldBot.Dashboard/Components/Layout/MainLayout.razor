@@ -11,6 +11,8 @@
         <NavLink href="scenes" class="@ActiveFor("scene/", "canvas/", "fight/")">Scenes</NavLink>
         <NavLink href="sessions" class="@ActiveFor("session/")">Sessions</NavLink>
         <NavLink href="stats">Stats</NavLink>
+        @* Everything the bot does in Discord, for tapping rather than typing *@
+        <NavLink href="actions">Actions</NavLink>
         <span class="nav-sep" aria-hidden="true"></span>
         <NavLink href="npcs">NPCs</NavLink>
         <NavLink href="bestiary">Bestiary</NavLink>
@@ -56,6 +58,9 @@
     <SessionBar />
     @Body
 </main>
+
+<QuickActions />
+<CommandDialog />
 
 @code {
     private RenderFragment Me =>
